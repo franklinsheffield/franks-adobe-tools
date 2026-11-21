@@ -76,6 +76,18 @@ def glyph_crt(d, s, c):
     d.line([(s * 0.38, s * 0.84), (s * 0.62, s * 0.84)], fill=c, width=w)
     d.line([(s * 0.5, s * 0.72), (s * 0.5, s * 0.84)], fill=c, width=w)
 
+def glyph_mock(d, s, c):
+    # a stack of mockup cards, a tee on the front one
+    w = int(s * 0.04)
+    d.rounded_rectangle([s * 0.30, s * 0.18, s * 0.82, s * 0.70], radius=int(s * 0.05), outline=c, width=w)
+    d.rounded_rectangle([s * 0.18, s * 0.30, s * 0.70, s * 0.82], radius=int(s * 0.05), outline=c, width=w, fill=(0, 0, 0, 255))
+    cx, top = s * 0.44, s * 0.42
+    tee = [(cx - s * 0.06, top), (cx - s * 0.17, top + s * 0.05), (cx - s * 0.21, top + s * 0.13), (cx - s * 0.13, top + s * 0.16),
+           (cx - s * 0.11, top + s * 0.14), (cx - s * 0.11, top + s * 0.32), (cx + s * 0.11, top + s * 0.32), (cx + s * 0.11, top + s * 0.14),
+           (cx + s * 0.13, top + s * 0.16), (cx + s * 0.21, top + s * 0.13), (cx + s * 0.17, top + s * 0.05), (cx + s * 0.06, top),
+           (cx, top + s * 0.035)]
+    d.polygon(tee, fill=c)
+
 TOOLS = {
     "dithers-brew": (glyph_dithers, "icon_D", "icon_N"),
     "chrometone": (glyph_chrome, "icon_C", "icon_CL"),
@@ -83,6 +95,7 @@ TOOLS = {
     "mobglow": (glyph_glow, "icon_C", "icon_CL"),
     "decompressor": (glyph_decomp, "icon_C", "icon_CL"),
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
+    "batch-mock-brew": (glyph_mock, "icon_C", "icon_CL"),
 }
 
 def draw(glyph, size, color, tile, glow=GLOW):
@@ -103,7 +116,10 @@ def draw(glyph, size, color, tile, glow=GLOW):
     ImageDraw.Draw(im).rounded_rectangle([S * 0.02, S * 0.02, S * 0.98 - 1, S * 0.98 - 1], radius=S // 5, outline=(255, 255, 255, 220), width=max(SS, int(S * 0.018)))
     return im.resize((size, size), Image.LANCZOS)
 
+import sys
+ONLY = sys.argv[1:]  # optional: tool names to redraw
 for tool, (glyph, dark, light) in TOOLS.items():
+    if ONLY and tool not in ONLY: continue
     out = os.path.join(ROOT, "plugins", tool, "icons")
     n = neon(tool)
     for size, suf in [(23, ""), (46, "@2x")]:

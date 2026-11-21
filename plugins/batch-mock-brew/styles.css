@@ -1,0 +1,10 @@
+/* Batch Mock Brew widgets on top of core/panel.css. */
+.bar { height: 6px; border: 1px solid var(--stroke); border-radius: 3px; margin: 6px 0; overflow: hidden; }
+.barfill { height: 100%; width: 0; background: var(--glow); }
+.frow { margin-bottom: 4px; }
+.info.path { margin: -2px 0 6px 0; word-break: break-all; }
+.info.path.lost { color: #ff7a6b; opacity: 1; }
+.info.counts { margin-bottom: 4px; opacity: 0.9; }
+.info.example { margin-top: 4px; opacity: 0.9; }
+/* Plugin neon (signal red): title text and every glow use this colour. */
+:root { --glow: #ff3b30; --glowbg: #2e0b09; }

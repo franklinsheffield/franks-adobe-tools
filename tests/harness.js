@@ -92,6 +92,7 @@ async function loadPanel(pluginDir, opts) {
   global.window = dom.window;
   global.document = dom.window.document;
   const host = makeHost(opts);
+  if (opts.extend) opts.extend(host);   // tool tests can add host features
   const origLoad = Module._load;
   Module._load = function (req, parent, isMain) {
     if (req === "photoshop") return host.photoshop;

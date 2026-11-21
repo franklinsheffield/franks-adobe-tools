@@ -176,6 +176,8 @@ async function t(name, fn) {
     });
   }
 
+  await require("./batch-mock-brew.js")(t);
+
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
 })();
