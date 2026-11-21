@@ -1,7 +1,7 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.mobglow",
-  "name": "Mobglow",
+  "name": "Frank's Mobglow Brew",
   "version": "1.0.0",
   "main": "index.html",
   "host": {
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "mobglowPanel",
       "label": {
-        "default": "Mobglow"
+        "default": "Frank's Mobglow Brew"
       },
       "minimumSize": {
         "width": 300,

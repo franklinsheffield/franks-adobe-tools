@@ -23,15 +23,15 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  2 layers",
  "applyCalls": [
-  "executeAsModal|Chrometone: reading pixels",
+  "executeAsModal|Frank's Chrometone Brew: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Chrometone",
-  "suspendHistory|Chrometone",
+  "executeAsModal|Frank's Chrometone Brew",
+  "suspendHistory|Frank's Chrometone Brew",
   "createPixelLayer|Chrome colour",
   "putPixels|100|4|480000",
   "createPixelLayer|Chrome shine",
   "putPixels|101|4|480000",
-  "createLayerGroup|Chrometone - Liquid Silver|2",
+  "createLayerGroup|Frank's Chrometone Brew - Liquid Silver|2",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

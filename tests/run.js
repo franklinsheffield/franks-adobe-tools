@@ -120,6 +120,23 @@ async function t(name, fn) {
     }
   });
 
+  await t("suite theme: black panels, white strokes, light-blue glow on press and selection", async () => {
+    const css = fs.readFileSync(path.join(ROOT, "shared/panel.css"), "utf8");
+    assert.ok(/--ink:\s*#000000/.test(css) && /--glow:\s*#8fd8ff/.test(css), "theme colours");
+    assert.ok(/\.btn\.pressed/.test(css) && /\.segbtn\.on, \.pill\.on \{[^}]*--glow/.test(css), "glow rules");
+    for (const p of fs.readdirSync(path.join(ROOT, "plugins"))) {
+      const sc = fs.readFileSync(path.join(ROOT, "plugins", p, "styles.css"), "utf8");
+      assert.ok(!/\.apply\s*\{|\.segbtn\.on/.test(sc), p + "/styles.css must not override the suite button theme");
+    }
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins", "mobglow"), { withDoc: false });
+    const b = P.document.querySelector(".segbtn");
+    b.dispatchEvent(new P.window.MouseEvent("mousedown", { bubbles: true }));
+    assert.ok(b.classList.contains("pressed"), "pressed glow on mousedown");
+    await P.settle(450);
+    assert.ok(!b.classList.contains("pressed"), "glow fades");
+  });
+
   const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Background darken", "Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
   for (const tool of Object.keys(NEW_TOOLS)) {
     await t(tool + " engine: deterministic, every preset renders full-size layers, first preset gives the expected layers", async () => {

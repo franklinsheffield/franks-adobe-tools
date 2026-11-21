@@ -12,7 +12,7 @@ const { createPreviewLoop, tick } = require("./core/preview.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 
-PS.configure({ appName: "Chrometone", presetFile: "presets.json", exportName: "chrometone-looks.json" });
+PS.configure({ appName: "Frank's Chrometone Brew", presetFile: "presets.json", exportName: "chrometone-looks.json" });
 
 let state = clone(DEFAULTS);
 let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
@@ -134,7 +134,7 @@ async function applyNow() {
       const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
       const warnings = await PS.writeResult(doc, res, {
         origin: r.origin,
-        groupName: base + "Chrometone - " + presetName,
+        groupName: base + "Frank's Chrometone Brew - " + presetName,
         hideSource: state.out.hide,
         hideLayers: t.kind === "layer" ? [t.layer] : null
       });
@@ -168,7 +168,7 @@ function build(root) {
   layout = splitLayout(root, el);
   const top = layout.pinned;
   top.appendChild(el("div", { class: "hdr" }, [
-    el("div", { class: "title", text: "Chrometone" }),
+    el("div", { class: "title", text: "Frank's Chrometone Brew" }),
     el("div", { class: "sub", text: "liquid chrome  /  metal  /  holo foil" })
   ]));
 
@@ -242,7 +242,7 @@ function build(root) {
     refs.apply,
     el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
   ]));
-  root.appendChild(el("div", { class: "foot", text: "Chrometone 1.0  -  part of Frank's tool suite" }));
+  root.appendChild(el("div", { class: "foot", text: "Frank's Chrometone Brew 1.0  -  Frank's Brew suite" }));
   refreshAll();
 }
 

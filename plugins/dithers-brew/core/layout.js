@@ -11,8 +11,28 @@
 //   lay.setPinned(false);  // preview scrolls with everything else
 // ======================================================================
 
+// Press glow: buttons and colour swatches light up blue for a moment when
+// pressed (CSS .pressed in panel.css). Done in JS because UXP's :active
+// support is patchy. Installed once per panel root.
+function pressGlow(root) {
+  if (root.__pressGlow) return;
+  root.__pressGlow = true;
+  const SEL = ".btn, .segbtn, .pill, .apply, .sw.pick";
+  const find = (t) => { while (t && t !== root) { if (t.matches && t.matches(SEL)) return t; t = t.parentNode; } return null; };
+  const on = (e) => {
+    const b = find(e.target);
+    if (!b) return;
+    b.classList.add("pressed");
+    clearTimeout(b.__glowT);
+    b.__glowT = setTimeout(() => b.classList.remove("pressed"), 350);
+  };
+  root.addEventListener("mousedown", on);
+  root.addEventListener("click", on);
+}
+
 function splitLayout(root, el) {
   root.classList.add("split");
+  pressGlow(root);
   const pinned = el("div", { class: "pinned" });
   const scroller = el("div", { class: "scroller" });
   root.appendChild(pinned);
@@ -44,4 +64,4 @@ function splitLayout(root, el) {
   return { pinned, scroller, setPinned, previewMaxHeight, get isPinned() { return isPinned; } };
 }
 
-module.exports = { splitLayout };
+module.exports = { splitLayout, pressGlow };

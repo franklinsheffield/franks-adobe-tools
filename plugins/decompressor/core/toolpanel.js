@@ -214,7 +214,7 @@ function createToolPanel(cfg) {
       refs.apply,
       el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
     ])));
-    root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  part of Frank's tool suite") }));
+    root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
     refreshAll();
   }
 

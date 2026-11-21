@@ -5,7 +5,7 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 
 const panel = createToolPanel({
-  appName: "Depthtone", title: "Depthtone", sub: "contours  /  terraces  /  relief", panelId: "depthtonePanel",
+  appName: "Frank's Depthtone Brew", title: "Frank's Depthtone Brew", sub: "contours  /  terraces  /  relief", panelId: "depthtonePanel",
   presetFile: "presets.json", exportName: "depthtone-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cards: (ui, kit) => {

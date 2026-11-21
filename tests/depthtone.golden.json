@@ -23,15 +23,15 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
-  "executeAsModal|Depthtone: reading pixels",
+  "executeAsModal|Frank's Depthtone Brew: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Depthtone",
-  "suspendHistory|Depthtone",
+  "executeAsModal|Frank's Depthtone Brew",
+  "suspendHistory|Frank's Depthtone Brew",
   "createPixelLayer|Depth fill",
   "putPixels|100|4|480000",
   "createPixelLayer|Contours",
   "putPixels|101|4|480000",
-  "createLayerGroup|Depthtone - Topo Map|2",
+  "createLayerGroup|Frank's Depthtone Brew - Topo Map|2",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

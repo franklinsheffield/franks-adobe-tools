@@ -128,7 +128,43 @@ input.hex { flex: 1; }
 
 .foot { font-size: 10px; opacity: 0.5; text-align: center; margin: 8px 0; }
 
-@media (prefers-color-scheme: light) {
-  body { background: #f0f0f0; color: #222; }
-  .previewbox { background: #d8d8d8; }
+/* ======================================================================
+   Suite theme (Frank, 2026-11-21): black background, thin white strokes
+   around boxes and buttons, light-blue glow when pressed or selected.
+   Same look in every Photoshop theme. Tools only change their title colour.
+   ====================================================================== */
+:root { --ink: #000000; --stroke: rgba(255, 255, 255, 0.85); --soft: rgba(255, 255, 255, 0.35); --glow: #8fd8ff; --glowbg: #0d2533; }
+html, body, #app, #app.split .pinned, #app.split .scroller { background: var(--ink); }
+body { color: #f2f2f2; }
+#app.split .pinned { border-bottom: 1px solid var(--soft); }
+
+.card { background: var(--ink); border: 1px solid var(--stroke); border-radius: 4px; }
+.cardhead { border-bottom: 1px solid var(--soft); }
+.ctitle { color: #ffffff; letter-spacing: 0.5px; }
+.previewbox { background: var(--ink); border: 1px solid var(--stroke); }
+
+.btn, .segbtn, .pill, .apply {
+  background: var(--ink); color: #ffffff; border: 1px solid var(--stroke); font-weight: normal; opacity: 1;
 }
+input[type="text"], input.num, input.hex, textarea {
+  background: var(--ink); color: #ffffff; border: 1px solid var(--stroke); border-radius: 3px;
+}
+/* selected toggles glow light blue */
+.segbtn.on, .pill.on {
+  background: var(--glowbg); color: var(--glow); border-color: var(--glow); font-weight: bold;
+  box-shadow: 0 0 6px var(--glow);
+}
+/* pressed: :active where the host supports it, plus the .pressed class
+   that shared/layout.js adds for a moment on every click */
+.btn:active, .segbtn:active, .pill:active, .apply:active, .sw.pick:active,
+.btn.pressed, .segbtn.pressed, .pill.pressed, .apply.pressed, .sw.pick.pressed {
+  background: var(--glowbg); color: var(--glow); border-color: var(--glow);
+  box-shadow: 0 0 8px var(--glow);
+}
+input[type="text"]:focus, textarea:focus { border-color: var(--glow); }
+.apply { border-width: 1px; padding: 9px; font-weight: bold; letter-spacing: 1px; }
+.apply[disabled] { color: var(--glow); border-color: var(--glow); background: var(--glowbg); }
+.sw, .swatch { border: 1px solid var(--stroke); }
+.dot { border: 1px solid var(--soft); }
+.gradbar { border: 1px solid var(--stroke); }
+.status.err { color: #ff7a6b; }

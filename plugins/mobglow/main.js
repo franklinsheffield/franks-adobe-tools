@@ -5,7 +5,7 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 
 const panel = createToolPanel({
-  appName: "Mobglow", title: "Mobglow", sub: "neon  /  bloom  /  halo glow", panelId: "mobglowPanel",
+  appName: "Frank's Mobglow Brew", title: "Frank's Mobglow Brew", sub: "neon  /  bloom  /  halo glow", panelId: "mobglowPanel",
   presetFile: "presets.json", exportName: "mobglow-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cards: (ui, kit) => {

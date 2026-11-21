@@ -23,13 +23,13 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
-  "executeAsModal|Decompressor: reading pixels",
+  "executeAsModal|Frank's Decompressor Brew: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Decompressor",
-  "suspendHistory|Decompressor",
+  "executeAsModal|Frank's Decompressor Brew",
+  "suspendHistory|Frank's Decompressor Brew",
   "createPixelLayer|Decompressed",
   "putPixels|100|4|480000",
-  "createLayerGroup|Decompressor - Crunchy JPEG|1",
+  "createLayerGroup|Frank's Decompressor Brew - Crunchy JPEG|1",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

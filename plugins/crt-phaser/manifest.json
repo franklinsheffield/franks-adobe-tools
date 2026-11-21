@@ -1,7 +1,7 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.crtphaser",
-  "name": "CRT Phaser",
+  "name": "Frank's CRT Phaser Brew",
   "version": "1.0.0",
   "main": "index.html",
   "host": {
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "crtPhaserPanel",
       "label": {
-        "default": "CRT Phaser"
+        "default": "Frank's CRT Phaser Brew"
       },
       "minimumSize": {
         "width": 300,

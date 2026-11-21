@@ -1,7 +1,5 @@
 /* Mobglow overrides on top of core/panel.css. */
 .title { color: #ff4fd8; }
-.segbtn.on, .pill.on { background: #ff4fd8; border-color: #ff4fd8; color: #111; }
-.apply { background: #ff4fd8; border-color: #ff4fd8; color: #111; }
-.gradbar { height: 16px; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 3px; margin-bottom: 6px; }
+.gradbar { height: 16px; border-radius: 3px; margin-bottom: 6px; }
 .stops .row { margin-bottom: 4px; }
 .lbl3 { font-size: 11px; opacity: 0.75; margin: 6px 0 2px; }

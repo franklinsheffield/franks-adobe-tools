@@ -22,15 +22,15 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  3 layers",
  "applyCalls": [
-  "executeAsModal|Mobglow: reading pixels",
+  "executeAsModal|Frank's Mobglow Brew: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Mobglow",
-  "suspendHistory|Mobglow",
+  "executeAsModal|Frank's Mobglow Brew",
+  "suspendHistory|Frank's Mobglow Brew",
   "createPixelLayer|Background darken",
   "putPixels|100|4|480000",
   "createPixelLayer|Glow",
   "putPixels|101|4|480000",
-  "createLayerGroup|Mobglow - Neon Sign|2",
+  "createLayerGroup|Frank's Mobglow Brew - Neon Sign|2",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
