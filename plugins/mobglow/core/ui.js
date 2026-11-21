@@ -20,8 +20,13 @@ function setPath(o, p, v) {
   a[ks[ks.length - 1]] = v;
 }
 
+// Buttons are drawn as <div class="ub"> because UXP renders a real <button>
+// as a native grey Spectrum button that ignores the suite theme.
+// A [disabled] attribute still blocks clicks.
 function el(tag, props, kids) {
-  const e = document.createElement(tag);
+  const isBtn = tag === "button";
+  const e = document.createElement(isBtn ? "div" : tag);
+  if (isBtn) e.addEventListener("click", (ev) => { if (e.hasAttribute("disabled")) { ev.stopImmediatePropagation(); ev.preventDefault(); } });
   if (props) {
     for (const k of Object.keys(props)) {
       const v = props[k];
@@ -31,6 +36,7 @@ function el(tag, props, kids) {
       else e.setAttribute(k, v);
     }
   }
+  if (isBtn) { e.classList.add("ub"); e.setAttribute("role", "button"); }
   (kids || []).forEach((c) => { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
   return e;
 }
@@ -102,7 +108,7 @@ function createUI(opts) {
       wrap.appendChild(b);
       return b;
     });
-    bind(() => { const cur = getPath(S(), path); btns.forEach((b, i) => { b.className = "segbtn" + (options[i].v === cur ? " on" : ""); }); });
+    bind(() => { const cur = getPath(S(), path); btns.forEach((b, i) => { if (options[i].v === cur) b.classList.add("on"); else b.classList.remove("on"); }); });
     return wrap;
   }
 
@@ -111,7 +117,7 @@ function createUI(opts) {
     if (dotColor) b.appendChild(el("span", { class: "dot", style: { backgroundColor: dotColor } }));
     b.appendChild(el("span", { text: label }));
     b.addEventListener("click", () => { setPath(S(), path, !getPath(S(), path)); onChange(); });
-    bind(() => { b.className = "pill" + (getPath(S(), path) ? " on" : ""); });
+    bind(() => { if (getPath(S(), path)) b.classList.add("on"); else b.classList.remove("on"); });
     return b;
   }
 

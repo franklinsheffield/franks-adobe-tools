@@ -26,7 +26,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   let P = await loadPanel(dir, { withDoc: false });
   const d = P.document;
   out.cards = Array.from(d.querySelectorAll(".ctitle")).map((e) => e.textContent);
-  out.controls = ["input", "select", "button", "textarea"].map((t) => t + ":" + d.querySelectorAll(t).length).join(" ");
+  out.controls = ["input", "select", "button", "textarea"].map((t) => t + ":" + d.querySelectorAll(t === "button" ? "button, .ub" : t).length).join(" ");
   const img = d.querySelector("img.preview");
   out.previewDefault = h(img.src);
   const sel = d.querySelector(".card select"); // first select = built-in presets
@@ -41,7 +41,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   // 2. with a document: apply defaults
   P = await loadPanel(dir, { withDoc: true });
   P.host.calls.length = 0;
-  P.document.querySelector("button.apply").dispatchEvent(new P.window.Event("click"));
+  P.document.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
   await P.settle(800);
   out.applyCalls = P.host.calls.map((c) => c.join("|"));
   out.applyStatus = P.document.querySelector(".status").textContent;

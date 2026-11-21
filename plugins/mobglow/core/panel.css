@@ -143,6 +143,12 @@ body { color: #f2f2f2; }
 .ctitle { color: #ffffff; letter-spacing: 0.5px; }
 .previewbox { background: var(--ink); border: 1px solid var(--stroke); }
 
+.ub {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; text-align: center;
+  padding: 4px 10px; border: 1px solid var(--stroke); border-radius: 3px; cursor: pointer; user-select: none;
+}
+.ub.mini { padding: 1px 6px; }
+.apply.ub { display: block; }
 .btn, .segbtn, .pill, .apply {
   background: var(--ink); color: #ffffff; border: 1px solid var(--stroke); font-weight: normal; opacity: 1;
 }
