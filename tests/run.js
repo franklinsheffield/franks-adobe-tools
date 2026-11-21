@@ -58,6 +58,16 @@ async function t(name, fn) {
     assert.strictEqual(sha, "6c53393b9ad1102246ce46309ec61fbe");
   });
 
+  await t("every plugin panel scrolls vertically (shared panel.css, linked from index.html)", () => {
+    const css = fs.readFileSync(path.join(ROOT, "shared/panel.css"), "utf8");
+    assert.ok(/#app\s*\{[^}]*height:\s*100vh[^}]*overflow-y:\s*scroll/.test(css), "#app must fill the panel and scroll");
+    for (const p of fs.readdirSync(path.join(ROOT, "plugins"))) {
+      const html = fs.readFileSync(path.join(ROOT, "plugins", p, "index.html"), "utf8");
+      assert.ok(html.includes('href="core/panel.css"'), p + "/index.html must link core/panel.css");
+      assert.ok(html.includes('id="app"'), p + "/index.html must have #app");
+    }
+  });
+
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
 })();

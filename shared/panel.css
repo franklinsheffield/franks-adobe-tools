@@ -2,7 +2,10 @@
    anything (e.g. its accent colour) in its own styles.css, loaded after this. */
 * { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; }
+/* Scrolling: every panel scrolls vertically so no control is ever cut off.
+   UXP doesn't scroll <body>, so #app fills the panel and scrolls itself.
+   Required for every tool in the suite (Frank, 2026-11-21). */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 
 body {
   font-size: 11px;
@@ -10,7 +13,7 @@ body {
   background: var(--uxp-host-background-color, #323232);
 }
 
-#app { padding: 8px; }
+#app { padding: 8px; height: 100vh; overflow-x: hidden; overflow-y: scroll; }
 
 .hdr { margin-bottom: 8px; }
 .title { font-size: 15px; font-weight: bold; color: #e8a33d; }
