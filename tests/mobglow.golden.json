@@ -1,0 +1,37 @@
+{
+ "cards": [
+  "Preview",
+  "Library",
+  "Glow source",
+  "Tint",
+  "Halos",
+  "Finish",
+  "Output"
+ ],
+ "controls": "input:18 select:3 button:17 textarea:0",
+ "previewDefault": "27e37fe099d9",
+ "presets": [
+  "Neon - Neon Sign = 27e37fe099d9",
+  "Soft - Soft Dream = 5159647d2411",
+  "Neon - Club Laser = 2b750af142f9",
+  "Neon - Vapor Pink = 44f29b475318",
+  "Neon - Toxic Green = 2b8517ec1e89",
+  "Soft - Ice Halo = 9dda0ff71d33",
+  "Soft - Golden Hour = d236d793646d",
+  "Neon - Hologram = 76f540afaa2d"
+ ],
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  3 layers",
+ "applyCalls": [
+  "executeAsModal|Mobglow: reading pixels",
+  "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
+  "executeAsModal|Mobglow",
+  "suspendHistory|Mobglow",
+  "createPixelLayer|Background darken",
+  "putPixels|100|4|480000",
+  "createPixelLayer|Glow",
+  "putPixels|101|4|480000",
+  "createLayerGroup|Mobglow - Neon Sign|2",
+  "resumeHistory"
+ ],
+ "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
+}

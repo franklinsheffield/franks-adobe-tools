@@ -1,0 +1,7 @@
+/* Decompressor overrides on top of core/panel.css. */
+.title { color: #7dff9a; }
+.segbtn.on, .pill.on { background: #7dff9a; border-color: #7dff9a; color: #111; }
+.apply { background: #7dff9a; border-color: #7dff9a; color: #111; }
+.gradbar { height: 16px; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 3px; margin-bottom: 6px; }
+.stops .row { margin-bottom: 4px; }
+.lbl3 { font-size: 11px; opacity: 0.75; margin: 6px 0 2px; }

@@ -1,0 +1,38 @@
+{
+ "cards": [
+  "Preview",
+  "Library",
+  "Screen",
+  "Convergence",
+  "Phosphor mask",
+  "Scanlines",
+  "Tube",
+  "Signal",
+  "Finish",
+  "Output"
+ ],
+ "controls": "input:20 select:5 button:15 textarea:0",
+ "previewDefault": "ba98f44d8e73",
+ "presets": [
+  "Arcade - Arcade Cabinet = ba98f44d8e73",
+  "TV - Trinitron = 66d3762b11a4",
+  "TV - Consumer TV = fe5497b5b48a",
+  "Mono - Green Phosphor = 81910083b6f4",
+  "Mono - Amber Terminal = 731e25017454",
+  "Pro - Broadcast Monitor = bcf4d4092db4",
+  "TV - Busted VHS Set = 0e5c89c90466",
+  "Pro - Clean Scanlines = af3b6075aae8"
+ ],
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
+ "applyCalls": [
+  "executeAsModal|CRT Phaser: reading pixels",
+  "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
+  "executeAsModal|CRT Phaser",
+  "suspendHistory|CRT Phaser",
+  "createPixelLayer|Screen",
+  "putPixels|100|4|480000",
+  "createLayerGroup|CRT Phaser - Arcade Cabinet|1",
+  "resumeHistory"
+ ],
+ "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
+}

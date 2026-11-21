@@ -1,0 +1,91 @@
+{
+  "manifestVersion": 5,
+  "id": "com.franks.depthtone",
+  "name": "Depthtone",
+  "version": "1.0.0",
+  "main": "index.html",
+  "host": {
+    "app": "PS",
+    "minVersion": "24.4.0"
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "depthtonePanel",
+      "label": {
+        "default": "Depthtone"
+      },
+      "minimumSize": {
+        "width": 300,
+        "height": 400
+      },
+      "maximumSize": {
+        "width": 900,
+        "height": 2400
+      },
+      "preferredDockedSize": {
+        "width": 340,
+        "height": 820
+      },
+      "preferredFloatingSize": {
+        "width": 380,
+        "height": 820
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_C.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium"
+          ],
+          "species": [
+            "generic"
+          ]
+        },
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_CL.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "lightest",
+            "light"
+          ],
+          "species": [
+            "generic"
+          ]
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "width": 48,
+      "height": 48,
+      "path": "icons/plugin.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "all"
+      ],
+      "species": [
+        "pluginList"
+      ]
+    }
+  ],
+  "requiredPermissions": {
+    "localFileSystem": "request"
+  }
+}

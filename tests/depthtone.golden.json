@@ -1,0 +1,38 @@
+{
+ "cards": [
+  "Preview",
+  "Library",
+  "Style",
+  "Depth",
+  "Colour (far to near)",
+  "Lines",
+  "Light and shadow",
+  "Output"
+ ],
+ "controls": "input:34 select:4 button:23 textarea:0",
+ "previewDefault": "9c5143177f52",
+ "presets": [
+  "Map - Topo Map = 9c5143177f52",
+  "Map - Terrace Stack = 99ca4123ce09",
+  "Map - Night Contours = fcd838bafe07",
+  "Relief - Clay Relief = 8ae6a6141ca1",
+  "Map - Blueprint Lines = b326db92a245",
+  "Strata - Sunset Strata = 27cb5d2630db",
+  "Strata - Fog Layers = 78825df4de2c",
+  "Map - Neon Isolines = 05c2f7d78483"
+ ],
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
+ "applyCalls": [
+  "executeAsModal|Depthtone: reading pixels",
+  "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
+  "executeAsModal|Depthtone",
+  "suspendHistory|Depthtone",
+  "createPixelLayer|Depth fill",
+  "putPixels|100|4|480000",
+  "createPixelLayer|Contours",
+  "putPixels|101|4|480000",
+  "createLayerGroup|Depthtone - Topo Map|2",
+  "resumeHistory"
+ ],
+ "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
+}

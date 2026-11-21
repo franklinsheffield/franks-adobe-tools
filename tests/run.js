@@ -106,9 +106,9 @@ async function t(name, fn) {
     assert.strictEqual(new Set(got.presets.map((p) => p.split(" = ")[1])).size, got.presets.length, "every preset looks different");
   });
 
-  await t("colour swatches open the host colour picker and apply the picked colour (both tools)", async () => {
+  await t("colour swatches open the host colour picker and apply the picked colour (every tool with colour settings)", async () => {
     const { loadPanel } = require("./harness.js");
-    for (const p of ["chrometone", "dithers-brew"]) {
+    for (const p of ["chrometone", "dithers-brew", "depthtone", "mobglow"]) {
       const P = await loadPanel(path.join(ROOT, "plugins", p), { withDoc: false });
       const sw = [...P.document.querySelectorAll(".sw.pick")].find((s) => s.offsetParent !== null || true);
       assert.ok(sw, p + ": has a clickable swatch");
@@ -119,6 +119,28 @@ async function t(name, fn) {
       assert.strictEqual(field.value, "#FF8000", p + ": picked colour shown");
     }
   });
+
+  const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Background darken", "Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
+  for (const tool of Object.keys(NEW_TOOLS)) {
+    await t(tool + " engine: deterministic, every preset renders full-size layers, first preset gives the expected layers", async () => {
+      const E = require("../plugins/" + tool + "/js/engine.js"), S = require("../plugins/" + tool + "/js/state.js");
+      const src = E.demoImage(96, 72);
+      for (const pr of S.PRESETS) {
+        const P = S.merge(S.DEFAULTS, pr.p); P.scale = 0.4; P.fullH = 180;
+        const a = await E.render(src, P), b = await E.render(src, P);
+        assert.ok(a.layers.length >= 1, pr.name + ": has layers");
+        a.layers.forEach((L, i) => { assert.strictEqual(L.rgba.length, 96 * 72 * 4, pr.name + ": layer size"); assert.deepStrictEqual(Buffer.from(L.rgba), Buffer.from(b.layers[i].rgba), pr.name + ": deterministic"); });
+      }
+      const P0 = S.merge(S.DEFAULTS, S.PRESETS[0].p); P0.scale = 1;
+      assert.deepStrictEqual((await E.render(src, P0)).layers.map((L) => L.name), NEW_TOOLS[tool]);
+    });
+    await t(tool + " panel matches its golden fingerprint (UI, 8 presets, Apply)", () => {
+      const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins", tool)], { encoding: "utf8", env: process.env, timeout: 300000 });
+      const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, tool + ".golden.json"), "utf8"));
+      assert.deepStrictEqual(got, want);
+      assert.strictEqual(new Set(got.presets.map((p) => p.split(" = ")[1])).size, got.presets.length, "every preset looks different");
+    });
+  }
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
