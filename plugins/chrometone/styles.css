@@ -1,0 +1,6 @@
+/* Chrometone overrides on top of core/panel.css: cool steel accent. */
+.title { color: #9fd3ff; }
+.segbtn.on, .pill.on { background: #9fd3ff; border-color: #9fd3ff; }
+.apply { background: #9fd3ff; border-color: #6fb3e8; }
+.gradbar { height: 16px; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 3px; margin-bottom: 6px; }
+.stops .row { margin-bottom: 4px; }

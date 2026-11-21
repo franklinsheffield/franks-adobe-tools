@@ -84,6 +84,28 @@ async function t(name, fn) {
     assert.ok(pinned.querySelector(".previewbox") === prev, "re-pinned");
   });
 
+  await t("Chrometone engine: flat grey maps through the gradient; same settings give the same pixels", async () => {
+    const E = require("../plugins/chrometone/js/engine.js"), { DEFAULTS, merge } = require("../plugins/chrometone/js/state.js");
+    const w = 64, h = 64, data = new Uint8Array(w * h * 4);
+    for (let i = 0; i < w * h; i++) { data.fill(128, i * 4, i * 4 + 3); data[i * 4 + 3] = 255; }
+    const P = merge(DEFAULTS, { look: { stops: [{ p: 0, c: "#000000" }, { p: 100, c: "#FF0000" }] }, tone: { blur: 0, contrast: 100, mid: 50 }, bands: { count: 0 }, relief: { depth: 0, spec: 0 }, finish: { bloom: 0, grain: 0, mix: 0 } });
+    P.scale = 1;
+    const res = await E.render({ w, h, c: 4, data }, P);
+    const px = res.layers[0].rgba;
+    assert.ok(Math.abs(px[0] - 128) <= 2 && px[1] === 0 && px[2] === 0 && px[3] === 255, "grey 50% -> half red, got " + Array.from(px.slice(0, 4)));
+    const P2 = merge(DEFAULTS, {}); P2.scale = 1; P2.finish.grain = 30;
+    const a1 = await E.render(E.demoImage(80, 60), P2), a2 = await E.render(E.demoImage(80, 60), P2);
+    assert.deepStrictEqual(Buffer.from(a1.layers[0].rgba), Buffer.from(a2.layers[0].rgba));
+    assert.strictEqual(a1.layers.length, 2); assert.strictEqual(a1.layers[1].blend, "SCREEN");
+  });
+
+  await t("Chrometone panel matches its golden fingerprint (UI, 8 presets, Apply)", () => {
+    const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins/chrometone")], { encoding: "utf8", env: process.env, timeout: 300000 });
+    const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "chrometone.golden.json"), "utf8"));
+    assert.deepStrictEqual(got, want);
+    assert.strictEqual(new Set(got.presets.map((p) => p.split(" = ")[1])).size, got.presets.length, "every preset looks different");
+  });
+
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
 })();

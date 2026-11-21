@@ -1,0 +1,38 @@
+{
+ "cards": [
+  "Preview",
+  "Library",
+  "Look",
+  "Tone",
+  "Bands",
+  "Relief",
+  "Finish",
+  "Output"
+ ],
+ "controls": "input:36 select:5 button:20 textarea:0",
+ "previewDefault": "df52dd25b629",
+ "presets": [
+  "Chrome - Liquid Silver = df52dd25b629",
+  "Chrome - Polished Gold = f11d1b16d3f5",
+  "Chrome - Gunmetal = 6028aa9a7641",
+  "Chrome - Black Mirror = 6e3128bdd7c0",
+  "Colour - Holo Foil = 811198a5bca5",
+  "Colour - Rose Chrome = 2cd2917aeb77",
+  "Colour - Y2K Ice = 4df1894319fe",
+  "Colour - Copper Wire = 7175a5d922c8"
+ ],
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  2 layers",
+ "applyCalls": [
+  "executeAsModal|Chrometone: reading pixels",
+  "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
+  "executeAsModal|Chrometone",
+  "suspendHistory|Chrometone",
+  "createPixelLayer|Chrome colour",
+  "putPixels|100|4|480000",
+  "createPixelLayer|Chrome shine",
+  "putPixels|101|4|480000",
+  "createLayerGroup|Chrometone - Liquid Silver|2",
+  "resumeHistory"
+ ],
+ "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
+}
