@@ -68,6 +68,22 @@ async function t(name, fn) {
     }
   });
 
+  await t("Dithers Brew preview is pinned on top; unpinning moves it into the scroll area and back", async () => {
+    const { loadPanel } = require("./harness.js");
+    const { document: d } = await loadPanel(path.join(ROOT, "plugins/dithers-brew"), { withDoc: false });
+    const app = d.getElementById("app"), pinned = app.querySelector(".pinned"), scroller = app.querySelector(".scroller");
+    assert.ok(app.classList.contains("split") && pinned && scroller, "split layout present");
+    const prev = pinned.querySelector(".previewbox");
+    assert.ok(prev, "preview starts pinned");
+    assert.ok(!scroller.querySelector(".previewbox"), "controls area has no preview");
+    const pin = [...pinned.querySelectorAll("input[type=checkbox]")].find((c) => (c.title || "").includes("preview on top"));
+    pin.checked = false; pin.dispatchEvent(new d.defaultView.Event("change"));
+    assert.ok(scroller.firstChild.querySelector && (scroller.querySelector(".previewbox") === prev), "unpinned: preview scrolls with controls");
+    assert.strictEqual(pinned.style.display, "none");
+    pin.checked = true; pin.dispatchEvent(new d.defaultView.Event("change"));
+    assert.ok(pinned.querySelector(".previewbox") === prev, "re-pinned");
+  });
+
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
 })();

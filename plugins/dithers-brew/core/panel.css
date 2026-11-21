@@ -14,6 +14,11 @@ body {
 }
 
 #app { padding: 8px; height: 100vh; overflow-x: hidden; overflow-y: scroll; }
+/* Split layout (shared/layout.js): preview pinned on top, controls scroll below. */
+#app.split { display: flex; flex-direction: column; overflow-y: hidden; padding: 0; }
+#app.split .pinned { flex: none; padding: 8px 8px 0 8px; border-bottom: 1px solid rgba(128, 128, 128, 0.35); }
+#app.split .pinned .card { margin-bottom: 6px; }
+#app.split .scroller { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: scroll; padding: 8px; }
 
 .hdr { margin-bottom: 8px; }
 .title { font-size: 15px; font-weight: bold; color: #e8a33d; }

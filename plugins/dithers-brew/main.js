@@ -11,6 +11,7 @@ const PNG = require("./core/png.js");
 const PS = require("./core/ps-io.js");
 const { createUI } = require("./core/ui.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
+const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 
 PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
@@ -147,7 +148,8 @@ async function previewOnce() {
   const rgb = Engine.composite(res, bg);
   refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
   const avail = (refs.previewBox.clientWidth || 320) - 4;
-  const dw = Math.min(avail, res.w), dh = Math.round(res.h * dw / res.w);
+  const maxH = layout ? layout.previewMaxHeight() : Infinity;   // pinned preview leaves room for controls
+  const dw = Math.max(1, Math.round(Math.min(avail, res.w, maxH * res.w / res.h))), dh = Math.round(res.h * dw / res.w);
   refs.preview.style.width = dw + "px";
   refs.preview.style.height = dh + "px";
   updateInfo();
@@ -228,11 +230,14 @@ function stateForSave() {
 }
 
 // ---------------------------------------------------------------- UI build
+let layout = null;
 function build(root) {
   clear(root);
+  layout = splitLayout(root, el);
+  const top = layout.pinned;
 
   // header
-  root.appendChild(el("div", { class: "hdr" }, [
+  top.appendChild(el("div", { class: "hdr" }, [
     el("div", { class: "title", text: "Frank's Dithers Brew" }),
     el("div", { class: "sub", text: "dither  /  halftone  /  ASCII  /  print separations" })
   ]));
@@ -248,17 +253,22 @@ function build(root) {
   const autoCb = el("input", { type: "checkbox" });
   autoCb.checked = true;
   autoCb.addEventListener("change", () => { auto = !!autoCb.checked; if (auto) schedulePreview(0); });
-  root.appendChild(card("Preview", [
+  const pinCb = el("input", { type: "checkbox", title: "Keep the preview on top while the controls scroll" });
+  pinCb.checked = true;
+  pinCb.addEventListener("change", () => { layout.setPinned(!!pinCb.checked); schedulePreview(0); });
+  top.appendChild(card("Preview", [
     refs.docline,
     refs.previewBox,
     el("div", { class: "row wrap" }, [
       segGroup("view.kind", [{ v: "detail", l: "Detail 1:1", t: "True dot size, centre crop" }, { v: "whole", l: "Whole", t: "Scaled-down view of everything" }]),
       segGroup("view.bg", [{ v: "white", l: "White" }, { v: "black", l: "Black" }, { v: "checker", l: "Checker" }])
     ]),
-    el("div", { class: "row" }, [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb]),
+    el("div", { class: "row" }, [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
     refs.status,
     refs.info
   ]));
+
+  root = layout.scroller;   // everything below scrolls under the pinned preview
 
   // ---- presets (shared Library card)
   lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
