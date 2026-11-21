@@ -1,0 +1,14 @@
+{
+  "name": "franks-adobe-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frank's Photoshop / After Effects tool suite: shared core + one folder per plugin.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "sync": "node tools/sync-core.js",
+    "build": "node tools/build.js"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  }
+}

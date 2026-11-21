@@ -1,7 +1,7 @@
 "use strict";
 // ----------------------------------------------------------------------
-// Photoshop / UXP I/O. Everything that touches the host lives here so the
-// engine stays pure and testable.
+// Shared Photoshop / UXP I/O for every tool in the suite. Everything that
+// touches the host lives here so each tool's engine stays pure and testable.
 //   reading : imaging.getPixels  (no modal scope needed)
 //   writing : executeAsModal + createPixelLayer + imaging.putPixels
 // ----------------------------------------------------------------------
@@ -10,7 +10,13 @@ const { app, core, imaging, constants } = photoshop;
 const { storage } = require("uxp");
 const fsys = storage.localFileSystem;
 
-const APP_NAME = "Frank's Dithers Brew";
+// Per-tool names: call configure() once from the tool's main.js.
+const CFG = {
+  appName: "Frank's Tools",          // history step + modal command name
+  presetFile: "presets.json",        // in the plugin's private data folder
+  exportName: "presets.json"         // default file name for Export all
+};
+function configure(o) { Object.assign(CFG, o || {}); }
 
 function num(v, fallback) {
   if (v == null) return fallback;
@@ -108,13 +114,26 @@ async function readSource(doc, target, view) {
   return { src, scale, ppi: info.ppi, origin, info };
 }
 
+// A result layer is either
+//   { name, color:[r,g,b], mask:Uint8Array(n) 0..255, blend }   one ink, or
+//   { name, rgba:Uint8Array(n*4), blend, opacity? }              full colour
 function layerRGBA(L, n) {
+  if (L.rgba) return L.rgba;
   const out = new Uint8Array(n * 4), c = L.color, m = L.mask;
   for (let i = 0, p = 0; i < n; i++, p += 4) { out[p] = c[0]; out[p + 1] = c[1]; out[p + 2] = c[2]; out[p + 3] = m[i]; }
   return out;
 }
 function layerRGBonWhite(L, n) {
-  const out = new Uint8Array(n * 3), c = L.color, m = L.mask;
+  const out = new Uint8Array(n * 3);
+  if (L.rgba) {
+    const s = L.rgba;
+    for (let i = 0, p = 0, q = 0; i < n; i++, p += 3, q += 4) {
+      const t = s[q + 3] / 255;
+      out[p] = s[q] * t + 255 * (1 - t); out[p + 1] = s[q + 1] * t + 255 * (1 - t); out[p + 2] = s[q + 2] * t + 255 * (1 - t);
+    }
+    return out;
+  }
+  const c = L.color, m = L.mask;
   for (let i = 0, p = 0; i < n; i++, p += 3) {
     const t = m[i] / 255;
     out[p] = c[0] * t + 255 * (1 - t); out[p + 1] = c[1] * t + 255 * (1 - t); out[p + 2] = c[2] * t + 255 * (1 - t);
@@ -137,7 +156,7 @@ async function writeResult(doc, res, opts) {
   const warnings = [];
   await core.executeAsModal(async (ctl) => {
     let hid = null;
-    try { hid = await ctl.hostControl.suspendHistory({ documentID: doc.id, name: APP_NAME }); } catch (e) { hid = null; }
+    try { hid = await ctl.hostControl.suspendHistory({ documentID: doc.id, name: CFG.appName }); } catch (e) { hid = null; }
     try {
       if (opts.hideSource) {
         const list = opts.hideLayers && opts.hideLayers.length ? opts.hideLayers : Array.from(doc.layers);
@@ -153,7 +172,7 @@ async function writeResult(doc, res, opts) {
         made.push(pl);
       }
       for (const L of res.layers) {
-        const pl = await doc.createPixelLayer({ name: L.name, opacity: 100, fillNeutral: false });
+        const pl = await doc.createPixelLayer({ name: L.name, opacity: L.opacity == null ? 100 : L.opacity, fillNeutral: false });
         let blend = L.blend;
         try {
           await putLayerPixels(doc, pl, layerRGBA(L, n), res.w, res.h, 4, opts.origin);
@@ -176,7 +195,7 @@ async function writeResult(doc, res, opts) {
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }
     }
-  }, { commandName: APP_NAME });
+  }, { commandName: CFG.appName });
   return warnings;
 }
 
@@ -186,18 +205,18 @@ function toHex(c) { return "#" + c.map((v) => Math.round(v).toString(16).padStar
 async function loadUserPresets() {
   try {
     const folder = await fsys.getDataFolder();
-    const f = await folder.getEntry("presets.json");
+    const f = await folder.getEntry(CFG.presetFile);
     const parsed = JSON.parse(await f.read());
     return Array.isArray(parsed) ? parsed : [];
   } catch (e) { return []; }
 }
 async function saveUserPresets(list) {
   const folder = await fsys.getDataFolder();
-  const f = await folder.createFile("presets.json", { overwrite: true });
+  const f = await folder.createFile(CFG.presetFile, { overwrite: true });
   await f.write(JSON.stringify(list));
 }
 async function exportPresets(list) {
-  const f = await fsys.getFileForSaving("franks-brew-presets.json", { types: ["json"] });
+  const f = await fsys.getFileForSaving(CFG.exportName, { types: ["json"] });
   if (!f) return false;
   await f.write(JSON.stringify(list, null, 2));
   return true;
@@ -210,6 +229,6 @@ async function importPresets() {
 }
 
 module.exports = {
-  APP_NAME, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  configure, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets
 };

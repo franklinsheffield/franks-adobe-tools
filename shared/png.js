@@ -1,6 +1,6 @@
 "use strict";
 // Tiny dependency-free PNG encoder (stored/uncompressed deflate) + base64.
-// Used to show the live preview as <img src="data:image/png;base64,...">.
+// Used to show panel previews as <img src="data:image/png;base64,...">. Shared by every tool.
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);

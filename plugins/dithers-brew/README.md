@@ -63,15 +63,15 @@ If something misbehaves, open the UXP Developer Tool's **Debug** console and sen
 ## Project layout
 
 ```
-franks-dithers-brew/
+plugins/dithers-brew/
   manifest.json        UXP manifest v5, Photoshop 24.4+
-  index.html, styles.css, main.js     panel UI
+  index.html, styles.css, main.js     panel UI (built from the shared kit)
   js/engine.js         pixel engine (pure JS, tested in Node)
   js/ascii.js          5x7 font + ASCII renderer
   js/palettes.js       palettes and tone maps
   js/state.js          defaults and presets
-  js/png.js            PNG encoder for the preview
-  js/ps.js             all Photoshop calls (imaging API, layers, history)
+  core/                copy of the suite's /shared folder (do not edit here)
+  legacy/Franks_Dithers_Brew_Lite.jsx   drag-and-drop script version
 ```
 
 ## Ideas not built yet

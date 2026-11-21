@@ -5,162 +5,35 @@
 const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { PALETTES, TONEMAPS } = require("./js/palettes.js");
-const PNG = require("./js/png.js");
-const PS = require("./js/ps.js");
 const ASCII = require("./js/ascii.js");
+// shared suite core (synced from /shared by tools/sync-core.js)
+const PNG = require("./core/png.js");
+const PS = require("./core/ps-io.js");
+const { createUI } = require("./core/ui.js");
+const { createPreviewLoop, tick } = require("./core/preview.js");
+const { createLibrary } = require("./core/library.js");
+
+PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
 let state = clone(DEFAULTS);
-let userPresets = [];
 let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
 let lastSrc = null;
 let auto = true;
 let built = false;
 let confirmArmed = false;
+let lib = null;
 
-const binders = [];
-const rules = [];
 const refs = {};
-
-const tick = () => new Promise((r) => setTimeout(r, 0));
+const ui = createUI({ getState: () => state, onChange: () => touch() });
+const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers
-function getPath(o, p) { return p.split(".").reduce((a, k) => a[k], o); }
-function setPath(o, p, v) {
-  const ks = p.split(".");
-  let a = o;
-  for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]];
-  a[ks[ks.length - 1]] = v;
-}
-function el(tag, props, kids) {
-  const e = document.createElement(tag);
-  if (props) {
-    for (const k of Object.keys(props)) {
-      const v = props[k];
-      if (k === "class") e.className = v;
-      else if (k === "text") e.textContent = v;
-      else if (k === "style") { for (const s of Object.keys(v)) e.style[s] = v[s]; }
-      else e.setAttribute(k, v);
-    }
-  }
-  (kids || []).forEach((c) => { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
-  return e;
-}
-function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
-function bind(fn) { binders.push(fn); fn(); }
-function showIf(node, fn) { rules.push(() => { node.style.display = fn() ? "" : "none"; }); }
-function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); }
 function touch() { refreshAll(); updateInfo(); if (auto) schedulePreview(150); }
 
 function setStatus(msg, isErr) {
   if (!refs.status) return;
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
-}
-
-// ---------------------------------------------------------------- controls
-function row(label, ...controls) {
-  return el("div", { class: "row" }, [label ? el("span", { class: "lbl", text: label }) : null].concat(controls));
-}
-
-function sliderRow(label, path, min, max, step, unit) {
-  const val = el("span", { class: "val" });
-  const input = el("input", { type: "range", min: String(min), max: String(max), step: String(step), value: String(getPath(state, path)) });
-  const fmt = (v) => (step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.1 ? 2 : 1)) + (unit || "");
-  input.addEventListener("input", () => { const v = parseFloat(input.value); setPath(state, path, v); val.textContent = fmt(v); });
-  input.addEventListener("change", () => { setPath(state, path, parseFloat(input.value)); touch(); });
-  bind(() => { const v = getPath(state, path); input.value = String(v); val.textContent = fmt(v); });
-  return row(label, input, val);
-}
-
-function selectRow(label, path, options, after) {
-  const sel = el("select", {});
-  options.forEach((o) => sel.appendChild(el("option", { value: String(o.v), text: o.l })));
-  sel.addEventListener("change", () => {
-    const o = options[sel.selectedIndex];
-    if (!o) return;
-    setPath(state, path, o.v);
-    if (after) after(o.v);
-    touch();
-  });
-  bind(() => {
-    const cur = String(getPath(state, path));
-    let i = options.findIndex((o) => String(o.v) === cur);
-    if (i < 0) i = 0;
-    sel.selectedIndex = i;
-  });
-  return row(label, sel);
-}
-
-function checkRow(label, path, after) {
-  const cb = el("input", { type: "checkbox" });
-  cb.addEventListener("change", () => { setPath(state, path, !!cb.checked); if (after) after(!!cb.checked); touch(); });
-  bind(() => { cb.checked = !!getPath(state, path); });
-  return el("div", { class: "row chk" }, [cb, el("span", { class: "lbl2", text: label })]);
-}
-
-function segGroup(path, options, cls) {
-  const wrap = el("div", { class: "seg " + (cls || "") });
-  const btns = options.map((o) => {
-    const b = el("button", { class: "segbtn", text: o.l, title: o.t || "" });
-    b.addEventListener("click", () => { setPath(state, path, o.v); touch(); });
-    wrap.appendChild(b);
-    return b;
-  });
-  bind(() => { const cur = getPath(state, path); btns.forEach((b, i) => { b.className = "segbtn" + (options[i].v === cur ? " on" : ""); }); });
-  return wrap;
-}
-
-function pill(label, path, dotColor, title) {
-  const b = el("button", { class: "pill", title: title || "" });
-  if (dotColor) b.appendChild(el("span", { class: "dot", style: { backgroundColor: dotColor } }));
-  b.appendChild(el("span", { text: label }));
-  b.addEventListener("click", () => { setPath(state, path, !getPath(state, path)); touch(); });
-  bind(() => { b.className = "pill" + (getPath(state, path) ? " on" : ""); });
-  return b;
-}
-
-function textRow(label, path, placeholder, after) {
-  const input = el("input", { type: "text", placeholder: placeholder || "" });
-  input.addEventListener("change", () => { setPath(state, path, input.value); if (after) after(); touch(); });
-  bind(() => { input.value = String(getPath(state, path)); });
-  return row(label, input);
-}
-
-function numInput(path, min, max) {
-  const input = el("input", { type: "text", class: "num" });
-  input.addEventListener("change", () => {
-    let v = parseFloat(input.value);
-    if (isNaN(v)) v = getPath(state, path);
-    v = Math.max(min, Math.min(max, v));
-    setPath(state, path, v);
-    touch();
-  });
-  bind(() => { input.value = String(getPath(state, path)); });
-  return input;
-}
-
-function hexField(get, set, allowEmpty) {
-  const sw = el("span", { class: "sw" });
-  const input = el("input", { type: "text", class: "hex", placeholder: allowEmpty ? "none" : "#RRGGBB" });
-  input.addEventListener("change", () => {
-    const t = input.value.trim();
-    if (allowEmpty && t === "") { set(""); touch(); return; }
-    if (Engine.isHex(t)) { set(Engine.rgbToHex(Engine.hexToRgb(t))); touch(); } else input.value = get();
-  });
-  bind(() => {
-    const v = get();
-    input.value = v || "";
-    sw.style.backgroundColor = v && Engine.isHex(v) ? v : "transparent";
-  });
-  return el("span", { class: "hexwrap" }, [sw, input]);
-}
-
-function card(title, kids, opts) {
-  const body = el("div", { class: "cardbody" }, kids);
-  const head = el("div", { class: "cardhead" }, [el("span", { class: "ctitle", text: title })]);
-  const c = el("div", { class: "card" }, [head, body]);
-  if (opts && opts.hint) body.insertBefore(el("div", { class: "hint", text: opts.hint }), body.firstChild);
-  return c;
 }
 
 // ---------------------------------------------------------------- palette widgets
@@ -242,25 +115,12 @@ function updateInfo() {
 }
 
 // ---------------------------------------------------------------- preview
-let previewTimer = null, rendering = false, rerun = false;
-
-let applying = false;
-
-function schedulePreview(delay) {
-  clearTimeout(previewTimer);
-  if (applying) return;                       // don't fight a running Apply
-  previewTimer = setTimeout(runPreview, delay == null ? 120 : delay);
-}
-
-async function runPreview() {
-  if (rendering) { rerun = true; return; }
-  rendering = true;
-  do {
-    rerun = false;
-    try { await previewOnce(); } catch (e) { setStatus("Preview problem: " + (e && e.message ? e.message : e), true); console.error(e); }
-  } while (rerun);
-  rendering = false;
-}
+const loop = createPreviewLoop({
+  renderOnce: () => previewOnce(),
+  onError: (e) => { setStatus("Preview problem: " + (e && e.message ? e.message : e), true); console.error(e); }
+});
+const schedulePreview = (delay) => loop.schedule(delay);
+const runPreview = () => loop.run();
 
 async function previewOnce() {
   setStatus("Rendering preview...");
@@ -304,8 +164,7 @@ async function applyNow() {
   const doc = PS.activeDoc();
   if (!doc) { setStatus("Open a document first. The preview is only using the demo image.", true); return; }
   const btn = refs.apply;
-  clearTimeout(previewTimer);
-  applying = true;
+  loop.setBusy(true);                         // don't let the preview fight a running Apply
   try {
     const targets = PS.collectTargets(doc, state.out.source);
     const info = PS.docInfo(doc);
@@ -349,17 +208,13 @@ async function applyNow() {
     console.error(e);
     setStatus("Apply failed: " + (e && e.message ? e.message : e), true);
   } finally {
-    applying = false;
+    loop.setBusy(false);
     if (!confirmArmed) btn.textContent = "Apply to document";
     btn.removeAttribute("disabled");
   }
 }
 
 // ---------------------------------------------------------------- presets
-function allPresets() {
-  return PRESETS.map((p) => ({ label: p.cat + " - " + p.name, p: p.p, user: false }))
-    .concat(userPresets.map((u) => ({ label: "Mine - " + u.name, p: u.p, user: true, name: u.name })));
-}
 function applyPatch(p) {
   const keepOut = clone(state.out), keepView = clone(state.view);
   state = merge(DEFAULTS, p);
@@ -370,12 +225,6 @@ function stateForSave() {
   const s = clone(state);
   delete s.view; delete s.out;
   return s;
-}
-function fillSelect(sel, labels, placeholder) {
-  clear(sel);
-  sel.appendChild(el("option", { value: "", text: placeholder }));
-  labels.forEach((l, i) => sel.appendChild(el("option", { value: String(i), text: l })));
-  sel.selectedIndex = 0;
 }
 
 // ---------------------------------------------------------------- UI build
@@ -411,66 +260,9 @@ function build(root) {
     refs.info
   ]));
 
-  // ---- presets
-  const presetSel = el("select", {});
-  const userSel = el("select", {});
-  const nameIn = el("input", { type: "text", placeholder: "Name your look" });
-  const refillPresets = () => {
-    const list = allPresets();
-    fillSelect(presetSel, list.map((x) => x.label), "Choose a preset...");
-    fillSelect(userSel, userPresets.map((u) => u.name), "My saved looks...");
-  };
-  presetSel.addEventListener("change", () => {
-    const i = parseInt(presetSel.value, 10);
-    if (isNaN(i)) return;
-    applyPatch(allPresets()[i].p);
-  });
-  const saveBtn = el("button", { class: "btn small", text: "Save look" });
-  saveBtn.addEventListener("click", async () => {
-    const name = nameIn.value.trim();
-    if (!name) { setStatus("Type a name for your look first.", true); return; }
-    userPresets = userPresets.filter((u) => u.name !== name);
-    userPresets.push({ name, p: stateForSave() });
-    try { await PS.saveUserPresets(userPresets); setStatus("Saved look: " + name); } catch (e) { setStatus("Could not save: " + e.message, true); }
-    refillPresets();
-  });
-  const delBtn = el("button", { class: "btn small", text: "Delete" });
-  delBtn.addEventListener("click", async () => {
-    const i = parseInt(userSel.value, 10);
-    if (isNaN(i)) return;
-    const nm = userPresets[i].name;
-    userPresets.splice(i, 1);
-    try { await PS.saveUserPresets(userPresets); setStatus("Deleted: " + nm); } catch (e) { setStatus("Could not delete: " + e.message, true); }
-    refillPresets();
-  });
-  userSel.addEventListener("change", () => {
-    const i = parseInt(userSel.value, 10);
-    if (isNaN(i)) return;
-    nameIn.value = userPresets[i].name;
-    applyPatch(userPresets[i].p);
-  });
-  const expBtn = el("button", { class: "btn small", text: "Export all" });
-  expBtn.addEventListener("click", async () => {
-    try { const ok = await PS.exportPresets(userPresets); if (ok) setStatus("Exported " + userPresets.length + " looks."); } catch (e) { setStatus("Export failed: " + e.message, true); }
-  });
-  const impBtn = el("button", { class: "btn small", text: "Import" });
-  impBtn.addEventListener("click", async () => {
-    try {
-      const list = await PS.importPresets();
-      if (!list) return;
-      list.forEach((u) => { if (u && u.name && u.p) { userPresets = userPresets.filter((x) => x.name !== u.name); userPresets.push(u); } });
-      await PS.saveUserPresets(userPresets);
-      refillPresets();
-      setStatus("Imported looks. Share the exported file with your team.");
-    } catch (e) { setStatus("Import failed: " + e.message, true); }
-  });
-  refs.refillPresets = refillPresets;
-  root.appendChild(card("Library", [
-    row("Preset", presetSel),
-    row("Mine", userSel, delBtn),
-    row("", nameIn, saveBtn),
-    el("div", { class: "row" }, [expBtn, impBtn])
-  ]));
+  // ---- presets (shared Library card)
+  lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
+  root.appendChild(lib.card);
 
   // ---- effect type toggles
   root.appendChild(card("Effect type", [
@@ -646,7 +438,6 @@ function build(root) {
 
   root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.0  -  your artwork is never changed; results land in new layers." }));
 
-  refs.refillPresets();
   refreshAll();
   updateInfo();
 }
@@ -655,7 +446,7 @@ async function init() {
   if (built) return;
   built = true;
   build(document.getElementById("app"));
-  try { userPresets = await PS.loadUserPresets(); refs.refillPresets(); } catch (e) { /* no saved looks yet */ }
+  await lib.load();
   schedulePreview(100);
 }
 
