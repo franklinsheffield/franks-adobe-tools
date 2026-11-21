@@ -119,6 +119,7 @@ textarea { width: 100%; margin-bottom: 4px; }
 
 .hexwrap { display: flex; flex-direction: row; align-items: center; flex: 1; }
 .sw { width: 18px; height: 18px; border: 1px solid rgba(128, 128, 128, 0.6); border-radius: 3px; margin-right: 6px; flex-shrink: 0; }
+.sw.pick { width: 22px; height: 22px; border: 1px solid rgba(255, 255, 255, 0.7); cursor: pointer; }
 input.hex { flex: 1; }
 
 .swatches { display: flex; flex-direction: row; flex-wrap: wrap; margin-bottom: 4px; }

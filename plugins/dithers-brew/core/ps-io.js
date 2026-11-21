@@ -6,7 +6,7 @@
 //   writing : executeAsModal + createPixelLayer + imaging.putPixels
 // ----------------------------------------------------------------------
 const photoshop = require("photoshop");
-const { app, core, imaging, constants } = photoshop;
+const { app, core, imaging, constants, action } = photoshop;
 const { storage } = require("uxp");
 const fsys = storage.localFileSystem;
 
@@ -203,6 +203,24 @@ async function writeResult(doc, res, opts) {
   return warnings;
 }
 
+// Opens Photoshop's own colour picker on `hex`; resolves to "#RRGGBB", or
+// null when the user cancels. Used by every colour swatch in the suite.
+async function pickColor(hex, title) {
+  const h = String(hex || "#FFFFFF").replace("#", "");
+  const start = { red: parseInt(h.slice(0, 2), 16) || 0, grain: parseInt(h.slice(2, 4), 16) || 0, blue: parseInt(h.slice(4, 6), 16) || 0 };
+  const res = await core.executeAsModal(async () => action.batchPlay([{
+    _obj: "showColorPicker",
+    context: title || CFG.appName,
+    color: { _obj: "RGBColor", red: start.red, grain: start.grain, blue: start.blue }
+  }], {}), { commandName: CFG.appName + ": pick colour" });
+  const r = res && res[0];
+  if (!r || r.value === false) return null;
+  const c = r.RGBFloatColor || r.color || r;
+  const g = c.grain != null ? c.grain : c.green;
+  if (c.red == null || g == null || c.blue == null) return null;
+  return toHex([c.red, g, c.blue].map((v) => Math.max(0, Math.min(255, v))));
+}
+
 function toHex(c) { return "#" + c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("").toUpperCase(); }
 
 // ---- user presets (stored in the plugin's data folder) ------------------
@@ -234,5 +252,5 @@ async function importPresets() {
 
 module.exports = {
   configure, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
-  loadUserPresets, saveUserPresets, exportPresets, importPresets
+  loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

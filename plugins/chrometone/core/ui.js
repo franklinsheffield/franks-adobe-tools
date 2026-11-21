@@ -3,7 +3,7 @@
 // Shared panel UI kit. Every tool in the suite builds its panel from these
 // controls so they look and behave the same.
 //
-//   const ui = createUI({ getState: () => state, onChange: touch });
+//   const ui = createUI({ getState: () => state, onChange: touch, pickColor: PS.pickColor });
 //   ui.sliderRow("Amount", "fx.amount", 0, 100, 1, "%")
 //
 // Controls bind to a dotted path in the tool's state object. onChange runs
@@ -136,8 +136,18 @@ function createUI(opts) {
   }
 
   // get/set closures rather than a path, so callers can target array slots
+  // The swatch is a live colour preview; with opts.pickColor it opens the
+  // host colour picker on click (Frank, 2026-11-21).
   function hexField(get, set, allowEmpty) {
-    const sw = el("span", { class: "sw" });
+    const sw = el("span", { class: "sw" + (opts.pickColor ? " pick" : ""), title: opts.pickColor ? "Click to pick a colour" : "" });
+    if (opts.pickColor) {
+      sw.addEventListener("click", async () => {
+        try {
+          const v = await opts.pickColor(get() || "#FFFFFF");
+          if (v && HEX_RE.test(v)) { set(normHex(v)); onChange(); }
+        } catch (e) { console.error(e); }
+      });
+    }
     const input = el("input", { type: "text", class: "hex", placeholder: allowEmpty ? "none" : "#RRGGBB" });
     input.addEventListener("change", () => {
       const t = input.value.trim();

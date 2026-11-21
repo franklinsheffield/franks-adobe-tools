@@ -8,6 +8,15 @@ const crypto = require("crypto");
 const path = require("path");
 const { loadPanel } = require("./harness.js");
 
+// wait for the debounced preview to start and finish (no fixed sleep: CI speed varies)
+async function settled(P, d) {
+  await P.settle(250);
+  for (let i = 0; i < 100; i++) {
+    const st = d.querySelector(".status").textContent;
+    if (!/^Rendering/.test(st)) return;
+    await P.settle(50);
+  }
+}
 const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
 
 (async () => {
@@ -25,7 +34,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   for (let i = 1; i < sel.options.length; i++) {
     sel.selectedIndex = i; sel.value = sel.options[i].value;
     sel.dispatchEvent(new P.window.Event("change"));
-    await P.settle(250);
+    await settled(P, d);
     out.presets.push(sel.options[i].text + " = " + h(img.src));
   }
   out.statusAfterPresets = d.querySelector(".status").textContent.replace(/in \d+ ms/, "in N ms");

@@ -41,6 +41,12 @@ function makeHost(opts) {
         return fn({ hostControl: { async suspendHistory(o2) { calls.push(["suspendHistory", o2.name]); return 7; }, async resumeHistory() { calls.push(["resumeHistory"]); } } });
       }
     },
+    action: {
+      async batchPlay(cmds) {
+        calls.push(["batchPlay", cmds.map((c) => c._obj).join(",")]);
+        return cmds.map((c) => c._obj === "showColorPicker" ? { RGBFloatColor: { _obj: "RGBColor", red: 255, grain: 128.4, blue: 0 } } : {});
+      }
+    },
     imaging: {
       async getPixels(o) {
         calls.push(["getPixels", JSON.stringify(o.sourceBounds || null), JSON.stringify(o.targetSize || null)]);

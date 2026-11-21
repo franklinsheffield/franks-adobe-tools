@@ -25,7 +25,7 @@ let confirmArmed = false;
 let lib = null;
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch() });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers

@@ -106,6 +106,20 @@ async function t(name, fn) {
     assert.strictEqual(new Set(got.presets.map((p) => p.split(" = ")[1])).size, got.presets.length, "every preset looks different");
   });
 
+  await t("colour swatches open the host colour picker and apply the picked colour (both tools)", async () => {
+    const { loadPanel } = require("./harness.js");
+    for (const p of ["chrometone", "dithers-brew"]) {
+      const P = await loadPanel(path.join(ROOT, "plugins", p), { withDoc: false });
+      const sw = [...P.document.querySelectorAll(".sw.pick")].find((s) => s.offsetParent !== null || true);
+      assert.ok(sw, p + ": has a clickable swatch");
+      const field = sw.parentNode.querySelector("input.hex");
+      sw.dispatchEvent(new P.window.Event("click"));
+      await P.settle(50);
+      assert.ok(P.host.calls.some((c) => c[0] === "batchPlay" && c[1] === "showColorPicker"), p + ": picker opened");
+      assert.strictEqual(field.value, "#FF8000", p + ": picked colour shown");
+    }
+  });
+
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
 })();

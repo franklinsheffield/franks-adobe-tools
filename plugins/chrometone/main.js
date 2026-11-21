@@ -20,7 +20,7 @@ let auto = true, built = false, confirmArmed = false, lib = null, layout = null;
 let presetName = "Liquid Silver";
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch() });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
 const { el, clear, bind, showIf, refreshAll, sliderRow, selectRow, checkRow, segGroup, hexField, card } = ui;
 
 function touch() { refreshAll(); if (auto) schedulePreview(150); }
