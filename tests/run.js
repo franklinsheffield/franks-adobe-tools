@@ -52,10 +52,10 @@ async function t(name, fn) {
     assert.deepStrictEqual(got, want);
   });
 
-  await t("Legacy Lite .jsx is still present and untouched", () => {
+  await t("Legacy Lite .jsx is present (v1.0 + two PS 28 fixes)", () => {
     const p = path.join(ROOT, "plugins/dithers-brew/legacy/Franks_Dithers_Brew_Lite.jsx");
     const sha = require("crypto").createHash("md5").update(fs.readFileSync(p)).digest("hex");
-    assert.strictEqual(sha, "5805e1fd27e7dc296b9164f1c61858e1");
+    assert.strictEqual(sha, "6c53393b9ad1102246ce46309ec61fbe");
   });
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");

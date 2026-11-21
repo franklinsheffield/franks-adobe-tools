@@ -2,7 +2,7 @@
 // ----------------------------------------------------------------------
 // Shared Photoshop / UXP I/O for every tool in the suite. Everything that
 // touches the host lives here so each tool's engine stays pure and testable.
-//   reading : imaging.getPixels  (no modal scope needed)
+//   reading : executeAsModal + imaging.getPixels (PS 28 needs the modal scope)
 //   writing : executeAsModal + createPixelLayer + imaging.putPixels
 // ----------------------------------------------------------------------
 const photoshop = require("photoshop");
@@ -72,15 +72,19 @@ async function getPixels(doc, layerId, bounds, targetSize) {
   if (layerId != null) opts.layerID = layerId;
   if (bounds) opts.sourceBounds = bounds;
   if (targetSize) opts.targetSize = targetSize;
-  const r = await imaging.getPixels(opts);
-  const img = r.imageData;
-  const raw = await img.getData({ chunky: true });
-  const data = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
-  const w = img.width, h = img.height;
-  let c = img.components;
-  if (!c) c = Math.round(data.length / (w * h));
-  try { img.dispose(); } catch (e) { /* ignore */ }
-  return { w, h, c, data };
+  // Photoshop 2027 (28.x) refuses imaging.getPixels outside a modal scope,
+  // so reads go through executeAsModal too (found in the first real test).
+  return core.executeAsModal(async () => {
+    const r = await imaging.getPixels(opts);
+    const img = r.imageData;
+    const raw = await img.getData({ chunky: true });
+    const data = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+    const w = img.width, h = img.height;
+    let c = img.components;
+    if (!c) c = Math.round(data.length / (w * h));
+    try { img.dispose(); } catch (e) { /* ignore */ }
+    return { w, h, c, data };
+  }, { commandName: CFG.appName + ": reading pixels" });
 }
 
 // view = { kind:"detail"|"whole"|"full", size }
@@ -158,10 +162,9 @@ async function writeResult(doc, res, opts) {
     let hid = null;
     try { hid = await ctl.hostControl.suspendHistory({ documentID: doc.id, name: CFG.appName }); } catch (e) { hid = null; }
     try {
-      if (opts.hideSource) {
-        const list = opts.hideLayers && opts.hideLayers.length ? opts.hideLayers : Array.from(doc.layers);
-        for (const L of list) { try { L.visible = false; } catch (e) { /* locked or group */ } }
-      }
+      // the source is hidden at the end: Photoshop 2027 ignores hiding a
+      // document's only layer, so it must happen after our layers exist
+      const sourceLayers = opts.hideSource ? (opts.hideLayers && opts.hideLayers.length ? opts.hideLayers : Array.from(doc.layers)) : [];
       const made = [];
       const paper = res.paper || (opts.paperLayer ? [255, 255, 255] : null);
       if (paper) {
@@ -192,6 +195,7 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      for (const L of sourceLayers) { try { L.visible = false; } catch (e) { /* locked or group */ } }
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }
     }

@@ -53,6 +53,7 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
+  "executeAsModal|Frank's Dithers Brew: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
   "executeAsModal|Frank's Dithers Brew",
   "suspendHistory|Frank's Dithers Brew",

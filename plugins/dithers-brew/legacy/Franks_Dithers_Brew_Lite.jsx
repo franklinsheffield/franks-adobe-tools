@@ -280,7 +280,7 @@
         if (method === "HALFTONESCREEN") {
             o.frequency = lpi;
             o.angle = ang;
-            o.shape = BitmapHalftoneType[shapeName];
+            o.shape = BitmapHalfToneType[shapeName]; // DOM enum is HalfTone (capital T)
         }
         g.changeMode(ChangeMode.BITMAP, o);
         g.changeMode(ChangeMode.GRAYSCALE);
@@ -440,7 +440,10 @@
 
             for (i = 0; i < masks.length; i++) {
                 var plate = masks[i].plate;
+                // PS 28: the channel's own doc must be frontmost to duplicate it (found in Photoshop test)
+                app.activeDocument = masks[i].doc;
                 var ch = masks[i].doc.channels[0].duplicate(doc);
+                app.activeDocument = doc;
                 ch.name = "dt_mask_tmp";
                 doc.selection.load(ch, SelectionType.REPLACE, true);     // inverted: black dots = selected
                 if (C.selCh) { try { doc.selection.load(C.selCh, SelectionType.INTERSECT); } catch (es) { } }
