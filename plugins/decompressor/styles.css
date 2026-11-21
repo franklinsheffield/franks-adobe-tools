@@ -1,5 +1,6 @@
 /* Decompressor overrides on top of core/panel.css. */
-.title { color: #7dff9a; }
 .gradbar { height: 16px; border-radius: 3px; margin-bottom: 6px; }
 .stops .row { margin-bottom: 4px; }
 .lbl3 { font-size: 11px; opacity: 0.75; margin: 6px 0 2px; }
+/* Plugin neon (neon green): title text and every glow use this colour. */
+:root { --glow: #39ff14; --glowbg: #082b04; }

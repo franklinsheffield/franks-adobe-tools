@@ -174,3 +174,26 @@ input[type="text"]:focus, textarea:focus { border-color: var(--glow); }
 .dot { border: 1px solid var(--soft); }
 .gradbar { border: 1px solid var(--stroke); }
 .status.err { color: #ff7a6b; }
+
+/* ======================================================================
+   Suite type (Frank, 2026-11-21): titles, card headings and control labels
+   use Night Machine (Night Machine.otf). UXP ignores @font-face, so the
+   font must be INSTALLED on each Mac; without it the UI font shows.
+   Night Machine draws every printable ASCII glyph, so no symbol fallback is
+   needed (.sym is kept for any future font with gaps). Buttons, input boxes
+   and live readouts (values, status lines) stay in the UI font.
+   Each plugin sets its own neon --glow/--glowbg in styles.css; the title
+   uses the same colour.
+   ====================================================================== */
+:root { --arcade: "Night Machine", -apple-system, "Helvetica Neue", sans-serif; --ui: -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; }
+body { font-family: var(--ui); }
+.title, .sub, .ctitle, .lbl, .lbl2, .lbl3 { font-family: var(--arcade); font-weight: normal; }
+.sym { font-family: var(--ui); }
+.title { font-size: 17px; letter-spacing: 1px; line-height: 1.25; color: var(--glow); }
+.sub { font-size: 9px; letter-spacing: 1px; margin-top: 3px; }
+.ctitle { font-size: 12px; letter-spacing: 1px; }
+.lbl { width: 104px; font-size: 10px; line-height: 1.3; padding-right: 4px; letter-spacing: 0.3px; }
+.lbl2, .lbl3 { font-size: 10px; letter-spacing: 0.3px; }
+.val { width: 50px; }
+.ub.mini { font-size: 10px; }
+.apply.ub { font-size: 13px; }

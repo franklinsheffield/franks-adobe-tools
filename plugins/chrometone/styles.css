@@ -1,4 +1,5 @@
 /* Chrometone overrides on top of core/panel.css: cool steel accent. */
-.title { color: #9fd3ff; }
 .gradbar { height: 16px; border-radius: 3px; margin-bottom: 6px; }
 .stops .row { margin-bottom: 4px; }
+/* Plugin neon (electric cyan): title text and every glow use this colour. */
+:root { --glow: #00e5ff; --glowbg: #00262b; }

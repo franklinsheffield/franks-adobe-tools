@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Draws the suite icons: black tile, thin white stroke, white glyph with a
-light-blue glow (plugin list), and plain glyphs for the panel tabs.
+glow in the plugin's own neon (read from plugins/<tool>/styles.css --glow),
+and plain glyphs for the panel tabs (neon on dark UI, grey on light UI).
 Run: python3 tools/make-icons.py   (needs Pillow)"""
-import math, os
+import math, os, re
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GLOW = (143, 216, 255)
+GLOW = (143, 216, 255)  # fallback if a styles.css has no --glow
+
+def neon(tool):
+    css = open(os.path.join(ROOT, "plugins", tool, "styles.css")).read()
+    m = re.search(r"--glow:\s*#([0-9a-fA-F]{6})", css)
+    return tuple(int(m.group(1)[i:i + 2], 16) for i in (0, 2, 4)) if m else GLOW
 SS = 8  # supersampling
 
 def glyph_dithers(d, s, c):
@@ -79,7 +85,7 @@ TOOLS = {
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
 }
 
-def draw(glyph, size, color, tile):
+def draw(glyph, size, color, tile, glow=GLOW):
     S = size * SS
     g = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     glyph(ImageDraw.Draw(g), S, color)
@@ -89,7 +95,7 @@ def draw(glyph, size, color, tile):
     ImageDraw.Draw(im).rounded_rectangle([0, 0, S - 1, S - 1], radius=S // 5, fill=(0, 0, 0, 255))
     halo = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     gb = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    glyph(ImageDraw.Draw(gb), S, GLOW + (255,))
+    glyph(ImageDraw.Draw(gb), S, glow + (255,))
     halo = gb.filter(ImageFilter.GaussianBlur(S * 0.035))
     im = Image.alpha_composite(im, halo)
     im = Image.alpha_composite(im, halo)
@@ -99,9 +105,10 @@ def draw(glyph, size, color, tile):
 
 for tool, (glyph, dark, light) in TOOLS.items():
     out = os.path.join(ROOT, "plugins", tool, "icons")
+    n = neon(tool)
     for size, suf in [(23, ""), (46, "@2x")]:
-        draw(glyph, size, (255, 255, 255, 255), False).save(os.path.join(out, dark + suf + ".png"))
+        draw(glyph, size, n + (255,), False).save(os.path.join(out, dark + suf + ".png"))
         draw(glyph, size, (50, 50, 50, 255), False).save(os.path.join(out, light + suf + ".png"))
     for size, suf in [(48, ""), (96, "@2x")]:
-        draw(glyph, size, (255, 255, 255, 255), True).save(os.path.join(out, "plugin" + suf + ".png"))
+        draw(glyph, size, (255, 255, 255, 255), True, n).save(os.path.join(out, "plugin" + suf + ".png"))
     print("icons:", tool)

@@ -1,5 +1,6 @@
 /* Mobglow overrides on top of core/panel.css. */
-.title { color: #ff4fd8; }
 .gradbar { height: 16px; border-radius: 3px; margin-bottom: 6px; }
 .stops .row { margin-bottom: 4px; }
 .lbl3 { font-size: 11px; opacity: 0.75; margin: 6px 0 2px; }
+/* Plugin neon (hot pink): title text and every glow use this colour. */
+:root { --glow: #ff2fd6; --glowbg: #2e0826; }

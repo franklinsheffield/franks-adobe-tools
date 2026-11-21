@@ -20,6 +20,28 @@ function setPath(o, p, v) {
   a[ks[ks.length - 1]] = v;
 }
 
+// Titles, card headings and labels use the suite display font (Night Machine).
+// Runs of characters outside ARCADE_OK (the glyphs the font draws) are wrapped
+// in <span class="sym"> so they fall back to the UI font.
+const ARCADE = /(^|\s)(title|sub|ctitle|lbl|lbl2|lbl3)(\s|$)/;
+const ARCADE_OK = /[ -~]/; // Night Machine has every printable ASCII glyph
+function arcadeText(e, v) {
+  e.textContent = "";
+  let run = "", sym = false;
+  const flush = () => {
+    if (!run) return;
+    if (sym) { const s = document.createElement("span"); s.className = "sym"; s.textContent = run; e.appendChild(s); }
+    else e.appendChild(document.createTextNode(run));
+    run = "";
+  };
+  for (const ch of String(v)) {
+    const isSym = !ARCADE_OK.test(ch);
+    if (isSym !== sym) { flush(); sym = isSym; }
+    run += ch;
+  }
+  flush();
+}
+
 // Buttons are drawn as <div class="ub"> because UXP renders a real <button>
 // as a native grey Spectrum button that ignores the suite theme.
 // A [disabled] attribute still blocks clicks.
@@ -31,7 +53,7 @@ function el(tag, props, kids) {
     for (const k of Object.keys(props)) {
       const v = props[k];
       if (k === "class") e.className = v;
-      else if (k === "text") e.textContent = v;
+      else if (k === "text") { if (ARCADE.test(props.class || "")) arcadeText(e, v); else e.textContent = v; }
       else if (k === "style") { for (const s of Object.keys(v)) e.style[s] = v[s]; }
       else e.setAttribute(k, v);
     }
@@ -182,4 +204,4 @@ function createUI(opts) {
   };
 }
 
-module.exports = { createUI, el, clear, getPath, setPath, normHex };
+module.exports = { createUI, el, clear, getPath, setPath, normHex, arcadeText };

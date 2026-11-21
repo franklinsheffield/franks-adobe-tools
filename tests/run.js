@@ -120,14 +120,21 @@ async function t(name, fn) {
     }
   });
 
-  await t("suite theme: black panels, white strokes, light-blue glow on press and selection", async () => {
+  await t("suite theme: black panels, white strokes, one neon glow per plugin", async () => {
     const css = fs.readFileSync(path.join(ROOT, "shared/panel.css"), "utf8");
     assert.ok(/--ink:\s*#000000/.test(css) && /--glow:\s*#8fd8ff/.test(css), "theme colours");
     assert.ok(/\.btn\.pressed/.test(css) && /\.segbtn\.on, \.pill\.on \{[^}]*--glow/.test(css), "glow rules");
+    const neons = [];
     for (const p of fs.readdirSync(path.join(ROOT, "plugins"))) {
       const sc = fs.readFileSync(path.join(ROOT, "plugins", p, "styles.css"), "utf8");
       assert.ok(!/\.apply\s*\{|\.segbtn\.on/.test(sc), p + "/styles.css must not override the suite button theme");
+      const m = /--glow:\s*(#[0-9a-f]{6})/.exec(sc);
+      assert.ok(m && /--glowbg:\s*#[0-9a-f]{6}/.test(sc), p + " sets its own neon --glow/--glowbg");
+      assert.ok(!/\.title\s*\{[^}]*color/.test(sc), p + " title colour must come from --glow");
+      neons.push(m[1]);
     }
+    assert.strictEqual(new Set(neons).size, neons.length, "each plugin has a different neon");
+    assert.ok(/\.title \{[^}]*color: var\(--glow\)/.test(css), "title uses the glow colour");
     const { loadPanel } = require("./harness.js");
     const P = await loadPanel(path.join(ROOT, "plugins", "mobglow"), { withDoc: false });
     const b = P.document.querySelector(".segbtn");
@@ -135,6 +142,16 @@ async function t(name, fn) {
     assert.ok(b.classList.contains("pressed"), "pressed glow on mousedown");
     await P.settle(450);
     assert.ok(!b.classList.contains("pressed"), "glow fades");
+  });
+
+  await t("Night Machine text: labels use the display font, no symbol fallback needed", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins", "depthtone"), { withDoc: false });
+    const head = [...P.document.querySelectorAll(".ctitle")].find((e) => e.textContent === "Colour (far to near)");
+    assert.ok(head, "card title present");
+    assert.strictEqual(head.querySelectorAll(".sym").length, 0);
+    const css = fs.readFileSync(path.join(ROOT, "shared/panel.css"), "utf8");
+    assert.ok(/--arcade:\s*"Night Machine"/.test(css) && /\.sym \{ font-family: var\(--ui\)/.test(css));
   });
 
   const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Background darken", "Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
