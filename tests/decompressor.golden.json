@@ -12,7 +12,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:34 select:6 button:40 textarea:0",
+ "controls": "input:34 select:6 button:42 textarea:0",
  "previewDefault": "ceb72603998b",
  "presets": [
   "JPEG - Crunchy JPEG = ceb72603998b",

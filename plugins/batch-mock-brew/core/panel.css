@@ -333,3 +333,4 @@ input.cdnum { width: 30px; margin-left: 2px; text-align: center; }
 .look:active { border-color: #9fd8ff; box-shadow: 0 0 6px #9fd8ff; }
 .lookimg { width: 100%; display: block; min-height: 30px; background: #111; }
 .lookname { font-size: 9px; padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn.lsrc.on { border-color: var(--glow); color: var(--glow); }

@@ -169,7 +169,7 @@ module.exports = async function (t) {
     const chars = ["A", "B", "C", "O", "H", "E", "AV", "Logo 1"];
     const P = await loadPanel(DIR, { withDoc: true, extend: (host) => fakeLetters(host, chars, { shapeI: true, imageFor: (n) => (n === "AV" ? "A" : n === "Logo 1" ? "8" : n) }) });
     const d = P.document, api = P.mod._font;
-    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Preview", "Library", "Effects", "Map", "Metrics", "Outline", "Export"]);
+    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Preview", "Look browser", "Library", "Effects", "Map", "Metrics", "Outline", "Export"]);
     assert.ok(/Demo glyphs/.test(d.querySelector(".docline").textContent), "demo before mapping");
     const mapBtn = [...d.querySelectorAll(".ub")].find((b) => b.textContent === "Map selected layers");
     mapBtn.dispatchEvent(new P.window.Event("click"));

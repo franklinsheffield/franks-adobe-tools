@@ -104,8 +104,8 @@ async function t(name, fn) {
     assert.strictEqual(st().fx.pre.on, false);
     sharpen.__dial.set(80);
     assert.strictEqual(st().fx.pre.on, true, "editing the Image card switches it on");
-    const lb = [...d.querySelectorAll(".ub")].find((b) => b.textContent === "Show looks");
-    lb.dispatchEvent(new P.window.Event("click"));
+    const lb = [...d.querySelectorAll(".ub")].find((b) => /looks$/.test(b.textContent));
+    assert.strictEqual(lb.textContent, "Hide looks", "look previews show by default");
     await P.settle(2500);
     const imgs = d.querySelectorAll(".lookgrid img");
     assert.strictEqual(imgs.length, 40);

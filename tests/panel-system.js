@@ -27,21 +27,30 @@ module.exports = async function (t) {
       assert.ok(D.querySelectorAll(".dial .dialrow .dialval").length === D.querySelectorAll(".dial").length, tool + " every knob has its value box beside it");
       // Library is in A, Output/Export in D
       const first = D.querySelector("#sec-look").nextSibling.querySelector(".ctitle").textContent;
-      assert.strictEqual(first, tool === "font-brew" ? "Library" : "Look browser", tool + " first card in Look");
+      assert.strictEqual(first, "Look browser", tool + " first card in Look");
       assert.ok(Array.from(D.querySelectorAll(".jumpbtn")).every((b) => !/^[ABCD] /.test(b.textContent)), tool + " no A-D letters: " + Array.from(D.querySelectorAll(".jumpbtn")).map((b) => b.textContent));
       assert.ok(Array.from(D.querySelectorAll(".secl")).every((n) => n.textContent === ""), tool + " section bars without letters");
     }
   });
 
-  await t("Look browser: top of every pixel tool, renders every built-in look, click loads it", async () => {
-    for (const tool of TOOLS.filter((x) => x !== "font-brew")) {
+  await t("Look browser: top of every plugin, shown by default, each plugin has its own sample picture, click loads a look", async () => {
+    const seen = [];
+    for (const tool of TOOLS) {
       const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
       const D = P.document, T = P.mod._test;
       await ready(P);
       const lb = T.lookBrowser;
       assert.ok(lb, tool + " has a look browser");
-      lb._test.setShown(true);
+      assert.ok(D.querySelector(".lookgrid").style.display !== "none", tool + " previews shown by default");
       for (let i = 0; i < 400 && lb._test.cells.some((c) => !c.img.src); i++) await P.settle(50);
+      if (tool !== "font-brew") {
+        assert.ok(lb._test.onSample, tool + " looks start on the plugin's own sample picture");
+        assert.strictEqual(lb._test.srcBtns.length, 2, tool + " Sample / My image switch");
+        const fs = require("fs");
+        const own = fs.readFileSync(path.join(__dirname, "..", "plugins", tool, "look-sample.js"), "utf8");
+        seen.forEach((o) => assert.notStrictEqual(o, own, tool + " sample differs from the other plugins"));
+        seen.push(own);
+      }
       const cells = Array.from(D.querySelectorAll(".lookgrid .look"));
       assert.ok(cells.length >= 4, tool + " looks: " + cells.length);
       assert.ok(lb._test.cells.every((c) => /^data:image\/png/.test(c.img.src)), tool + " every look rendered");
@@ -51,6 +60,25 @@ module.exports = async function (t) {
       await P.settle(300); await ready(P);
       assert.ok(cells.filter((c) => c.classList.contains("on")).length === 1, tool + " one look lit (" + name + ")");
     }
+  });
+
+  await t("Apply key: a press (mousedown + mouseup) applies even when the host drops the click; the click after it does not apply twice", async () => {
+    const P = await loadPanel(path.join(__dirname, "..", "plugins", "decompressor"), { withDoc: true });
+    const D = P.document;
+    await ready(P);
+    const key = D.querySelector(".apply");
+    let runs = 0;
+    const count = () => P.host.calls.filter((c) => c[0] === "createLayerGroup").length;
+    const c0 = count();
+    key.dispatchEvent(new P.window.MouseEvent("mousedown", { bubbles: true }));
+    key.dispatchEvent(new P.window.MouseEvent("mouseup", { bubbles: true }));
+    for (let i = 0; i < 200 && !/^(Done|Apply failed)/.test(D.querySelector(".status").textContent); i++) await P.settle(50);
+    assert.ok(/^Done/.test(D.querySelector(".status").textContent), D.querySelector(".status").textContent);
+    runs = count() - c0;
+    assert.strictEqual(runs, 1, "one apply from the press");
+    key.dispatchEvent(new P.window.Event("click"));   // the click the host may still send
+    await P.settle(300);
+    assert.strictEqual(count() - c0, 1, "no second apply");
   });
 
   await t("Panel system: fold a card (remembered), fold all / open all, jump buttons light their section", async () => {

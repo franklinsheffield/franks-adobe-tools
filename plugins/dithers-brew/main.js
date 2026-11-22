@@ -273,16 +273,29 @@ function toneMapList(list, close) {
 }
 
 // thumbnail grid of the built-in looks, rendered from the current source
-let lookSig = "";
+let lookSig = "", lookOnSample = true, lookSample = null;
+try { if (localStorage.getItem("brew.looks.dithers.src") === "doc") lookOnSample = false; } catch (e) { /* no storage */ }
+function sampleSrc() {
+  if (lookSample) return lookSample;
+  const smp = require("./look-sample.js"), A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const n = smp.w * smp.h, data = new Uint8Array(n * 4), bytes = [];
+  for (let i = 0; i < smp.rgb.length; i += 4) {
+    const q = (A.indexOf(smp.rgb[i]) << 18) | (A.indexOf(smp.rgb[i + 1]) << 12) | (Math.max(0, A.indexOf(smp.rgb[i + 2])) << 6) | Math.max(0, A.indexOf(smp.rgb[i + 3]));
+    bytes.push((q >> 16) & 255, (q >> 8) & 255, q & 255);
+  }
+  for (let p = 0; p < n; p++) { data[p * 4] = bytes[p * 3]; data[p * 4 + 1] = bytes[p * 3 + 1]; data[p * 4 + 2] = bytes[p * 3 + 2]; data[p * 4 + 3] = 255; }
+  return (lookSample = { w: smp.w, h: smp.h, c: 4, data });
+}
 async function lookGrid(list) {
-  const src0 = lastSrc || Engine.demoImage(160, 120);
-  const sig = (lastSrc ? "doc" : "demo") + src0.w + "x" + src0.h;
+  const useDoc = !lookOnSample && lastSrc;
+  const src0 = useDoc ? lastSrc : (lookOnSample ? sampleSrc() : Engine.demoImage(160, 120));
+  const sig = (useDoc ? "doc" + docCache.name : (lookOnSample ? "sample" : "demo")) + src0.w + "x" + src0.h;
   if (sig === lookSig && list.firstChild) return;
   lookSig = sig;
   clear(list);
   let src = src0;
   while (src.w > 200) src = halfSrc(src);
-  const sc = (lastSrc ? lastScale : 1) * src.w / src0.w;
+  const sc = (useDoc ? lastScale : 1) * src.w / src0.w;
   const cells = PRESETS.map((pr) => {
     const img = el("img", { class: "lookimg" });
     const c = el("div", { class: "look", title: pr.cat + " - " + pr.name }, [img, el("div", { class: "lookname", text: pr.name })]);
@@ -293,7 +306,7 @@ async function lookGrid(list) {
   for (const o of cells) {
     try {
       const P = merge(DEFAULTS, o.pr.p);
-      P.ppi = effPpi(lastSrc ? lastPpi : 300); P.scale = sc;
+      P.ppi = effPpi(useDoc ? lastPpi : 300); P.scale = sc;
       const res = await Engine.render(src, P, {});
       o.img.src = PNG.dataURL(Engine.composite(res, { type: "white" }), res.w, res.h, 3);
     } catch (e) { /* leave blank */ }
@@ -347,6 +360,7 @@ async function previewOnce() {
     docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
   }
   lastSrc = src; lastScale = scale; lastPpi = ppi;
+  if (refs.lookList && refs.lookList.style.display !== "none") lookGrid(refs.lookList);   // re-render looks when the image changes
   refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px @ " + Math.round(docCache.ppi) + " PPI");
   return previewFrame(src, scale, ppi, false);
 }
@@ -518,9 +532,26 @@ function build(root) {
     lookList.style.display = show ? "" : "none";
     lookBtn.textContent = show ? "Hide looks" : "Show looks";
     if (show) lookGrid(lookList);
+    try { localStorage.setItem("brew.looks.dithers", show ? "1" : "0"); } catch (e) { /* no storage */ }
+  });
+  refs.lookList = lookList;
+  let lookWant = true;   // previews show by default (Frank, 2026-11-22); Hide is remembered
+  try { if (localStorage.getItem("brew.looks.dithers") === "0") lookWant = false; } catch (e) { /* no storage */ }
+  if (lookWant) { lookList.style.display = ""; lookBtn.textContent = "Hide looks"; lookGrid(lookList); }
+  const srcBtns = [["sample", "Sample"], ["doc", "My image"]].map(([v, l]) => {
+    const b = el("button", { class: "btn small lsrc", text: l });
+    b.addEventListener("click", () => {
+      lookOnSample = v === "sample";
+      try { localStorage.setItem("brew.looks.dithers.src", v); } catch (e) { /* no storage */ }
+      srcBtns.forEach((x) => { if (x === b) x.classList.add("on"); else x.classList.remove("on"); });
+      if (lookList.style.display !== "none") lookGrid(lookList);
+    });
+    if ((v === "sample") === lookOnSample) b.classList.add("on");
+    return b;
   });
   root.appendChild(card("Look browser", [
-    el("div", { class: "row" }, [lookBtn, el("span", { class: "hint", text: "Every built-in look, rendered on your image. Click one to load it." })]),
+    el("div", { class: "row" }, [lookBtn].concat(srcBtns)),
+    el("div", { class: "hint", text: "Every built-in look, on a sample picture or your image. Click one to load it." }),
     lookList
   ]));
 

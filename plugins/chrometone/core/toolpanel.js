@@ -21,6 +21,7 @@
 //     brand                         "console" (default, the suite look since 2026-11-22) or "none"
 //     colour                        false = no Colour Deck card (export-mode tools never get one)
 //     colourBase                    background the Colour Deck reads tones from: "black" (default) or "white"
+//     lookSample                    optional: require("./look-sample.js") - the look browser's sample picture
 //     sectionOf(title)              optional: "look" | "controls" | "colour" | "output" for a card;
 //                                   else ui.card's {section}, else by title (Style/Effect type = look,
 //                                   Colour/Color/Tint = colour, everything else = controls) })
@@ -133,6 +134,7 @@ function createToolPanel(cfg) {
       refs.docline.textContent = r.docline || "";
       refs.preview.src = PNG.dataURL(r.rgb, r.w, r.h, 3);
       sizePreview(r.w, r.h);
+      if (lookBrowser) lookBrowser.sourceChanged();
       setStatus(r.status != null ? r.status : ("Preview in " + (Date.now() - t0) + " ms"), !!r.err);
       return;
     }
@@ -305,8 +307,25 @@ function createToolPanel(cfg) {
     }
     return { w: w2, h: h2, c, data: out };
   }
+  function decodeSample(smp) {
+    const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", T = new Uint8Array(128);
+    for (let i = 0; i < 64; i++) T[A.charCodeAt(i)] = i;
+    const b = smp.rgb, n = smp.w * smp.h, data = new Uint8Array(n * 4);
+    let px = 0, ch = 0;
+    const put = (v) => { data[px * 4 + ch] = v; if (++ch === 3) { data[px * 4 + 3] = 255; ch = 0; px++; } };
+    for (let i = 0; i + 3 < b.length && px < n; i += 4) {
+      const q = (T[b.charCodeAt(i)] << 18) | (T[b.charCodeAt(i + 1)] << 12) | (T[b.charCodeAt(i + 2)] << 6) | T[b.charCodeAt(i + 3)];
+      put((q >> 16) & 255); if (b[i + 2] !== "=" && px < n) put((q >> 8) & 255); if (b[i + 3] !== "=" && px < n) put(q & 255);
+    }
+    return { w: smp.w, h: smp.h, c: 4, data };
+  }
   function createLookBrowser() {
     const KEY = "brew.looks." + (cfg.appName || cfg.title);
+    let smp = cfg.lookSample;   // each plugin's own sample picture: plugins/<tool>/look-sample.js
+    if (!smp) { try { smp = require("../look-sample.js"); } catch (e) { smp = null; } }
+    const sample = smp && smp.rgb ? decodeSample(smp) : null;
+    let onSample = !!sample;
+    try { if (localStorage.getItem(KEY + ".src") === "doc") onSample = false; } catch (e) { /* no storage */ }
     const grid = el("div", { class: "lookgrid" });
     const btn = el("button", { class: "btn small", text: "Show looks" });
     let shown = false, sig = "", runId = 0, cells = [];
@@ -335,8 +354,10 @@ function createToolPanel(cfg) {
     }
     function mark() { cells.forEach((o) => { if (o.pr.name === presetName) o.node.classList.add("on"); else o.node.classList.remove("on"); }); }
     async function render() {
-      const src0 = lastSrc || Engine.demoImage(160, 120);
-      const s2 = (lastSrc ? docCache.name + docCache.w + "x" + docCache.h : "demo") + "|" + src0.w + "x" + src0.h + "|" + (state.view && state.view.bg);
+      if (cfg.previewRender) return renderExport();
+      const useDoc = !onSample && lastSrc;
+      const src0 = onSample && sample ? sample : (lastSrc || Engine.demoImage(160, 120));
+      const s2 = (onSample && sample ? "sample" : "") + (useDoc ? docCache.name + docCache.w + "x" + docCache.h : "demo") + "|" + src0.w + "x" + src0.h + "|" + (state.view && state.view.bg);
       if (!cells.length) build();
       mark();
       if (s2 === sig) return;
@@ -344,15 +365,15 @@ function createToolPanel(cfg) {
       const id = ++runId;
       let src = src0;
       const plain = Object.keys(src0).every((k) => k === "w" || k === "h" || k === "c" || k === "data");   // extra inputs (masks) stay full size
-      while (plain && src.w > 200) src = halfSrc(src);
-      const scale = (lastSrc ? lastScale : 1) * src.w / src0.w;
+      while (plain && src.w > 200) src = halfSrc(src);   // thumbnails render at 160-200 px: fast enough to show on open
+      const scale = (useDoc ? lastScale : 1) * src.w / src0.w;
       for (const o of cells) {
         if (id !== runId || !shown) return;
         try {
           const P = merge(DEFAULTS, o.pr.p);
           P.out = clone(state.out); P.view = clone(state.view);
           (Array.isArray(o.pr.p._off) ? o.pr.p._off : []).forEach((t) => { const m = bypassMaps[t]; if (m) Object.keys(m).forEach((k) => { try { ui.setPath(P, k, m[k]); } catch (e) { /* not in state */ } }); });
-          Object.assign(P, { scale, fullH: docCache.h || src.h, fullW: docCache.w || src.w });
+          Object.assign(P, useDoc ? { scale, fullH: docCache.h || src.h, fullW: docCache.w || src.w } : { scale, fullH: src.h, fullW: src.w });
           const res = await Engine.render(src, P, { yield: tick });
           const rgb = Engine.composite(res, { type: state.view.bg }, src);
           if (hasDeck && o.pr.p.deck) applyDeckPreview(rgb, res, Colour.normalize(o.pr.p.deck), Engine, src, state.view.bg, cfg.colourBase);
@@ -364,18 +385,50 @@ function createToolPanel(cfg) {
         await tick();
       }
     }
+    // export-mode tools (Font Brew): each look drawn by the tool's own preview
+    async function renderExport() {
+      if (!cells.length) build();
+      mark();
+      const s2 = "x|" + JSON.stringify(state.view);
+      if (s2 === sig) return;
+      sig = s2;
+      const id = ++runId;
+      for (const o of cells) {
+        if (id !== runId || !shown) return;
+        try {
+          const P = merge(DEFAULTS, o.pr.p);
+          P.out = clone(state.out); P.view = clone(state.view);
+          const r = await cfg.previewRender(P, { tick });
+          o.img.src = PNG.dataURL(r.rgb, r.w, r.h, 3);
+          o.aspect = r.h / r.w; fitThumb(o);
+        } catch (e) { /* leave this one blank */ }
+        await tick();
+      }
+    }
+    // picture switch: this plugin's sample picture or the open document
+    const srcBtns = sample && !cfg.previewRender ? [["sample", "Sample"], ["doc", "My image"]].map(([v, l]) => {
+      const b = el("button", { class: "btn small lsrc", text: l, title: v === "sample" ? "Show the looks on this plugin's sample picture" : "Show the looks on your open document" });
+      b.addEventListener("click", () => { onSample = v === "sample"; try { localStorage.setItem(KEY + ".src", v); } catch (e) { /* no storage */ } paintSrc(); sig = ""; if (shown) render(); });
+      b.__v = v;
+      return b;
+    }) : [];
+    function paintSrc() { srcBtns.forEach((b) => { if ((b.__v === "sample") === onSample) b.classList.add("on"); else b.classList.remove("on"); }); }
+    paintSrc();
     const node = card("Look browser", [
-      el("div", { class: "row" }, [btn, el("span", { class: "hint", text: "Every built-in look, rendered on your image. Click one to load it." })]),
+      el("div", { class: "row" }, [btn].concat(srcBtns)),
+      el("div", { class: "hint", text: cfg.previewRender ? "Every built-in look. Click one to load it." : "Every built-in look, on " + (sample ? "a sample picture or your image" : "your image") + ". Click one to load it." }),
       grid
     ], { section: "look" });
     let want = false;
-    try { want = localStorage.getItem(KEY) === "1"; } catch (e) { /* no storage */ }
+    want = true;   // previews show by default (Frank, 2026-11-22); Hide is remembered
+    try { if (localStorage.getItem(KEY) === "0") want = false; } catch (e) { /* no storage */ }
     grid.style.display = "none";
     return {
       card: node,
       sourceChanged() { if (shown) render(); else mark(); },
-      start() { if (want) setShown(true); },
-      _test: { setShown, get cells() { return cells; } }
+      // open now, render after the first preview so the panel's own preview comes first
+      start() { if (want) { shown = true; grid.style.display = ""; btn.textContent = "Hide looks"; build(); } },
+      _test: { setShown, get cells() { return cells; }, get onSample() { return onSample; }, srcBtns }
     };
   }
 
@@ -478,7 +531,7 @@ function createToolPanel(cfg) {
       secs.push({ letter, name, id, node: bar });
     };
     refs.sections = by;
-    if (!cfg.previewRender && PRESETS.length) lookBrowser = createLookBrowser();
+    if (PRESETS.length) lookBrowser = createLookBrowser();
     addSection("A", "LOOK", "look", (lookBrowser ? [lookBrowser.card] : []).concat([lib.card]).concat(by.look));
     const ctl = by.controls.length > 1 && ui.brand ? [ui.tabs(by.controls, { title: "Effects", isOn: fxOn, setOn: setFxOn })] : by.controls;
     addSection("B", "CONTROLS", "controls", ctl);
@@ -493,11 +546,23 @@ function createToolPanel(cfg) {
       if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
       root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
       refreshAll();
+      if (lookBrowser) lookBrowser.start();
       return;
     }
 
     refs.apply = el("button", { class: "apply", text: "Apply to document" });
-    refs.apply.addEventListener("click", applyNow);
+    // Apply fires on mouse-up after a press on the key, with click as the fallback: UXP sometimes
+    // drops the click on this key (CRT smoke test, 2026-11-22), while mousedown/up still arrive.
+    let applyDown = false, skipClick = false, skipT = null;
+    refs.apply.addEventListener("mousedown", () => { applyDown = true; });
+    refs.apply.addEventListener("mouseleave", () => { applyDown = false; });
+    refs.apply.addEventListener("mouseup", () => {
+      if (!applyDown || refs.apply.hasAttribute("disabled")) return;
+      applyDown = false;
+      skipClick = true; clearTimeout(skipT); skipT = setTimeout(() => { skipClick = false; }, 500);   // the click that may follow is the same press
+      applyNow();
+    });
+    refs.apply.addEventListener("click", () => { applyDown = false; if (skipClick) { skipClick = false; return; } applyNow(); });
     if (ui.brand) refs.meter = ui.brand.meter(12);
     addSection("D", "OUTPUT", "output", by.output.concat([card("Output", [
       selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; })
