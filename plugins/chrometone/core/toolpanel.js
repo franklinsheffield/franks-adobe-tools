@@ -20,7 +20,13 @@
 //     code, glow                    the tool's rack code ("PB-09") and neon hex for the knobs
 //     brand                         "console" (default, the suite look since 2026-11-22) or "none"
 //     colour                        false = no Colour Deck card (export-mode tools never get one)
-//     colourBase                    background the Colour Deck reads tones from: "black" (default) or "white" })
+//     colourBase                    background the Colour Deck reads tones from: "black" (default) or "white"
+//     sectionOf(title)              optional: "look" | "controls" | "colour" | "output" for a card;
+//                                   else ui.card's {section}, else by title (Style/Effect type = look,
+//                                   Colour/Color/Tint = colour, everything else = controls) })
+// Panel order (Frank, 2026-11-22): A Look (Library, style) / B Controls (the tool's cards as tabs in
+// one Effects card; cards with {bypass} get an on/off dot) / C Colour / D Output, with a jump strip
+// pinned under the preview and foldable cards.
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 //
 // Export mode (tools that write a file instead of layers, e.g. Font Brew):
@@ -52,7 +58,17 @@ function createToolPanel(cfg) {
   let auto = true, built = false, confirmArmed = false, lib = null, layout = null;
   let presetName = PRESETS[0] ? PRESETS[0].name : "Custom";
   const refs = {};
-  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow });
+  let offFx = {};   // effect tabs switched off: { cardTitle: { path: neutral } }
+  // the state the engine sees: switched-off effects get their neutral values
+  function engineState(extra) {
+    const base = Object.assign({}, state, extra || {});
+    const titles = Object.keys(offFx);
+    if (!titles.length) return base;
+    const s = Object.assign(clone(state), extra || {});
+    titles.forEach((t) => { const m = offFx[t]; Object.keys(m).forEach((p) => { try { ui.setPath(s, p, m[p]); } catch (e) { /* path not in this state */ } }); });
+    return s;
+  }
+  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title });
   const { el, clear, bind, showIf, refreshAll, segGroup, selectRow, checkRow, hexField, card } = ui;
 
   function touch() { refreshAll(); if (auto) schedulePreview(150); }
@@ -133,7 +149,7 @@ function createToolPanel(cfg) {
       docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
     }
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
-    const res = await Engine.render(src, Object.assign({}, state, { scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
+    const res = await Engine.render(src, engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
     if (hasDeck) { lastSrc = src; applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
@@ -161,7 +177,7 @@ function createToolPanel(cfg) {
     try {
       const targets = PS.collectTargets(doc, state.out.source);
       const info = PS.docInfo(doc);
-      const work = info.w * info.h * targets.length * (cfg.costFactor ? cfg.costFactor(state) : 1);
+      const work = info.w * info.h * targets.length * (cfg.costFactor ? cfg.costFactor(engineState()) : 1);
       if (work > 40e6 && !confirmArmed) {
         confirmArmed = true;
         setStatus("Big job (about " + Math.round(work / 1e6) + " million pixel-steps, may take a while). Click Apply again to confirm.", true);
@@ -185,7 +201,7 @@ function createToolPanel(cfg) {
         const r = await PS.readSource(doc, t, { kind: "full" });
         if (cfg.prepareSource) await cfg.prepareSource(doc, r, "apply");
         setStatus("Rendering " + (done + 1) + "/" + runTargets.length + "...");
-        let res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
+        let res = await Engine.render(r.src, engineState({ scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
         if (hasDeck && Colour.active(D())) { setStatus("Colour Deck..."); res = addDeckLayer(res, D(), Engine, r.src, cfg.colourBase); }
         setStatus("Writing layers...");
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
@@ -251,10 +267,30 @@ function createToolPanel(cfg) {
     state = merge(DEFAULTS, p);
     state.out = keepOut; state.view = keepView;
     if (hasDeck) state.deck = p && p.deck ? Colour.normalize(p.deck) : keepColour;   // looks without colour keep the current deck
+    setOffList(p && p._off);
     presetName = name || "Custom";
     touch();
   }
-  function stateForSave() { const s = clone(state); delete s.view; delete s.out; return s; }
+  function stateForSave() { const s = clone(state); delete s.view; delete s.out; const off = Object.keys(offFx); if (off.length) s._off = off; return s; }
+  let bypassMaps = {};   // card title -> { path: neutral } for cards that can be switched off
+  function setOffList(list) {
+    offFx = {};
+    (Array.isArray(list) ? list : []).forEach((t) => { if (bypassMaps[t]) offFx[t] = bypassMaps[t]; });
+  }
+  function fxOn(title) { return !offFx[title]; }
+  function setFxOn(title, on) { if (on) delete offFx[title]; else if (bypassMaps[title]) offFx[title] = bypassMaps[title]; }
+
+  // which section a tool card goes in
+  function sectionOf(c) {
+    const info = c.__card || { title: "", opts: {} };
+    const t = String(info.title || "");
+    if (cfg.sectionOf) { const v = cfg.sectionOf(t); if (v) return v; }
+    if (info.opts && info.opts.section) return info.opts.section;
+    if (/^(style|effect type)$/i.test(t)) return "look";
+    if (/colou?r|tint|palette/i.test(t)) return "colour";
+    return "controls";
+  }
+
 
   // ---- build
   function build(root) {
@@ -282,10 +318,12 @@ function createToolPanel(cfg) {
     refresh.addEventListener("click", () => schedulePreview(0));
     const autoCb = el("input", { type: "checkbox" });
     autoCb.checked = true;
-    autoCb.addEventListener("change", () => { auto = !!autoCb.checked; if (auto) schedulePreview(0); });
+    const setAuto = (v) => { auto = !!v; if (auto) schedulePreview(0); };
+    autoCb.addEventListener("change", () => setAuto(autoCb.checked));
     const pinCb = el("input", { type: "checkbox", title: "Keep the preview on top while the controls scroll" });
     pinCb.checked = true;
-    pinCb.addEventListener("change", () => { layout.setPinned(!!pinCb.checked); schedulePreview(0); });
+    const setPin = (v) => { layout.setPinned(!!v); schedulePreview(0); };
+    pinCb.addEventListener("change", () => setPin(pinCb.checked));
     const kit = { gradientEditor, colourRow, touch, setStatus, schedulePreview, loop, get state() { return state; } };
     top.appendChild(card("Preview", [
       refs.docline, refs.previewBox
@@ -295,9 +333,12 @@ function createToolPanel(cfg) {
         segGroup("view.bg", [{ v: "checker", l: "Checker" }, { v: "white", l: "White" }, { v: "black", l: "Black" }])
       ])
     ]).concat([
-      el("div", { class: "row" }, [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
+      el("div", { class: "row" }, ui.brand ? [refresh,
+        ui.brand.miniToggle("Auto-update", true, setAuto),
+        ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
+      ] : [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
       refs.status
-    ])));
+    ]), { fold: false }));
     root = layout.scroller;
 
     lib = createLibrary(ui, {
@@ -305,14 +346,31 @@ function createToolPanel(cfg) {
       applyPatch: (p) => { const hit = PRESETS.find((x) => x.p === p); applyPatch(p, hit ? hit.name : "Custom"); },
       getSaveable: stateForSave, io: PS, setStatus
     });
-    root.appendChild(lib.card);
-    cfg.cards(ui, kit).forEach((c) => root.appendChild(c));
+    const toolCards = cfg.cards(ui, kit).filter(Boolean);
+    toolCards.forEach((c) => { const i = c.__card; if (i && i.opts && i.opts.bypass) bypassMaps[i.title] = i.opts.bypass; });
+    const by = { look: [], controls: [], colour: [], output: [] };
+    toolCards.forEach((c) => (by[sectionOf(c)] || by.controls).push(c));
+    const secs = [];
+    const addSection = (letter, name, id, nodes) => {
+      if (!ui.brand) { nodes.forEach((n) => root.appendChild(n)); return; }
+      const bar = ui.section(letter, name, id);
+      root.appendChild(bar);
+      nodes.forEach((n) => root.appendChild(n));
+      secs.push({ letter, name, id, node: bar });
+    };
+    refs.sections = by;
+    addSection("A", "LOOK", "look", [lib.card].concat(by.look));
+    const ctl = by.controls.length > 1 && ui.brand ? [ui.tabs(by.controls, { title: "Effects", isOn: fxOn, setOn: setFxOn })] : by.controls;
+    addSection("B", "CONTROLS", "controls", ctl);
+    refs.colourSection = { cards: by.colour };
     if (hasDeck) {
       deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus });
-      root.appendChild(deck.card);
+      by.colour.push(deck.card);
     }
+    if (by.colour.length) addSection("C", "COLOUR", "colour", by.colour);
     if (cfg.outputCard) {
-      root.appendChild(cfg.outputCard(ui, kit));
+      addSection("D", "OUTPUT", "output", [cfg.outputCard(ui, kit)].concat(by.output));
+      if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
       root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
       refreshAll();
       return;
@@ -321,7 +379,7 @@ function createToolPanel(cfg) {
     refs.apply = el("button", { class: "apply", text: "Apply to document" });
     refs.apply.addEventListener("click", applyNow);
     if (ui.brand) refs.meter = ui.brand.meter(12);
-    root.appendChild(card("Output", [
+    addSection("D", "OUTPUT", "output", by.output.concat([card("Output", [
       selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; })
     ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
       checkRow("Hide source artwork afterwards", "out.hide"),
@@ -329,7 +387,8 @@ function createToolPanel(cfg) {
       refs.apply,
       cfg.reEdit ? (() => { const b = el("button", { class: "btn small reedit", text: "Re-edit selected group", title: "Load the settings of a group this tool made" }); b.addEventListener("click", () => { reEditNow().catch((e) => setStatus("Re-edit failed: " + e.message, true)); }); return b; })() : null,
       el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
-    ])));
+    ]))]));
+    if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
     root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
     refreshAll();
   }

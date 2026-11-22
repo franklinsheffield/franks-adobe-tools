@@ -2,9 +2,9 @@
  "cards": [
   "Preview",
   "Library",
+  "Effects",
   "Phase FX",
   "Phase look",
-  "Phase colour",
   "Screen",
   "Convergence",
   "Phosphor mask",
@@ -12,10 +12,11 @@
   "Tube",
   "Signal",
   "Finish",
+  "Phase colour",
   "Colour Deck",
   "Output"
  ],
- "controls": "input:76 select:8 button:52 textarea:0",
+ "controls": "input:74 select:8 button:57 textarea:0",
  "previewDefault": "ba98f44d8e73",
  "presets": [
   "Arcade - Arcade Cabinet = ba98f44d8e73",

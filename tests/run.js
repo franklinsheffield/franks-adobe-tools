@@ -144,11 +144,12 @@ async function t(name, fn) {
     const prev = pinned.querySelector(".previewbox");
     assert.ok(prev, "preview starts pinned");
     assert.ok(!scroller.querySelector(".previewbox"), "controls area has no preview");
-    const pin = [...pinned.querySelectorAll("input[type=checkbox]")].find((c) => (c.title || "").includes("preview on top"));
-    pin.checked = false; pin.dispatchEvent(new d.defaultView.Event("change"));
+    const pin = [...pinned.querySelectorAll(".switch")].find((c) => (c.title || "").includes("preview on top"));
+    assert.ok(pin && pin.classList.contains("on"), "Pin on top is a console switch, on");
+    pin.click();
     assert.ok(scroller.firstChild.querySelector && (scroller.querySelector(".previewbox") === prev), "unpinned: preview scrolls with controls");
     assert.strictEqual(pinned.style.display, "none");
-    pin.checked = true; pin.dispatchEvent(new d.defaultView.Event("change"));
+    pin.click();
     assert.ok(pinned.querySelector(".previewbox") === prev, "re-pinned");
   });
 
@@ -316,6 +317,7 @@ async function t(name, fn) {
   await require("./font-brew.js")(t);
   await require("./crt-phaser.js")(t);
   await require("./colour-deck.js")(t);
+  await require("./panel-system.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);

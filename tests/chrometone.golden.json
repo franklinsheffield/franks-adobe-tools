@@ -2,8 +2,8 @@
  "cards": [
   "Preview",
   "Library",
+  "Effects",
   "Surface",
-  "Look",
   "Tone",
   "Bands",
   "Relief",
@@ -11,10 +11,11 @@
   "Glow",
   "Shine FX",
   "Finish",
+  "Look",
   "Colour Deck",
   "Output"
  ],
- "controls": "input:141 select:11 button:79 textarea:0",
+ "controls": "input:139 select:11 button:84 textarea:0",
  "previewDefault": "df52dd25b629",
  "presets": [
   "Chrome - Liquid Silver = df52dd25b629",

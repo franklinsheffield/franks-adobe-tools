@@ -196,17 +196,150 @@ function createUI(opts) {
     return el("span", { class: "hexwrap" }, [sw, input]);
   }
 
+  // ---- cards (Frank, 2026-11-22: organized panel system)
+  // card(title, kids, { hint, section, bypass, fold, open })
+  //   section: "look" | "controls" | "colour" | "output" (toolpanel places it)
+  //   bypass:  { path: neutralValue } - the card can be switched off in the
+  //            Effects tabs; while off the engine sees these values instead
+  //   fold:    false = no fold toggle (e.g. Preview); open: false = folded on first launch
+  // Click a card's title to fold it; the fold state is remembered per plugin.
+  const foldKey = "brew.fold." + (opts.storeKey || "panel");
+  let foldMem = {};
+  try { foldMem = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(foldKey)) || "{}") || {}; } catch (e) { foldMem = {}; }
+  function saveFold() { try { if (typeof localStorage !== "undefined") localStorage.setItem(foldKey, JSON.stringify(foldMem)); } catch (e) { /* storage blocked */ } }
+  const allCards = [];
+  function summary(body) {
+    const vals = Array.from(body.querySelectorAll(".dialval")).slice(0, 4).map((i) => i.value);
+    return vals.join(" | ");
+  }
   function card(title, kids, o) {
+    o = o || {};
     const body = el("div", { class: "cardbody" }, kids);
     const head = el("div", { class: "cardhead" }, [el("span", { class: "ctitle", text: title })]);
     const c = el("div", { class: "card" }, [head, body]);
-    if (o && o.hint) body.insertBefore(el("div", { class: "hint", text: o.hint }), body.firstChild);
+    if (o.hint) body.insertBefore(el("div", { class: "hint", text: o.hint }), body.firstChild);
+    const info = { title, opts: o, head, body, node: c, foldable: o.fold !== false };
+    c.__card = info;
+    if (brand && info.foldable) {
+      c.classList.add("foldable");
+      const chev = el("span", { class: "chev", text: "-" });
+      const sum = el("span", { class: "csum" });
+      head.insertBefore(chev, head.firstChild);
+      head.appendChild(sum);
+      info.setOpen = (open, remember) => {
+        if (open) { c.classList.remove("shut"); chev.textContent = "-"; sum.textContent = ""; }
+        else { c.classList.add("shut"); chev.textContent = "+"; sum.textContent = summary(body); }
+        if (remember) { foldMem[title] = open ? 1 : 0; saveFold(); }
+      };
+      info.isOpen = () => !c.classList.contains("shut");
+      head.addEventListener("click", () => info.setOpen(!info.isOpen(), true));
+      const start = title in foldMem ? !!foldMem[title] : o.open !== false;
+      info.setOpen(start, false);
+      allCards.push(info);
+    }
     return c;
+  }
+  function foldAll(open) { allCards.forEach((i) => { if (i.node.parentNode && !i.inTabs) i.setOpen(open, true); }); }
+  function anyOpen() { return allCards.some((i) => !i.inTabs && i.node.parentNode && i.isOpen()); }
+
+  // section bar: "A  LOOK" with a thin rule after it
+  function section(letter, name, id) {
+    const n = el("div", { class: "section", id: "sec-" + id }, [el("span", { class: "secl", text: letter }), el("span", { class: "secn", text: name }), el("div", { class: "secrule" })]);
+    n.__section = id;
+    return n;
+  }
+
+  // jump strip pinned under the preview: one button per section + fold all.
+  // sections: [{ letter, name, id, node }] (node = the section bar in `scroller`)
+  function jumpStrip(sections, scroller) {
+    const btns = [];
+    const row = el("div", { class: "jump" });
+    sections.forEach((sec) => {
+      const b = el("button", { class: "jumpbtn", text: sec.letter + " " + sec.name, title: "Jump to " + sec.name.toLowerCase() });
+      b.addEventListener("click", () => {
+        const top = sec.node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollTop = Math.max(0, scroller.scrollTop + top - 2);
+        mark(sec.id);
+      });
+      b.__sec = sec.id;
+      btns.push(b); row.appendChild(b);
+    });
+    const fold = el("button", { class: "jumpbtn fold", text: "+/-", title: "Fold or open every card" });
+    fold.addEventListener("click", () => foldAll(!anyOpen()));
+    row.appendChild(fold);
+    function mark(id) { btns.forEach((b) => { if (b.__sec === id) b.classList.add("on"); else b.classList.remove("on"); }); }
+    scroller.addEventListener("scroll", () => {
+      const top0 = scroller.getBoundingClientRect().top;
+      let cur = sections[0] ? sections[0].id : null;
+      sections.forEach((sec) => { if (sec.node.style.display !== "none" && sec.node.getBoundingClientRect().top - top0 <= 30) cur = sec.id; });
+      mark(cur);
+    });
+    mark(sections[0] && sections[0].id);
+    return row;
+  }
+
+  // Effects tabs: one card whose body shows one of `cards` at a time.
+  // A card made with { bypass } gets an on/off dot; effects that are on stack
+  // in tab order. o: { isOn(title), setOn(title, on), title }
+  function tabs(cards, o) {
+    o = o || {};
+    const row = el("div", { class: "tabrow" });
+    const stack = el("div", { class: "stackline" });
+    const panes = el("div", { class: "tabpanes" });
+    const tabKey = "brew.tab." + (opts.storeKey || "panel");
+    let cur = null;
+    try { cur = typeof localStorage !== "undefined" ? localStorage.getItem(tabKey) : null; } catch (e) { cur = null; }
+    const items = cards.map((c) => {
+      const info = c.__card || { title: "?", opts: {} };
+      info.inTabs = true;
+      c.classList.add("intab");
+      if (info.setOpen) info.setOpen(true, false);
+      const canOff = !!(info.opts && info.opts.bypass);
+      const dot = canOff ? el("span", { class: "tabdot", title: "Switch this effect on or off" }) : null;
+      const btn = el("div", { class: "tabbtn", role: "tab", title: info.title }, [dot, el("span", { class: "tabtxt", text: info.title })]);
+      const wrap = el("div", { class: "tabpane" }, [c]);
+      row.appendChild(btn);
+      panes.appendChild(wrap);
+      const it = { title: info.title, btn, wrap, card: c, dot, canOff };
+      btn.addEventListener("click", (e) => {
+        if (dot && (e.target === dot)) { o.setOn(it.title, !o.isOn(it.title)); onChange(); return; }
+        choose(it.title, true);
+      });
+      return it;
+    });
+    function visible(it) { return it.card.style.display !== "none"; }
+    function choose(title, remember) {
+      let it = items.find((x) => x.title === title && visible(x)) || items.find(visible) || items[0];
+      cur = it ? it.title : null;
+      items.forEach((x) => {
+        const on = x === it;
+        if (on) x.btn.classList.add("cur"); else x.btn.classList.remove("cur");
+        x.wrap.style.display = on ? "" : "none";
+      });
+      if (remember) { try { if (typeof localStorage !== "undefined") localStorage.setItem(tabKey, cur); } catch (e) { /* storage blocked */ } }
+    }
+    rules.push(() => {
+      items.forEach((x) => {
+        x.btn.style.display = visible(x) ? "" : "none";
+        const on = !x.canOff || o.isOn(x.title);
+        if (on) { x.btn.classList.add("live"); x.card.classList.remove("bypassed"); }
+        else { x.btn.classList.remove("live"); x.card.classList.add("bypassed"); }
+      });
+      const anyOff = items.some((x) => x.canOff);
+      stack.style.display = anyOff ? "" : "none";
+      stack.textContent = "Stack: " + (items.filter((x) => visible(x) && (!x.canOff || o.isOn(x.title))).map((x) => x.title).join("  >  ") || "nothing on") + "   (dot = on / off)";
+      choose(cur, false);
+    });
+    const node = card(o.title || "Effects", [row, stack, panes], { open: true });
+    node.classList.add("tabcard");
+    node.__tabs = { choose: (t) => choose(t, true), items, get current() { return cur; } };
+    return node;
   }
 
   return {
     el, clear, bind, showIf, refreshAll, getPath, setPath,
-    row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand
+    row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand,
+    section, tabs, jumpStrip, foldAll, anyOpen
   };
 }
 

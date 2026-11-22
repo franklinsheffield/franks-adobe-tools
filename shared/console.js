@@ -4,9 +4,12 @@
 // Opt-in per tool with createToolPanel({ brand: "console", code: "PB-09", glow: "#4d7cff" }).
 //   header(): rack unit with screw corners, FRANK'S · <code>, the wordmark
 //             in the tool's neon and a status LED (READY / BUSY / ERROR)
-//   dial():   rotary knob for a number setting (drag up/down, Shift = fine,
-//             mouse wheel, or type the value under it)
+//   dial():   rotary knob for a number setting with a value box beside it.
+//             Click the knob or its box to select it (white glow, one per panel);
+//             Up/Down arrows step it (Shift = 10 steps), the mouse wheel turns it,
+//             drag up/down (Shift = fine), or type a value (Frank, 2026-11-22).
 //   toggle(): on/off switch for a boolean setting
+//   miniToggle(): inline switch for panel options outside state (Auto-update, Pin on top)
 //   meter():  12-segment LED render meter for Apply
 // createUI({ onLive(path) }) is called while a dial is being dragged (Dithers live frames).
 // Knobs are drawn as small PNGs (shared/png.js) because UXP's SVG and
@@ -24,10 +27,10 @@ function hexRGB(h) {
 // ---- knob image: 270 degree arc from bottom-left to bottom-right
 const DIAL_PX = 96, STEPS = 120;
 const dialCache = new Map();
-function dialImage(frac, glow) {
+function dialImage(frac, glow, sel) {
   frac = Math.max(0, Math.min(1, frac || 0));
   const q = Math.round(frac * STEPS);
-  const key = glow + "|" + q;
+  const key = glow + "|" + q + (sel ? "|s" : "");
   if (dialCache.has(key)) return dialCache.get(key);
   const f = q / STEPS, S = DIAL_PX, c = S / 2, rgb = new Uint8Array(S * S * 3);
   const neon = hexRGB(glow), track = [58, 58, 58], white = [255, 255, 255];
@@ -49,8 +52,11 @@ function dialImage(frac, glow) {
       }
       // soft glow just outside the lit arc
       if (rel <= sweep * f && r > R2 && r < R2 + 4) mix(neon, 0.18 * (1 - (r - R2) / 4));
+      // selected: white halo around the knob
+      if (sel && r > K - 1 && r < K + 7) mix(white, 0.55 * Math.pow(1 - (r - K + 1) / 8, 1.5));
+      if (sel && r < K - 2) mix([24, 24, 24], 1);
       // knob: black disc, white rim, white pointer
-      mix(white, Math.min(cov(r - K), cov(K - 2 - r)) );
+      mix(white, Math.min(cov(r - K), cov(K - (sel ? 3 : 2) - r)) );
       const along = dx * px + dy * py, perp = Math.abs(dx * py - dy * px);
       if (along > 0 && along < K - 5) mix(white, cov(perp - 1.6));
       const i = (y * S + x) * 3;
@@ -87,27 +93,47 @@ function createConsoleKit(env) {
     return { node, set };
   }
 
+  let selected = null;   // the one selected dial in this panel
+  function select(d) {
+    if (selected === d) return;
+    const old = selected;
+    selected = d;
+    if (old) old.redraw();
+    if (d) d.redraw();
+  }
+
   function dial(label, path, min, max, step, unit) {
     const S = env.getState;
-    // the unit is left off the readout so it fits under the knob; it is in the tooltip
     const fmt = (v) => (step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.1 ? 2 : 1));
     const snap = (v) => {
       v = Math.max(min, Math.min(max, v));
       v = min + Math.round((v - min) / step) * step;
       return parseFloat(v.toFixed(6));
     };
-    const tip = label + (unit ? " (" + String(unit).trim() + ")" : "") + ": drag up or down (Shift = fine), scroll, or type a value";
+    const tip = label + (unit ? " (" + String(unit).trim() + ")" : "") + ": click to select, then Up/Down arrows (Shift = x10), mouse wheel, drag, or type a value";
     const img = el("img", { class: "knob", title: tip });
     const val = el("input", { type: "text", class: "dialval", title: tip });
     const lab = el("div", { class: "dlabel", text: label });
-    const node = el("div", { class: "dial" }, [img, val, lab]);
-    const draw = (v) => { img.src = dialImage((v - min) / (max - min || 1), glow()); val.value = fmt(v); };
+    const node = el("div", { class: "dial" }, [el("div", { class: "dialrow" }, [img, val]), lab]);
+    const me = {
+      node,
+      redraw() {
+        const on = selected === me;
+        if (on) node.classList.add("sel"); else node.classList.remove("sel");
+        draw(env.getPath(S(), path));
+      }
+    };
+    const draw = (v) => {
+      img.src = dialImage((v - min) / (max - min || 1), glow(), selected === me);
+      if (document.activeElement !== val || !val.__typing) val.value = fmt(v);
+    };
     const set = (v, commit) => {
       v = snap(v);
       if (v !== env.getPath(S(), path)) env.setPath(S(), path, v);
       draw(v);
       if (commit) env.onChange();
     };
+    const pick = () => { select(me); try { if (document.activeElement !== val) val.focus(); } catch (e) { /* host without focus() */ } };
     let drag = null;
     const move = (e) => {
       if (!drag) return;
@@ -124,6 +150,7 @@ function createConsoleKit(env) {
       env.onChange();
     };
     img.addEventListener("mousedown", (e) => {
+      pick();
       drag = { y: e.clientY, v: env.getPath(S(), path) };
       node.classList.add("turning");
       document.addEventListener("mousemove", move);
@@ -132,18 +159,40 @@ function createConsoleKit(env) {
     });
     img.addEventListener("mousemove", move);
     img.addEventListener("mouseup", up);
-    img.addEventListener("wheel", (e) => {
+    const wheel = (e) => {
       const dir = e.deltaY < 0 ? 1 : -1;
+      pick();
       set(env.getPath(S(), path) + dir * Math.max(step, (max - min) / 50), true);
       if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    };
+    img.addEventListener("wheel", wheel);
+    val.addEventListener("wheel", wheel);
+    val.addEventListener("focus", () => select(me));
+    val.addEventListener("mousedown", () => select(me));
+    val.addEventListener("keydown", (e) => {
+      const k = e.key || e.code;
+      if (k === "ArrowUp" || k === "ArrowDown" || e.keyCode === 38 || e.keyCode === 40) {
+        const dir = (k === "ArrowUp" || e.keyCode === 38) ? 1 : -1;
+        val.__typing = false;
+        set(env.getPath(S(), path) + dir * step * (e.shiftKey ? 10 : 1), true);
+        if (e.preventDefault) e.preventDefault();
+        return;
+      }
+      if (k === "Enter" || e.keyCode === 13) { commitTyped(); return; }
+      if (k === "Escape" || e.keyCode === 27) { val.__typing = false; draw(env.getPath(S(), path)); return; }
+      val.__typing = true;
     });
-    val.addEventListener("change", () => {
-      const v = parseFloat(val.value);
+    function commitTyped() {
+      val.__typing = false;
+      const v = parseFloat(String(val.value).replace(",", "."));
       if (isNaN(v)) { draw(env.getPath(S(), path)); return; }
       set(v, true);
-    });
+    }
+    val.addEventListener("change", commitTyped);
+    val.addEventListener("blur", () => { if (val.__typing) commitTyped(); });
     bind(() => draw(env.getPath(S(), path)));
-    node.__dial = { set: (v) => set(v, true) };
+    node.__dial = { set: (v) => set(v, true), select: () => pick(), get selected() { return selected === me; } };
     return node;
   }
 
@@ -159,6 +208,18 @@ function createConsoleKit(env) {
     });
     bind(() => { if (env.getPath(S(), path)) sw.classList.add("on"); else sw.classList.remove("on"); });
     return el("div", { class: "row chk swrow" }, [el("span", { class: "lbl2 swlbl", text: label }), sw]);
+  }
+
+  // small inline switch for panel-level options (Auto-update, Pin on top) that are not in state
+  function miniToggle(label, initial, onSet, title) {
+    let v = !!initial;
+    const sw = el("div", { class: "switch" + (v ? " on" : ""), role: "switch", title: title || label }, [el("div", { class: "swknob" })]);
+    const show = () => { if (v) sw.classList.add("on"); else sw.classList.remove("on"); };
+    const set = (nv) => { v = !!nv; show(); onSet(v); };
+    sw.addEventListener("click", () => set(!v));
+    const node = el("span", { class: "minisw" }, [el("span", { class: "lbl2", text: label }), sw]);
+    node.__sw = { get: () => v, set };
+    return node;
   }
 
   function meter(n) {
@@ -181,7 +242,7 @@ function createConsoleKit(env) {
     };
   }
 
-  return { header, dial, toggle, meter };
+  return { header, dial, toggle, miniToggle, meter, get selectedDial() { return selected ? selected.node : null; } };
 }
 
 module.exports = { createConsoleKit, dialImage };

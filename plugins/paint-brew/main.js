@@ -93,7 +93,7 @@ const panel = createToolPanel({
       sliderRow("Canvas weave", "texture.canvas", 0, 100, 1, "%"),
       sliderRow("Weave size", "texture.canvasScale", 3, 16, 1, " px"),
       only(sliderRow("Light and colour lift", "texture.lift", 0, 100, 1, "%"), () => kit.state.style === "impressionism")
-    ]), is("oil", "impressionism"));
+    ], { bypass: { "texture.impasto": 0, "texture.bristle": 0, "texture.canvas": 0 } }), is("oil", "impressionism"));
     const water = only(card("Water and paper", [
       kit.colourRow("Paper colour", "water.paperColour"),
       sliderRow("Pigment", "water.density", 20, 100, 1, "%"),

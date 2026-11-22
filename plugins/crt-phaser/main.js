@@ -57,27 +57,27 @@ const panel = createToolPanel({
       card("Convergence", [
         sliderRow("Red / blue shift X", "conv.x", -10, 10, 0.5, " px"),
         sliderRow("Red / blue shift Y", "conv.y", -10, 10, 0.5, " px")
-      ]),
+      ], { bypass: { "conv.x": 0, "conv.y": 0 } }),
       card("Phosphor mask", [
         segGroup("mask.type", [{ v: "grille", l: "Grille", t: "Aperture grille (Trinitron)" }, { v: "shadow", l: "Shadow", t: "Shadow mask (dot triads)" }, { v: "slot", l: "Slot", t: "Slot mask" }, { v: "dots", l: "Dots", t: "Round phosphor dot grid" }, { v: "none", l: "None" }]),
         sliderRow("Scale", "mask.scale", 1, 8, 1, "x"),
         sliderRow("Strength", "mask.strength", 0, 100, 1, "%")
-      ]),
+      ], { bypass: { "mask.type": "none" } }),
       card("Scanlines", [
         sliderRow("Strength", "scan.strength", 0, 100, 1, "%"),
         sliderRow("Beam width", "scan.width", 10, 100, 1, "%")
-      ]),
+      ], { bypass: { "scan.strength": 0 } }),
       card("Tube", [
         only(sliderRow("Bloom", "tube.bloom", 0, 100, 1, "%"), (s) => !phaseOn(s)),
         sliderRow("Curvature", "tube.curve", 0, 100, 1, "%"),
         sliderRow("Corner radius", "tube.corner", 0, 100, 1, "%"),
         sliderRow("Vignette", "tube.vignette", 0, 100, 1, "%")
-      ]),
+      ], { bypass: { "tube.bloom": 0, "tube.curve": 0, "tube.corner": 0, "tube.vignette": 0 } }),
       only(card("Signal", [
         sliderRow("Noise", "signal.noise", 0, 100, 1, "%"),
         sliderRow("Roll band position", "signal.roll", 0, 100, 1, "%"),
         sliderRow("Roll band strength", "signal.rollStrength", 0, 100, 1, "%")
-      ]), (s) => !phaseOn(s)),
+      ], { bypass: { "signal.noise": 0, "signal.rollStrength": 0 } }), (s) => !phaseOn(s)),
       card("Finish", [
         sliderRow("Brightness", "finish.brightness", 50, 200, 1, "%"),
         sliderRow("Contrast", "finish.contrast", 50, 200, 1, "%"),

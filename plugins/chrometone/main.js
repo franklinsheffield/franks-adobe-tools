@@ -83,7 +83,7 @@ panel = createToolPanel({
       when(el("div", { class: "lbl3", text: "Ground" }), horizonOn), when(kit.gradientEditor("surface.ground"), horizonOn)
     ]);
 
-    const look = card("Look", [kit.gradientEditor("look.stops"), checkRow("Invert (dark becomes bright)", "look.invert")]);
+    const look = card("Look", [kit.gradientEditor("look.stops"), checkRow("Invert (dark becomes bright)", "look.invert")], { section: "colour" });
     const tone = card("Tone", [
       sliderRow("Smooth", "tone.blur", 0, 20, 1, " px"),
       sliderRow("Contrast", "tone.contrast", 20, 300, 5, "%"),
@@ -95,7 +95,7 @@ panel = createToolPanel({
       selectRow("Shape", "bands.shape", [{ v: "sine", l: "Smooth (sine)" }, { v: "triangle", l: "Sharp (triangle)" }, { v: "hard", l: "Hard steps" }]),
       sliderRow("Softness", "bands.soft", 0, 100, 1, "%"),
       sliderRow("Strength", "bands.mix", 0, 100, 1, "%")
-    ]);
+    ], { bypass: { "bands.mix": 0 } });
     const relief = card("Relief", [
       sliderRow("Depth", "relief.depth", 0, 100, 1, "%"),
       sliderRow("Light angle", "relief.angle", 0, 360, 5, "°"),
@@ -115,7 +115,7 @@ panel = createToolPanel({
       when(sliderRow("Side shading", "extrude.shade", 0, 100, 1, "%"), exOn),
       when(sliderRow("Edge lines", "extrude.lines", 0, 100, 1, "%"), exOn),
       when(sliderRow("Long shadow", "extrude.shadow", 0, 100, 1, "%"), exOn)
-    ]);
+    ], { bypass: { "extrude.on": false } });
 
     // Glow stack (1.1): 4 modules
     const glowRows = [];
@@ -129,7 +129,7 @@ panel = createToolPanel({
         when(sliderRow("Strength", base + "strength", 0, 100, 1, "%"), on)
       );
     }
-    const glow = card("Glow", glowRows);
+    const glow = card("Glow", glowRows, { bypass: { "glow.modules.0.on": false, "glow.modules.1.on": false, "glow.modules.2.on": false, "glow.modules.3.on": false } });
 
     // Shine FX (1.1)
     const g = () => st().shine;
@@ -151,7 +151,7 @@ panel = createToolPanel({
       when(sliderRow("Count", "shine.arcs.count", 1, 12, 1, ""), () => g().arcs.on),
       when(kit.colourRow("Colour", "shine.arcs.color"), () => g().arcs.on),
       when(sliderRow("Spread", "shine.arcs.spread", 0, 100, 1, "%"), () => g().arcs.on)
-    ]);
+    ], { bypass: { "shine.glints.on": false, "shine.sweep.on": false, "shine.rim.on": false, "shine.arcs.on": false } });
 
     const finish = card("Finish", [
       sliderRow("Grain", "finish.grain", 0, 100, 1, "%"),

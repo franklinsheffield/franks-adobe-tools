@@ -38,7 +38,7 @@ function withDeck(res) {
 }
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame() });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: "Frank's Dithers Brew" });
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers
@@ -483,10 +483,12 @@ function build(root) {
   refresh.addEventListener("click", () => schedulePreview(0));
   const autoCb = el("input", { type: "checkbox" });
   autoCb.checked = true;
-  autoCb.addEventListener("change", () => { auto = !!autoCb.checked; if (auto) schedulePreview(0); });
+  const setAuto = (v) => { auto = !!v; if (auto) schedulePreview(0); };
+  autoCb.addEventListener("change", () => setAuto(autoCb.checked));
   const pinCb = el("input", { type: "checkbox", title: "Keep the preview on top while the controls scroll" });
   pinCb.checked = true;
-  pinCb.addEventListener("change", () => { layout.setPinned(!!pinCb.checked); schedulePreview(0); });
+  const setPin = (v) => { layout.setPinned(!!v); schedulePreview(0); };
+  pinCb.addEventListener("change", () => setPin(pinCb.checked));
   top.appendChild(card("Preview", [
     refs.docline,
     refs.previewBox,
@@ -494,12 +496,19 @@ function build(root) {
       segGroup("view.kind", [{ v: "detail", l: "Detail 1:1", t: "True dot size, centre crop" }, { v: "whole", l: "Whole", t: "Scaled-down view of everything" }]),
       segGroup("view.bg", [{ v: "white", l: "White" }, { v: "black", l: "Black" }, { v: "checker", l: "Checker" }])
     ]),
-    el("div", { class: "row" }, [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
+    el("div", { class: "row" }, ui.brand ? [refresh,
+      ui.brand.miniToggle("Auto-update", true, setAuto),
+      ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
+    ] : [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
     refs.status,
     refs.info
   ]));
 
   root = layout.scroller;   // everything below scrolls under the pinned preview
+  // organized panel (Frank, 2026-11-22): A Look / B Controls (tabs) / C Colour / D Output
+  const secs = [];
+  const sec = (letter, name, id) => { const n = ui.section(letter, name, id); root.appendChild(n); secs.push({ letter, name, id, node: n }); };
+  sec("A", "LOOK", "look");
 
   // ---- presets (shared Library card)
   lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
@@ -566,7 +575,7 @@ function build(root) {
       return sel;
     })()
   ]);
-  root.appendChild(card("Engine", [algoStrip(), htBox, diBox, asBox, printRow]));
+  const engineCard = card("Engine", [algoStrip(), htBox, diBox, asBox, printRow]);
 
   // ---- tune: only the controls the chosen algorithm uses
   const dirRow = segGroup("tune.direction", [{ v: "h", l: "Horiz" }, { v: "v", l: "Vert" }, { v: "d", l: "Diag" }, { v: "r", l: "Radial" }]);
@@ -587,7 +596,7 @@ function build(root) {
     tuneHint.textContent = state.mode === "grade" ? "Threshold is not used in Grade mode (the palette decides)."
       : "Threshold 50 and Strength 100 give the classic look. Raise Threshold to clear faint background marks.";
   });
-  root.appendChild(card("Tune", [thrRow, strRow, dirWrap, spRow, wtRow, jitRow, tuneHint]));
+  const tuneCard = card("Tune", [thrRow, strRow, dirWrap, spRow, wtRow, jitRow, tuneHint]);
 
   // ---- colour
   const monoBox = el("div", {}, [
@@ -666,22 +675,12 @@ function build(root) {
   ]);
   showIf(rgbBox, () => state.mode === "rgb");
   const colourCard = card("Colour", [monoBox, tonalBox, gradeBox, cmykBox, rgbBox]);
-  root.appendChild(colourCard);
 
   // ---- FX stack
-  const fxList = [
-    { k: "edges", l: "Edge lines", t: "Add outlines on top of the tone" },
-    { k: "dtf", l: "DTF film", t: "Knock out the garment colour" },
-    { k: "gain", l: "Dot gain", t: "Grow or shrink the ink" },
-    { k: "misreg", l: "Misregister", t: "Offset the plates like a worn press" },
-    { k: "clean", l: "Clean specks", t: "Remove dots too small to print" },
-    { k: "distress", l: "Distress", t: "Knock out ink like a worn screen" }
-  ];
-  root.appendChild(card("Effect stack (click to switch on / off)", [
-    el("div", { class: "row wrap" }, fxList.map((f) => pill(f.l, "fx." + f.k + ".on", null, f.t)))
-  ]));
-
-  const fxCard = (key, title, kids) => { const c = card(title, kids); showIf(c, () => state.fx[key].on); return c; };
+  // each effect is a tab in the Effects card; its dot switches it on / off (was the pill stack)
+  const fxKeyOf = { Image: "pre" };
+  const fxCards = [];
+  const fxCard = (key, title, kids) => { fxKeyOf[title] = key; const c = card(title, kids, { bypass: true }); fxCards.push(c); return c; };
   // ---- Image card: always visible; touching any control switches it on
   const more = el("div", {}, [
     sliderRow("Brightness", "fx.pre.brightness", -100, 100, 1),
@@ -703,13 +702,12 @@ function build(root) {
     el("div", { class: "row" }, [moreBtn]),
     more,
     checkRow("Image adjustments on", "fx.pre.on")
-  ]);
-  root.insertBefore(imgCard, colourCard);
-  root.appendChild(fxCard("edges", "Edge lines", [
+  ], { bypass: true });
+  (fxCard("edges", "Edge lines", [
     sliderRow("Strength", "fx.edges.strength", 0, 100, 1, "%"),
     sliderRow("Thickness", "fx.edges.thick", 1, 6, 1, " px")
   ]));
-  root.appendChild(fxCard("dtf", "DTF film", [
+  (fxCard("dtf", "DTF film", [
     row("Garment", hexField(() => state.fx.dtf.garment, (v) => { state.fx.dtf.garment = v; }, false)),
     sliderRow("Fuzziness", "fx.dtf.fuzz", 0, 100, 1, "%"),
     sliderRow("Feather", "fx.dtf.feather", 0, 100, 1, "%"),
@@ -717,17 +715,27 @@ function build(root) {
     selectRow("View", "fx.dtf.view", [{ v: "garment", l: "On garment colour" }, { v: "paper", l: "On preview background" }]),
     el("div", { class: "hint", text: "Colours close to the garment colour become transparent; semi-transparent edges become printable dots." })
   ]));
-  root.appendChild(fxCard("gain", "Dot gain", [sliderRow("Amount", "fx.gain.amount", -4, 4, 1, " px")]));
-  root.appendChild(fxCard("misreg", "Misregistration", [sliderRow("Offset", "fx.misreg.amount", 1, 12, 1, " px"), el("div", { class: "hint", text: "Applies to the 2nd plate onwards (CMYK, RGB, tonal, grade)." })]));
-  root.appendChild(fxCard("clean", "Clean specks", [sliderRow("Smallest dot", "fx.clean.mm", 0.1, 3, 0.1, " mm"), el("div", { class: "hint", text: "Dots smaller than this diameter are deleted. 0.5 mm is a safe DTF minimum." })]));
-  root.appendChild(fxCard("distress", "Distress", [sliderRow("Amount", "fx.distress.amount", 0, 100, 1, "%")]));
+  (fxCard("gain", "Dot gain", [sliderRow("Amount", "fx.gain.amount", -4, 4, 1, " px")]));
+  (fxCard("misreg", "Misregistration", [sliderRow("Offset", "fx.misreg.amount", 1, 12, 1, " px"), el("div", { class: "hint", text: "Applies to the 2nd plate onwards (CMYK, RGB, tonal, grade)." })]));
+  (fxCard("clean", "Clean specks", [sliderRow("Smallest dot", "fx.clean.mm", 0.1, 3, 0.1, " mm"), el("div", { class: "hint", text: "Dots smaller than this diameter are deleted. 0.5 mm is a safe DTF minimum." })]));
+  (fxCard("distress", "Distress", [sliderRow("Amount", "fx.distress.amount", 0, 100, 1, "%")]));
+
+  sec("B", "CONTROLS", "controls");
+  root.appendChild(ui.tabs([engineCard, tuneCard, imgCard].concat(fxCards), {
+    title: "Effects",
+    isOn: (t) => !fxKeyOf[t] || !!state.fx[fxKeyOf[t]].on,
+    setOn: (t, on) => { if (fxKeyOf[t]) state.fx[fxKeyOf[t]].on = !!on; }
+  }));
+  sec("C", "COLOUR", "colour");
+  root.appendChild(colourCard);
+  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true });
+  root.appendChild(deck.card);
 
   // ---- output
+  sec("D", "OUTPUT", "output");
   refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
-  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true });
-  root.appendChild(deck.card);
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),
@@ -737,6 +745,7 @@ function build(root) {
     el("div", { class: "hint", text: "Creates a layer group of ink layers with transparent paper. One undo step." })
   ]));
 
+  top.appendChild(ui.jumpStrip(secs, layout.scroller));
   root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.1  -  your artwork is never changed; results land in new layers." }));
 
   root.addEventListener("input", onDragInput);

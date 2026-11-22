@@ -228,26 +228,69 @@ body { font-family: var(--ui); }
 #app.brand-console .scrr { color: var(--glow); }
 
 #app.brand-console .segbtn { border-top: 3px solid #333333; padding-top: 5px; }
-#app.brand-console .segbtn.on { border-top-color: var(--glow); }
+#app.brand-console .segbtn.on { border-top-color: #ffffff; }
 
 #app.brand-console .cardbody { display: flex; flex-direction: row; flex-wrap: wrap; }
 #app.brand-console .cardbody > * { width: 100%; }
-#app.brand-console .cardbody > .dial { width: 25%; }
-#app.brand-console .dial { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
-#app.brand-console .knob { width: 48px; height: 48px; cursor: ns-resize; }
+#app.brand-console .cardbody > .dial { width: 33.33%; }
+/* dial = knob + value box beside it, label underneath (Frank, 2026-11-22) */
+#app.brand-console .dial { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 8px; padding: 2px 2px 2px 0; }
+#app.brand-console .dialrow { display: flex; flex-direction: row; align-items: center; }
+#app.brand-console .knob { width: 40px; height: 40px; flex-shrink: 0; cursor: ns-resize; }
 #app.brand-console .dial.turning .knob { opacity: 0.85; }
 #app.brand-console .dialval {
-  width: 46px; margin-top: 1px; text-align: center; font-size: 11px; color: var(--glow);
-  background: var(--ink); border: 1px solid transparent; border-radius: 3px;
+  flex: none; width: 46px; min-width: 0; margin-left: 4px; padding: 3px 2px; text-align: center; font-size: 11px; color: var(--glow);
+  background: var(--ink); border: 1px solid var(--soft); border-radius: 3px;
 }
-#app.brand-console .dialval:focus { border-color: var(--glow); }
-#app.brand-console .dlabel { font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; text-align: center; margin-top: 1px; opacity: 0.9; }
+#app.brand-console .dialval:focus { border-color: #ffffff; }
+#app.brand-console .dlabel { font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; margin-top: 2px; padding-left: 2px; opacity: 0.9; }
+/* selected knob glows white: halo is in the knob image, the box and label turn white */
+#app.brand-console .dial.sel .dialval { color: #ffffff; border-color: #ffffff; box-shadow: 0 0 6px #ffffff; }
+#app.brand-console .dial.sel .dlabel { color: #ffffff; opacity: 1; }
 
+/* section bars: A LOOK / B CONTROLS / C COLOUR / D OUTPUT */
+#app.brand-console .section { display: flex; flex-direction: row; align-items: center; margin: 10px 0 6px 0; }
+#app.brand-console .secl { font-family: var(--arcade); font-size: 10px; color: var(--glow); margin-right: 6px; }
+#app.brand-console .secn { font-family: var(--arcade); font-size: 9px; letter-spacing: 2px; opacity: 0.7; margin-right: 8px; }
+#app.brand-console .secrule { flex: 1; height: 1px; background: var(--soft); }
+/* jump strip pinned under the preview */
+#app.brand-console .jump { display: flex; flex-direction: row; margin: 0 0 6px 0; }
+#app.brand-console .jumpbtn { flex: 1; margin-right: 3px; padding: 4px 0; font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; background: var(--ink); color: #ffffff; border: 1px solid var(--stroke); }
+#app.brand-console .jumpbtn.fold { flex: none; width: 30px; margin-right: 0; font-family: var(--ui); }
+#app.brand-console .jumpbtn.on { color: var(--glow); border-color: var(--glow); background: var(--glowbg); }
+/* foldable cards */
+#app.brand-console .card.foldable > .cardhead { display: flex; flex-direction: row; align-items: center; cursor: pointer; }
+#app.brand-console .chev { width: 12px; font-size: 12px; color: var(--glow); font-family: var(--ui); }
+#app.brand-console .card.foldable .ctitle { flex: 1; }
+#app.brand-console .csum { font-size: 10px; opacity: 0.6; }
+#app.brand-console .card.shut > .cardbody { display: none; }
+#app.brand-console .card.shut > .cardhead { border-bottom: none; }
+/* effect tabs */
+#app.brand-console .card.intab { border: none; margin: 0; background: transparent; }
+#app.brand-console .card.intab > .cardhead { display: none; }
+#app.brand-console .card.intab > .cardbody { padding: 0; }
+#app.brand-console .card.intab.bypassed > .cardbody { opacity: 0.45; }
+#app.brand-console .tabrow { display: flex; flex-direction: row; flex-wrap: wrap; margin-bottom: 4px; }
+#app.brand-console .tabbtn {
+  display: flex; flex-direction: row; align-items: center; margin: 0 3px 3px 0; padding: 4px 6px; cursor: pointer;
+  border: 1px solid var(--stroke); border-radius: 3px; font-family: var(--arcade); font-size: 8px; letter-spacing: 1px;
+}
+#app.brand-console .tabbtn.cur { color: var(--glow); border-color: var(--glow); background: var(--glowbg); box-shadow: 0 0 6px var(--glow); }
+#app.brand-console .tabdot { width: 8px; height: 8px; border-radius: 5px; margin-right: 5px; border: 1px solid #777777; background: #222222; }
+#app.brand-console .tabbtn.live .tabdot { background: var(--glow); border-color: var(--glow); box-shadow: 0 0 5px var(--glow); }
+#app.brand-console .stackline { font-size: 10px; opacity: 0.65; margin: 0 0 8px 0; }
+#app.brand-console .tabpane { width: 100%; }
+#app.brand-console .tabpane .cardbody { display: flex; flex-direction: row; flex-wrap: wrap; }
+#app.brand-console .tabpane .cardbody > * { width: 100%; }
+#app.brand-console .tabpane .cardbody > .dial { width: 33.33%; }
+#app.brand-console .tabcard > .cardbody { display: block; }
 #app.brand-console .swrow { justify-content: space-between; margin-bottom: 7px; }
 #app.brand-console .swlbl { margin-left: 0; flex: 1; }
 #app.brand-console .switch { position: relative; width: 32px; height: 16px; border: 1px solid var(--stroke); border-radius: 8px; flex-shrink: 0; cursor: pointer; }
 #app.brand-console .switch .swknob { position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 5px; background: #ffffff; }
 #app.brand-console .switch.on { border-color: var(--glow); background: var(--glowbg); }
+#app.brand-console .minisw { display: flex; flex-direction: row; align-items: center; margin-left: 10px; }
+#app.brand-console .minisw .lbl2 { margin-right: 6px; }
 #app.brand-console .switch.on .swknob { left: 18px; background: var(--glow); box-shadow: 0 0 6px var(--glow); }
 
 #app.brand-console .meter { display: flex; flex-direction: row; align-items: center; margin: 6px 0 4px 0; }

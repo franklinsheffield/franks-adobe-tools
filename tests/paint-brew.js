@@ -131,7 +131,8 @@ module.exports = async function (t) {
     assert.strictEqual(D.querySelectorAll(".rack .screw").length, 4);
     assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
     assert.strictEqual(D.querySelectorAll('input[type="range"]').length, 0, "no stock sliders");
-    assert.strictEqual(D.querySelectorAll('input[type="checkbox"]').length, 2, "only Auto-update and Pin stay checkboxes");
+    assert.strictEqual(D.querySelectorAll('input[type="checkbox"]').length, 0, "no stock checkboxes");
+    assert.strictEqual(D.querySelectorAll(".minisw .switch.on").length, 2, "Auto-update and Pin on top are console switches");
     const dials = Array.from(D.querySelectorAll(".dial"));
     assert.ok(dials.length >= 20, "dials: " + dials.length);
     assert.ok(dials.every((d) => /^data:image\/png;base64,/.test(d.querySelector(".knob").src)), "every knob drawn");
@@ -200,7 +201,7 @@ module.exports = async function (t) {
     for (let i = 0; i < 100 && !/^Preview /.test(D.querySelector(".status").textContent); i++) await P.settle(50);
     const styleBtns = Array.from(D.querySelectorAll(".segbtn")).filter((b) => ["Oil", "Watercolour", "Impressionism", "Alcohol Ink", "Spray Paint", "Pastel"].includes(b.textContent));
     assert.strictEqual(styleBtns.length, 6);
-    const cardOf = (title) => Array.from(D.querySelectorAll(".card")).find((c) => c.textContent.trim().toUpperCase().startsWith(title.toUpperCase()));
+    const cardOf = (title) => Array.from(D.querySelectorAll(".card")).find((c) => { const h = c.querySelector(":scope > .cardhead .ctitle"); return h && h.textContent.trim().toUpperCase().startsWith(title.toUpperCase()); });
     const shown = (c) => c && c.style.display !== "none";
     for (const [label, style, card] of [["Alcohol Ink", "ink", "Ink"], ["Spray Paint", "spray", "Spray"], ["Pastel", "pastel", "Pastel"]]) {
       styleBtns.find((b) => b.textContent === label).dispatchEvent(new P.window.Event("click"));

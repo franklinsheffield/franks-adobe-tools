@@ -28,7 +28,7 @@ const lists = { mockups: [], artwork: [] };
 const refs = {};
 let built = false, saveT = null, lib = null;
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff3b30" });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff3b30", storeKey: "Frank's Batch Mock Brew" });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
 function busyNow() { try { return !!batch.running; } catch (e) { return false; } }
@@ -192,12 +192,17 @@ function build(root) {
   refs.status = el("div", { class: "status", text: "Choose your folders to start." });
   refs.summary = el("div", { class: "info" });
   refs.counts = el("div", { class: "info counts" });
-  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, refs.summary]));
+  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, refs.summary], { fold: false }));
 
   const s = lay.scroller;
+  // organized panel (Frank, 2026-11-22): A Look / B Setup / D Output (no colour section in this tool)
+  const secs = [];
+  const sec = (letter, name, id) => { const n = ui.section(letter, name, id); s.appendChild(n); secs.push({ letter, name, id, node: n }); };
+  sec("A", "LOOK", "look");
   lib = createLibrary(ui, { builtins: PRESETS, applyPatch: (p) => { const keep = clone(state.folders); state = merge(DEFAULTS, p); state.folders = keep; touch(); }, getSaveable: () => { const c = clone(state); delete c.folders; return c; }, io: PS, setStatus });
   s.appendChild(lib.card);
 
+  sec("B", "SETUP", "setup");
   s.appendChild(card("Folders", [
     folderRow("mockups", "Mockups"), folderRow("artwork", "Artwork"), folderRow("export", "Export"),
     checkRow("Include sub-folders", "folders.subfolders", () => rescan())
@@ -226,6 +231,7 @@ function build(root) {
   showIf(q, () => state.export.format === "jpg");
   showIf(alpha, () => state.export.format === "png");
   showIf(mp4, () => state.export.format === "mp4");
+  sec("D", "OUTPUT", "output");
   s.appendChild(card("Export", [
     segGroup("export.format", [{ v: "jpg", l: "JPG" }, { v: "png", l: "PNG" }, { v: "psd", l: "PSD" }, { v: "mp4", l: "MP4" }]),
     q, alpha, mp4,
@@ -240,6 +246,7 @@ function build(root) {
     textRow("Suffix", "naming.suffix", "e.g. v2"),
     refs.example
   ]));
+  lay.pinned.appendChild(ui.jumpStrip(secs, s));
   s.appendChild(el("div", { class: "foot", text: TITLE + " 1.0  -  Frank's Brew suite" }));
   refreshAll(); updateCounts();
 }

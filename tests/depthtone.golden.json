@@ -3,14 +3,15 @@
   "Preview",
   "Library",
   "Style",
+  "Effects",
   "Depth",
-  "Colour (far to near)",
   "Lines",
   "Light and shadow",
+  "Colour (far to near)",
   "Colour Deck",
   "Output"
  ],
- "controls": "input:55 select:6 button:44 textarea:0",
+ "controls": "input:53 select:6 button:49 textarea:0",
  "previewDefault": "9c5143177f52",
  "presets": [
   "Map - Topo Map = 9c5143177f52",

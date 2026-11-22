@@ -32,7 +32,7 @@ const panel = createToolPanel({
         sliderRow("RGB fringe", "fringe.offset", 0, 20, 1, " px"),
         sliderRow("Grain", "finish.grain", 0, 100, 1, "%"),
         sliderRow("Darken background", "finish.darken", 0, 100, 1, "%")
-      ])
+      ], { bypass: { "fringe.offset": 0, "finish.grain": 0, "finish.darken": 0 } })
     ];
   }
 });
