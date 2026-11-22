@@ -72,7 +72,9 @@ const panel = createToolPanel({
         if (M.isHex(v)) { setPath(kit.state, path, ("#" + v.replace("#", "")).toUpperCase()); kit.touch(); } else hex.value = getPath(kit.state, path);
       });
       bind(() => { hex.value = getPath(kit.state, path); pk.sync(); });
-      return el("div", {}, [row(label, hex, pk.chip), pk.panel, el("div", { class: "row wrap" }, [segGroup(path, list)])]);
+      const sw = segGroup(path, list, "swatches");
+      sw.style.flexWrap = "wrap"; sw.style.width = "100%";      // all swatches show, on two rows if needed
+      return el("div", {}, [row(label, hex, pk.chip), pk.panel, el("div", { class: "row wrap" }, [sw])]);
     };
     const only = (node, fn) => { showIf(node, fn); return node; };
     const isWall = (...ws) => () => ws.includes(kit.state.spray.wall);

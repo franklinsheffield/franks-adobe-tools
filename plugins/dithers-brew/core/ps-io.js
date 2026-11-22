@@ -67,6 +67,13 @@ function collectTargets(doc, source) {
   return layers.map((l) => ({ kind: "layer", layer: l }));
 }
 
+const READ_TIMEOUT_MS = 60000;
+function withTimeout(p, ms) {
+  let t = null;
+  const stop = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("Photoshop did not answer the pixel read in " + Math.round(ms / 1000) + " s. Try again.")), ms); });
+  return Promise.race([p, stop]).finally(() => clearTimeout(t));
+}
+
 async function getPixels(doc, layerId, bounds, targetSize) {
   // never open a modal read that Photoshop can't finish: an empty area, or a
   // document that was closed while a preview was on its way, can leave a stuck
@@ -81,9 +88,10 @@ async function getPixels(doc, layerId, bounds, targetSize) {
   // Photoshop 2027 (28.x) refuses imaging.getPixels outside a modal scope,
   // so reads go through executeAsModal too (found in the first real test).
   return core.executeAsModal(async () => {
-    const r = await imaging.getPixels(opts);
+    // a read that never answers must not hold Photoshop's modal state forever
+    const r = await withTimeout(imaging.getPixels(opts), READ_TIMEOUT_MS);
     const img = r.imageData;
-    const raw = await img.getData({ chunky: true });
+    const raw = await withTimeout(img.getData({ chunky: true }), READ_TIMEOUT_MS);
     const data = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
     const w = img.width, h = img.height;
     let c = img.components;
