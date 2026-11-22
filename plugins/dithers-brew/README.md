@@ -1,6 +1,18 @@
-# Frank's Dithers Brew 1.0
+# Frank's Dithers Brew 1.1
 
 A Photoshop panel for dither, halftone, ASCII and print-separation looks. Your artwork is never touched: results are written as new layers (transparent paper, one layer per ink) inside a single layer group, with one undo step.
+
+## New in 1.1
+
+- **Line Art algorithms (8):** Wave Scan, Wave Amplitude, Line Weight engraving, Contour Lines, Spiral, Ripple, Stipple (blue noise), Crosswave. Pick them under Dither.
+- **Algorithm strip:** thumbnails of every algorithm for the current engine, rendered on a sphere. Click to pick.
+- **Tune card:** Threshold (all engines except Grade), Strength (error diffusion, ordered, wave bend), Direction, Spacing, Weight, Jitter. Threshold 50 / Strength 100 is the 1.0 look.
+- **Scale:** one Scale slider for Dither and ASCII.
+- **Image card (always on screen):** 3-handle Levels (black / mid / white), Sharpen to 200% with Radius, Noise -/+ (minus smooths), Haze, Invert amount; Brightness, Contrast, Blur under More. Bypass switches the card off. Replaces the Pre-process pill.
+- **Pickers:** tone maps as colour strips; Look browser renders every built-in look on your image.
+- **Print row:** DTF toggle and a DPI override (changes LPI / mm maths only, never resamples).
+- **Live drag:** while a slider is held the preview renders half-size frames from the cached source; the full preview follows on release.
+- **40 built-in looks** (8 new Line Art). Every 1.0 look and saved look renders exactly as before.
 
 ## Install
 

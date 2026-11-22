@@ -2,11 +2,13 @@
  "cards": [
   "Preview",
   "Library",
+  "Look browser",
   "Effect type",
   "Engine",
+  "Tune",
+  "Image",
   "Colour",
   "Effect stack (click to switch on / off)",
-  "Pre-process",
   "Edge lines",
   "DTF film",
   "Dot gain",
@@ -15,7 +17,7 @@
   "Distress",
   "Output"
  ],
- "controls": "input:53 select:9 button:38 textarea:1",
+ "controls": "input:61 select:9 button:45 textarea:1",
  "previewDefault": "2807e930cda1",
  "presets": [
   "Print - Newsprint 45 deg / 35 LPI = 6eb46d7800c8",
@@ -49,7 +51,15 @@
   "ASCII - Digit matrix (terminal green) = 15dc5335b732",
   "ASCII - Binary rain = 481169065379",
   "ASCII - Text halftone: FRANK = e6b28de6c989",
-  "ASCII - Dot blocks (pixel patterns) = 3b71976e1428"
+  "ASCII - Dot blocks (pixel patterns) = 3b71976e1428",
+  "Line Art - Wave scan portrait (night violet) = a088a4dceb72",
+  "Line Art - Diagonal wave engraving = c50e25e79443",
+  "Line Art - Seismograph = a327c1668df2",
+  "Line Art - Banknote line engraving = dbf265054144",
+  "Line Art - Topo contours (orange on black) = e079219770b8",
+  "Line Art - Hypno spiral = 9a1bb9bc8bc0",
+  "Line Art - Crosswave riso = 3765d1b2fd4a",
+  "Line Art - Blue-noise stipple = a7a9582a5912"
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [

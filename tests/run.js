@@ -46,7 +46,66 @@ async function t(name, fn) {
     assert.ok(Math.abs(cov - 0.5) < 0.04, "coverage " + cov.toFixed(3));
   });
 
-  await t("Dithers Brew panel matches the v1.0 golden fingerprint (UI, 32 presets, Apply)", () => {
+  await t("Dithers Brew 1.1 Line Art: tone-true algorithms print about the right ink; same input gives the same mask", async () => {
+    const E = require("../plugins/dithers-brew/js/engine.js"), { DEFAULTS, merge } = require("../plugins/dithers-brew/js/state.js");
+    const w = 240, h = 240;
+    for (const l of E.LINE_ART) {
+      for (const g of [64, 128, 192]) {
+        const data = new Uint8Array(w * h * 4);
+        for (let i = 0; i < w * h; i++) { data.fill(g, i * 4, i * 4 + 3); data[i * 4 + 3] = 255; }
+        const P = merge(DEFAULTS, { engine: "dither", algo: { dither: l.id }, tune: { spacing: 12 } }); P.ppi = 300; P.scale = 1;
+        const r1 = await E.render({ w, h, c: 4, data }, P), r2 = await E.render({ w, h, c: 4, data }, P);
+        assert.deepStrictEqual(Buffer.from(r1.layers[0].mask), Buffer.from(r2.layers[0].mask), l.id + " deterministic");
+        if (!l.tone) continue;
+        let s = 0; for (const v of r1.layers[0].mask) s += v ? 1 : 0;
+        const cov = s / (w * h), want = (255 - g) / 255;
+        assert.ok(Math.abs(cov - want) < 0.1, l.id + " grey " + g + ": coverage " + cov.toFixed(3) + " want " + want.toFixed(3));
+      }
+    }
+  });
+
+  await t("Dithers Brew 1.1: Tune and Image defaults are no-ops; 1.0 looks with invert true/false render the same", async () => {
+    const E = require("../plugins/dithers-brew/js/engine.js"), { DEFAULTS, merge, clone } = require("../plugins/dithers-brew/js/state.js");
+    const src = E.demoImage(120, 90);
+    const base = merge(DEFAULTS, { engine: "dither", algo: { dither: "fs" }, fx: { pre: { on: true, contrast: 20 } } }); base.ppi = 300; base.scale = 1;
+    const old = clone(base); delete old.tune; old.fx.pre.invert = true; delete old.fx.pre.haze; delete old.fx.pre.radius;
+    const neu = clone(base); neu.fx.pre.invert = 100;
+    const a = await E.render(src, old), b = await E.render(src, neu);
+    assert.deepStrictEqual(Buffer.from(a.layers[0].mask), Buffer.from(b.layers[0].mask));
+    const hi = clone(base); hi.tune.threshold = 70;
+    const c = await E.render(src, hi), d0 = await E.render(src, base);
+    const ink = (m) => m.reduce((s, v) => s + (v ? 1 : 0), 0);
+    assert.ok(ink(c.layers[0].mask) < ink(d0.layers[0].mask), "higher threshold prints less ink");
+  });
+
+  await t("Dithers Brew 1.1 panel: algorithm strip picks, live-drag frame, look browser renders", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/dithers-brew"), { withDoc: false });
+    const d = P.document, st = () => P.mod._test.state;
+    await P.settle(600);
+    const thumbs = d.querySelectorAll(".algostrip .thumb");
+    assert.ok(thumbs.length >= 11, "halftone thumbs");
+    thumbs[2].dispatchEvent(new P.window.Event("click"));
+    assert.strictEqual(st().algo.halftone, "diamond");
+    const seg = [...d.querySelectorAll(".segbtn")].find((b) => b.textContent === "Dither");
+    seg.dispatchEvent(new P.window.Event("click"));
+    await P.settle(800);
+    assert.strictEqual(d.querySelectorAll(".algostrip .thumb").length, 28, "dither thumbs incl. Line Art");
+    const range = [...d.querySelectorAll("input[type=range]")].find((r) => r.closest(".row") && /Threshold/.test(r.closest(".row").textContent));
+    range.value = "60"; range.dispatchEvent(new P.window.Event("input", { bubbles: true }));
+    await P.settle(300);
+    assert.ok(/^Live /.test(d.querySelector(".status").textContent), "drag renders a live frame: " + d.querySelector(".status").textContent);
+    const lb = [...d.querySelectorAll(".ub")].find((b) => b.textContent === "Show looks");
+    lb.dispatchEvent(new P.window.Event("click"));
+    await P.settle(2500);
+    const imgs = d.querySelectorAll(".lookgrid img");
+    assert.strictEqual(imgs.length, 40);
+    assert.ok([...imgs].filter((i) => /^data:image\/png/.test(i.src)).length >= 20, "look thumbnails render");
+    imgs[32].parentNode.dispatchEvent(new P.window.Event("click"));
+    assert.strictEqual(st().algo.dither, "wavescan");
+  });
+
+  await t("Dithers Brew panel matches the golden fingerprint (UI, 32 v1.0 presets unchanged + 8 Line Art, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins/dithers-brew")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "dithers-brew.golden.json"), "utf8"));
     assert.deepStrictEqual(got, want);

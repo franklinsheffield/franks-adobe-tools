@@ -6,6 +6,8 @@ const DEFAULTS = {
   algo: { halftone: "round", dither: "fs", ascii: "classic" },
   mode: "mono",                             // mono | tonal | grade | rgb | cmyk
   lpi: 35, angle: 45, pixel: 1, aa: false,
+  // 1.1: per-algorithm controls (defaults reproduce 1.0 output exactly)
+  tune: { threshold: 50, strength: 100, direction: "h", weight: 2, spacing: 6, jitter: 0 },
   ascii: { size: 4, custom: "FRANK", keepOrder: false, edge: 0, textMode: false, text: "FRANK" },
   mono:  { ink: "#000000", paper: "" },
   tonal: { tone: "duonavy", inks: ["#7FA6C9", "#1B2A49"], paper: "#F4EBD0", angles: [45, 15, 75, 0, 60] },
@@ -14,7 +16,8 @@ const DEFAULTS = {
   cmyk:  { angles: [15, 75, 0, 45], on: [true, true, true, true], gcr: 100 },
   rgb:   { angles: [15, 75, 45], on: [true, true, true], strength: [100, 100, 100] },
   fx: {
-    pre:      { on: false, brightness: 0, contrast: 0, gamma: 1, black: 0, white: 255, blur: 0, sharpen: 0, noise: 0, invert: false },
+    // Image card. invert is a 0-100 amount (1.0 looks stored true/false: both still work)
+    pre:      { on: false, brightness: 0, contrast: 0, gamma: 1, black: 0, white: 255, blur: 0, sharpen: 0, radius: 1.5, noise: 0, haze: 0, invert: 0 },
     edges:    { on: false, strength: 60, thick: 1 },
     dtf:      { on: false, garment: "#1A1A1A", fuzz: 15, feather: 20, dots: true, view: "garment" },
     gain:     { on: false, amount: 0 },
@@ -22,7 +25,7 @@ const DEFAULTS = {
     clean:    { on: false, mm: 0.5 },
     distress: { on: false, amount: 30 }
   },
-  out: { source: "flat", hide: true, paper: false },
+  out: { source: "flat", hide: true, paper: false, dpi: 0 },
   view: { kind: "detail", size: 360, bg: "white" }
 };
 
@@ -80,7 +83,16 @@ const PRESETS = [
   { cat: "ASCII", name: "Digit matrix (terminal green)",     p: { engine: "ascii", algo: { ascii: "digits" }, mode: "tonal", ascii: { size: 3 }, tonal: { tone: "amber3", inks: ["#008F11", "#00FF41"], paper: "#000000" } } },
   { cat: "ASCII", name: "Binary rain",                       p: { engine: "ascii", algo: { ascii: "binary" }, ascii: { size: 3 }, mono: { ink: "#00AA33", paper: "#000000" } } },
   { cat: "ASCII", name: "Text halftone: FRANK",              p: { engine: "ascii", algo: { ascii: "classic" }, ascii: { size: 5, textMode: true, text: "FRANK" } } },
-  { cat: "ASCII", name: "Dot blocks (pixel patterns)",       p: { engine: "ascii", algo: { ascii: "blocks" }, ascii: { size: 3 } } }
+  { cat: "ASCII", name: "Dot blocks (pixel patterns)",       p: { engine: "ascii", algo: { ascii: "blocks" }, ascii: { size: 3 } } },
+  // ---- Line Art (1.1) ----------------------------------------------
+  { cat: "Line Art", name: "Wave scan portrait (night violet)", p: Object.assign(D("wavescan"), { pixel: 3, mono: { ink: "#7A7CFF", paper: "#000000" }, tune: { threshold: 53 } }) },
+  { cat: "Line Art", name: "Diagonal wave engraving",        p: Object.assign(D("wavescan"), { pixel: 2, tune: { direction: "d", weight: 3 }, fx: { pre: { on: true, contrast: 15 } } }) },
+  { cat: "Line Art", name: "Seismograph",                    p: Object.assign(D("waveamp"), { pixel: 2, tune: { spacing: 7, weight: 3 } }) },
+  { cat: "Line Art", name: "Banknote line engraving",        p: Object.assign(D("lineweight"), { pixel: 1, tune: { direction: "d", spacing: 5 }, fx: { pre: { on: true, contrast: 20, sharpen: 60 } } }) },
+  { cat: "Line Art", name: "Topo contours (orange on black)", p: Object.assign(D("contour"), { pixel: 2, tune: { weight: 4 }, mono: { ink: "#FF9F1C", paper: "#000000" } }) },
+  { cat: "Line Art", name: "Hypno spiral",                   p: Object.assign(D("spiral"), { pixel: 2, tune: { spacing: 8 } }) },
+  { cat: "Line Art", name: "Crosswave riso",                 p: Object.assign(D("crosswave"), { mode: "tonal", pixel: 2, tonal: { tone: "rb", inks: ["#FF48B0", "#0078BF"], paper: "#F5F0E6" } }) },
+  { cat: "Line Art", name: "Blue-noise stipple",             p: Object.assign(D("stipple"), { pixel: 1, fx: { pre: { on: true, contrast: 10 } } }) }
 ];
 
 module.exports = { DEFAULTS, PRESETS, merge, clone };

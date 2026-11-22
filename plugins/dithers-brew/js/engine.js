@@ -10,6 +10,7 @@
 // Every layer = { name, color:[r,g,b], mask:Uint8Array(0..255 ink), blend }
 // ======================================================================
 const ASCII = require("./ascii.js");
+const LA = require("./lineart.js");
 
 const PI = Math.PI;
 const SQ3 = Math.sqrt(3);
@@ -83,7 +84,7 @@ const DITHERS = [
   { id: "ign",     name: "Gradient Noise (stochastic)", t: "ign" },
   { id: "white",   name: "White Noise (grain)",       t: "white" },
   { id: "thr",     name: "Hard Threshold",            t: "thr" }
-];
+].concat(LA.LINE_ART.map((l) => ({ id: l.id, name: l.name, t: "line" })));
 const DITHER_BY_ID = {};
 DITHERS.forEach((d) => { DITHER_BY_ID[d.id] = d; });
 
@@ -232,7 +233,8 @@ function screenInk(demand, w, h, kind, cellPx, angle, aa, phase) {
   return out;
 }
 
-function diffuseMono(demand, w, h, K, jit, seed) {
+function diffuseMono(demand, w, h, K, jit, seed, strength) {
+  const est = strength == null ? 1 : strength;
   const n = w * h, buf = new Float32Array(n), out = new Uint8Array(n);
   for (let i = 0; i < n; i++) buf[i] = demand[i];
   const kd = K.k, kl = kd.length, div = K.d;
@@ -245,7 +247,7 @@ function diffuseMono(demand, w, h, K, jit, seed) {
       if (jit) thr += (hash2(x, y, seed) - 0.5) * jit * 255;
       const nv = old >= thr ? 255 : 0;
       out[idx] = nv;
-      const err = (old - nv) / div;
+      const err = est === 1 ? (old - nv) / div : (old - nv) * est / div;
       if (err === 0) continue;
       for (let k = 0; k < kl; k++) {
         const e = kd[k];
@@ -257,16 +259,22 @@ function diffuseMono(demand, w, h, K, jit, seed) {
   return out;
 }
 
-function ditherInk(demand, w, h, D, phase) {
+function ditherInk(demand, w, h, D, phase, T, lsc) {
   const n = w * h, out = new Uint8Array(n);
   const ox = phase ? phase[0] : 0, oy = phase ? phase[1] : 0;
-  if (D.t === "ed") return diffuseMono(demand, w, h, KERNELS[D.k], D.jit || 0, 11 + ox);
+  const st = T && T.strength != null ? clamp(T.strength, 0, 100) / 100 : 1;
+  if (D.t === "line") return LA.lineInk(demand, w, h, D.id, T, lsc);
+  if (D.t === "ed") return diffuseMono(demand, w, h, KERNELS[D.k], D.jit || 0, 11 + ox, st);
   if (D.t === "ord") {
     const M = mapFor(D), sz = M.n;
+    const jit = T && T.jitter ? clamp(T.jitter, 0, 100) / 100 : 0;
+    const plain = st === 1 && !jit;
     for (let y = 0; y < h; y++) {
       const ry = ((y + oy) % sz) * sz;
       for (let x = 0; x < w; x++) {
-        if (demand[y * w + x] / 255 > M.m[ry + ((x + ox) % sz)]) out[y * w + x] = 255;
+        let t = M.m[ry + ((x + ox) % sz)];
+        if (!plain) { t = 0.5 + (t - 0.5) * st; if (jit) t += (hash2(x, y, 23 + ox) - 0.5) * jit; }
+        if (demand[y * w + x] / 255 > t) out[y * w + x] = 255;
       }
     }
     return out;
@@ -303,6 +311,7 @@ function makeThr(E, angle) {
     };
   }
   const D = DITHER_BY_ID[E.algo] || DITHERS[0];
+  if (D.t === "line") return LA.lineThr(D.id, E.tune, (E.w || 512) / (E.ps > 1.01 ? E.ps : 1), (E.h || 512) / (E.ps > 1.01 ? E.ps : 1), E.lsc);
   if (D.t === "ord") {
     const M = mapFor(D), sz = M.n;
     return (x, y) => M.m[(y % sz) * sz + (x % sz)];
@@ -313,15 +322,21 @@ function makeThr(E, angle) {
 }
 
 function inkFromPlane(demand, w, h, E, angle, phase, asc) {
+  const thr = E.tune && E.tune.threshold != null ? E.tune.threshold : 50;
+  if (thr !== 50) {
+    const sh = (50 - thr) * 2.55, d2 = new Uint8Array(demand.length);
+    for (let i = 0; i < demand.length; i++) d2[i] = demand[i] ? clamp(demand[i] + sh, 0, 255) : 0;
+    demand = d2;
+  }
   if (E.engine === "halftone") return screenInk(demand, w, h, E.algo, E.cellPx, angle, E.aa, phase);
   if (E.engine === "ascii") return ASCII.asciiInk(demand, w, h, asc);
   const D = DITHER_BY_ID[E.algo] || DITHERS[0];
   if (E.ps > 1.01) {
     const w2 = Math.max(2, Math.round(w / E.ps)), h2 = Math.max(2, Math.round(h / E.ps));
     const small = downBox(demand, w, h, w2, h2);
-    return upNearest(ditherInk(small, w2, h2, D, phase), w2, h2, w, h);
+    return upNearest(ditherInk(small, w2, h2, D, phase, E.tune, E.lsc), w2, h2, w, h);
   }
-  return ditherInk(demand, w, h, D, phase);
+  return ditherInk(demand, w, h, D, phase, E.tune, E.lsc);
 }
 
 // ----------------------------------------------------------------------
@@ -366,8 +381,10 @@ function preprocess(rgb, w, h, pre, s) {
     t = Math.pow(t, 1 / gam);
     let x = t * 255;
     x = cf * (x - 128) + 128 + clamp(pre.brightness, -100, 100) * 1.28;
+    if (pre.haze) { const hz = clamp(pre.haze, 0, 100) / 100 * 96; x = hz + x * (1 - hz / 255); }
     x = clamp(x, 0, 255);
-    if (pre.invert) x = 255 - x;
+    const inv = typeof pre.invert === "number" ? clamp(pre.invert, 0, 100) / 100 : (pre.invert ? 1 : 0);
+    if (inv) x = x + (255 - 2 * x) * inv;
     lut[v] = (x + 0.5) | 0;
   }
   for (let i = 0; i < rgb.length; i++) rgb[i] = lut[rgb[i]];
@@ -376,9 +393,13 @@ function preprocess(rgb, w, h, pre, s) {
   const br = pre.blur * s;
   if (br >= 0.5) { work = boxBlurRGB(work, w, h, br); }
   if (pre.sharpen > 0) {
-    const bl = boxBlurRGB(work, w, h, Math.max(1, Math.round(1.5 * s)));
+    const bl = boxBlurRGB(work, w, h, Math.max(1, Math.round((pre.radius || 1.5) * s)));
     const amt = pre.sharpen / 100 * 2;
     for (let i = 0; i < work.length; i++) work[i] = clamp(work[i] + amt * (work[i] - bl[i]), 0, 255);
+  }
+  if (pre.noise < 0) {
+    const a = Math.min(100, -pre.noise) / 100, bl = boxBlurRGB(work, w, h, Math.max(1, Math.round(2 * s)));
+    for (let i = 0; i < work.length; i++) work[i] = work[i] + (bl[i] - work[i]) * a;
   }
   if (pre.noise > 0) {
     const amp = pre.noise / 100 * 64;
@@ -741,8 +762,11 @@ async function render(src, P, hooks) {
     algo: (P.algo && P.algo[P.engine]) || (P.engine === "halftone" ? "round" : "fs"),
     cellPx: (ppi / clamp(P.lpi || 35, 3, 300)) * s,
     ps: Math.max(1, (P.pixel || 1) * s),
-    aa: !!P.aa
+    aa: !!P.aa,
+    tune: P.tune || null,
+    w: w, h: h
   };
+  E.lsc = ((P.pixel || 1) * s) / (E.ps > 1.01 ? E.ps : 1);
   if (E.engine === "halftone" && E.cellPx < 3) notes.push("Cells are under 3 px; raise the document PPI or lower the LPI.");
   const asc = {
     k: Math.max(1, Math.round((P.ascii.size || 4) * s)),
@@ -943,5 +967,6 @@ module.exports = {
   SCREENS, DITHERS, KERNELS, SPOTS, ASCII_SETS: ASCII.ASCII_SETS,
   render, composite, demoImage, paletteFromImage, mergeClosest,
   hexToRgb, rgbToHex, isHex, luma, clamp,
-  _internal: { screenInk, ditherInk, rankLUT, bayerMap, clusterMap, downBox, upNearest, cmykPlanes, removeSpecks, dotGain, morph, makeThr, medianCut }
+  LINE_ART: LA.LINE_ART, TUNE_DEFAULTS: LA.TUNE_DEFAULTS,
+  _internal: { blueNoise: LA.blueNoise, lineInk: LA.lineInk, screenInk, ditherInk, rankLUT, bayerMap, clusterMap, downBox, upNearest, cmykPlanes, removeSpecks, dotGain, morph, makeThr, medianCut }
 };

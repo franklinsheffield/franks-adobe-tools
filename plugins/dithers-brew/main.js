@@ -23,13 +23,33 @@ let auto = true;
 let built = false;
 let confirmArmed = false;
 let lib = null;
+let quickNext = false;     // next preview is a fast half-size frame (slider being dragged)
+let lastScale = 1, lastPpi = 300;
 
 const refs = {};
 const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers
-function touch() { refreshAll(); updateInfo(); if (auto) schedulePreview(150); }
+function touch() { quickNext = false; refreshAll(); updateInfo(); if (auto) schedulePreview(150); }
+const effPpi = (ppi) => (state.out.dpi > 0 ? state.out.dpi : ppi);
+
+// live drag: a slider being held renders a fast half-size frame from the cached source
+function onDragInput(ev) {
+  const t = ev.target;
+  if (!auto || !lastSrc || !t || t.tagName !== "INPUT" || t.getAttribute("type") !== "range") return;
+  quickNext = true;
+  if (!loop.rendering) loop.schedule(0); else loop.run();
+}
+function halfSrc(src) {
+  const c = src.c || 4, w2 = Math.max(1, src.w >> 1), h2 = Math.max(1, src.h >> 1), out = new Uint8Array(w2 * h2 * c);
+  for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) for (let k = 0; k < c; k++) {
+    const a = ((2 * y) * src.w + 2 * x) * c + k, b = a + src.w * c;
+    out[(y * w2 + x) * c + k] = (src.data[a] + src.data[a + c] + src.data[b] + src.data[b + c] + 2) >> 2;
+  }
+  return { w: w2, h: h2, c, data: out };
+}
+
 
 function setStatus(msg, isErr) {
   if (!refs.status) return;
@@ -95,22 +115,182 @@ function srcToRGB(src) {
   return out;
 }
 
+
+// ---------------------------------------------------------------- 1.1 widgets
+const curDither = () => Engine.DITHERS.find((d) => d.id === state.algo.dither) || Engine.DITHERS[0];
+const isLine = () => state.engine === "dither" && curDither().t === "line";
+const lineInfo = () => Engine.LINE_ART.find((l) => l.id === state.algo.dither) || {};
+
+// sphere test image for algorithm thumbnails
+function sphereSrc(n) {
+  const data = new Uint8Array(n * n * 4), r = n * 0.42, c = n / 2;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = (x - c) / r, dy = (y - c) / r, d2 = dx * dx + dy * dy, i = (y * n + x) * 4;
+    let v = 70;
+    if (d2 <= 1) { const z = Math.sqrt(1 - d2); v = Math.max(0, Math.min(255, 255 * (0.15 + 0.85 * Math.max(0, -0.45 * dx - 0.55 * dy + 0.7 * z)))); }
+    data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255;
+  }
+  return { w: n, h: n, c: 4, data };
+}
+const thumbCache = {};
+function algoList(engine) {
+  if (engine === "halftone") return Engine.SCREENS;
+  if (engine === "ascii") return ASCII.ASCII_SETS;
+  return Engine.DITHERS;
+}
+// scrolling strip of rendered thumbnails; click picks the algorithm
+function algoStrip() {
+  const strip = el("div", { class: "algostrip" });
+  let shown = "";
+  async function fill(engine) {
+    clear(strip);
+    const items = algoList(engine), N = 44, src = sphereSrc(N);
+    const nodes = items.map((a) => {
+      const img = el("img", { class: "thumbimg" });
+      const b = el("div", { class: "thumb", title: a.name }, [img]);
+      b.addEventListener("click", () => { state.algo[engine] = a.id; touch(); });
+      strip.appendChild(b);
+      return { a, b, img };
+    });
+    for (const o of nodes) {
+      const key = engine + ":" + o.a.id;
+      if (!thumbCache[key]) {
+        const P = merge(DEFAULTS, { engine, algo: { [engine]: o.a.id }, mode: "mono", lpi: 30, pixel: engine === "dither" && o.a.id !== "stipple" ? 1 : 1, ascii: { size: 1 }, tune: { spacing: 4 } });
+        P.ppi = 300; P.scale = 1; P.view = state.view; P.out = state.out;
+        try {
+          const res = await Engine.render(src, P, {});
+          thumbCache[key] = PNG.dataURL(Engine.composite(res, { type: "white" }), res.w, res.h, 3);
+        } catch (e) { thumbCache[key] = ""; }
+        await tick();
+      }
+      if (thumbCache[key]) o.img.src = thumbCache[key];
+      if (shown !== engine) return;      // engine changed while rendering
+    }
+  }
+  bind(() => {
+    if (shown !== state.engine) { shown = state.engine; fill(shown); }
+    const cur = state.algo[state.engine];
+    const items = algoList(state.engine);
+    Array.from(strip.children).forEach((b, i) => { if (items[i] && items[i].id === cur) b.classList.add("on"); else b.classList.remove("on"); });
+  });
+  return strip;
+}
+
+// 3-handle levels (black / mid / white) on a gradient track. Mid maps to gamma.
+function levelsWidget() {
+  const pre = () => state.fx.pre;
+  const track = el("div", { class: "levels" });
+  const hs = ["black", "mid", "white"].map((k) => { const h = el("div", { class: "lvh lvh-" + k, title: k + " point" }); track.appendChild(h); return h; });
+  const midPos = () => { const p = pre(); return p.black + (p.white - p.black) * Math.pow(0.5, p.gamma > 0.05 ? p.gamma : 1); };
+  const vals = el("div", { class: "row" }, [
+    el("span", { class: "lbl", text: "Black / mid / white" }),
+    numInput("fx.pre.black", 0, 250), numInput("fx.pre.gamma", 0.1, 4), numInput("fx.pre.white", 5, 255)
+  ]);
+  bind(() => {
+    const W = 100 / 255;
+    hs[0].style.left = (pre().black * W) + "%";
+    hs[1].style.left = (midPos() * W) + "%";
+    hs[2].style.left = (pre().white * W) + "%";
+  });
+  let drag = -1;
+  const posOf = (ev) => { const r = track.getBoundingClientRect(); return Math.max(0, Math.min(255, ((ev.clientX - r.left) / Math.max(1, r.width)) * 255)); };
+  function setFrom(ev, live) {
+    const v = posOf(ev), p = pre();
+    p.on = true;
+    if (drag === 0) p.black = Math.round(Math.min(v, p.white - 5));
+    else if (drag === 2) p.white = Math.round(Math.max(v, p.black + 5));
+    else {
+      const t = Math.max(0.02, Math.min(0.98, (v - p.black) / Math.max(1, p.white - p.black)));
+      p.gamma = Math.round(Math.max(0.1, Math.min(4, Math.log(t) / Math.log(0.5))) * 100) / 100;
+    }
+    if (live) { refreshAll(); if (auto && lastSrc) { quickNext = true; if (!loop.rendering) loop.schedule(0); else loop.run(); } }
+  }
+  const down = (ev) => {
+    const v = posOf(ev), p = pre(), c = [p.black, midPos(), p.white].map((x) => Math.abs(x - v));
+    drag = c.indexOf(Math.min.apply(null, c));
+    try { if (track.setPointerCapture && ev.pointerId != null) track.setPointerCapture(ev.pointerId); } catch (e) { /* older UXP */ }
+    setFrom(ev, true);
+  };
+  const move = (ev) => { if (drag >= 0) setFrom(ev, true); };
+  const up = (ev) => { if (drag < 0) return; setFrom(ev, false); drag = -1; touch(); };
+  track.addEventListener("pointerdown", down); track.addEventListener("pointermove", move); track.addEventListener("pointerup", up);
+  track.addEventListener("mousedown", (e) => { if (drag < 0) down(e); }); track.addEventListener("mousemove", move); track.addEventListener("mouseup", up);
+  track.addEventListener("mouseleave", (e) => { if (drag >= 0) up(e); });
+  return el("div", {}, [row("Levels", track), vals]);
+}
+
+// expandable picker: a "Select >" row that opens a list of rendered choices
+function selectFold(label, getName, buildList) {
+  const name = el("span", { class: "val" });
+  const open = el("button", { class: "btn small", text: "Select >" });
+  const list = el("div", { class: "picklist" });
+  list.style.display = "none";
+  open.addEventListener("click", () => {
+    const show = list.style.display === "none";
+    list.style.display = show ? "" : "none";
+    open.textContent = show ? "Close" : "Select >";
+    if (show) buildList(list, () => { list.style.display = "none"; open.textContent = "Select >"; });
+  });
+  bind(() => { name.textContent = getName(); });
+  return el("div", {}, [row(label, name, open), list]);
+}
+
+function toneMapList(list, close) {
+  clear(list);
+  TONEMAPS.forEach((t) => {
+    const strip = el("div", { class: "tmstrip" }, [t.paper ? el("span", { class: "tmsw", style: { backgroundColor: t.paper } }) : null]
+      .concat(t.inks.map((hx) => el("span", { class: "tmsw", style: { backgroundColor: hx } }))));
+    const r = el("div", { class: "pickrow" + (state.tonal.tone === t.id ? " on" : ""), title: t.name }, [strip, el("span", { class: "pickname", text: t.name })]);
+    r.addEventListener("click", () => { state.tonal.tone = t.id; state.tonal.inks = t.inks.slice(); state.tonal.paper = t.paper; close(); touch(); });
+    list.appendChild(r);
+  });
+}
+
+// thumbnail grid of the built-in looks, rendered from the current source
+let lookSig = "";
+async function lookGrid(list) {
+  const src0 = lastSrc || Engine.demoImage(160, 120);
+  const sig = (lastSrc ? "doc" : "demo") + src0.w + "x" + src0.h;
+  if (sig === lookSig && list.firstChild) return;
+  lookSig = sig;
+  clear(list);
+  let src = src0;
+  while (src.w > 200) src = halfSrc(src);
+  const sc = (lastSrc ? lastScale : 1) * src.w / src0.w;
+  const cells = PRESETS.map((pr) => {
+    const img = el("img", { class: "lookimg" });
+    const c = el("div", { class: "look", title: pr.cat + " - " + pr.name }, [img, el("div", { class: "lookname", text: pr.name })]);
+    c.addEventListener("click", () => applyPatch(pr.p));
+    list.appendChild(c);
+    return { pr, img };
+  });
+  for (const o of cells) {
+    try {
+      const P = merge(DEFAULTS, o.pr.p);
+      P.ppi = effPpi(lastSrc ? lastPpi : 300); P.scale = sc;
+      const res = await Engine.render(src, P, {});
+      o.img.src = PNG.dataURL(Engine.composite(res, { type: "white" }), res.w, res.h, 3);
+    } catch (e) { /* leave blank */ }
+    await tick();
+  }
+}
+
 // ---------------------------------------------------------------- info / warnings
 function updateInfo() {
   if (!refs.info) return;
-  const ppi = docCache.ppi || 300, lines = [];
+  const ppi = effPpi(docCache.ppi || 300), lines = [];
   const mm = (px) => (px / ppi * 25.4);
   if (state.engine === "halftone") {
     const pitch = 25.4 / state.lpi;
     lines.push(state.lpi + " LPI: cell " + pitch.toFixed(2) + " mm (" + (ppi / state.lpi).toFixed(1) + " px). 5% highlight dot is about " + (pitch * 0.2523).toFixed(2) + " mm.");
     if (ppi / state.lpi < 6) lines.push("Warning: cells under 6 px look rough. Use a higher PPI or a lower LPI.");
   } else if (state.engine === "dither") {
-    lines.push("Dot " + state.pixel + " px = " + mm(state.pixel).toFixed(2) + " mm at " + Math.round(ppi) + " PPI.");
+    lines.push("Scale " + state.pixel + "x: dot " + state.pixel + " px = " + mm(state.pixel).toFixed(2) + " mm at " + Math.round(ppi) + " PPI" + (state.out.dpi > 0 ? " (DPI override)" : "") + ".");
     if (mm(state.pixel) < 0.5 && state.fx.dtf.on) lines.push("Warning: dots under 0.5 mm may not hold on DTF film.");
   } else {
     lines.push("Character cell " + (state.ascii.size * 6) + " x " + (state.ascii.size * 8) + " px (" + mm(state.ascii.size * 6).toFixed(2) + " mm wide).");
   }
-  if (ppi < 300) lines.push("Document is " + Math.round(ppi) + " PPI. Print and DTF work best at 300+.");
+  if (ppi < 300) lines.push((state.out.dpi > 0 ? "Output is " : "Document is ") + Math.round(ppi) + " PPI. Print and DTF work best at 300+.");
   if (docCache.demo) lines.push("No document open: showing the built-in demo image.");
   refs.info.textContent = lines.join("\n");
 }
@@ -124,8 +304,10 @@ const schedulePreview = (delay) => loop.schedule(delay);
 const runPreview = () => loop.run();
 
 async function previewOnce() {
+  const quick = quickNext && !!lastSrc;
+  quickNext = false;
+  if (quick) return previewFrame(halfSrc(lastSrc), lastScale / 2, lastPpi, true);
   setStatus("Rendering preview...");
-  const t0 = Date.now();
   let src, scale = 1, ppi = 300;
   const doc = PS.activeDoc();
   if (doc) {
@@ -138,9 +320,14 @@ async function previewOnce() {
     src = Engine.demoImage(state.view.size, Math.round(state.view.size * 0.75));
     docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
   }
-  lastSrc = src;
+  lastSrc = src; lastScale = scale; lastPpi = ppi;
   refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px @ " + Math.round(docCache.ppi) + " PPI");
-  const P = Object.assign({}, state, { ppi, scale });
+  return previewFrame(src, scale, ppi, false);
+}
+
+async function previewFrame(src, scale, ppi, quick) {
+  const t0 = Date.now();
+  const P = Object.assign({}, state, { ppi: effPpi(ppi), scale });
   const res = await Engine.render(src, P, { yield: tick });
   const dtf = state.fx.dtf;
   const bgType = state.view.bg;
@@ -149,12 +336,13 @@ async function previewOnce() {
   refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
   const avail = (refs.previewBox.clientWidth || 320) - 4;
   const maxH = layout ? layout.previewMaxHeight() : Infinity;   // pinned preview leaves room for controls
-  const dw = Math.max(1, Math.round(Math.min(avail, res.w, maxH * res.w / res.h))), dh = Math.round(res.h * dw / res.w);
+  const fw = quick ? res.w * 2 : res.w, fh = quick ? res.h * 2 : res.h;
+  const dw = Math.max(1, Math.round(Math.min(avail, fw, maxH * fw / fh))), dh = Math.round(fh * dw / fw);
   refs.preview.style.width = dw + "px";
   refs.preview.style.height = dh + "px";
   updateInfo();
   const notes = res.notes && res.notes.length ? "  |  " + res.notes.join("; ") : "";
-  setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s") + notes);
+  setStatus((quick ? "Live " : "Preview ") + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s") + notes);
 }
 
 function tryLayerTarget(doc) {
@@ -185,7 +373,7 @@ async function applyNow() {
     for (const t of targets) {
       setStatus("Reading pixels " + (done + 1) + "/" + targets.length + "...");
       const r = await PS.readSource(doc, t, { kind: "full" });
-      const P = Object.assign({}, state, { ppi: r.ppi, scale: 1 });
+      const P = Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 });
       const res = await Engine.render(r.src, P, {
         yield: tick,
         progress: (i, n, name) => setStatus("Rendering " + (done + 1) + "/" + targets.length + ": " + name + " (" + (i + 1) + "/" + n + ")...")
@@ -221,6 +409,8 @@ function applyPatch(p) {
   const keepOut = clone(state.out), keepView = clone(state.view);
   state = merge(DEFAULTS, p);
   state.out = keepOut; state.view = keepView;
+  // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
+  if (typeof state.fx.pre.invert !== "number") state.fx.pre.invert = state.fx.pre.invert ? 100 : 0;
   touch();
 }
 function stateForSave() {
@@ -273,6 +463,19 @@ function build(root) {
   // ---- presets (shared Library card)
   lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
   root.appendChild(lib.card);
+  const lookList = el("div", { class: "lookgrid" });
+  lookList.style.display = "none";
+  const lookBtn = el("button", { class: "btn small", text: "Show looks" });
+  lookBtn.addEventListener("click", () => {
+    const show = lookList.style.display === "none";
+    lookList.style.display = show ? "" : "none";
+    lookBtn.textContent = show ? "Hide looks" : "Show looks";
+    if (show) lookGrid(lookList);
+  });
+  root.appendChild(card("Look browser", [
+    el("div", { class: "row" }, [lookBtn, el("span", { class: "hint", text: "Every built-in look, rendered on your image. Click one to load it." })]),
+    lookList
+  ]));
 
   // ---- effect type toggles
   root.appendChild(card("Effect type", [
@@ -291,7 +494,7 @@ function build(root) {
   showIf(htBox, () => state.engine === "halftone");
   const diBox = el("div", {}, [
     selectRow("Algorithm", "algo.dither", Engine.DITHERS.map((s) => ({ v: s.id, l: s.name }))),
-    sliderRow("Dot / pixel px", "pixel", 1, 16, 1, " px")
+    sliderRow("Scale", "pixel", 1, 16, 1, "x")
   ]);
   showIf(diBox, () => state.engine === "dither");
   const customRow = textRow("Characters", "ascii.custom", "e.g. FRANK 01");
@@ -303,13 +506,47 @@ function build(root) {
   const asBox = el("div", {}, [
     selectRow("Character set", "algo.ascii", ASCII.ASCII_SETS.map((s) => ({ v: s.id, l: s.name }))),
     customRow, keepRow,
-    sliderRow("Character size", "ascii.size", 1, 16, 1, " px"),
+    sliderRow("Scale", "ascii.size", 1, 16, 1, "x"),
     sliderRow("Edge glyphs", "ascii.edge", 0, 100, 1, "%"),
     checkRow("Text halftone (tile my own words)", "ascii.textMode"),
     textRowEl
   ]);
   showIf(asBox, () => state.engine === "ascii");
-  root.appendChild(card("Engine", [htBox, diBox, asBox]));
+  const printRow = el("div", { class: "row wrap" }, [
+    el("span", { class: "lbl", text: "Print" }),
+    pill("DTF", "fx.dtf.on", null, "DTF film: knock out the garment colour"),
+    el("span", { class: "lbl2", text: "DPI" }),
+    (function () {
+      const sel = el("select", { class: "dpisel" });
+      const opts = [0, 150, 200, 300, 600, 1200];
+      opts.forEach((v) => sel.appendChild(el("option", { value: String(v), text: v ? v + " DPI" : "Document" })));
+      sel.addEventListener("change", () => { state.out.dpi = opts[sel.selectedIndex] || 0; touch(); });
+      bind(() => { const i = opts.indexOf(state.out.dpi || 0); sel.selectedIndex = i < 0 ? 0 : i; });
+      return sel;
+    })()
+  ]);
+  root.appendChild(card("Engine", [algoStrip(), htBox, diBox, asBox, printRow]));
+
+  // ---- tune: only the controls the chosen algorithm uses
+  const dirRow = segGroup("tune.direction", [{ v: "h", l: "Horiz" }, { v: "v", l: "Vert" }, { v: "d", l: "Diag" }, { v: "r", l: "Radial" }]);
+  const dirWrap = row("Direction", dirRow);
+  showIf(dirWrap, () => isLine() && ["wavescan", "waveamp", "lineweight"].indexOf(state.algo.dither) >= 0);
+  const strRow = sliderRow("Strength", "tune.strength", 0, 100, 1, "%");
+  showIf(strRow, () => state.engine === "dither" && (curDither().t === "ed" || curDither().t === "ord" || (isLine() && (lineInfo().bend || state.algo.dither === "contour"))));
+  const spRow = sliderRow("Spacing", "tune.spacing", 2, 24, 1, " px");
+  showIf(spRow, () => isLine() && state.algo.dither !== "stipple");
+  const wtRow = sliderRow("Weight", "tune.weight", 1, 8, 1);
+  showIf(wtRow, () => isLine() && (lineInfo().bend || state.algo.dither === "contour"));
+  const jitRow = sliderRow("Jitter", "tune.jitter", 0, 100, 1, "%");
+  showIf(jitRow, () => state.engine === "dither" && curDither().t === "ord");
+  const thrRow = sliderRow("Threshold", "tune.threshold", 0, 100, 1);
+  showIf(thrRow, () => state.mode !== "grade");
+  const tuneHint = el("div", { class: "hint" });
+  bind(() => {
+    tuneHint.textContent = state.mode === "grade" ? "Threshold is not used in Grade mode (the palette decides)."
+      : "Threshold 50 and Strength 100 give the classic look. Raise Threshold to clear faint background marks.";
+  });
+  root.appendChild(card("Tune", [thrRow, strRow, dirWrap, spRow, wtRow, jitRow, tuneHint]));
 
   // ---- colour
   const monoBox = el("div", {}, [
@@ -320,10 +557,7 @@ function build(root) {
   showIf(monoBox, () => state.mode === "mono");
 
   const tonalBox = el("div", {}, [
-    selectRow("Tone map", "tonal.tone", TONEMAPS.map((t) => ({ v: t.id, l: t.name })), (id) => {
-      const t = TONEMAPS.find((x) => x.id === id);
-      if (t) { state.tonal.inks = t.inks.slice(); state.tonal.paper = t.paper; }
-    }),
+    selectFold("Tone map", () => { const t = TONEMAPS.find((x) => x.id === state.tonal.tone); return t ? t.name : "Custom"; }, toneMapList),
     inkEditor(),
     row("Paper", hexField(() => state.tonal.paper, (v) => { state.tonal.paper = v; }, true)),
     el("div", { class: "hint", text: "Inks stack as tone bands, lightest underneath, like a gradient map made of dots." })
@@ -390,11 +624,11 @@ function build(root) {
     el("div", { class: "hint", text: "Channels add together over black (Linear Dodge)." })
   ]);
   showIf(rgbBox, () => state.mode === "rgb");
-  root.appendChild(card("Colour", [monoBox, tonalBox, gradeBox, cmykBox, rgbBox]));
+  const colourCard = card("Colour", [monoBox, tonalBox, gradeBox, cmykBox, rgbBox]);
+  root.appendChild(colourCard);
 
   // ---- FX stack
   const fxList = [
-    { k: "pre", l: "Pre-process", t: "Shape the image before it dithers" },
     { k: "edges", l: "Edge lines", t: "Add outlines on top of the tone" },
     { k: "dtf", l: "DTF film", t: "Knock out the garment colour" },
     { k: "gain", l: "Dot gain", t: "Grow or shrink the ink" },
@@ -407,17 +641,39 @@ function build(root) {
   ]));
 
   const fxCard = (key, title, kids) => { const c = card(title, kids); showIf(c, () => state.fx[key].on); return c; };
-  root.appendChild(fxCard("pre", "Pre-process", [
+  // ---- Image card: always visible; touching any control switches it on
+  const more = el("div", {}, [
     sliderRow("Brightness", "fx.pre.brightness", -100, 100, 1),
     sliderRow("Contrast", "fx.pre.contrast", -100, 100, 1),
-    sliderRow("Gamma", "fx.pre.gamma", 0.3, 3, 0.05),
-    sliderRow("Black point", "fx.pre.black", 0, 200, 1),
-    sliderRow("White point", "fx.pre.white", 55, 255, 1),
-    sliderRow("Blur", "fx.pre.blur", 0, 8, 0.5, " px"),
-    sliderRow("Sharpen", "fx.pre.sharpen", 0, 100, 1, "%"),
-    sliderRow("Grain", "fx.pre.noise", 0, 100, 1, "%"),
-    checkRow("Invert", "fx.pre.invert")
-  ]));
+    sliderRow("Blur", "fx.pre.blur", 0, 8, 0.5, " px")
+  ]);
+  more.style.display = "none";
+  const moreBtn = el("button", { class: "btn small", text: "More >" });
+  moreBtn.addEventListener("click", () => { const sh = more.style.display === "none"; more.style.display = sh ? "" : "none"; moreBtn.textContent = sh ? "Less" : "More >"; });
+  const radRow = sliderRow("  Radius", "fx.pre.radius", 0.5, 30, 0.5, " px");
+  radRow.classList.add("sub");
+  const imgCard = card("Image", [
+    levelsWidget(),
+    sliderRow("Sharpen", "fx.pre.sharpen", 0, 200, 1, "%"),
+    radRow,
+    sliderRow("Noise -/+", "fx.pre.noise", -100, 100, 1),
+    sliderRow("Haze", "fx.pre.haze", 0, 100, 1, "%"),
+    sliderRow("Invert", "fx.pre.invert", 0, 100, 1, "%"),
+    el("div", { class: "row" }, [moreBtn]),
+    more,
+    (function () {
+      const cb = el("input", { type: "checkbox" });
+      cb.addEventListener("change", () => { state.fx.pre.on = !cb.checked; touch(); });
+      bind(() => { cb.checked = !state.fx.pre.on; });
+      return el("div", { class: "row chk" }, [cb, el("span", { class: "lbl2", text: "Bypass image adjustments" })]);
+    })()
+  ]);
+  // any edit inside the card (except Bypass) switches the adjustments on
+  imgCard.addEventListener("change", (ev) => {
+    if (ev.target && ev.target.getAttribute("type") === "checkbox") return;
+    if (!state.fx.pre.on) { state.fx.pre.on = true; touch(); }
+  });
+  root.insertBefore(imgCard, colourCard);
   root.appendChild(fxCard("edges", "Edge lines", [
     sliderRow("Strength", "fx.edges.strength", 0, 100, 1, "%"),
     sliderRow("Thickness", "fx.edges.thick", 1, 6, 1, " px")
@@ -446,8 +702,9 @@ function build(root) {
     el("div", { class: "hint", text: "Creates a layer group of ink layers with transparent paper. One undo step." })
   ]));
 
-  root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.0  -  your artwork is never changed; results land in new layers." }));
+  root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.1  -  your artwork is never changed; results land in new layers." }));
 
+  root.addEventListener("input", onDragInput);
   refreshAll();
   updateInfo();
 }

@@ -1,3 +1,22 @@
 /* Dithers Brew overrides on top of core/panel.css. Empty: uses the suite defaults. */
 /* Plugin neon (neon orange): title text and every glow use this colour. */
 :root { --glow: #ff9f1c; --glowbg: #2e1a03; }
+
+/* 1.1 widgets (layout only; colours come from the suite theme) */
+.algostrip { display: flex; overflow-x: scroll; gap: 4px; padding: 2px 0 6px; }
+.thumb { flex: 0 0 auto; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,0.35); border-radius: 3px; overflow: hidden; }
+.thumb.on { border: 2px solid var(--glow); background: var(--glowbg); }
+.thumbimg { width: 44px; height: 44px; display: block; }
+.levels { position: relative; flex: 1 1 auto; height: 14px; border: 1px solid rgba(255,255,255,0.85); background: linear-gradient(to right, #000, #fff); margin: 4px 6px; }
+.lvh { position: absolute; top: -3px; width: 8px; height: 18px; margin-left: -4px; border: 1px solid #fff; }
+.lvh-black { background: #000; } .lvh-mid { background: #808080; } .lvh-white { background: #fff; border-color: var(--glow); }
+.row.sub .lbl { padding-left: 12px; opacity: 0.7; }
+.picklist, .lookgrid { max-height: 260px; overflow-y: scroll; border: 1px solid rgba(255,255,255,0.35); padding: 3px; }
+.pickrow { display: flex; align-items: center; gap: 6px; padding: 3px; border: 1px solid transparent; }
+.pickrow.on { border-color: var(--glow); background: var(--glowbg); }
+.tmstrip { display: flex; } .tmsw { width: 14px; height: 14px; display: inline-block; border: 1px solid rgba(255,255,255,0.35); }
+.pickname { font-size: 10px; }
+.lookgrid { display: flex; flex-wrap: wrap; gap: 4px; max-height: 340px; }
+.look { width: 31%; border: 1px solid rgba(255,255,255,0.35); }
+.lookimg { width: 100%; display: block; }
+.lookname { font-size: 9px; padding: 2px; }
