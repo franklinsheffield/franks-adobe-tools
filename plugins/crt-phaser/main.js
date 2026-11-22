@@ -29,7 +29,13 @@ const panel = createToolPanel({
         sliderRow("Lines (on the full image)", "phase.lines", 20, 600, 5, ""),
         only(sliderRow("Bend", "phase.amp", 0, 100, 1, "%"), (s) => s.phase.mode !== "linear"),
         only(sliderRow("Smoothness", "phase.smooth", 0, 100, 1, "%"), (s) => s.phase.mode === "waveform"),
-        only(sliderRow("Angle", "phase.angle", 0, 90, 1, " deg"), (s) => s.phase.mode === "linear"),
+        segGroup("phase.angle", [
+          { v: 0, l: "0\u00b0", t: "Horizontal lines" },
+          { v: 45, l: "45\u00b0", t: "Diagonal, falling to the right" },
+          { v: 90, l: "90\u00b0", t: "Vertical lines" },
+          { v: 135, l: "135\u00b0", t: "Diagonal, rising to the right" }
+        ]),
+        sliderRow("Angle", "phase.angle", 0, 180, 1, " deg"),
         only(sliderRow("Flow warp", "phase.warp", 0, 100, 1, "%"), (s) => s.phase.mode !== "linear"),
         only(sliderRow("Detail", "phase.detail", 0, 100, 1, "%"), (s) => /^flux/.test(s.phase.mode)),
         sliderRow("Beam width", "phase.width", 5, 100, 1, "%"),

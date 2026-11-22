@@ -21,6 +21,23 @@ module.exports = async function (t) {
     assert.strictEqual(seen.size, 20);
   });
 
+  await t("crt-phaser 1.1: Angle turns Waveform and Flux lines; 0 deg matches the default", async () => {
+    const src = E.demoImage(80, 60);
+    const run = async (name, angle) => {
+      const pr = S.PRESETS.find((p) => p.name === name);
+      const P = S.merge(S.DEFAULTS, pr.p); P.scale = 0.5; P.fullH = 120;
+      if (angle != null) P.phase.angle = angle;
+      return Buffer.from((await E.render(src, P)).layers[0].rgba).toString("base64");
+    };
+    for (const name of ["Ember Trace", "Thermal Flux"]) {
+      const base = await run(name, null);
+      assert.strictEqual(await run(name, 0), base, name + " at 0 deg is unchanged");
+      const seen = new Set([base]);
+      for (const a of [45, 90, 135]) seen.add(await run(name, a));
+      assert.strictEqual(seen.size, 4, name + ": each angle gives a different render");
+    }
+  });
+
   await t("crt-phaser 1.1: editable stack has Base, Lines, Glow, Dot Grid, Flare with the right blends", async () => {
     const pr = S.PRESETS.find((p) => p.name === "Cyan Flux");
     const P = S.merge(S.DEFAULTS, pr.p); P.scale = 1; P.out.layers = "split";

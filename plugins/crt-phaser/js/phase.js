@@ -64,14 +64,16 @@ async function renderPhase(src, P, hooks) {
 
   // 2. the field
   const F = new Float32Array(n), bend = Q.amp / 100 * 10;
-  const ang = (mode === "linear" ? Q.angle : 0) * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
+  // Angle turns the line direction in every mode (0 = horizontal lines, 90 = vertical); brightness bends lines across it
+  const ang = (Q.angle || 0) * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
   let flow = null;
   if (mode === "flux" || mode === "fluxdots" || Q.warp > 0) flow = flowNoise(w, h, sp * 6, Q.seed | 0);
   const warp = Q.warp / 100 * 1.5, levels = 2 + Q.amp / 100 * 10;
   for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
-    if (mode === "waveform") F[i] = y / sp - bend * (0.7 * Ls[i] + 0.3 * Ld[i]) + (flow ? warp * 0.4 * flow[i] : 0);
-    else if (mode === "linear") F[i] = (-x * sa + y * ca) / sp + (flow ? warp * 0.25 * flow[i] : 0);
-    else F[i] = (y / sp) * 0.35 + levels * (0.55 * Ld[i] + 0.45 * Ls[i]) + warp * flow[i];
+    const t = ang ? -x * sa + y * ca : y;          // distance across the line direction
+    if (mode === "waveform") F[i] = t / sp - bend * (0.7 * Ls[i] + 0.3 * Ld[i]) + (flow ? warp * 0.4 * flow[i] : 0);
+    else if (mode === "linear") F[i] = t / sp + (flow ? warp * 0.25 * flow[i] : 0);
+    else F[i] = (t / sp) * 0.35 + levels * (0.55 * Ld[i] + 0.45 * Ls[i]) + warp * flow[i];
   }
   await yieldFn();
 
