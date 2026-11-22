@@ -160,13 +160,31 @@ function createToolPanel(cfg) {
     setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
   }
 
+  // The preview keeps the picture's exact shape. clientWidth includes the box's
+  // padding (4 px each side with the console brand), so subtract the real padding:
+  // an image even a few px wider than the box gets squeezed sideways by UXP while
+  // its height stays, which distorts it (Frank, 2026-11-22). Refit when the panel
+  // is resized, too.
+  let previewWH = null, fitW = 0;
+  function boxInner() {
+    const box = refs.previewBox;
+    let pad = 10;
+    try { const cs = window.getComputedStyle(box); const p = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0); if (p > 0) pad = p + 2; } catch (e) { /* no computed style */ }
+    return (box.clientWidth || 330) - pad;
+  }
   function sizePreview(w, h) {
-    const avail = (refs.previewBox.clientWidth || 320) - 4;
+    previewWH = [w, h];
+    const avail = boxInner();
+    fitW = refs.previewBox.clientWidth || 0;
     const maxH = layout ? layout.previewMaxHeight() : Infinity;
-    const dw = Math.max(1, Math.round(Math.min(avail, w, maxH * w / h))), dh = Math.round(h * dw / w);
+    const dw = Math.max(1, Math.floor(Math.min(avail, w, maxH * w / h))), dh = Math.max(1, Math.round(h * dw / w));
     refs.preview.style.width = dw + "px";
     refs.preview.style.height = dh + "px";
+    refs.preview.style.maxWidth = "none";
+    refs.preview.style.flexShrink = "0";
   }
+  function refitPreview() { if (previewWH && refs.previewBox && (refs.previewBox.clientWidth || 0) !== fitW) sizePreview(previewWH[0], previewWH[1]); }
+  try { window.addEventListener("resize", refitPreview); } catch (e) { /* host without resize events */ }
 
   // ---- apply
   let working = false, cancelReq = false;
@@ -310,6 +328,11 @@ function createToolPanel(cfg) {
         return { pr, img, node: c };
       });
     }
+    function fitThumb(o) {
+      if (!o.aspect) return;
+      const cw = (o.node.clientWidth || 0) - 2;
+      if (cw > 4) o.img.style.height = Math.round(cw * o.aspect) + "px";
+    }
     function mark() { cells.forEach((o) => { if (o.pr.name === presetName) o.node.classList.add("on"); else o.node.classList.remove("on"); }); }
     async function render() {
       const src0 = lastSrc || Engine.demoImage(160, 120);
@@ -334,6 +357,9 @@ function createToolPanel(cfg) {
           const rgb = Engine.composite(res, { type: state.view.bg }, src);
           if (hasDeck && o.pr.p.deck) applyDeckPreview(rgb, res, Colour.normalize(o.pr.p.deck), Engine, src, state.view.bg, cfg.colourBase);
           o.img.src = PNG.dataURL(rgb, res.w, res.h, 3);
+          // UXP does not keep an image's shape from its width alone: set the height
+          // too, or a thumbnail is stretched (Frank, 2026-11-22: "the preview is distorted")
+          o.aspect = res.h / res.w; fitThumb(o);
         } catch (e) { /* leave this one blank */ }
         await tick();
       }
@@ -405,6 +431,7 @@ function createToolPanel(cfg) {
       refs.scr = el("div", { class: "scrstrip" }, [refs.scrL, refs.scrR]);
     }
     refs.previewBox = el("div", { class: "previewbox" }, [refs.scr || null, refs.preview]);
+    refs.previewBox.addEventListener("mouseover", refitPreview);     // UXP panels don't always send resize: refit when the pointer comes back
     refs.status = el("div", { class: "status", text: "Starting..." });
     const refresh = el("button", { class: "btn small", text: "Refresh" });
     refresh.addEventListener("click", () => schedulePreview(0));

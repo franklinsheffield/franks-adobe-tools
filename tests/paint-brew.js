@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const DIR = path.join(ROOT, "plugins/paint-brew");
 
 module.exports = async function (t) {
-  const E = require(DIR + "/js/engine.js"), S = require(DIR + "/js/state.js");
+  const E = require(DIR + "/js/engine.js"), S = require(DIR + "/js/state.js"), M = require(DIR + "/core/imgmath.js");
   const LAYERS = {
     oil: ["Underpainting", "Broad strokes", "Detail strokes", "Impasto light", "Canvas weave"],
     watercolour: ["Washes", "Wet edges", "Granulation", "Pencil", "Paper texture"],
@@ -20,8 +20,8 @@ module.exports = async function (t) {
   };
   const run = (src, p, extra) => { const P = S.merge(S.DEFAULTS, p); Object.assign(P, { scale: 0.12, fullH: src.h / 0.12, fullW: src.w / 0.12 }, extra || {}); return E.render(src, P, {}); };
 
-  await t("Paint Brew engine: 22 looks, deterministic, full-size layers, the right stack per style", async () => {
-    assert.strictEqual(S.PRESETS.length, 22);
+  await t("Paint Brew engine: 24 looks, deterministic, full-size layers, the right stack per style", async () => {
+    assert.strictEqual(S.PRESETS.length, 24);
     const src = E.demoImage(120, 90);
     const seen = new Set();
     for (const pr of S.PRESETS) {
@@ -188,6 +188,27 @@ module.exports = async function (t) {
     assert.notStrictEqual(await hash({ style: "spray", spray: { soft: 0 } }), await hash({ style: "spray", spray: { soft: 100 } }), "Soft edges change the cans");
     const bare = await run(src, { style: "spray", spray: { bare: 100 } });
     assert.ok(bare.layers.find((L) => L.name === "Can 1").rgba.every((v, i) => i % 4 !== 3 || v === 0), "Bare wall 100 leaves the lightest can off");
+    // paint blend / opacity flatten the coats into one "Paint" layer over the wall
+    const blended = await run(src, { style: "spray", spray: { outline: 0, highlight: 0, blend: "multiply", paintOpacity: 80 } });
+    assert.deepStrictEqual(blended.layers.map((L) => L.name), ["Wall", "Paint", "Wall relief"]);
+    const pl = blended.layers[1];
+    assert.strictEqual(pl.blend, "MULTIPLY"); assert.strictEqual(pl.opacity, 80);
+    for (const [b, mode] of [["linearburn", "LINEARBURN"], ["hardlight", "HARDLIGHT"], ["softlight", "SOFTLIGHT"], ["overlay", "OVERLAY"]]) {
+      assert.strictEqual((await run(src, { style: "spray", spray: { blend: b } })).layers.find((L) => L.name === "Paint").blend, mode);
+      assert.ok(M.BLENDS[mode], mode + " previews");
+    }
+    assert.ok(!(await names({ style: "spray", spray: { blend: "normal", paintOpacity: 100 } })).includes("Paint"), "Normal at 100% keeps one layer per can");
+    // brick and wood options, grime and cracks all change the wall
+    const wallHash = async (sp) => require("crypto").createHash("sha1").update(Buffer.from((await run(src, { style: "spray", spray: sp })).layers[0].rgba)).digest("hex");
+    const bh = await Promise.all([{ wall: "brick" }, { wall: "brick", brickPattern: "stack" }, { wall: "brick", brickPattern: "flemish" }, { wall: "brick", brickPattern: "basket" },
+      { wall: "brick", brickSize: 180 }, { wall: "brick", mortar: 100 }, { wall: "brick", mortarColour: "#3E3C39" }, { wall: "brick", brickVariation: 0 }].map(wallHash));
+    assert.strictEqual(new Set(bh).size, bh.length, "every brick option changes the wall");
+    const wh = await Promise.all([{ wall: "wood" }, { wall: "wood", woodDir: "horizontal" }, { wall: "wood", woodFinish: "weathered" }, { wall: "wood", woodFinish: "painted" },
+      { wall: "wood", plankWidth: 180 }, { wall: "wood", grain: 0 }, { wall: "wood", knots: 100 }].map(wallHash));
+    assert.strictEqual(new Set(wh).size, wh.length, "every wood option changes the wall");
+    assert.notStrictEqual(await wallHash({ wall: "concrete", grime: 0 }), await wallHash({ wall: "concrete", grime: 90 }), "grime");
+    assert.notStrictEqual(await wallHash({ wall: "concrete", cracks: 0 }), await wallHash({ wall: "concrete", cracks: 90 }), "cracks");
+    assert.strictEqual(await wallHash({ wall: "metal", cracks: 0 }), await wallHash({ wall: "metal", cracks: 90 }), "no cracks on metal");
     // pastel: paper colour, oil pastel (no dust), fixed hatch angle
     const pp = await run(src, { style: "pastel", pastel: { paper: "#1E1E1E" } });
     assert.ok(Math.abs(pp.layers[0].rgba[0] - 30) < 6, "black paper: " + pp.layers[0].rgba[0]);
@@ -232,6 +253,31 @@ module.exports = async function (t) {
     Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Black").dispatchEvent(new P.window.Event("click", { bubbles: true }));
     assert.strictEqual(st.spray.wallColour, "#1C1C1C");
     assert.strictEqual(st.spray.wall, "wood", "a colour swatch keeps the wall type");
+    // wall options follow the wall type; brick options only for brick, wood options only for wood
+    const rowOf = (card, label) => Array.from(card.querySelectorAll("*")).find((e) => e.children.length === 0 && e.textContent.trim().toUpperCase() === label.toUpperCase());
+    const vis = (node) => { for (let e = node; e && e !== wc; e = e.parentElement) if (e.style && e.style.display === "none") return false; return true; };
+    assert.ok(vis(rowOf(wc, "Planks")) && vis(rowOf(wc, "Knots")), "wood options show for wood");
+    assert.ok(!vis(rowOf(wc, "Bond")) && !vis(rowOf(wc, "Mortar width")), "brick options hidden for wood");
+    Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Brick" && b.parentElement.parentElement.textContent.indexOf("Wall") === 0).dispatchEvent(new P.window.Event("click", { bubbles: true }));
+    assert.strictEqual(st.spray.wall, "brick");
+    assert.ok(vis(rowOf(wc, "Bond")) && vis(rowOf(wc, "Mortar colour")) && !vis(rowOf(wc, "Planks")), "brick options show for brick");
+    Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Flemish").dispatchEvent(new P.window.Event("click", { bubbles: true }));
+    assert.strictEqual(st.spray.brickPattern, "flemish");
+    Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Multiply").dispatchEvent(new P.window.Event("click", { bubbles: true }));
+    assert.strictEqual(st.spray.blend, "multiply");
+    // in-panel colour picker: the chip opens it, a click in the shade square sets the colour (no Photoshop dialog)
+    const chip = wc.querySelector(".pickchip"), pick = wc.querySelector(".picker");
+    assert.ok(chip && pick && pick.style.display === "none");
+    chip.dispatchEvent(new P.window.Event("click"));
+    assert.strictEqual(pick.style.display, "");
+    const sqWrap = pick.firstChild;
+    sqWrap.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 110 });
+    sqWrap.dispatchEvent(new P.window.MouseEvent("mousedown", { clientX: 200, clientY: 0 }));
+    P.document.dispatchEvent(new P.window.MouseEvent("mouseup", {}));
+    assert.ok(/^#[0-9A-F]{6}$/.test(st.spray.wallColour) && st.spray.wallColour !== "#1C1C1C", "picker set " + st.spray.wallColour);
+    sqWrap.dispatchEvent(new P.window.MouseEvent("mousedown", { clientX: 0, clientY: 0 }));
+    P.document.dispatchEvent(new P.window.MouseEvent("mouseup", {}));
+    assert.strictEqual(st.spray.wallColour, "#FFFFFF", "top-left of the square is white");
     styleBtns.find((b) => b.textContent === "Pastel").dispatchEvent(new P.window.Event("click"));
     assert.ok(!shown(cardOf("Wall")), "Wall card hidden for pastel");
     // pastel paper: swatch button, then a typed hex; a bad hex is refused
@@ -252,7 +298,7 @@ module.exports = async function (t) {
     assert.ok(P.host.calls.some((c) => c[0] === "createLayerGroup" && /Pastel/.test(c[1])), "group named for the style: " + JSON.stringify(P.host.calls.filter((c) => c[0] === "createLayerGroup")));
   });
 
-  await t("Paint Brew panel matches its golden fingerprint (UI, 22 looks, Apply)", () => {
+  await t("Paint Brew panel matches its golden fingerprint (UI, 24 looks, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), DIR], { encoding: "utf8", env: process.env, timeout: 600000 });
     const got = JSON.parse(outp), gp = path.join(__dirname, "paint-brew.golden.json");
     if (process.env.UPDATE_GOLDEN || !fs.existsSync(gp)) fs.writeFileSync(gp, JSON.stringify(got, null, 1) + "\n");

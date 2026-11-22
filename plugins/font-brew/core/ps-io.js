@@ -68,6 +68,12 @@ function collectTargets(doc, source) {
 }
 
 async function getPixels(doc, layerId, bounds, targetSize) {
+  // never open a modal read that Photoshop can't finish: an empty area, or a
+  // document that was closed while a preview was on its way, can leave a stuck
+  // "reading pixels" Progress window that blocks every plugin
+  if (bounds && (bounds.right - bounds.left < 1 || bounds.bottom - bounds.top < 1)) throw new Error("Nothing to read: the layer or area is empty.");
+  try { if (app.documents && !Array.from(app.documents).some((d) => d.id === doc.id)) throw new Error("gone"); }
+  catch (e) { if (e && e.message === "gone") throw new Error("That document is closed."); }
   const opts = { documentID: doc.id, colorSpace: "RGB", componentSize: 8 };
   if (layerId != null) opts.layerID = layerId;
   if (bounds) opts.sourceBounds = bounds;

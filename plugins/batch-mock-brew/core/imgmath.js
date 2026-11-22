@@ -82,6 +82,8 @@ const BLENDS = {
   MULTIPLY: (o, v) => o * v / 255,
   LIGHTEN: (o, v) => (v > o ? v : o),
   LINEARDODGE: (o, v) => Math.min(255, o + v),
+  LINEARBURN: (o, v) => Math.max(0, o + v - 255),
+  HARDLIGHT: (o, v) => (v < 128 ? 2 * o * v / 255 : 255 - 2 * (255 - o) * (255 - v) / 255),
   OVERLAY: (o, v) => (o < 128 ? 2 * o * v / 255 : 255 - 2 * (255 - o) * (255 - v) / 255),
   SOFTLIGHT: (o, v) => {
     const a = o / 255, b = v / 255;

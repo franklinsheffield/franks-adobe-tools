@@ -7,6 +7,7 @@ const PS = require("./core/ps-io.js");
 const PP = require("./js/paintps.js");
 const M = require("./core/imgmath.js");
 const { WALL_COLOURS } = require("./js/styles2.js");
+const { createPicker } = require("./js/picker.js");
 const STYLE_NAMES = { oil: "Oil", watercolour: "Watercolour", impressionism: "Impressionism", ink: "Alcohol Ink", spray: "Spray Paint", pastel: "Pastel" };
 
 let getState = () => DEFAULTS;
@@ -61,17 +62,20 @@ const panel = createToolPanel({
     getState = () => kit.state;
     const is = (...st) => () => st.includes(kit.state.style);
     const strokes = is("oil", "impressionism", "pastel");
-    // named swatches plus a typed hex value; never opens Photoshop's colour picker
+    // named swatches, a typed hex value and an in-panel picker (the chip opens it);
+    // never opens Photoshop's own colour picker
     const swatchRow = (label, path, list) => {
       const hex = el("input", { type: "text", class: "num hex", title: label + " as #RRGGBB" });
+      const pk = createPicker({ el, get: () => getPath(kit.state, path), set: (v, commit) => { setPath(kit.state, path, v); hex.value = v; if (commit) kit.touch(); } });
       hex.addEventListener("change", () => {
         const v = String(hex.value).trim();
         if (M.isHex(v)) { setPath(kit.state, path, ("#" + v.replace("#", "")).toUpperCase()); kit.touch(); } else hex.value = getPath(kit.state, path);
       });
-      bind(() => { hex.value = getPath(kit.state, path); });
-      return el("div", {}, [row(label, hex), el("div", { class: "row wrap" }, [segGroup(path, list)])]);
+      bind(() => { hex.value = getPath(kit.state, path); pk.sync(); });
+      return el("div", {}, [row(label, hex, pk.chip), pk.panel, el("div", { class: "row wrap" }, [segGroup(path, list)])]);
     };
     const only = (node, fn) => { showIf(node, fn); return node; };
+    const isWall = (...ws) => () => ws.includes(kit.state.spray.wall);
     const brush = card("Brush", [
       sliderRow("Stroke size", "brush.size", 4, 120, 1, " px"),
       only(sliderRow("Stroke length", "brush.length", 0.4, 2.5, 0.1, "x"), strokes),
@@ -139,9 +143,26 @@ const panel = createToolPanel({
       row("Wall", wallSeg([{ v: "plain", l: "Plain" }, { v: "concrete", l: "Concrete" }, { v: "stucco", l: "Stucco" }, { v: "brick", l: "Brick" }])),
       row("", wallSeg([{ v: "block", l: "Block" }, { v: "metal", l: "Metal" }, { v: "wood", l: "Wood" }])),
       swatchRow("Wall colour", "spray.wallColour", SWATCHES.wall),
+      row("Paint blend", segGroup("spray.blend", [{ v: "normal", l: "Normal" }, { v: "multiply", l: "Multiply" }, { v: "linearburn", l: "Burn" }])),
+      row("", segGroup("spray.blend", [{ v: "overlay", l: "Overlay" }, { v: "softlight", l: "Soft light" }, { v: "hardlight", l: "Hard light" }])),
+      sliderRow("Paint opacity", "spray.paintOpacity", 10, 100, 1, "%"),
       sliderRow("Wall relief", "spray.relief", 0, 100, 1, "%"),
-      sliderRow("Bare wall", "spray.bare", 0, 100, 1, "%")
-    ], { hint: "Wall relief shows the bumps and joints through the paint. Bare wall leaves the wall where the lightest paint would go." }), is("spray"));
+      sliderRow("Bare wall", "spray.bare", 0, 100, 1, "%"),
+      sliderRow("Grime", "spray.grime", 0, 100, 1, "%"),
+      only(sliderRow("Cracks", "spray.cracks", 0, 100, 1, "%"), () => kit.state.spray.wall !== "metal"),
+      // brick options
+      only(row("Bond", segGroup("spray.brickPattern", [{ v: "running", l: "Running" }, { v: "stack", l: "Stack" }, { v: "flemish", l: "Flemish" }, { v: "basket", l: "Basket" }])), isWall("brick")),
+      only(sliderRow("Brick size", "spray.brickSize", 50, 200, 1, "%"), isWall("brick")),
+      only(sliderRow("Mortar width", "spray.mortar", 0, 100, 1, "%"), isWall("brick")),
+      only(sliderRow("Brick colour mix", "spray.brickVariation", 0, 100, 1, "%"), isWall("brick")),
+      only(swatchRow("Mortar colour", "spray.mortarColour", SWATCHES.mortar), isWall("brick", "block")),
+      // wood options
+      only(row("Planks", segGroup("spray.woodDir", [{ v: "vertical", l: "Vertical" }, { v: "horizontal", l: "Horizontal" }])), isWall("wood")),
+      only(row("Finish", segGroup("spray.woodFinish", [{ v: "raw", l: "Raw" }, { v: "weathered", l: "Weathered" }, { v: "painted", l: "Painted" }])), isWall("wood")),
+      only(sliderRow("Plank width", "spray.plankWidth", 50, 200, 1, "%"), isWall("wood")),
+      only(sliderRow("Grain", "spray.grain", 0, 100, 1, "%"), isWall("wood")),
+      only(sliderRow("Knots", "spray.knots", 0, 100, 1, "%"), isWall("wood"))
+    ], { hint: "Paint blend mixes the paint into the wall (Normal sits on top). Wall relief shows the bumps and joints through the paint. Bare wall leaves the wall where the lightest paint would go." }), is("spray"));
     const angle = sliderRow("Hatch angle", "pastel.angle", 0, 180, 5, " deg");
     showIf(angle, () => kit.state.pastel.hatch === "fixed");
     const pastel = only(card("Pastel", [

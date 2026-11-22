@@ -171,35 +171,86 @@ async function paintInk(src, P, hooks) {
 // ---------------------------------------------------------------- Spray Paint
 // wall colours a wall type starts with (the panel sets these when the type changes)
 const WALL_COLOURS = { plain: "#E8E6E1", concrete: "#A8A49C", stucco: "#D8CCB4", brick: "#9C4A36", block: "#9A9A96", metal: "#7D848C", wood: "#8A6A48" };
-// the wall: its colour and a relief map (-1 recess .. +1 bump) that also shows through the paint
+// ---- wall surfaces (Spray Paint). Units are px at a 3000 px long side.
+const u01 = (x, y, s) => 0.5 + 0.5 * M.hashNoise(x, y, s);
+// where a pixel sits in a brick bond: { id, e } with e = units inside the brick (negative = mortar)
+function brickCell(ux, uy, BW, BH, MT, pattern) {
+  let cx, cy, fx, fy, cw, ch;
+  if (pattern === "basket") {
+    const S = BW, bx = Math.floor(ux / S), by = Math.floor(uy / S), lx = ux - bx * S, ly = uy - by * S;
+    if ((bx + by) & 1) { const sub = ly < S / 2 ? 0 : 1; fx = lx; fy = ly - sub * S / 2; cw = S; ch = S / 2; cx = bx * 2 + sub; cy = by; }
+    else { const sub = lx < S / 2 ? 0 : 1; fx = lx - sub * S / 2; fy = ly; cw = S / 2; ch = S; cx = bx * 2 + sub; cy = by + 7777; }
+  } else {
+    const row = Math.floor(uy / BH);
+    fy = uy - row * BH; ch = BH; cy = row;
+    if (pattern === "flemish") {
+      const P = BW * 1.5, px = ux + (row & 1) * BW * 0.75, per = Math.floor(px / P), q = px - per * P;
+      if (q < BW) { cx = per * 2; fx = q; cw = BW; } else { cx = per * 2 + 1; fx = q - BW; cw = BW / 2; }
+    } else {
+      const px = ux + (pattern === "stack" ? 0 : (row & 1) * BW / 2);
+      cx = Math.floor(px / BW); fx = px - cx * BW; cw = BW;
+    }
+  }
+  const rc = 3, dx = Math.min(fx, cw - fx) - MT / 2, dy = Math.min(fy, ch - fy) - MT / 2;
+  const e = (dx < rc && dy < rc && dx > 0 && dy > 0) ? rc - Math.hypot(rc - dx, rc - dy) : Math.min(dx, dy);
+  return { cx, cy, e };
+}
+// the wall: colour plus a relief map (-1 recess .. +1 bump) that also shows through the paint
 function wallLayer(w, h, k, Q, seed, I) {
-  const n = w * h, out = new Uint8Array(n * 4), base = M.hexToRgb(Q.wallColour), rel = new Float32Array(n), tone = new Float32Array(n);
-  const lift = (c, f) => [clamp(c[0] * f, 0, 255), clamp(c[1] * f, 0, 255), clamp(c[2] * f, 0, 255)];
-  const mortar = lum(base[0], base[1], base[2]) < 90 ? lift(base, 1.5) : [205, 200, 190];
+  const n = w * h, out = new Uint8Array(n * 4), base = M.hexToRgb(Q.wallColour), rel = new Float32Array(n);
+  const mortarC = M.hexToRgb(Q.mortarColour || "#CFC8BA");
   const type = Q.wall, fineAmp = clamp((k - 0.08) / 0.5, 0.25, 1);   // fine grain fades at small preview sizes instead of turning to pixel noise
-  const useMortar = new Uint8Array(type === "brick" || type === "block" ? n : 0);
+  const grime = (Q.grime || 0) / 100, cr = type === "metal" ? 0 : (Q.cracks || 0) / 100;
+  const hu = h / k;
+  // brick and block
+  const isBrick = type === "brick", bs = (Q.brickSize || 100) / 100;
+  const BH = isBrick ? 75 * bs : 190, BW = isBrick ? 230 * bs : 390, MT = isBrick ? 2 + (Q.mortar == null ? 45 : Q.mortar) / 100 * 16 : 11;
+  const pattern = isBrick ? (Q.brickPattern || "running") : "running", bv = (Q.brickVariation == null ? 50 : Q.brickVariation) / 100;
+  // wood
+  const vertical = Q.woodDir !== "horizontal", PW = 150 * (Q.plankWidth || 100) / 100, GAP = vertical ? 6 : 3;
+  const grainS = (Q.grain == null ? 60 : Q.grain) / 100, knotS = (Q.knots == null ? 30 : Q.knots) / 100, finish = Q.woodFinish || "raw";
+  const bareWood = [138, 106, 72];
+  const crackW = Math.max(1.3, 0.45 / k);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const ux = x / k, uy = y / k, i = y * w + x;
-    let v = 1, r = 0;
+    const ux = x / k, uy = y / k, i = y * w + x, p = i * 4;
+    let c0 = base[0], c1 = base[1], c2 = base[2], v = 1, r = 0, warm = 0, grey = 0;
     if (type === "concrete") {
-      v = 0.92 + 0.1 * I.fbm(ux / 90, uy / 90, seed + 31, 4);
-      r = 0.45 * fineAmp * I.fbm(ux / 6, uy / 6, seed + 32, 3) + 0.2 * I.fbm(ux / 40, uy / 40, seed + 39, 2);
+      // poured panels with seams and tie holes, stains, aggregate and pits
+      const pxI = Math.floor(ux / 1200), pyI = Math.floor(uy / 600), lx = ux - pxI * 1200, ly = uy - pyI * 600;
+      v = 0.92 + 0.08 * I.fbm(ux / 90, uy / 90, seed + 31, 3) + 0.04 * M.hashNoise(pxI, pyI, seed + 52);
+      r = 0.4 * fineAmp * I.fbm(ux / 6, uy / 6, seed + 32, 2) + 0.2 * I.fbm(ux / 40, uy / 40, seed + 39, 2);
+      const seam = Math.min(lx, 1200 - lx, ly, 600 - ly);
+      if (seam < 1.5) { r -= 0.45; v *= 0.93; }
+      const tx = lx - 150 - 300 * Math.round((lx - 150) / 300), ty = ly - 150 - 300 * Math.round((ly - 150) / 300), td = Math.hypot(tx, ty);
+      if (td < 9) { r = -0.95; v *= 0.62; } else if (td < 13) { r += 0.25; v *= 1.04; }
+      const ax = Math.floor(ux / 2.5), ay = Math.floor(uy / 2.5), ah = M.hashNoise(ax, ay, seed + 53);
+      if (ah > 0.86) v *= 1 + 0.12 * fineAmp * (M.hashNoise(ax, ay, seed + 54) > 0 ? 1 : -1);
       const cx = Math.floor(ux / 4), cy = Math.floor(uy / 4);                                     // round pits
-      if (M.hashNoise(cx, cy, seed + 33) > 0.94 && Math.hypot(ux - cx * 4 - 2, uy - cy * 4 - 2) < 1.1 + 0.7 * M.hashNoise(cx, cy, seed + 50)) r = -0.9;
+      if (M.hashNoise(cx, cy, seed + 33) > 0.94 && Math.hypot(ux - cx * 4 - 2, uy - cy * 4 - 2) < 1.1 + 0.7 * M.hashNoise(cx, cy, seed + 50)) { r = -0.9; v *= 0.85; }
     } else if (type === "stucco") {
       const b = I.fbm(ux / 9, uy / 9, seed + 40, 4), bump = Math.sign(b) * Math.pow(Math.abs(b), 0.6);
       r = fineAmp * (0.85 * bump + 0.3 * I.fbm(ux / 2.6, uy / 2.6, seed + 41, 2));
-      v = 0.97 + 0.05 * I.fbm(ux / 160, uy / 160, seed + 42, 2);
+      v = 0.97 + 0.06 * I.fbm(ux / 160, uy / 160, seed + 42, 2) + 0.02 * bump * fineAmp;
     } else if (type === "brick" || type === "block") {
-      const brick = type === "brick", BH = brick ? 75 : 190, BW = brick ? 230 : 390, MT = brick ? 9 : 11;
-      const row = Math.floor(uy / BH), off = (row & 1) * BW / 2, col0 = Math.floor((ux + off) / BW);
-      const fx = (ux + off) - col0 * BW, fy = uy - row * BH, e = Math.min(fx - MT, fy - MT, BW - fx, BH - fy);
-      if (e < 0) { useMortar[i] = 1; r = -0.95 + 0.25 * I.fbm(ux / 4, uy / 4, seed + 34, 2); v = 0.95; }
-      else {
-        r = -0.7 + 0.9 * smooth(0, brick ? 5 : 4, e) + (brick ? 0.25 * I.fbm(ux / 10, uy / 10, seed + 36, 3) : 0.35 * I.fbm(ux / 3, uy / 3, seed + 43, 2));
-        if (!brick) { const cx = Math.floor(ux / 5), cy = Math.floor(uy / 5);                       // cinder pores
-          if (M.hashNoise(cx, cy, seed + 44) > 0.88 && Math.hypot(ux - cx * 5 - 2.5, uy - cy * 5 - 2.5) < 1.3 + 0.8 * M.hashNoise(cx, cy, seed + 51)) r -= 0.8; }
-        v = (brick ? 0.86 : 0.92) + (brick ? 0.16 : 0.08) * (0.5 + 0.5 * M.hashNoise(col0, row, seed + 35)) + 0.05 * I.fbm(ux / 14, uy / 14, seed + 45, 2);
+      const B = brickCell(ux, uy, BW, BH, MT, pattern);
+      let e = B.e;
+      const chip = Math.max(0, I.fbm(ux / 5, uy / 5, seed + 60, 3) - 0.12) * 16 * (0.3 + 0.7 * u01(B.cx, B.cy, seed + 63));
+      if (e > 0) e -= chip;                                                         // chipped, worn arrises
+      if (e < 0) {
+        c0 = mortarC[0]; c1 = mortarC[1]; c2 = mortarC[2];
+        const sand = I.fbm(ux / 2.2, uy / 2.2, seed + 34, 2);
+        r = -0.8 + 0.25 * sand * fineAmp; v = 0.88 + 0.1 * sand * fineAmp;
+      } else {
+        const h1 = M.hashNoise(B.cx, B.cy, seed + 35), h2 = M.hashNoise(B.cx, B.cy, seed + 36), h3 = u01(B.cx, B.cy, seed + 37);
+        v = 1 + (isBrick ? 0.34 : 0.12) * bv * h1;
+        warm = (isBrick ? 0.12 : 0.03) * bv * h2;
+        if (isBrick && h3 > 0.93 - 0.06 * bv) { c0 = c0 * 0.5 + 34; c1 = c1 * 0.45 + 18; c2 = c2 * 0.45 + 14; warm -= 0.03; }   // over-fired dark bricks
+        v *= 1 + 0.08 * I.fbm(ux / 22 + B.cx * 3.1, uy / 22, seed + 61, 3) + 0.05 * fineAmp * I.fbm(ux / 2, uy / 2, seed + 62, 1)
+          + 0.07 * fineAmp * M.hashNoise(Math.floor(ux / 1.6), Math.floor(uy / 1.6), seed + 65);     // sand-faced speckle
+        v *= 0.92 + 0.08 * smooth(0, 14, e);                                        // faces darken towards the edges
+        r = -0.55 + 0.75 * smooth(0, 4, e) + (isBrick ? 0.22 * I.fbm(ux / 10, uy / 10, seed + 64, 3) : 0.3 * fineAmp * I.fbm(ux / 3, uy / 3, seed + 43, 2));
+        const pc = isBrick ? 6 : 5, cx = Math.floor(ux / pc), cy = Math.floor(uy / pc);   // pits / cinder pores
+        if (M.hashNoise(cx, cy, seed + 44) > (isBrick ? 0.975 : 0.86) && Math.hypot(ux - cx * pc - pc / 2 + 1.5 * M.hashNoise(cx, cy, seed + 66), uy - cy * pc - pc / 2) < (isBrick ? 0.6 + 1.2 * u01(cx, cy, seed + 51) : 1.1 + 0.8 * u01(cx, cy, seed + 51))) { r -= 0.8; v *= 0.82; }
       }
     } else if (type === "metal") {
       // corrugated shutter: horizontal ribs, a little rust and run-off streaks
@@ -207,26 +258,107 @@ function wallLayer(w, h, k, Q, seed, I) {
       r = 0.9 * Math.sin(ph);
       v = 0.92 + 0.12 * Math.sin(ph - 0.9) + 0.06 * I.fbm(ux / 3, uy / 160, seed + 46, 2);
       const rust = smooth(0.35, 0.75, 0.5 + 0.5 * I.fbm(ux / 70, uy / 70, seed + 47, 3));
-      v *= 1 - 0.18 * rust;
+      v *= 1 - 0.18 * rust; warm += 0.12 * rust;
     } else if (type === "wood") {
-      // fence: vertical planks with dark gaps and long grain
-      const PW = 150, GAP = 6, pl = Math.floor(ux / PW), fx = ux - pl * PW, e = Math.min(fx - GAP, PW - fx);
-      if (e < 0) { r = -1; v = 0.45; }
+      const across = vertical ? ux : uy, along = vertical ? uy : ux;
+      const pl = Math.floor(across / PW), fa = across - pl * PW;
+      let id = pl, ej = 1e9, al = along;
+      if (!vertical) {                                                              // siding: boards butt-jointed along their length
+        const L = 900 + 700 * u01(pl, 1, seed + 71), off = L * u01(pl, 2, seed + 72), seg = Math.floor((along + off) / L), fl = along + off - seg * L;
+        ej = Math.min(fl, L - fl) - 1.5; id = pl * 977 + seg; al = fl;
+      }
+      const e = Math.min(fa - GAP / 2, PW - fa - GAP / 2, ej);
+      // knots: the grain flows around them
+      let disp = 0, knot = 0;
+      if (knotS > 0) {
+        const kc0 = Math.floor(along / 600);
+        for (let kc = kc0 - 1; kc <= kc0 + 1; kc++) {
+          if (u01(id, kc, seed + 73) > knotS * 0.85) continue;
+          const ka = kc * 600 + 300 + 220 * M.hashNoise(id, kc, seed + 74), kf = PW * (0.25 + 0.5 * u01(id, kc, seed + 75));
+          const R = 10 + 16 * u01(id, kc, seed + 76), d = Math.hypot((fa - kf) / R, (along - ka) / (R * 1.7));
+          disp += 3 * R * Math.exp(-d * d * 0.35) * Math.sign(fa - kf || 1);
+          if (d < 1.2) knot = Math.max(knot, 1 - smooth(0.6, 1.2, d));
+        }
+      }
+      const t = fa + disp + 24 * I.fbm(al / 380 + id * 1.37, fa / 70, seed + 70, 3);
+      const ringW = 6 + 6 * u01(id, 5, seed + 77);
+      const line = 0.75 * Math.pow(0.5 + 0.5 * Math.sin(t / ringW * Math.PI * 2), 4) + 0.25 * Math.pow(0.5 + 0.5 * Math.sin(t / (ringW * 0.37) * Math.PI * 2 + 1.3), 3);
+      const fibre = fineAmp * I.fbm(fa / 1.1, al / 40, seed + 78, 2);
+      const tone = 0.86 + 0.22 * u01(id, 9, seed + 79);
+      if (e < 0) { r = -1; v = 0.35; }
       else {
-        const g = I.fbm(ux / 5 + pl * 13, uy / 120, seed + 48, 3);
-        r = -0.5 + 0.7 * smooth(0, 3, e) + 0.35 * g;
-        v = 0.88 + 0.1 * g + 0.1 * M.hashNoise(pl, 3, seed + 49);
+        const bevel = vertical ? smooth(0, 3, e) : 1;
+        const lap = vertical ? 0 : 0.55 - 1.1 * fa / PW;                                  // lap siding: each board tilts out at the bottom
+        if (finish === "painted") {
+          const pt = 0.66 - 0.2 * grime, peel = smooth(pt, pt + 0.035, 0.5 + 0.5 * I.fbm(ux / 45, uy / 45, seed + 80, 4));
+          const grainR = 0.25 * grainS * (line - 0.3);
+          r = -0.4 + 0.6 * bevel + lap + grainR - 0.35 * peel;
+          v = 0.97 + 0.03 * fibre;
+          if (peel > 0) {
+            const wood = [bareWood[0] * tone, bareWood[1] * tone, bareWood[2] * tone], gl = 1 - 0.3 * grainS * line;
+            c0 = c0 + (wood[0] * gl - c0) * peel; c1 = c1 + (wood[1] * gl - c1) * peel; c2 = c2 + (wood[2] * gl - c2) * peel;
+            if (peel > 0.02 && peel < 0.6) v *= 0.85;                                     // the torn paint edge
+          }
+        } else {
+          const wth = finish === "weathered";
+          v = tone * (1 - (wth ? 0.42 : 0.42) * grainS * line) * (1 + (wth ? 0.12 : 0.08) * fibre);
+          warm = wth ? -0.02 : 0.05 * line * grainS;
+          grey = wth ? 0.7 : 0;
+          r = -0.4 + 0.6 * bevel + lap + (wth ? 0.6 : 0.2) * grainS * (line - 0.3) + (wth ? 0.3 : 0.1) * fibre;
+          if (wth) {                                                                       // checking: thin splits along the grain
+            const ck = Math.abs(I.fbm(fa / 3 + id * 3.3, al / 320, seed + 81, 2));
+            const zone = smooth(0.15, 0.45, I.fbm(fa / 40 + id, al / 500, seed + 82, 2));
+            if (zone > 0 && ck < 0.025 * (0.4 + cr) * fineAmp) { r = Math.min(r, -0.5 * fineAmp * zone); v *= 1 - 0.35 * fineAmp * zone; }
+          }
+          if (knot > 0) { v *= 1 - 0.6 * knot * (0.75 + 0.25 * Math.sin(knot * 18)); warm += 0.06 * knot; r -= 0.35 * knot; }
+        }
+        // nails on the rails / studs
+        const nAlong = vertical ? [0.14 * hu, 0.86 * hu] : null;
+        const nx = vertical ? [PW * 0.3, PW * 0.7] : [PW * 0.22];
+        for (let a = 0; a < nx.length; a++) {
+          const dfa = fa - nx[a];
+          if (Math.abs(dfa) > 3.2) continue;
+          const dal = vertical ? Math.min(Math.abs(along - nAlong[0]), Math.abs(along - nAlong[1])) : Math.abs(along - 400 * Math.round(along / 400));
+          if (Math.hypot(dfa, dal) < 2.4) { c0 = 70; c1 = 66; c2 = 62; v = 0.9; r = 0.6; grey = 0; warm = 0; }
+        }
       }
     } else {
+      // painted render: a fine roller texture
       v = 1 + 0.025 * I.fbm(ux / 120, uy / 120, seed + 37, 2);
       r = 0.15 * fineAmp * I.fbm(ux / 4, uy / 4, seed + 38, 2);
     }
-    rel[i] = clamp(r, -1, 1); tone[i] = v;
+    // cracks
+    if (cr > 0 && type !== "wood") {
+      const reg = smooth(1 - cr, 1.18 - cr, 0.5 + 0.5 * I.fbm(ux / 500, uy / 500, seed + 93, 2));
+      if (reg > 0) {
+        const wx = ux + 40 * I.fbm(ux / 200, uy / 200, seed + 90, 2), wy = uy + 40 * I.fbm(ux / 200, uy / 200, seed + 91, 2);
+        const d1 = Math.abs(I.fbm(wx / 260, wy / 260, seed + 92, 5)) * 260 * 0.9;
+        const d2 = Math.abs(I.fbm(wx / 110, wy / 110, seed + 94, 2)) * 110 * 0.9 * 1.6;
+        const ca = Math.max(smooth(crackW, crackW * 0.3, d1), 0.75 * smooth(crackW * 0.8, crackW * 0.2, d2) * smooth(30, 6, d1)) * reg;
+        if (ca > 0) { r = r + (-0.95 - r) * ca; v *= 1 - 0.5 * ca; }
+      }
+    }
+    // grime: run-off streaks, dirt rising from the ground, patchy soiling
+    if (grime > 0) {
+      const s = 0.5 + 0.5 * I.fbm(ux / 35, uy / 520, seed + 84, 2);
+      const streak = smooth(0.55, 0.85, s) * smooth(0, 0.35, y / h + 0.1);
+      const ground = smooth(0.62, 1, y / h) * (0.7 + 0.3 * I.fbm(ux / 25, uy / 25, seed + 85, 2));
+      const patch = smooth(0.25, 0.85, 0.5 + 0.5 * I.fbm(ux / 260, uy / 260, seed + 86, 2));
+      const dirt = grime * (0.3 * streak + 0.3 * ground + 0.12 * patch);
+      v *= 1 - dirt; grey += 0.5 * dirt; warm += 0.08 * dirt;
+      if ((type === "brick" || type === "block" || type === "concrete") && grime > 0.3) {   // salt bloom
+        const bloom = smooth(0.7, 0.95, 0.5 + 0.5 * I.fbm(ux / 70, uy / 70, seed + 87, 3)) * (grime - 0.3) * 0.5;
+        c0 += (235 - c0) * bloom; c1 += (232 - c1) * bloom; c2 += (225 - c2) * bloom;
+      }
+    }
+    if (grey > 0) { const g = Math.min(1, grey), l = lum(c0, c1, c2) * 1.02; c0 += (l - c0) * g; c1 += (l - c1) * g; c2 += (l - c2) * g; }
+    rel[i] = clamp(r, -1, 1);
+    out[p] = clamp(c0 * v * (1 + warm), 0, 255); out[p + 1] = clamp(c1 * v, 0, 255); out[p + 2] = clamp(c2 * v * (1 - warm), 0, 255); out[p + 3] = 255;
   }
   const shade = reliefShade(rel, w, h, k);
   for (let i = 0, p = 0; i < n; i++, p += 4) {
-    const c = useMortar.length && useMortar[i] ? mortar : base, f = tone[i] * (1 + 0.22 * shade[i]);
-    out[p] = clamp(c[0] * f, 0, 255); out[p + 1] = clamp(c[1] * f, 0, 255); out[p + 2] = clamp(c[2] * f, 0, 255); out[p + 3] = 255;
+    const f = 1 + 0.22 * shade[i];
+    out[p] = clamp(out[p] * f, 0, 255); out[p + 1] = clamp(out[p + 1] * f, 0, 255); out[p + 2] = clamp(out[p + 2] * f, 0, 255);
   }
   return { rgba: out, shade };
 }
@@ -366,6 +498,24 @@ async function paintSpray(src, P, hooks) {
     }
     layers.push({ name: "Drips", rgba: out, blend: "NORMAL" });
     await yieldFn();
+  }
+  // Paint blend / opacity: the coats are flattened into one "Paint" layer so the
+  // blend mode acts between the paint and the wall, not between coats
+  const PB = { normal: "NORMAL", multiply: "MULTIPLY", linearburn: "LINEARBURN", overlay: "OVERLAY", softlight: "SOFTLIGHT", hardlight: "HARDLIGHT" }[Q.blend || "normal"] || "NORMAL";
+  const pop = Q.paintOpacity == null ? 100 : clamp(Q.paintOpacity, 0, 100);
+  if (PB !== "NORMAL" || pop < 100) {
+    const coats = layers.splice(1), out = new Uint8Array(n * 4);
+    for (const L of coats) {
+      const s = L.rgba;
+      for (let p = 0; p < n * 4; p += 4) {
+        const a = s[p + 3] / 255;
+        if (a <= 0) continue;
+        const a0 = out[p + 3] / 255, na = a + a0 * (1 - a);
+        for (let c = 0; c < 3; c++) out[p + c] = Math.round((s[p + c] * a + out[p + c] * a0 * (1 - a)) / na);
+        out[p + 3] = Math.round(na * 255);
+      }
+    }
+    layers.push({ name: "Paint", rgba: out, blend: PB, opacity: Math.round(pop) });
   }
   const hl = (Q.highlight || 0) / 100;
   if (Q.outline > 0 || hl > 0) {
@@ -517,4 +667,4 @@ async function paintPastel(src, P, hooks) {
 }
 function makeBuf(n) { return { P0: new Float32Array(n), P1: new Float32Array(n), P2: new Float32Array(n), PA: new Float32Array(n) }; }
 
-module.exports = { paintInk, paintSpray, paintPastel, METALS, WALL_COLOURS };
+module.exports = { paintInk, paintSpray, paintPastel, METALS, WALL_COLOURS, _wallLayer: wallLayer };

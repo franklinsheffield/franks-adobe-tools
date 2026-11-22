@@ -17,7 +17,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:80 select:7 button:69 textarea:0",
+ "controls": "input:90 select:7 button:92 textarea:0",
  "previewDefault": "8f601f31ae42",
  "presets": [
   "Oil - Studio Oil = 8f601f31ae42",
@@ -34,11 +34,13 @@
   "Alcohol Ink - Gold Vein = abce7147ecc1",
   "Alcohol Ink - Ocean Bloom = 394d486bfedd",
   "Alcohol Ink - Neon Pour = ccc497aed660",
-  "Spray Paint - Street Stencil = 65251a343429",
-  "Spray Paint - Soft Fade Mural = 76a9e739e21c",
-  "Spray Paint - Drip Pop = bf6e88b01072",
-  "Spray Paint - Night Burst = ae968925b14c",
-  "Spray Paint - Rough Wall = 96cffb3d9dfa",
+  "Spray Paint - Street Stencil = e8cc1f0022cf",
+  "Spray Paint - Soft Fade Mural = 137699f74baf",
+  "Spray Paint - Drip Pop = 5a0477406776",
+  "Spray Paint - Night Burst = 8111a73fa9fb",
+  "Spray Paint - Rough Wall = f9045dd45d15",
+  "Spray Paint - Barn Siding = 9408fc9f7896",
+  "Spray Paint - Old Fence = a4c0a1195ae3",
   "Pastel - Chalk on Grey = 35b67ce090fb",
   "Pastel - Warm Sketch = 7112e0143d85",
   "Pastel - Oil Pastel = 9e3cc60a6012"
