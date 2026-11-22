@@ -128,7 +128,6 @@ TOOLS = {
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
     "batch-mock-brew": (glyph_mock, "icon_C", "icon_CL"),
     "paint-brew": (glyph_paint, "icon_C", "icon_CL"),
-    "font-brew": (glyph_font, "icon_C", "icon_CL"),
 }
 
 def draw(glyph, size, color, tile, glow=GLOW):

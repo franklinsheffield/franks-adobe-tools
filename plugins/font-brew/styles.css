@@ -1,8 +1,0 @@
-/* Font Brew widgets on top of core/panel.css: the glyph grid. */
-.glyphgrid { margin: 4px 0 8px 0; }
-.cells { display: flex; flex-direction: row; flex-wrap: wrap; }
-.cell { width: 24px; height: 24px; padding: 0; margin: 0 3px 3px 0; font-size: 12px; background: var(--ink); color: rgba(255, 255, 255, 0.55); border: 1px solid var(--soft); border-radius: 3px; }
-.cell.on { color: var(--glow); border-color: var(--glow); background: var(--glowbg); font-weight: bold; }
-.cell.cur { border: 2px solid #ffffff; }
-/* Plugin neon (aquamarine): title text and every glow use this colour. */
-:root { --glow: #19ffb0; --glowbg: #04291d; }

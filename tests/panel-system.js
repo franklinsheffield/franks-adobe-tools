@@ -5,7 +5,7 @@
 const assert = require("assert");
 const path = require("path");
 
-const TOOLS = ["chrometone", "crt-phaser", "decompressor", "depthtone", "mobglow", "paint-brew", "font-brew"];
+const TOOLS = ["chrometone", "crt-phaser", "decompressor", "depthtone", "mobglow", "paint-brew"];
 
 module.exports = async function (t) {
   const { loadPanel } = require("./harness.js");
