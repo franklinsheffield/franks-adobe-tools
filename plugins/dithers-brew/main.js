@@ -309,6 +309,9 @@ async function lookGrid(list) {
       P.ppi = effPpi(useDoc ? lastPpi : 300); P.scale = sc;
       const res = await Engine.render(src, P, {});
       o.img.src = PNG.dataURL(Engine.composite(res, { type: "white" }), res.w, res.h, 3);
+      // UXP does not keep an image's shape from its width alone: set the height too
+      const cw = (o.img.parentNode && o.img.parentNode.clientWidth || 0) - 2;
+      if (cw > 4) o.img.style.height = Math.round(cw * res.h / res.w) + "px";
     } catch (e) { /* leave blank */ }
     await tick();
   }

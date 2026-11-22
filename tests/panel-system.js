@@ -33,7 +33,7 @@ module.exports = async function (t) {
     }
   });
 
-  await t("Look browser: top of every plugin, shown by default, each plugin has its own sample picture, click loads a look", async () => {
+  await t("Look browser: top of every plugin, shown by default, every plugin uses the suite sample photo, click loads a look", async () => {
     const seen = [];
     for (const tool of TOOLS) {
       const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
@@ -44,11 +44,11 @@ module.exports = async function (t) {
       assert.ok(D.querySelector(".lookgrid").style.display !== "none", tool + " previews shown by default");
       for (let i = 0; i < 400 && lb._test.cells.some((c) => !c.img.src); i++) await P.settle(50);
       if (tool !== "font-brew") {
-        assert.ok(lb._test.onSample, tool + " looks start on the plugin's own sample picture");
+        assert.ok(lb._test.onSample, tool + " looks start on the sample picture");
         assert.strictEqual(lb._test.srcBtns.length, 2, tool + " Sample / My image switch");
         const fs = require("fs");
         const own = fs.readFileSync(path.join(__dirname, "..", "plugins", tool, "look-sample.js"), "utf8");
-        seen.forEach((o) => assert.notStrictEqual(o, own, tool + " sample differs from the other plugins"));
+        seen.forEach((o) => assert.strictEqual(o, own, tool + " uses the same suite photo as the other plugins (Frank, 2026-11-22)"));
         seen.push(own);
       }
       const cells = Array.from(D.querySelectorAll(".lookgrid .look"));
