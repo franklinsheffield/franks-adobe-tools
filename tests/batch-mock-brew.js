@@ -50,6 +50,7 @@ function extendHost(host, fsRoots, mockupSpec, log) {
     async open(entry) {
       log.push("open " + entry.name);
       const d = makeDoc(entry.name, 2000, 1500);
+      d.timeline = !!mockupSpec[entry.name + "#timeline"];
       (mockupSpec[entry.name] || []).forEach((s) => d.layers.push(layer(d, s.name, { kind: "smartObject", linked: !!s.linked, soId: s.soId || ("so" + nextId), content: null })));
       return d;
     }
@@ -60,6 +61,7 @@ function extendHost(host, fsRoots, mockupSpec, log) {
   ph.action.batchPlay = async (cmds) => cmds.map((c) => {
     host.calls.push(["batchPlay", c._obj]);
     const d = active;
+    if (c._obj === "get" && c._target[1] && c._target[1]._ref === "timeline") return { frameCount: d && d.timeline ? 150 : 0 };
     if (c._obj === "get") {
       const id = c._target[0]._id, all = docs.flatMap((x) => x.layers), L = all.find((x) => x.id === id) || {};
       return L.kind === "smartObject" ? { smartObjectMore: { ID: L.soId }, smartObject: { linked: L.linked } } : { smartObjectMore: { size: { width: 400, height: 200 } } };
@@ -81,7 +83,7 @@ function extendHost(host, fsRoots, mockupSpec, log) {
       const A = d.layers.find((l) => l.art); if (A) { const b = A.bounds; log.push("geom " + [b.left, b.top, b.right, b.bottom].map(Math.round).join(",")); }
       docs.splice(docs.indexOf(d), 1); active = p.doc; return {};
     }
-    if (c._obj === "export") { log.push("video " + c.using.name); return { _obj: "error", message: "no timeline" }; }
+    if (c._obj === "export") { log.push("video " + c.using.name); return d.timeline ? {} : { _obj: "error", message: "no timeline" }; }
     return {};
   });
   const fsys = host.uxp.storage.localFileSystem;
@@ -218,5 +220,20 @@ module.exports = async function run(t) {
     await clickAndWait(P, test, () => /^Test done/.test(P.document.querySelector(".status").textContent));
     assert.ok(!F.log.some((x) => /^save(jpg|png|psd)/.test(x)), "test exports nothing");
     assert.ok(!F.log.includes("close Box.psd"), "result left open");
+  });
+
+  await t("Batch Mock: MP4 skips mockups without a Video Timeline; a shared Smart Object takes its lowest slot", async () => {
+    const F = setup({ "Tee.psd": [{ name: "artwork 2", soId: "s" }, { name: "artwork", soId: "s" }], "Box.psd": [{ name: "artwork" }], "Box.psd#timeline": true });
+    F.art.kids = [file("logo.png")];
+    const P = await loadPanel(DIR, { withDoc: false, extend: F.extend });
+    const m = P.mod._test;
+    Object.assign(m.state.export, { format: "mp4", organise: "one" });
+    m.state.so.numbered = true;
+    await choose(P);
+    const d = P.document;
+    await clickAndWait(P, d.querySelector(".apply"), () => /^(Done|Cancelled)/.test(d.querySelector(".status").textContent));
+    assert.deepStrictEqual(F.log.filter((x) => /^video /.test(x)), ["video Box_logo.mp4"], F.log.join("\n"));
+    assert.ok(/1 skipped/.test(d.querySelector(".status").textContent) && /Video Timeline/.test(d.querySelector(".status").textContent));
+    assert.ok(!F.log.includes("edit artwork 2"), "Tee skipped before any edit");
   });
 };

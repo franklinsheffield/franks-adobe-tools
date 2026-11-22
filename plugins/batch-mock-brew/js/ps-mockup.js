@@ -105,6 +105,8 @@ async function layerDesc(doc, id) {
 async function findTargets(doc, so) {
   const hits = [], skipped = [];
   walkLayers(doc.layers, (L) => { if (isSmartObject(L) && Plan.matchesTarget(L.name, so.name, so.rule)) hits.push(L); });
+  // a shared Smart Object is edited once, through its lowest slot number
+  hits.sort((a, b) => Plan.slotOf(a.name, so.name) - Plan.slotOf(b.name, so.name));
   const seen = new Set(), out = [];
   for (const L of hits) {
     const d = await layerDesc(doc, L.id);
@@ -195,6 +197,15 @@ async function exportDoc(doc, folder, name, E) {
   throw new Error("Unknown format " + fmt);
 }
 
+// Does the active document have a Video Timeline with more than one frame?
+// (Render Video on a document without one writes a 1-frame clip.)
+async function hasTimeline() {
+  try {
+    const r = await play({ _obj: "get", _target: [{ _property: "frameCount" }, { _ref: "timeline" }] });
+    return num(r && r[0] && r[0].frameCount, 0) > 1;
+  } catch (e) { return false; }
+}
+
 // MP4 (H.264) through File > Export > Render Video. Needs a Video Timeline.
 async function renderVideo(doc, folder, name) {
   const dir = await fsys.createSessionToken(folder);
@@ -214,5 +225,5 @@ async function renderVideo(doc, folder, name) {
 
 module.exports = {
   pickFolder, tokenFor, folderFromToken, pathOf, listFiles, subFolder, exists, freeName, writeText,
-  loadSettings, saveSettings, openDoc, closeDoc, findTargets, replaceContents, exportDoc, renderVideo
+  loadSettings, saveSettings, openDoc, closeDoc, findTargets, replaceContents, exportDoc, renderVideo, hasTimeline
 };

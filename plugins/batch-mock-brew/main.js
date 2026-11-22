@@ -109,6 +109,7 @@ async function brew(testOnly) {
   if (!list.length) { setStatus("Nothing to do: no .psd mockups or no artwork files in those folders.", true); return; }
   if (testOnly) list = list.slice(0, 1);
   const S = clone(state);
+  scheduleSave();   // remember the setup that was run
   let cur = null;   // { key, doc, targets, dirty }
   const dirCache = {};
   setRunning(true);
@@ -125,7 +126,9 @@ async function brew(testOnly) {
       const doc = await PSM.openDoc(job.mockup.entry);
       const found = await PSM.findTargets(doc, S.so);
       cur = { key, doc, targets: found.targets, skipped: found.skipped, dirty: false };
+      cur.video = S.export.format !== "mp4" || await PSM.hasTimeline();
     }
+    if (!cur.video) return "skipped: MP4 needs a Video Timeline in this mockup";
     if (!cur.targets.length) return "skipped: no Smart Object named \"" + S.so.name + "\"" + (cur.skipped.length ? " (left out: " + cur.skipped.join(", ") + ")" : "");
     let n = 0;
     for (const t of cur.targets) {
@@ -252,4 +255,6 @@ try {
 } catch (e) { /* older hosts */ }
 setTimeout(() => { init(); }, 0);
 
-module.exports = { _test: { get state() { return state; }, folders, entries, lists, refs, brew, rescan, jobs, batch, init } };
+const _api = { _test: { get state() { return state; }, folders, entries, lists, refs, brew, rescan, jobs, batch, init } };
+try { window.__batchMock = _api; } catch (e) { /* console access for smoke tests */ }
+if (typeof module !== "undefined" && module && module.exports) module.exports = _api;
