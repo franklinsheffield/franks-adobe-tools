@@ -1,0 +1,45 @@
+#!/bin/bash
+# Build Frank's Brew After Effects effects on macOS with only the Command Line Tools
+# (no Xcode, no paid Apple account). Universal (Apple Silicon + Intel), ad-hoc signed.
+#   ae/tools/build-mac.sh <path-to-AfterEffectsSDK> [tool]
+# SDK path = the unzipped "AfterEffectsSDK" folder (it contains Examples/Headers).
+set -euo pipefail
+SDK="${1:?usage: build-mac.sh <AfterEffectsSDK folder> [tool]}"
+TOOL="${2:-crt-phaser}"
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+EX="$(find "$SDK" -maxdepth 3 -type d -name Headers -path '*Examples*' | head -1)"; EX="${EX%/Headers}"
+[ -d "$EX/Headers" ] || { echo "AE SDK headers not found under $SDK"; exit 1; }
+case "$TOOL" in
+  crt-phaser) NAME="Franks CRT Phaser Brew"; SRC="effects/crt-phaser"; MAIN="ae/crt_ae.cpp"; PIPL="ae/crt_pipl.r"; ENG="crt_engine.cpp";;
+  *) echo "unknown tool $TOOL"; exit 1;;
+esac
+OUT="$HERE/dist/mac"; B="$OUT/$NAME.plugin"; TMP="$(mktemp -d)"
+rm -rf "$B"; mkdir -p "$B/Contents/MacOS" "$B/Contents/Resources"
+INC=(-I"$EX/Headers" -I"$EX/Headers/SP" -I"$EX/Headers/Win" -I"$EX/Util" -I"$EX/Resources" -I"$HERE/core" -I"$HERE/$SRC" -I"$HERE/$SRC/ae")
+for ARCH in arm64 x86_64; do
+  clang++ -std=c++17 -O3 -arch $ARCH -mmacosx-version-min=11.0 -fvisibility=hidden -bundle \
+    -DAE_OS_MAC=1 "${INC[@]}" "$HERE/$SRC/$MAIN" "$HERE/$SRC/$ENG" \
+    -framework CoreFoundation -o "$TMP/bin-$ARCH"
+done
+lipo -create "$TMP/bin-arm64" "$TMP/bin-x86_64" -output "$B/Contents/MacOS/$NAME"
+# PiPL resource (Rez ships with the Command Line Tools)
+xcrun Rez -o "$B/Contents/Resources/$NAME.rsrc" -define __MACH__ -arch arm64 -arch x86_64 \
+  -i "$EX/Headers" -i "$EX/Resources" -i "$HERE/$SRC/ae" -useDF "$HERE/$SRC/$PIPL"
+cat > "$B/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleExecutable</key><string>$NAME</string>
+  <key>CFBundleIdentifier</key><string>com.franks.$(echo $TOOL | tr -d -).ae</string>
+  <key>CFBundleName</key><string>$NAME</string>
+  <key>CFBundlePackageType</key><string>eFKT</string>
+  <key>CFBundleSignature</key><string>FXTC</string>
+  <key>CFBundleShortVersionString</key><string>1.0.0</string>
+  <key>CFBundleVersion</key><string>1.0.0</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+</dict></plist>
+PLIST
+printf 'eFKTFXTC' > "$B/Contents/PkgInfo"
+codesign --force --deep -s - "$B"          # free ad-hoc signature (no Apple Developer ID)
+rm -rf "$TMP"
+echo "built: $B"
