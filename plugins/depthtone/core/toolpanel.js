@@ -13,7 +13,8 @@
 //     prepareSource(doc, r, phase)  optional: add extra inputs to r.src (e.g. a focus mask); phase "preview" | "apply"
 //     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
 //     groupLabel(state, presetName) optional: the look's name in the layer group
-//     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress })
+//     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress
+//     brand: "console", code, glow  optional: Hardware Console look (shared/console.js): rack header + LED, dials, switches, render meter })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 //
 // Export mode (tools that write a file instead of layers, e.g. Font Brew):
@@ -37,7 +38,7 @@ function createToolPanel(cfg) {
   let auto = true, built = false, confirmArmed = false, lib = null, layout = null;
   let presetName = PRESETS[0] ? PRESETS[0].name : "Custom";
   const refs = {};
-  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
+  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow });
   const { el, clear, bind, showIf, refreshAll, segGroup, selectRow, checkRow, hexField, card } = ui;
 
   function touch() { refreshAll(); if (auto) schedulePreview(150); }
@@ -45,6 +46,7 @@ function createToolPanel(cfg) {
     if (!refs.status) return;
     refs.status.textContent = msg;
     refs.status.className = "status" + (isErr ? " err" : "");
+    if (refs.led) refs.led.set(isErr ? "err" : (working ? "busy" : "ready"));
   }
 
   // ---- gradient editor for a stops array at `path` ([{p, c}], 2..8 stops)
@@ -121,6 +123,7 @@ function createToolPanel(cfg) {
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
     sizePreview(res.w, res.h);
+    if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
     setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
   }
 
@@ -138,7 +141,7 @@ function createToolPanel(cfg) {
     if (working) { if (cfg.cancellable) { cancelReq = true; setStatus("Cancelling..."); } return; }
     let doc = PS.activeDoc();
     if (!doc) { setStatus("Open a document first. The preview is only using the demo image.", true); return; }
-    const btn = refs.apply;
+    const btn = refs.apply, tStart = Date.now();
     loop.setBusy(true);
     try {
       const targets = PS.collectTargets(doc, state.out.source);
@@ -152,6 +155,8 @@ function createToolPanel(cfg) {
       }
       confirmArmed = false;
       working = true; cancelReq = false;
+      if (refs.meter) refs.meter.run();
+      if (refs.led) refs.led.set("busy");
       btn.textContent = cfg.cancellable ? "Cancel" : "Working...";
       if (!cfg.cancellable) btn.setAttribute("disabled", "true");
       if (cfg.prepareApply) doc = await cfg.prepareApply(doc, setStatus);
@@ -177,14 +182,17 @@ function createToolPanel(cfg) {
         done++;
         if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
       }
+      if (refs.meter) refs.meter.done((Date.now() - tStart) / 1000);
       if (!refs.status.className.includes("err")) setStatus("Done. " + done + " group" + (done === 1 ? "" : "s") + " added. Undo with one Ctrl/Cmd+Z.");
     } catch (e) {
       console.error(e);
       const msg = e && e.message ? e.message : String(e);
+      if (refs.meter) refs.meter.idle();
       setStatus(/^Cancelled/.test(msg) ? msg : "Apply failed: " + msg, true);
     } finally {
       working = false; cancelReq = false;
       loop.setBusy(false);
+      if (refs.led) refs.led.set(refs.status.className.includes("err") ? "err" : "ready");
       if (!confirmArmed) btn.textContent = "Apply to document";
       btn.removeAttribute("disabled");
     }
@@ -205,10 +213,22 @@ function createToolPanel(cfg) {
     clear(root);
     layout = splitLayout(root, el);
     const top = layout.pinned;
-    top.appendChild(el("div", { class: "hdr" }, [el("div", { class: "title", text: cfg.title }), el("div", { class: "sub", text: cfg.sub })]));
+    if (ui.brand) {
+      root.classList.add("brand-" + cfg.brand);
+      const h = ui.brand.header(cfg);
+      refs.led = h;
+      top.appendChild(h.node);
+    } else {
+      top.appendChild(el("div", { class: "hdr" }, [el("div", { class: "title", text: cfg.title }), el("div", { class: "sub", text: cfg.sub })]));
+    }
     refs.docline = el("div", { class: "docline", text: "" });
     refs.preview = el("img", { class: "preview" });
-    refs.previewBox = el("div", { class: "previewbox" }, [refs.preview]);
+    if (ui.brand) {
+      refs.scrL = el("span", { class: "scrl", text: "CH1" });
+      refs.scrR = el("span", { class: "scrr", text: "" });
+      refs.scr = el("div", { class: "scrstrip" }, [refs.scrL, refs.scrR]);
+    }
+    refs.previewBox = el("div", { class: "previewbox" }, [refs.scr || null, refs.preview]);
     refs.status = el("div", { class: "status", text: "Starting..." });
     const refresh = el("button", { class: "btn small", text: "Refresh" });
     refresh.addEventListener("click", () => schedulePreview(0));
@@ -248,10 +268,12 @@ function createToolPanel(cfg) {
 
     refs.apply = el("button", { class: "apply", text: "Apply to document" });
     refs.apply.addEventListener("click", applyNow);
+    if (ui.brand) refs.meter = ui.brand.meter(12);
     root.appendChild(card("Output", [
       selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; })
     ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
       checkRow("Hide source artwork afterwards", "out.hide"),
+      refs.meter ? refs.meter.node : null,
       refs.apply,
       el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
     ])));

@@ -84,6 +84,7 @@ module.exports = async function (t) {
     assert.ok(P.host.doc.layers.length >= 5, "painted into the open document");
     // Cancel
     P = await loadPanel(DIR, { withDoc: true, docW: 200, docH: 150 });
+    for (let i = 0; i < 100 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50);   // let the first preview finish
     const btn = P.document.querySelector(".apply");
     btn.dispatchEvent(new P.window.Event("click"));
     await P.settle(30);
@@ -113,6 +114,47 @@ module.exports = async function (t) {
     assert.ok(seen, "selection read");
     assert.deepStrictEqual(seen.sourceBounds, { left: 0, top: 0, right: 400, bottom: 300 });
     assert.deepStrictEqual(seen.targetSize, { width: 360, height: 270 });
+  });
+
+  await t("Console brand: rack header + LED, dials set values (typed and dragged), switches toggle, render meter lights", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(DIR, { withDoc: true, docW: 200, docH: 150 });
+    const D = P.document, st = P.mod._test.state;
+    for (let i = 0; i < 100 && !/^Preview /.test(D.querySelector(".status").textContent); i++) await P.settle(50);
+    assert.ok(D.querySelector("#app.brand-console"), "brand class on #app");
+    assert.strictEqual(D.querySelector(".rack .title").textContent, "PAINT BREW");
+    assert.strictEqual(D.querySelectorAll(".rack .screw").length, 4);
+    assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
+    assert.strictEqual(D.querySelectorAll('input[type="range"]').length, 0, "no stock sliders");
+    assert.strictEqual(D.querySelectorAll('input[type="checkbox"]').length, 2, "only Auto-update and Pin stay checkboxes");
+    const dials = Array.from(D.querySelectorAll(".dial"));
+    assert.ok(dials.length >= 20, "dials: " + dials.length);
+    assert.ok(dials.every((d) => /^data:image\/png;base64,/.test(d.querySelector(".knob").src)), "every knob drawn");
+    const size = dials.find((d) => d.querySelector(".dlabel").textContent === "Stroke size");
+    const inp = size.querySelector(".dialval");
+    inp.value = "77"; inp.dispatchEvent(new P.window.Event("change"));
+    assert.strictEqual(st.brush.size, 77, "typed value");
+    inp.value = "999"; inp.dispatchEvent(new P.window.Event("change"));
+    assert.strictEqual(st.brush.size, 120, "clamped to max");
+    const knob = size.querySelector(".knob");
+    knob.dispatchEvent(new P.window.MouseEvent("mousedown", { clientY: 100, bubbles: true }));
+    D.dispatchEvent(new P.window.MouseEvent("mousemove", { clientY: 140, bubbles: true }));
+    D.dispatchEvent(new P.window.MouseEvent("mouseup", { clientY: 140, bubbles: true }));
+    assert.ok(st.brush.size < 120 && st.brush.size >= 4, "dragging down turns it down: " + st.brush.size);
+    const sw = D.querySelector(".switch");
+    const before = st.out.printCopy;
+    sw.dispatchEvent(new P.window.Event("click"));
+    assert.strictEqual(st.out.printCopy, !before, "switch toggles");
+    assert.strictEqual(sw.classList.contains("on"), !before);
+    sw.dispatchEvent(new P.window.Event("click"));
+    // render meter: lights up fully after Apply
+    st.out.minLong = 150;
+    D.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
+    for (let i = 0; i < 200 && !/^(Done|Apply failed)/.test(D.querySelector(".status").textContent); i++) await P.settle(50);
+    assert.ok(/^Done/.test(D.querySelector(".status").textContent), D.querySelector(".status").textContent);
+    assert.strictEqual(D.querySelectorAll(".meter .seg8.on").length, 12, "meter full");
+    assert.ok(/S$/.test(D.querySelector(".mpct").textContent), "render time shown");
+    assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
   });
 
   await t("Paint Brew panel matches its golden fingerprint (UI, 9 looks, Apply)", () => {

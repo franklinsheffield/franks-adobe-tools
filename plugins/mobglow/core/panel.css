@@ -197,3 +197,67 @@ body { font-family: var(--ui); }
 .val { width: 50px; }
 .ub.mini { font-size: 10px; }
 .apply.ub { font-size: 13px; }
+
+/* ======================================================================
+   "Hardware Console" brand (Frank picked concept C, 2026-11-22).
+   Opt-in: createToolPanel({ brand: "console" }) adds #app.brand-console.
+   Rack header with screws and a status LED, dials (shared/console.js),
+   switches, LED bars on the style buttons, render meter, key-style Apply.
+   ====================================================================== */
+#app.brand-console .rack {
+  position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+  border: 1px solid var(--stroke); border-radius: 4px; padding: 9px 22px; margin-bottom: 8px;
+}
+#app.brand-console .screw { position: absolute; width: 8px; height: 8px; border: 1px solid var(--stroke); border-radius: 5px; }
+#app.brand-console .screw.tl { left: 5px; top: 5px; }
+#app.brand-console .screw.tr { right: 5px; top: 5px; }
+#app.brand-console .screw.bl { left: 5px; bottom: 5px; }
+#app.brand-console .screw.br { right: 5px; bottom: 5px; }
+#app.brand-console .screw .slot { position: absolute; left: 1px; top: 3px; width: 4px; height: 1px; background: var(--stroke); }
+#app.brand-console .screw .slot.v { left: 3px; top: 1px; width: 1px; height: 4px; }
+#app.brand-console .rackl { display: flex; flex-direction: column; }
+#app.brand-console .rackcode { font-size: 8px; letter-spacing: 2px; opacity: 0.75; margin: 0 0 2px 0; }
+#app.brand-console .rack .title { font-size: 19px; letter-spacing: 1px; color: var(--glow); text-shadow: 0 0 8px var(--glow); }
+#app.brand-console .rackr { display: flex; flex-direction: row; align-items: center; font-size: 9px; letter-spacing: 1px; }
+#app.brand-console .led { width: 8px; height: 8px; border-radius: 5px; margin-right: 5px; background: var(--glow); box-shadow: 0 0 6px var(--glow); }
+#app.brand-console .led.busy { background: #ffb020; box-shadow: 0 0 6px #ffb020; }
+#app.brand-console .led.err { background: #ff4b3e; box-shadow: 0 0 6px #ff4b3e; }
+
+#app.brand-console .previewbox { background: #0a0a0a; padding: 4px; }
+#app.brand-console .scrstrip { display: flex; flex-direction: row; justify-content: space-between; font-size: 8px; letter-spacing: 1px; padding: 0 2px 3px 2px; opacity: 0.85; }
+#app.brand-console .scrr { color: var(--glow); }
+
+#app.brand-console .segbtn { border-top: 3px solid #333333; padding-top: 5px; }
+#app.brand-console .segbtn.on { border-top-color: var(--glow); }
+
+#app.brand-console .cardbody { display: flex; flex-direction: row; flex-wrap: wrap; }
+#app.brand-console .cardbody > * { width: 100%; }
+#app.brand-console .cardbody > .dial { width: 25%; }
+#app.brand-console .dial { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
+#app.brand-console .knob { width: 48px; height: 48px; cursor: ns-resize; }
+#app.brand-console .dial.turning .knob { opacity: 0.85; }
+#app.brand-console .dialval {
+  width: 46px; margin-top: 1px; text-align: center; font-size: 11px; color: var(--glow);
+  background: var(--ink); border: 1px solid transparent; border-radius: 3px;
+}
+#app.brand-console .dialval:focus { border-color: var(--glow); }
+#app.brand-console .dlabel { font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; text-align: center; margin-top: 1px; opacity: 0.9; }
+
+#app.brand-console .swrow { justify-content: space-between; margin-bottom: 7px; }
+#app.brand-console .swlbl { margin-left: 0; flex: 1; }
+#app.brand-console .switch { position: relative; width: 32px; height: 16px; border: 1px solid var(--stroke); border-radius: 8px; flex-shrink: 0; cursor: pointer; }
+#app.brand-console .switch .swknob { position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 5px; background: #ffffff; }
+#app.brand-console .switch.on { border-color: var(--glow); background: var(--glowbg); }
+#app.brand-console .switch.on .swknob { left: 18px; background: var(--glow); box-shadow: 0 0 6px var(--glow); }
+
+#app.brand-console .meter { display: flex; flex-direction: row; align-items: center; margin: 6px 0 4px 0; }
+#app.brand-console .mlbl { font-size: 8px; letter-spacing: 1px; margin: 0 6px 0 0; }
+#app.brand-console .segs { flex: 1; display: flex; flex-direction: row; }
+#app.brand-console .seg8 { flex: 1; height: 6px; margin-right: 2px; background: #222222; }
+#app.brand-console .seg8.on { background: var(--glow); }
+#app.brand-console .mpct { width: 40px; text-align: right; font-size: 9px; color: var(--glow); }
+
+#app.brand-console .apply {
+  border-bottom-width: 4px; border-radius: 6px; padding: 9px; letter-spacing: 3px; font-family: var(--arcade);
+  font-size: 12px; font-weight: normal;
+}

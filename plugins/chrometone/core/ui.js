@@ -81,12 +81,17 @@ function createUI(opts) {
   function bind(fn) { binders.push(fn); fn(); }
   function showIf(node, fn) { rules.push(() => { node.style.display = fn() ? "" : "none"; }); }
   function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); }
+  // Optional "Hardware Console" brand: dials and switches instead of sliders and checkboxes.
+  const brand = opts.brand === "console"
+    ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), glow: opts.glow })
+    : null;
 
   function row(label, ...controls) {
     return el("div", { class: "row" }, [label ? el("span", { class: "lbl", text: label }) : null].concat(controls));
   }
 
   function sliderRow(label, path, min, max, step, unit) {
+    if (brand) return brand.dial(label, path, min, max, step, unit);
     const val = el("span", { class: "val" });
     const input = el("input", { type: "range", min: String(min), max: String(max), step: String(step), value: String(getPath(S(), path)) });
     const fmt = (v) => (step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.1 ? 2 : 1)) + (unit || "");
@@ -116,6 +121,7 @@ function createUI(opts) {
   }
 
   function checkRow(label, path, after) {
+    if (brand) return brand.toggle(label, path, after);
     const cb = el("input", { type: "checkbox" });
     cb.addEventListener("change", () => { setPath(S(), path, !!cb.checked); if (after) after(!!cb.checked); onChange(); });
     bind(() => { cb.checked = !!getPath(S(), path); });
@@ -200,7 +206,7 @@ function createUI(opts) {
 
   return {
     el, clear, bind, showIf, refreshAll, getPath, setPath,
-    row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card
+    row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand
   };
 }
 
