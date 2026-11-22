@@ -6,6 +6,7 @@ const { createToolPanel } = require("./core/toolpanel.js");
 const PS = require("./core/ps-io.js");
 const PP = require("./js/paintps.js");
 const M = require("./core/imgmath.js");
+const { WALL_COLOURS } = require("./js/styles2.js");
 const STYLE_NAMES = { oil: "Oil", watercolour: "Watercolour", impressionism: "Impressionism", ink: "Alcohol Ink", spray: "Spray Paint", pastel: "Pastel" };
 
 let getState = () => DEFAULTS;
@@ -116,14 +117,28 @@ const panel = createToolPanel({
     ], { hint: "Veins 0 turns the metallic lines off." }), is("ink"));
     const spray = only(card("Spray", [
       sliderRow("Cans", "spray.cans", 3, 8, 1, " colours"),
+      sliderRow("Soft edges", "spray.soft", 0, 100, 1, "%"),
       sliderRow("Overspray", "spray.overspray", 0, 100, 1, "%"),
-      sliderRow("Speckle", "spray.speckle", 0, 100, 1, "%"),
+      sliderRow("Speckle and splats", "spray.speckle", 0, 100, 1, "%"),
+      sliderRow("Halftone", "spray.halftone", 0, 100, 1, "%"),
       sliderRow("Drips", "spray.drips", 0, 100, 1, "%"),
       sliderRow("Drip length", "spray.dripLength", 0, 100, 1, "%"),
       sliderRow("Outline", "spray.outline", 0, 100, 1, "%"),
-      row("Wall", segGroup("spray.wall", [{ v: "plain", l: "Plain" }, { v: "concrete", l: "Concrete" }, { v: "brick", l: "Brick" }])),
-      swatchRow("Wall colour", "spray.wallColour", SWATCHES.wall)
-    ], { hint: "Outline 0 turns the dark line off." }), is("spray"));
+      sliderRow("Highlight edge", "spray.highlight", 0, 100, 1, "%")
+    ], { hint: "Soft edges 0 is a crisp stencil; 100 is a can held far from the wall." }), is("spray"));
+    // picking a wall type also picks its usual colour; a swatch or hex after that overrides it
+    const wallSeg = (opts) => {
+      const g = segGroup("spray.wall", opts);
+      g.addEventListener("click", () => { const c = WALL_COLOURS[kit.state.spray.wall]; if (c && kit.state.spray.wallColour !== c) { kit.state.spray.wallColour = c; kit.touch(); } });
+      return g;
+    };
+    const wall = only(card("Wall", [
+      row("Wall", wallSeg([{ v: "plain", l: "Plain" }, { v: "concrete", l: "Concrete" }, { v: "stucco", l: "Stucco" }, { v: "brick", l: "Brick" }])),
+      row("", wallSeg([{ v: "block", l: "Block" }, { v: "metal", l: "Metal" }, { v: "wood", l: "Wood" }])),
+      swatchRow("Wall colour", "spray.wallColour", SWATCHES.wall),
+      sliderRow("Wall relief", "spray.relief", 0, 100, 1, "%"),
+      sliderRow("Bare wall", "spray.bare", 0, 100, 1, "%")
+    ], { hint: "Wall relief shows the bumps and joints through the paint. Bare wall leaves the wall where the lightest paint would go." }), is("spray"));
     const angle = sliderRow("Hatch angle", "pastel.angle", 0, 180, 5, " deg");
     showIf(angle, () => kit.state.pastel.hatch === "fixed");
     const pastel = only(card("Pastel", [
@@ -143,7 +158,7 @@ const panel = createToolPanel({
     return [card("Style", [
       segGroup("style", [{ v: "oil", l: "Oil" }, { v: "watercolour", l: "Watercolour" }, { v: "impressionism", l: "Impressionism" }]),
       segGroup("style", [{ v: "ink", l: "Alcohol Ink" }, { v: "spray", l: "Spray Paint" }, { v: "pastel", l: "Pastel" }])
-    ]), brush, colour, texture, water, ink, spray, pastel, focus];
+    ]), brush, colour, texture, water, ink, spray, wall, pastel, focus];
   },
   outputRows: (ui, kit) => {
     const { checkRow, sliderRow, selectRow, showIf } = ui;

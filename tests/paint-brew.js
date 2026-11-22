@@ -15,13 +15,13 @@ module.exports = async function (t) {
     watercolour: ["Washes", "Wet edges", "Granulation", "Pencil", "Paper texture"],
     impressionism: ["Ground", "Large dabs", "Medium dabs", "Fine detail", "Light and colour lift", "Canvas weave"],
     ink: ["Gloss paper", "Pools", "Rims", "Cells", "Metallic veins"],
-    spray: ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Speckle", "Drips", "Outline"],
+    spray: ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Speckle", "Drips", "Outline", "Highlights", "Wall relief"],
     pastel: ["Toned paper", "Smudge", "Strokes", "Highlights", "Dust"]
   };
   const run = (src, p, extra) => { const P = S.merge(S.DEFAULTS, p); Object.assign(P, { scale: 0.12, fullH: src.h / 0.12, fullW: src.w / 0.12 }, extra || {}); return E.render(src, P, {}); };
 
-  await t("Paint Brew engine: 18 looks, deterministic, full-size layers, the right stack per style", async () => {
-    assert.strictEqual(S.PRESETS.length, 18);
+  await t("Paint Brew engine: 20 looks, deterministic, full-size layers, the right stack per style", async () => {
+    assert.strictEqual(S.PRESETS.length, 20);
     const src = E.demoImage(120, 90);
     const seen = new Set();
     for (const pr of S.PRESETS) {
@@ -173,9 +173,16 @@ module.exports = async function (t) {
     assert.notStrictEqual(await hash({ style: "ink", ink: { flow: 0 } }), await hash({ style: "ink", ink: { flow: 100 } }), "Flow moves the ink");
     // spray: one layer per can; outline / drips / speckle at 0 drop their layers; each wall is different
     for (const c of [3, 6, 8]) assert.strictEqual((await names({ style: "spray", spray: { cans: c } })).filter((n) => /^Can /.test(n)).length, c);
-    assert.deepStrictEqual(await names({ style: "spray", spray: { outline: 0, drips: 0, speckle: 0 } }), ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Can 5"]);
-    const walls = await Promise.all(["plain", "concrete", "brick"].map((wl) => run(src, { style: "spray", spray: { wall: wl } })));
-    assert.strictEqual(new Set(walls.map((r) => require("crypto").createHash("sha1").update(Buffer.from(r.layers[0].rgba)).digest("hex"))).size, 3, "three different walls");
+    assert.deepStrictEqual(await names({ style: "spray", spray: { outline: 0, drips: 0, speckle: 0, relief: 0 } }), ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Can 5"]);
+    assert.deepStrictEqual(await names({ style: "spray", spray: { outline: 0, drips: 0, speckle: 0, halftone: 50, highlight: 60 } }), ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Can 5", "Halftone", "Highlights", "Wall relief"], "halftone and a highlight edge without the black line");
+    const wallTypes = ["plain", "concrete", "stucco", "brick", "block", "metal", "wood"];
+    const walls = await Promise.all(wallTypes.map((wl) => run(src, { style: "spray", spray: { wall: wl } })));
+    assert.strictEqual(new Set(walls.map((r) => require("crypto").createHash("sha1").update(Buffer.from(r.layers[0].rgba)).digest("hex"))).size, wallTypes.length, "seven different walls");
+    const relief = walls[3].layers.find((L) => L.name === "Wall relief");
+    assert.strictEqual(relief.blend, "OVERLAY");
+    assert.notStrictEqual(await hash({ style: "spray", spray: { soft: 0 } }), await hash({ style: "spray", spray: { soft: 100 } }), "Soft edges change the cans");
+    const bare = await run(src, { style: "spray", spray: { bare: 100 } });
+    assert.ok(bare.layers.find((L) => L.name === "Can 1").rgba.every((v, i) => i % 4 !== 3 || v === 0), "Bare wall 100 leaves the lightest can off");
     // pastel: paper colour, oil pastel (no dust), fixed hatch angle
     const pp = await run(src, { style: "pastel", pastel: { paper: "#1E1E1E" } });
     assert.ok(Math.abs(pp.layers[0].rgba[0] - 30) < 6, "black paper: " + pp.layers[0].rgba[0]);
@@ -210,6 +217,18 @@ module.exports = async function (t) {
       assert.ok(!shown(cardOf("Water and paper")) && !shown(cardOf("Texture")), "other style cards hidden for " + style);
       for (const other of ["Ink", "Spray", "Pastel"].filter((c) => c !== card)) assert.ok(!shown(cardOf(other)), other + " hidden for " + style);
     }
+    // the Wall card comes with Spray Paint; a wall type sets its usual colour
+    styleBtns.find((b) => b.textContent === "Spray Paint").dispatchEvent(new P.window.Event("click"));
+    const wc = cardOf("Wall");
+    assert.ok(shown(wc), "Wall card shows for spray");
+    Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Wood").dispatchEvent(new P.window.Event("click", { bubbles: true }));
+    assert.strictEqual(st.spray.wall, "wood");
+    assert.strictEqual(st.spray.wallColour, "#8A6A48", "wood picks its timber colour");
+    Array.from(wc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Black").dispatchEvent(new P.window.Event("click", { bubbles: true }));
+    assert.strictEqual(st.spray.wallColour, "#1C1C1C");
+    assert.strictEqual(st.spray.wall, "wood", "a colour swatch keeps the wall type");
+    styleBtns.find((b) => b.textContent === "Pastel").dispatchEvent(new P.window.Event("click"));
+    assert.ok(!shown(cardOf("Wall")), "Wall card hidden for pastel");
     // pastel paper: swatch button, then a typed hex; a bad hex is refused
     const pc = cardOf("Pastel");
     Array.from(pc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Tan").dispatchEvent(new P.window.Event("click"));
@@ -228,7 +247,7 @@ module.exports = async function (t) {
     assert.ok(P.host.calls.some((c) => c[0] === "createLayerGroup" && /Pastel/.test(c[1])), "group named for the style: " + JSON.stringify(P.host.calls.filter((c) => c[0] === "createLayerGroup")));
   });
 
-  await t("Paint Brew panel matches its golden fingerprint (UI, 18 looks, Apply)", () => {
+  await t("Paint Brew panel matches its golden fingerprint (UI, 20 looks, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), DIR], { encoding: "utf8", env: process.env, timeout: 600000 });
     const got = JSON.parse(outp), gp = path.join(__dirname, "paint-brew.golden.json");
     if (process.env.UPDATE_GOLDEN || !fs.existsSync(gp)) fs.writeFileSync(gp, JSON.stringify(got, null, 1) + "\n");

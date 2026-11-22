@@ -169,22 +169,73 @@ async function paintInk(src, P, hooks) {
 }
 
 // ---------------------------------------------------------------- Spray Paint
+// wall colours a wall type starts with (the panel sets these when the type changes)
+const WALL_COLOURS = { plain: "#E8E6E1", concrete: "#A8A49C", stucco: "#D8CCB4", brick: "#9C4A36", block: "#9A9A96", metal: "#7D848C", wood: "#8A6A48" };
+// the wall: its colour and a relief map (-1 recess .. +1 bump) that also shows through the paint
 function wallLayer(w, h, k, Q, seed, I) {
-  const n = w * h, out = new Uint8Array(n * 4), base = M.hexToRgb(Q.wallColour), mortar = [205, 200, 190];
-  const BH = 75, BW = 230, MT = 9;      // brick height, width, mortar, in units
+  const n = w * h, out = new Uint8Array(n * 4), base = M.hexToRgb(Q.wallColour), rel = new Float32Array(n), tone = new Float32Array(n);
+  const lift = (c, f) => [clamp(c[0] * f, 0, 255), clamp(c[1] * f, 0, 255), clamp(c[2] * f, 0, 255)];
+  const mortar = lum(base[0], base[1], base[2]) < 90 ? lift(base, 1.5) : [205, 200, 190];
+  const type = Q.wall, fineAmp = clamp((k - 0.08) / 0.5, 0.25, 1);   // fine grain fades at small preview sizes instead of turning to pixel noise
+  const useMortar = new Uint8Array(type === "brick" || type === "block" ? n : 0);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const ux = x / k, uy = y / k, p = (y * w + x) * 4;
-    let col = base, v = 1;
-    if (Q.wall === "concrete") {
-      v = 0.9 + 0.12 * I.fbm(ux / 90, uy / 90, seed + 31, 4) + 0.06 * I.fbm(ux / 6, uy / 6, seed + 32, 2);
-      if (M.hashNoise(Math.floor(ux / 3), Math.floor(uy / 3), seed + 33) > 0.985) v *= 0.7;       // small pits
-    } else if (Q.wall === "brick") {
+    const ux = x / k, uy = y / k, i = y * w + x;
+    let v = 1, r = 0;
+    if (type === "concrete") {
+      v = 0.92 + 0.1 * I.fbm(ux / 90, uy / 90, seed + 31, 4);
+      r = 0.45 * fineAmp * I.fbm(ux / 6, uy / 6, seed + 32, 3) + 0.2 * I.fbm(ux / 40, uy / 40, seed + 39, 2);
+      const cx = Math.floor(ux / 4), cy = Math.floor(uy / 4);                                     // round pits
+      if (M.hashNoise(cx, cy, seed + 33) > 0.94 && Math.hypot(ux - cx * 4 - 2, uy - cy * 4 - 2) < 1.1 + 0.7 * M.hashNoise(cx, cy, seed + 50)) r = -0.9;
+    } else if (type === "stucco") {
+      const b = I.fbm(ux / 9, uy / 9, seed + 40, 4), bump = Math.sign(b) * Math.pow(Math.abs(b), 0.6);
+      r = fineAmp * (0.85 * bump + 0.3 * I.fbm(ux / 2.6, uy / 2.6, seed + 41, 2));
+      v = 0.97 + 0.05 * I.fbm(ux / 160, uy / 160, seed + 42, 2);
+    } else if (type === "brick" || type === "block") {
+      const brick = type === "brick", BH = brick ? 75 : 190, BW = brick ? 230 : 390, MT = brick ? 9 : 11;
       const row = Math.floor(uy / BH), off = (row & 1) * BW / 2, col0 = Math.floor((ux + off) / BW);
-      const fx = (ux + off) - col0 * BW, fy = uy - row * BH;
-      if (fx < MT || fy < MT) { col = mortar; v = 0.95 + 0.06 * I.fbm(ux / 5, uy / 5, seed + 34, 2); }
-      else v = 0.88 + 0.14 * M.hashNoise(col0, row, seed + 35) + 0.07 * I.fbm(ux / 14, uy / 14, seed + 36, 2);
-    } else v = 1 + 0.025 * I.fbm(ux / 120, uy / 120, seed + 37, 2);
-    out[p] = clamp(col[0] * v, 0, 255); out[p + 1] = clamp(col[1] * v, 0, 255); out[p + 2] = clamp(col[2] * v, 0, 255); out[p + 3] = 255;
+      const fx = (ux + off) - col0 * BW, fy = uy - row * BH, e = Math.min(fx - MT, fy - MT, BW - fx, BH - fy);
+      if (e < 0) { useMortar[i] = 1; r = -0.95 + 0.25 * I.fbm(ux / 4, uy / 4, seed + 34, 2); v = 0.95; }
+      else {
+        r = -0.7 + 0.9 * smooth(0, brick ? 5 : 4, e) + (brick ? 0.25 * I.fbm(ux / 10, uy / 10, seed + 36, 3) : 0.35 * I.fbm(ux / 3, uy / 3, seed + 43, 2));
+        if (!brick) { const cx = Math.floor(ux / 5), cy = Math.floor(uy / 5);                       // cinder pores
+          if (M.hashNoise(cx, cy, seed + 44) > 0.88 && Math.hypot(ux - cx * 5 - 2.5, uy - cy * 5 - 2.5) < 1.3 + 0.8 * M.hashNoise(cx, cy, seed + 51)) r -= 0.8; }
+        v = (brick ? 0.86 : 0.92) + (brick ? 0.16 : 0.08) * (0.5 + 0.5 * M.hashNoise(col0, row, seed + 35)) + 0.05 * I.fbm(ux / 14, uy / 14, seed + 45, 2);
+      }
+    } else if (type === "metal") {
+      // corrugated shutter: horizontal ribs, a little rust and run-off streaks
+      const ph = uy / 34 * Math.PI * 2;
+      r = 0.9 * Math.sin(ph);
+      v = 0.92 + 0.12 * Math.sin(ph - 0.9) + 0.06 * I.fbm(ux / 3, uy / 160, seed + 46, 2);
+      const rust = smooth(0.35, 0.75, 0.5 + 0.5 * I.fbm(ux / 70, uy / 70, seed + 47, 3));
+      v *= 1 - 0.18 * rust;
+    } else if (type === "wood") {
+      // fence: vertical planks with dark gaps and long grain
+      const PW = 150, GAP = 6, pl = Math.floor(ux / PW), fx = ux - pl * PW, e = Math.min(fx - GAP, PW - fx);
+      if (e < 0) { r = -1; v = 0.45; }
+      else {
+        const g = I.fbm(ux / 5 + pl * 13, uy / 120, seed + 48, 3);
+        r = -0.5 + 0.7 * smooth(0, 3, e) + 0.35 * g;
+        v = 0.88 + 0.1 * g + 0.1 * M.hashNoise(pl, 3, seed + 49);
+      }
+    } else {
+      v = 1 + 0.025 * I.fbm(ux / 120, uy / 120, seed + 37, 2);
+      r = 0.15 * fineAmp * I.fbm(ux / 4, uy / 4, seed + 38, 2);
+    }
+    rel[i] = clamp(r, -1, 1); tone[i] = v;
+  }
+  const shade = reliefShade(rel, w, h, k);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const c = useMortar.length && useMortar[i] ? mortar : base, f = tone[i] * (1 + 0.22 * shade[i]);
+    out[p] = clamp(c[0] * f, 0, 255); out[p + 1] = clamp(c[1] * f, 0, 255); out[p + 2] = clamp(c[2] * f, 0, 255); out[p + 3] = 255;
+  }
+  return { rgba: out, shade };
+}
+// light from the top left: height plus its slope, -1..1
+function reliefShade(rel, w, h, k) {
+  const d = Math.max(1, Math.round(1.6 * k)), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, x2 = Math.min(w - 1, x + d), y2 = Math.min(h - 1, y + d);
+    out[i] = clamp(0.45 * rel[i] + 0.9 * (rel[i] - rel[y2 * w + x2]), -1, 1);
   }
   return out;
 }
@@ -194,7 +245,8 @@ async function paintSpray(src, P, hooks) {
   const S = setup(src, P), { I, w, h, n, k, R, G, B, focus, seed, rad0, simp } = S, Q = P.spray;
   const layers = [];
   prog("Wall...");
-  layers.push({ name: "Wall", rgba: wallLayer(w, h, k, Q, seed, I), blend: "NORMAL" });
+  const wall = wallLayer(w, h, k, Q, seed, I);
+  layers.push({ name: "Wall", rgba: wall.rgba, blend: "NORMAL" });
   await yieldFn();
   prog("Mixing the cans...");
   const [aR, aG, aB] = I.abstraction(R, G, B, w, h, rad0 * 0.45 * simp);
@@ -202,45 +254,92 @@ async function paintSpray(src, P, hooks) {
   // base fade: a soft sprayed wash of the picture's broad colours
   {
     const br = Math.max(2, rad0 * 5), fR = I.blur(aR, w, h, br), fG = I.blur(aG, w, h, br), fB = I.blur(aB, w, h, br), A = new Uint8Array(n);
-    for (let i = 0; i < n; i++) A[i] = Math.round(110 + 40 * (0.5 + 0.5 * I.fbm((i % w) / k / 300, ((i / w) | 0) / k / 300, seed + 38, 2)));
+    const keep = 1 - (Q.bare || 0) / 100;          // Bare wall: leave the wall showing where the lightest paint would go
+    for (let i = 0; i < n; i++) A[i] = Math.round(keep * (110 + 40 * (0.5 + 0.5 * I.fbm((i % w) / k / 300, ((i / w) | 0) / k / 300, seed + 38, 2))));
     layers.push({ name: "Base fade", rgba: M.toRGBA(fR, fG, fB, A, n), blend: "NORMAL" });
   }
   const cans = clamp(Math.round(Q.cans), 3, 8);
   const pal = I.palette(aR, aG, aB, n, cans, M.rng(seed * 977)).sort((a, b) => lum(b[0], b[1], b[2]) - lum(a[0], a[1], a[2]));   // lightest first
   const lab = new Uint8Array(n);
   for (let i = 0; i < n; i++) lab[i] = I.nearest(pal, aR[i], aG[i], aB[i]);
-  const outside = P.focus.outside / 100, os = Q.overspray / 100;
+  const outside = P.focus.outside / 100, os = Q.overspray / 100, sft = (Q.soft == null ? 0 : Q.soft) / 100;
   const hr = Math.max(1, (0.15 + os * 0.9) * rad0);
+  // soft edges: a wider fade, broken up into spray dots like a real can held further from the wall
+  const er = Math.max(1, 0.7 * k + sft * sft * rad0 * 1.6);
+  const DS = 1.5;                                  // spray dot cell, in units
+  const dotG = new Float32Array(n);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) dotG[y * w + x] = 0.5 + 0.5 * M.hashNoise(Math.floor(x / k / DS), Math.floor(y / k / DS), seed * 5 + 3);
   for (let c = 0; c < cans; c++) {
     prog("Can " + (c + 1) + " of " + cans + "...");
     // each can sprays its stencil plus everything darker (stencils stack light to dark)
     const m = new Float32Array(n);
     for (let i = 0; i < n; i++) m[i] = lab[i] >= c ? 1 : 0;
-    const core = M.boxBlur(Float32Array.from(m), w, h, Math.max(1, 0.7 * k), 1), halo = M.boxBlur(m, w, h, hr, 3);
+    const core = M.boxBlur(Float32Array.from(m), w, h, er, sft > 0.05 ? 2 : 1), halo = M.boxBlur(m, w, h, hr, 3);
     const out = new Uint8Array(n * 4), col = pal[c], lightest = c === 0;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x, p = i * 4, fc = focus ? focus[i] : 1;
-      const grain = 0.5 + 0.5 * M.hashNoise(x, y, seed * 7 + c);
+      const i = y * w + x, p = i * 4, fc = focus ? focus[i] : 1, t = core[i];
+      const crisp = clamp(t * 1.6 - 0.3, 0, 1);
+      const stip = Math.pow(t, 1.3) > dotG[(i + c * 7919) % n] ? 1 : 0;
+      const fuzzy = 0.45 * smooth(0, 1, t) + 0.55 * stip * smooth(0, 0.35, t);
+      let a = crisp * (1 - sft) + fuzzy * sft;
+      const grain = dotG[(i + c * 104729) % n];
       const hg = halo[i] * (1 + (1 - fc) * (1 - outside)) * 0.55 * grain;
-      let a = Math.max(clamp(core[i] * 1.6 - 0.3, 0, 1), clamp(hg, 0, 0.6));
-      if (lightest) a *= 0.8;                       // the wall reads through the first coat
+      a = Math.max(a, clamp(hg, 0, 0.6));
+      if (lightest) a *= 0.8 * (1 - (Q.bare || 0) / 100);   // the wall reads through the first coat
       if (a <= 0.004) continue;
       out[p] = col[0]; out[p + 1] = col[1]; out[p + 2] = col[2]; out[p + 3] = Math.round(clamp(a, 0, 0.97) * 255);
     }
     layers.push({ name: "Can " + (c + 1), rgba: out, blend: "NORMAL" });
     await yieldFn();
   }
+  const half = Math.floor(cans / 2);
+  if (Q.halftone > 0) {
+    prog("Halftone...");
+    // a dot screen fading out from the darker coats, in their colours
+    const ht = Q.halftone / 100, D = new Float32Array(n), CR = new Float32Array(n), CG = new Float32Array(n), CB = new Float32Array(n);
+    for (let i = 0; i < n; i++) if (lab[i] >= half) { const c = pal[lab[i]]; D[i] = 1; CR[i] = c[0]; CG[i] = c[1]; CB[i] = c[2]; }
+    const rh = Math.max(2, (10 + 45 * ht) * k);
+    const Df = M.boxBlur(Float32Array.from(D), w, h, rh, 3), Rf = M.boxBlur(CR, w, h, rh, 3), Gf = M.boxBlur(CG, w, h, rh, 3), Bf = M.boxBlur(CB, w, h, rh, 3);
+    const out = new Uint8Array(n * 4), cs = 13, s2 = Math.SQRT1_2;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, p = i * 4;
+      if (D[i] || Df[i] < 0.02) continue;
+      const ux = x / k, uy = y / k, u = (ux + uy) * s2 / cs, v = (ux - uy) * s2 / cs;
+      const d = Math.hypot(u - Math.round(u), v - Math.round(v)) * cs;          // units to the dot centre
+      const r = Math.sqrt(clamp(Df[i] * 1.8, 0, 1)) * cs * 0.55 * (0.4 + 0.6 * ht);
+      const a = clamp((r - d) * k + 0.5, 0, 1);
+      if (a <= 0.01) continue;
+      const f = 1 / Df[i];
+      out[p] = clamp(Rf[i] * f, 0, 255); out[p + 1] = clamp(Gf[i] * f, 0, 255); out[p + 2] = clamp(Bf[i] * f, 0, 255); out[p + 3] = Math.round(a * 235);
+    }
+    layers.push({ name: "Halftone", rgba: out, blend: "NORMAL" });
+    await yieldFn();
+  }
   const E = labelEdges(lab, w, h);
   if (Q.speckle > 0) {
-    prog("Speckle...");
-    const out = new Uint8Array(n * 4), rnd = M.rng(seed * 811), sp = Q.speckle / 100;
+    prog("Speckle and splats...");
+    const out = new Uint8Array(n * 4), rnd = M.rng(seed * 811), sp = Q.speckle / 100, area = n / Math.max(0.01, k * k);
     const Eb = M.boxBlur(Float32Array.from(E), w, h, Math.max(1, hr), 2);
-    const cnt = Math.min(40000, Math.round(sp * n / Math.max(1, k * k) * 0.0035 + sp * 80));
+    const cnt = Math.min(40000, Math.round(sp * area * 0.0035 + sp * 80));
     for (let s = 0; s < cnt; s++) {
       const x = rnd() * w, y = rnd() * h, i = Math.min(n - 1, Math.floor(y) * w + Math.floor(x));
       if (rnd() > 0.25 + 0.75 * clamp(Eb[i] * 3, 0, 1)) continue;          // mostly near edges
-      const col = pal[lab[i]];
-      dot(out, w, h, x, y, Math.max(0.4, (1 + rnd() * 2.5) * k * 1.3), col, 0.9);
+      dot(out, w, h, x, y, Math.max(0.4, (1 + rnd() * 2.5) * k * 1.3), pal[lab[i]], 0.9);
+    }
+    // splats: a blob with flung droplets around it
+    const splats = Math.round(sp * sp * 16 * area / 6e6);
+    const sz = 0.6 + P.brush.size / 80;
+    for (let s = 0; s < splats; s++) {
+      const x = rnd() * w, y = rnd() * h, i = Math.min(n - 1, Math.floor(y) * w + Math.floor(x));
+      const col = pal[Math.max(half, lab[i])], r = (8 + rnd() * 24) * k * sz;
+      for (let b = 0; b < 5; b++) dot(out, w, h, x + (rnd() - 0.5) * r * 0.7, y + (rnd() - 0.5) * r * 0.7, r * (0.55 + rnd() * 0.35), col, 0.95);
+      const drops = 8 + Math.floor(rnd() * 10);
+      for (let d = 0; d < drops; d++) {
+        const ang = rnd() * Math.PI * 2, dist = r * (1.2 + rnd() * 2.2), dr = Math.max(0.5, r * (0.05 + rnd() * 0.16));
+        const ex = x + Math.cos(ang) * dist, ey = y + Math.sin(ang) * dist;
+        dot(out, w, h, ex, ey, dr, col, 0.95);
+        if (rnd() < 0.4) for (let t = 0.2; t < 0.9; t += 0.15) dot(out, w, h, x + Math.cos(ang) * dist * (1 - t * 0.35), y + Math.sin(ang) * dist * (1 - t * 0.35), dr * (1 - t) * 0.8, col, 0.9);
+      }
     }
     layers.push({ name: "Speckle", rgba: out, blend: "NORMAL" });
     await yieldFn();
@@ -249,15 +348,15 @@ async function paintSpray(src, P, hooks) {
     prog("Drips...");
     const out = new Uint8Array(n * 4), rnd = M.rng(seed * 1999), dr = Q.drips / 100;
     const cnt = Math.round(dr * 50 * Math.sqrt(n / Math.max(1, k * k)) / 400 + dr * 6);
-    const half = Math.floor(cans / 2);
     let made = 0;
     for (let tries = 0; tries < cnt * 600 && made < cnt; tries++) {   // edges are thin at full size: try harder
       const x = Math.floor(rnd() * w), y = Math.floor(rnd() * (h - 2));
       const i = y * w + x, c = lab[i];
-      if (c < half || lab[i + w] >= c) continue;    // start at the lower edge of a darker coat
+      if (c < 1 || lab[i + w] >= c) continue;    // start at the lower edge of a coat
+      if (c < half && rnd() < 0.6) continue;     // darker coats drip more
       made++;
       const col = pal[c], wd = Math.max(0.7, (3.5 + rnd() * 4) * k * (0.6 + P.brush.size / 80));
-      const len = (Q.dripLength / 100) * (40 + rnd() * 200) * k;
+      const len = (Q.dripLength / 100) * (50 + rnd() * 300) * k;
       const sd = seed * 3 + made;
       for (let t = 0; t <= len; t += Math.max(0.5, wd * 0.5)) {
         const xx = x + wd * 0.8 * I.vnoise(t / Math.max(1, 30 * k), sd, sd), taper = 1 - 0.35 * (t / Math.max(1, len));
@@ -268,25 +367,57 @@ async function paintSpray(src, P, hooks) {
     layers.push({ name: "Drips", rgba: out, blend: "NORMAL" });
     await yieldFn();
   }
-  if (Q.outline > 0) {
+  const hl = (Q.highlight || 0) / 100;
+  if (Q.outline > 0 || hl > 0) {
     prog("Outline...");
     // only the strong steps between coats get the fat-cap line
-    const S2 = new Float32Array(n);
+    const S2 = new Float32Array(n), L = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const a = pal[lab[i]]; L[i] = lum(a[0], a[1], a[2]); }
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x, a = pal[lab[i]], la = lum(a[0], a[1], a[2]);
+      const i = y * w + x, la = L[i];
       let d = 0;
-      if (x + 1 < w) { const b = pal[lab[i + 1]]; d = Math.max(d, Math.abs(la - lum(b[0], b[1], b[2]))); }
-      if (y + 1 < h) { const b = pal[lab[i + w]]; d = Math.max(d, Math.abs(la - lum(b[0], b[1], b[2]))); }
+      if (x + 1 < w) d = Math.max(d, Math.abs(la - L[i + 1]));
+      if (y + 1 < h) d = Math.max(d, Math.abs(la - L[i + w]));
       S2[i] = d > 45 ? 1 : 0;
     }
-    const lw = Math.max(1, (2.4 + Q.outline / 100 * 6) * k * 1.4), og = 4 * (2 * Math.max(1, Math.round(lw)) + 1) / 3, Ob = M.boxBlur(S2, w, h, lw, 2);
-    const out = new Uint8Array(n * 4), g = Q.outline / 100;
-    for (let i = 0, p = 0; i < n; i++, p += 4) {
-      const a = clamp(Ob[i] * og - 0.25, 0, 1) * (0.55 + 0.45 * g);
-      if (a <= 0.004) continue;
-      out[p] = 18; out[p + 1] = 18; out[p + 2] = 20; out[p + 3] = Math.round(a * 255);
+    const g = Q.outline / 100;
+    const lw = Math.max(1, (2.4 + Math.max(g, 0.3) * 6) * k * 1.4), og = 4 * (2 * Math.max(1, Math.round(lw)) + 1) / 3, Ob = M.boxBlur(Float32Array.from(S2), w, h, lw, 2);
+    const oa = new Float32Array(n);
+    if (g > 0) {
+      const out = new Uint8Array(n * 4);
+      for (let i = 0, p = 0; i < n; i++, p += 4) {
+        const a = clamp(Ob[i] * og - 0.25, 0, 1) * (0.55 + 0.45 * g);
+        oa[i] = a;
+        if (a <= 0.004) continue;
+        out[p] = 18; out[p + 1] = 18; out[p + 2] = 20; out[p + 3] = Math.round(a * 255);
+      }
+      layers.push({ name: "Outline", rgba: out, blend: "NORMAL" });
     }
-    layers.push({ name: "Outline", rgba: out, blend: "NORMAL" });
+    if (hl > 0) {
+      // a white edge on the lighter side of each strong step, beside the black line
+      prog("Highlights...");
+      const hw = lw * (g > 0 ? 2.7 : 1.4), Hb = M.boxBlur(Float32Array.from(S2), w, h, hw, 2), Lb = M.boxBlur(Float32Array.from(L), w, h, hw, 2);
+      const hgain = 4 * (2 * Math.max(1, Math.round(hw)) + 1) / 3;
+      const out = new Uint8Array(n * 4);
+      for (let i = 0, p = 0; i < n; i++, p += 4) {
+        if (L[i] < Lb[i] + 2) continue;
+        const a = clamp(Hb[i] * hgain - 0.3, 0, 1) * (1 - oa[i]) * (0.35 + 0.6 * hl);
+        if (a <= 0.01) continue;
+        out[p] = 250; out[p + 1] = 248; out[p + 2] = 240; out[p + 3] = Math.round(a * 255);
+      }
+      layers.push({ name: "Highlights", rgba: out, blend: "NORMAL" });
+    }
+    await yieldFn();
+  }
+  const rv = (Q.relief == null ? 0 : Q.relief) / 100;
+  if (rv > 0) {
+    // the wall's bumps, joints and ribs read through every coat
+    const out = new Uint8Array(n * 4), sh = wall.shade;
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const v = clamp(128 + 127 * sh[i], 0, 255);
+      out[p] = v; out[p + 1] = v; out[p + 2] = v; out[p + 3] = Math.round(255 * clamp(rv * 0.9, 0, 1));
+    }
+    layers.push({ name: "Wall relief", rgba: out, blend: "OVERLAY" });
   }
   return { w, h, layers, notes: [] };
 }
@@ -386,4 +517,4 @@ async function paintPastel(src, P, hooks) {
 }
 function makeBuf(n) { return { P0: new Float32Array(n), P1: new Float32Array(n), P2: new Float32Array(n), PA: new Float32Array(n) }; }
 
-module.exports = { paintInk, paintSpray, paintPastel, METALS };
+module.exports = { paintInk, paintSpray, paintPastel, METALS, WALL_COLOURS };
