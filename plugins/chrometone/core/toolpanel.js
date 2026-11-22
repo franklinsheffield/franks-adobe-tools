@@ -14,6 +14,11 @@
 //     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
 //     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
+//
+// Export mode (tools that write a file instead of layers, e.g. Font Brew):
+//   previewRender(state, {tick}) -> { rgb, w, h, status, docline }  replaces the pixel preview
+//   previewRows(ui, kit) -> [rows]   replaces the Whole/Detail + background row
+//   outputCard(ui, kit) -> card      replaces the Output/Apply card
 // ======================================================================
 const PNG = require("./png.js");
 const PS = require("./ps-io.js");
@@ -90,6 +95,14 @@ function createToolPanel(cfg) {
   async function previewOnce() {
     setStatus("Rendering preview...");
     const t0 = Date.now();
+    if (cfg.previewRender) {
+      const r = await cfg.previewRender(state, { tick });
+      refs.docline.textContent = r.docline || "";
+      refs.preview.src = PNG.dataURL(r.rgb, r.w, r.h, 3);
+      sizePreview(r.w, r.h);
+      setStatus(r.status != null ? r.status : ("Preview in " + (Date.now() - t0) + " ms"), !!r.err);
+      return;
+    }
     let src, scale = 1;
     const doc = PS.activeDoc();
     if (doc) {
@@ -106,12 +119,16 @@ function createToolPanel(cfg) {
     const res = await Engine.render(src, Object.assign({}, state, { scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
+    sizePreview(res.w, res.h);
+    setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
+  }
+
+  function sizePreview(w, h) {
     const avail = (refs.previewBox.clientWidth || 320) - 4;
     const maxH = layout ? layout.previewMaxHeight() : Infinity;
-    const dw = Math.max(1, Math.round(Math.min(avail, res.w, maxH * res.w / res.h))), dh = Math.round(res.h * dw / res.w);
+    const dw = Math.max(1, Math.round(Math.min(avail, w, maxH * w / h))), dh = Math.round(h * dw / w);
     refs.preview.style.width = dw + "px";
     refs.preview.style.height = dh + "px";
-    setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
   }
 
   // ---- apply
@@ -200,15 +217,18 @@ function createToolPanel(cfg) {
     const pinCb = el("input", { type: "checkbox", title: "Keep the preview on top while the controls scroll" });
     pinCb.checked = true;
     pinCb.addEventListener("change", () => { layout.setPinned(!!pinCb.checked); schedulePreview(0); });
+    const kit = { gradientEditor, colourRow, touch, setStatus, schedulePreview, loop, get state() { return state; } };
     top.appendChild(card("Preview", [
-      refs.docline, refs.previewBox,
+      refs.docline, refs.previewBox
+    ].concat(cfg.previewRows ? cfg.previewRows(ui, kit) : [
       el("div", { class: "row wrap" }, [
         segGroup("view.kind", [{ v: "whole", l: "Whole" }, { v: "detail", l: "Detail 1:1", t: "True pixel size, centre crop" }]),
         segGroup("view.bg", [{ v: "checker", l: "Checker" }, { v: "white", l: "White" }, { v: "black", l: "Black" }])
-      ]),
+      ])
+    ]).concat([
       el("div", { class: "row" }, [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
       refs.status
-    ]));
+    ])));
     root = layout.scroller;
 
     lib = createLibrary(ui, {
@@ -217,8 +237,13 @@ function createToolPanel(cfg) {
       getSaveable: stateForSave, io: PS, setStatus
     });
     root.appendChild(lib.card);
-    const kit = { gradientEditor, colourRow, touch, get state() { return state; } };
     cfg.cards(ui, kit).forEach((c) => root.appendChild(c));
+    if (cfg.outputCard) {
+      root.appendChild(cfg.outputCard(ui, kit));
+      root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
+      refreshAll();
+      return;
+    }
 
     refs.apply = el("button", { class: "apply", text: "Apply to document" });
     refs.apply.addEventListener("click", applyNow);

@@ -33,7 +33,7 @@ def glyph_chrome(d, s, c):
         a = 2 * math.pi * k / 200
         r = s * 0.27
         x = s * 0.5 + r * math.sin(a) * (1 - 0.25 * max(0, -math.cos(a)) ** 3)
-        y = s * 0.58 - r * math.cos(a) * (1.0 + 0.55 * max(0, math.cos(a)) ** 2)
+        y = s * 0.6 - r * math.cos(a) * (1.0 + 0.55 * max(0, math.cos(a)) ** 2)
         pts.append((x, y))
     d.line(pts + [pts[0]], fill=c, width=int(w), joint="curve")
     for k, yy in enumerate([0.52, 0.62, 0.72]):
@@ -105,6 +105,20 @@ def glyph_paint(d, s, c):
         left.append((x + nx * r, y - ny * r * -1)); right.append((x - nx * r, y + ny * r * -1))
     d.polygon(left + right[::-1], fill=c)
 
+def glyph_font(d, s, c):
+    # a capital A whose crossbar carries a Bezier handle (anchor square + handle dots)
+    w = int(s * 0.055)
+    top, l, r, b = (s * 0.5, s * 0.17), (s * 0.2, s * 0.8), (s * 0.8, s * 0.8), s * 0.8
+    d.line([l, top, r], fill=c, width=w, joint="curve")
+    y = s * 0.6
+    d.line([(s * 0.33, y), (s * 0.67, y)], fill=c, width=w)
+    a = s * 0.045
+    d.rectangle([s * 0.5 - a, y - a, s * 0.5 + a, y + a], fill=(0, 0, 0, 255), outline=c, width=max(1, w // 2))
+    d.line([(s * 0.36, y - s * 0.09), (s * 0.64, y + s * 0.09)], fill=c, width=max(1, w // 2))
+    for (x, yy) in [(s * 0.36, y - s * 0.09), (s * 0.64, y + s * 0.09)]:
+        rr = s * 0.035
+        d.ellipse([x - rr, yy - rr, x + rr, yy + rr], fill=c)
+
 TOOLS = {
     "dithers-brew": (glyph_dithers, "icon_D", "icon_N"),
     "chrometone": (glyph_chrome, "icon_C", "icon_CL"),
@@ -114,6 +128,7 @@ TOOLS = {
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
     "batch-mock-brew": (glyph_mock, "icon_C", "icon_CL"),
     "paint-brew": (glyph_paint, "icon_C", "icon_CL"),
+    "font-brew": (glyph_font, "icon_C", "icon_CL"),
 }
 
 def draw(glyph, size, color, tile, glow=GLOW):
