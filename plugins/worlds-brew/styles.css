@@ -1,3 +1,16 @@
 /* Worlds Brew overrides on top of core/panel.css. */
 /* Plugin neon (aurora mint): title text and every glow use this colour. */
 :root { --glow: #5effc8; --glowbg: #0b2e24; }
+/* Viewport: Create strip tiles with engine-rendered icons */
+.wbstrip { justify-content: flex-start; }
+.wbcreate { display: flex; flex-direction: column; align-items: center; width: 54px; padding: 3px 0 2px; margin: 0 4px 4px 0; }
+.wbico { width: 40px; height: 40px; }
+.wbl { font-size: 8px; margin-top: 2px; letter-spacing: 0.5px; }
+.wbbox { display: flex; justify-content: center; padding: 4px; }
+.wbview { cursor: crosshair; }
+/* Console: scene browser */
+.wbgrid { display: flex; flex-direction: row; flex-wrap: wrap; }
+.wbcell { width: 98px; margin: 0 4px 6px 0; border: 1px solid rgba(255,255,255,0.35); padding: 1px; cursor: pointer; }
+.wbcell.on { border-color: var(--glow); }
+.wbthumb { width: 96px; height: 54px; background: #111; }
+.wbname { font-size: 9px; padding: 2px 2px 1px; overflow: hidden; white-space: nowrap; }

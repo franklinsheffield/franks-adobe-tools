@@ -84,4 +84,32 @@ module.exports = async function (t) {
     assert.strictEqual(W.pick(s, s.cam, 320, 180, 5, 5), null, "empty sky picks nothing");
     assert.ok(B.tan > 0);
   });
+
+  await t("Worlds Brew panels: Viewport + Console, Create strip, tabs follow the selection, keys, save, Render to layer", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
+    await P.settle(1500);
+    const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
+    assert.ok(P.document.getElementById("app") && P.document.getElementById("vp"), "two panel roots");
+    assert.ok(/^data:image\/png/.test(R.vpImg.src) && /^data:image\/png/.test(R.preview.src), "viewport and mini render drawn");
+    assert.strictEqual(R.thumbs.length, 12);
+    const n0 = T.st.scene.objs.length, btn = (ty) => R.createBtns.find((b) => b.__type === ty);
+    btn("sphere").click(); assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.type, "sphere");
+    assert.ok(!shown("Mesh"), "Mesh tab only for models");
+    btn("pawn").click(); assert.strictEqual(T.st.sel.type, "mesh"); assert.ok(shown("Mesh"));
+    assert.ok(Math.abs(T.st.sel.y - T.st.sel.mesh.hy * T.st.sel.s) < 0.05, "new model stands on the ground");
+    T.onKey({ key: "r", target: P.document.body }); assert.strictEqual(T.st.view.gizmo, "scale");
+    T.drawViewport(); assert.ok(T.lastWire.gizmo && T.lastWire.gizmo.mode === "scale", "handles drawn for the selection");
+    T.onKey({ key: "Delete", target: P.document.body }); assert.strictEqual(T.st.scene.objs.length, n0 + 1, "Delete removes the selection");
+    R.saveName.value = "My test scene"; await T.saveCurrent(); assert.strictEqual(T.saved.length, 1);
+    assert.ok(P.host.calls.some((c) => c[0] === "fileWrite"), "saved to the plugin data folder");
+    R.thumbs.find((c) => c.__name === "Neon Grid").click(); assert.strictEqual(T.st.scene.name, "Neon Grid");
+    T.st.out.quality = "draft"; await T.renderNow();
+    const calls = P.host.calls;
+    assert.ok(calls.some((c) => c[0] === "createPixelLayer" && c[1] === "Render"));
+    assert.ok(calls.some((c) => c[0] === "createLayerGroup" && c[1] === "Frank's Worlds Brew - Neon Grid"));
+    assert.ok(calls.some((c) => c[0] === "putPixels" && c[3] === 96 * 54 * 4), "document-size RGBA layer");
+    assert.ok(calls.some((c) => c[0] === "suspendHistory"), "one History step");
+    assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
+  });
 };
