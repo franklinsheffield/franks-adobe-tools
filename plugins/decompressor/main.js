@@ -5,6 +5,7 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 
 const panel = createToolPanel({
+  code: "DC-05", glow: "#39ff14",
   appName: "Frank's Decompressor Brew", title: "Frank's Decompressor Brew", sub: "jpeg rot  /  bit crush  /  datamosh", panelId: "decompressorPanel",
   presetFile: "presets.json", exportName: "decompressor-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,

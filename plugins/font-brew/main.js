@@ -237,6 +237,7 @@ async function exportFont() {
 
 // ---- panel -----------------------------------------------------------------
 const panel = createToolPanel({
+  code: "FB-08", glow: "#19ffb0",
   appName: TITLE, title: TITLE, sub: "layers  /  glyphs  /  opentype font", panelId: "fontbrewPanel",
   presetFile: "presets.json", exportName: "fontbrew-looks.json",
   Engine: null, DEFAULTS, PRESETS, merge, clone,

@@ -5,6 +5,7 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 
 const panel = createToolPanel({
+  code: "CRT-06", glow: "#b14cff",
   appName: "Frank's CRT Phaser Brew", title: "Frank's CRT Phaser Brew", sub: "scanlines  /  phosphor mask  /  tube", panelId: "crtPhaserPanel",
   presetFile: "presets.json", exportName: "crt-phaser-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,

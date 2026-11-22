@@ -28,13 +28,15 @@ const lists = { mockups: [], artwork: [] };
 const refs = {};
 let built = false, saveT = null, lib = null;
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff3b30" });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
+function busyNow() { try { return !!batch.running; } catch (e) { return false; } }
 function setStatus(msg, isErr) {
   if (!refs.status) return;
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
+  if (refs.led) refs.led.set(isErr ? "err" : (busyNow() ? "busy" : "ready"));
 }
 function touch() { refreshAll(); updateCounts(); scheduleSave(); }
 
@@ -164,6 +166,7 @@ async function brew(testOnly) {
 function setRunning(on) {
   [refs.brew, refs.test].forEach((b) => { if (on) b.setAttribute("disabled", "true"); else b.removeAttribute("disabled"); });
   refs.brew.textContent = on ? "Brewing..." : "Brew Batch";
+  if (refs.led) refs.led.set(on ? "busy" : "ready");
   refs.cancel.style.display = on ? "" : "none";
   if (!on) refs.job.textContent = "";
 }
@@ -174,7 +177,9 @@ const ORDER = [{ v: "mockup", l: "Mockup name" }, { v: "artwork", l: "Artwork na
 function build(root) {
   ui.clear(root);
   const lay = splitLayout(root, el);
-  lay.pinned.appendChild(el("div", { class: "hdr" }, [el("div", { class: "title", text: TITLE }), el("div", { class: "sub", text: "smart objects  /  batch  /  mockups" })]));
+  root.classList.add("brand-console");
+  refs.led = ui.brand.header({ title: TITLE, code: "BM-07" });
+  lay.pinned.appendChild(refs.led.node);
   refs.brew = el("button", { class: "apply", text: "Brew Batch" });
   refs.brew.addEventListener("click", () => brew(false));
   refs.test = el("button", { class: "btn small", text: "Test first job", title: "Runs only the first job and leaves the result open, without exporting" });

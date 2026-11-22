@@ -62,6 +62,7 @@ module.exports = async function (t) {
   await t("Paint Brew panel: small photo -> print-ready copy (upscaled, 300 ppi), painted there, original untouched; Cancel stops cleanly", async () => {
     const { loadPanel } = require("./harness.js");
     let P = await loadPanel(DIR, { withDoc: true, docW: 200, docH: 150 });
+    for (let i = 0; i < 100 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50);   // let the first preview finish
     const st = P.mod._test.state;
     st.style = "watercolour"; st.water.pencil = 0;
     P.host.calls.length = 0;
@@ -76,6 +77,7 @@ module.exports = async function (t) {
     assert.strictEqual(P.host.doc.layers.length, 0, "original document got no layers");
     // big photo: no copy
     P = await loadPanel(DIR, { withDoc: true, docW: 200, docH: 150 });
+    for (let i = 0; i < 100 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50);   // let the first preview finish
     P.mod._test.state.out.minLong = 150;
     P.host.calls.length = 0;
     P.document.querySelector(".apply").dispatchEvent(new P.window.Event("click"));

@@ -52,6 +52,7 @@ async function prepareSource(doc, r) {
 }
 
 panel = createToolPanel({
+  code: "CT-02", glow: "#00e5ff",
   appName: "Frank's Chrometone Brew", title: "Frank's Chrometone Brew", sub: "liquid chrome  /  retro chrome  /  3D  /  glow", panelId: "chrometonePanel",
   presetFile: "presets.json", exportName: "chrometone-looks.json",
   footer: "Frank's Chrometone Brew 1.1  -  Frank's Brew suite",

@@ -14,7 +14,8 @@
 //     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
 //     groupLabel(state, presetName) optional: the look's name in the layer group
 //     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress
-//     brand: "console", code, glow  optional: Hardware Console look (shared/console.js): rack header + LED, dials, switches, render meter })
+//     code, glow                    the tool's rack code ("PB-09") and neon hex for the knobs
+//     brand                         "console" (default, the suite look since 2026-11-22) or "none" })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 //
 // Export mode (tools that write a file instead of layers, e.g. Font Brew):
@@ -31,6 +32,8 @@ const { createLibrary } = require("./library.js");
 
 function createToolPanel(cfg) {
   const { Engine, DEFAULTS, PRESETS, merge, clone } = cfg;
+  cfg = Object.assign({ brand: "console" }, cfg);
+  if (cfg.brand === "none") cfg.brand = undefined;
   PS.configure({ appName: cfg.appName, presetFile: cfg.presetFile || "presets.json", exportName: cfg.exportName || "looks.json" });
 
   let state = PRESETS[0] ? merge(DEFAULTS, PRESETS[0].p) : clone(DEFAULTS);   // start on the first preset so its name matches

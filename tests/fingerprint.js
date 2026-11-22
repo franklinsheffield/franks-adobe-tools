@@ -28,6 +28,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   out.cards = Array.from(d.querySelectorAll(".ctitle")).map((e) => e.textContent);
   out.controls = ["input", "select", "button", "textarea"].map((t) => t + ":" + d.querySelectorAll(t === "button" ? "button, .ub" : t).length).join(" ");
   const img = d.querySelector("img.preview");
+  for (let i = 0; i < 200 && !img.src; i++) await P.settle(50);   // first preview (panels with many dials take longer to build)
   out.previewDefault = h(img.src);
   const sel = d.querySelector(".card select"); // first select = built-in presets
   out.presets = [];

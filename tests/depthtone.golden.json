@@ -9,7 +9,7 @@
   "Light and shadow",
   "Output"
  ],
- "controls": "input:34 select:4 button:23 textarea:0",
+ "controls": "input:31 select:4 button:23 textarea:0",
  "previewDefault": "9c5143177f52",
  "presets": [
   "Map - Topo Map = 9c5143177f52",

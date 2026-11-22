@@ -5,6 +5,7 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 
 const panel = createToolPanel({
+  code: "DT-03", glow: "#f5ff3b",
   appName: "Frank's Depthtone Brew", title: "Frank's Depthtone Brew", sub: "contours  /  terraces  /  relief", panelId: "depthtonePanel",
   presetFile: "presets.json", exportName: "depthtone-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
