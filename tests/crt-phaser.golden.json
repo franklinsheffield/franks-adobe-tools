@@ -58,7 +58,7 @@
   "putPixels|100|4|480000",
   "createLayerGroup|Frank's CRT Phaser Brew - Arcade Cabinet #TAG|1",
   "resumeHistory",
-  "fileWrite|1145"
+  "fileWrite|1154"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
 }

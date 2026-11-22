@@ -154,7 +154,8 @@ async function putLayerPixels(doc, layer, buf, w, h, components, origin) {
   }
 }
 
-// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer }
+// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds }
+// hiddenIds (optional array) receives the ids of the source layers this call hid
 async function writeResult(doc, res, opts) {
   const n = res.w * res.h;
   const warnings = [];
@@ -198,7 +199,7 @@ async function writeResult(doc, res, opts) {
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
-      for (const L of sourceLayers) { try { L.visible = false; } catch (e) { /* locked or group */ } }
+      for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }
     }
@@ -268,8 +269,17 @@ function activeLayer(doc) { try { const a = Array.from(doc.activeLayers || []); 
 async function hideLayer(layer) {
   await core.executeAsModal(async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { commandName: CFG.appName + ": hide old version" });
 }
+// re-edit swap in one History step: hide the old group, show the source layers it hid (by id)
+async function swapToSource(doc, group, ids) {
+  await core.executeAsModal(async () => {
+    const want = new Set(ids || []);
+    const walk = (list) => { for (const L of Array.from(list || [])) { if (want.has(L.id)) { try { L.visible = true; } catch (e) { /* locked */ } } if (L.layers) walk(L.layers); } };
+    walk(doc.layers);
+    try { group.visible = false; } catch (e) { /* locked */ }
+  }, { commandName: CFG.appName + ": re-edit" });
+}
 
 module.exports = {
-  configure, loadData, saveData, activeLayer, hideLayer, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

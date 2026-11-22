@@ -32,15 +32,18 @@ module.exports = async function (t) {
     assert.ok(clear > 0 && lit > 0, "lines layer is transparent between the beams");
   });
 
-  await t("crt-phaser 1.1: Re-edit loads a group's saved settings and the next Apply hides the old group", async () => {
+  await t("crt-phaser 1.1: Re-edit loads a group's saved settings, hides the old group and shows the original again", async () => {
     const { loadPanel } = require("./harness.js");
     const P = await loadPanel(path.join(ROOT, "plugins", "crt-phaser"), { withDoc: true });
     const T = P.mod._test, d = P.document;
     const pick = d.querySelector(".card select"), idx = [...pick.options].findIndex((o) => /Thermal Flux/.test(o.text));
     pick.selectedIndex = idx; pick.value = pick.options[idx].value; pick.dispatchEvent(new P.window.Event("change"));
     await P.settle(300);
+    const bg = { id: 1, name: "Background", visible: true, kind: "pixel" };
+    P.host.doc.layers.unshift(bg);
     P.host.calls.length = 0;
     await T.applyNow();
+    assert.strictEqual(bg.visible, false, "source hidden after apply");
     const g = P.host.calls.find((c) => c[0] === "createLayerGroup");
     assert.ok(/Thermal Flux #[A-Z0-9]{4}$/.test(g[1]), g[1]);
     // change the look, then select the group and re-edit
@@ -51,9 +54,11 @@ module.exports = async function (t) {
     assert.strictEqual(T.state.phase.mode, "flux");
     assert.strictEqual(T.state.phase.ramp.length, 7, "heat ramp restored");
     assert.ok(/Loaded #/.test(d.querySelector(".status").textContent));
+    assert.strictEqual(group.visible, false, "old group hidden, not deleted");
+    assert.strictEqual(bg.visible, true, "original artwork shown again so preview and Apply read it");
     P.host.doc.activeLayers = [];
     await T.applyNow();
-    assert.strictEqual(group.visible, false, "old group hidden, not deleted");
+    assert.strictEqual(bg.visible, false, "next Apply hides the source again");
   });
 
   await t("crt-phaser 1.1: Re-edit on a layer without a tag explains what to select", async () => {

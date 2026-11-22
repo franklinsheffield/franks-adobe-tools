@@ -206,17 +206,18 @@ function createToolPanel(cfg) {
         setStatus("Writing layers...");
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
         const tag = cfg.reEdit ? " #" + newTag() : "";
+        const hiddenIds = [];
         const warnings = await PS.writeResult(doc, res, {
+          hiddenIds,
           origin: r.origin,
           groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName) + tag,
           hideSource: state.out.hide,
           hideLayers: t.kind === "layer" ? [t.layer] : null
         });
-        if (tag) await rememberLook(tag.slice(2));
+        if (tag) await rememberLook(tag.slice(2), hiddenIds);
         done++;
         if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
       }
-      if (reEditing) { const old = reEditing; reEditing = null; try { await PS.hideLayer(old); } catch (e) { console.error(e); } }
       if (refs.meter) refs.meter.done((Date.now() - tStart) / 1000);
       if (!refs.status.className.includes("err")) setStatus("Done. " + done + " group" + (done === 1 ? "" : "s") + " added. Undo with one Ctrl/Cmd+Z.");
     } catch (e) {
@@ -235,15 +236,14 @@ function createToolPanel(cfg) {
 
   // ---- re-edit: settings saved per applied group, keyed by its #tag
   const LOOKS_FILE = "applied-looks.json";
-  let reEditing = null;
   function newTag() {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let s = ""; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)];
     return s;
   }
-  async function rememberLook(tag) {
+  async function rememberLook(tag, hiddenIds) {
     const all = (await PS.loadData(LOOKS_FILE)) || {};
-    all[tag] = { name: presetName, p: stateForSave(), t: Date.now() };
+    all[tag] = { name: presetName, p: stateForSave(), t: Date.now(), src: hiddenIds || [] };
     const keys = Object.keys(all).sort((a, b) => all[b].t - all[a].t);
     keys.slice(300).forEach((k) => delete all[k]);     // keep the newest 300
     try { await PS.saveData(LOOKS_FILE, all); } catch (e) { console.error(e); }
@@ -256,9 +256,10 @@ function createToolPanel(cfg) {
     const all = (await PS.loadData(LOOKS_FILE)) || {};
     const hit = all[m[1]];
     if (!hit) { setStatus("No saved settings for #" + m[1] + " on this computer.", true); return; }
+    // show the artwork the old group was made from (and hide the group) so preview and Apply read the original
+    try { await PS.swapToSource(doc, layer, hit.src); } catch (e) { console.error(e); }
     applyPatch(hit.p, hit.name);
-    reEditing = layer;
-    setStatus("Loaded #" + m[1] + ". Change anything, then Apply: the old group is hidden, not deleted.");
+    setStatus("Loaded #" + m[1] + ". The old group is hidden (not deleted) and the original is showing. Change anything, then Apply.");
   }
 
   // ---- presets
