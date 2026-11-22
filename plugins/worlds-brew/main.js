@@ -11,20 +11,21 @@ const S = require("./js/scene.js");
 const E = require("./js/engine.js");
 const WF = require("./js/wire.js");
 const ED = require("./js/editor.js");
+const PK = require("./js/packs.js");
 const PS = require("./core/ps-io.js");
 const PNG = require("./core/png.js");
 const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.2.0";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.3.0";
 PS.configure({ appName: APP, presetFile: "scenes.json", exportName: "worlds-scene.json" });
 let uxp = null; try { uxp = require("uxp"); } catch (e) { uxp = null; }
 const psHost = require("photoshop");   // loaded once at start-up (the test harness only serves it then)
 
 // ---- shared state: the scene, the selection (a placeholder when nothing is selected) and panel options
 const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
-const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move" }, out: { quality: "final" }, saveName: "" };
+const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move", scenePack: "Classic", assetPack: "Fantasy" }, out: { quality: "final" }, saveName: "" };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
 const is = (...types) => () => hasSel() && types.includes(st.sel.type);
 const refs = {};
@@ -162,6 +163,19 @@ function wireViewportPointer(img) {
 
 // ---- Create strip icons (rendered by the engine once, small)
 const ICON = 40;
+// a pack model on the ground near the camera target, at its default size, with its own colours
+function addAsset(a) {
+  const o = ED.addMesh(st.scene, a.mesh, a.mat, { smooth: false, vc: true, asset: a.id });
+  o.s = a.size; ED.dropToGround(st.scene, o); return o;
+}
+async function drawAssetIcons() {
+  for (const b of refs.assetBtns || []) {
+    const a = b.__asset, sc = { sky: "Dusk", sunAz: 200, sunAlt: 35, haze: 0, fog: 0, fogH: 1, clouds: 0, water: false, ground: false, waterLvl: 0, objs: [S.obj("mesh", 0, 0, 0, 1, a.mat, { mesh: a.mesh, smooth: false, ry: 25 })] };
+    const r = await E.render(sc, { yaw: 25, pitch: 15, dist: 3.9, fov: 45, tx: 0, ty: 0, tz: 0 }, ICON, ICON, { aa: 1 }, { yield: () => tick() });
+    b.__img.src = PNG.dataURL(r.rgba, ICON, ICON, 4);
+    await tick();
+  }
+}
 async function drawIcons() {
   for (const b of refs.createBtns || []) {
     if (b.__type === "import") continue;
@@ -320,6 +334,19 @@ function buildViewport(root) {
   const viewBtn = (v, l) => { const b = el("button", { class: "btn small", text: l }); b.addEventListener("click", () => { ED.view(st.scene, v, hasSel() ? st.sel : null); changed("view"); }); return b; };
   const act = (l, fn, t) => { const b = el("button", { class: "btn small", text: l, title: t || "" }); b.addEventListener("click", fn); return b; };
   lay.pinned.appendChild(vui.card("Create", [el("div", { class: "row wrap wbstrip" }, refs.createBtns)], { fold: false }));
+  refs.assetBtns = [];
+  PK.PACKS.forEach((pk) => PK.assets(pk).forEach((a) => {
+    const img = el("img", { class: "wbico" }), b = el("button", { class: "btn wbcreate", title: "Add " + a.name.toLowerCase() + "  -  " + a.credit }, [img, el("span", { class: "wbl", text: a.name.toUpperCase() })]);
+    b.__asset = a; b.__img = img; b.__pack = pk;
+    b.addEventListener("click", () => { select(addAsset(a)); setStatus("Added " + a.name + "  -  " + a.credit); });
+    vui.showIf(b, () => st.view.assetPack === pk);
+    refs.assetBtns.push(b);
+  }));
+  lay.scroller.appendChild(vui.card("Assets", [
+    el("div", { class: "row" }, [vui.segGroup("view.assetPack", PK.PACKS.map((p) => ({ v: p, l: p })))]),
+    el("div", { class: "row wrap wbstrip" }, refs.assetBtns),
+    el("div", { class: "hint", text: "Fantasy models: Kenney (kenney.nl), free CC0 public domain. Alien models: original, made for Worlds Brew. Click one to drop it in front of the camera." })
+  ]));
   lay.pinned.appendChild(vui.card("Viewport", [
     refs.vpBox,
     el("div", { class: "row wrap" }, [
@@ -356,16 +383,19 @@ function buildConsole(root) {
   const none = (text) => only(el("div", { class: "hint", text }), () => !hasSel());
 
   // A Scene
-  const thumbs = Object.keys(S.PRESETS).map((name) => {
+  const list = Object.keys(S.PRESETS).map((name) => ["Classic", name]);
+  PK.PACKS.forEach((pk) => Object.keys(PK.MAPS[pk]).forEach((name) => list.push([pk, name])));
+  const thumbs = list.map(([pk, name]) => {
     const img = el("img", { class: "wbthumb" }), c = el("div", { class: "wbcell", title: "Load " + name }, [img, el("div", { class: "wbname", text: name })]);
-    c.addEventListener("click", () => { loadScene(S.loadPreset(name)); setStatus("Loaded " + name); });
-    c.__name = name; c.__img = img; return c;
+    c.addEventListener("click", () => { loadScene(pk === "Classic" ? S.loadPreset(name) : PK.loadMap(pk, name)); setStatus("Loaded " + name + (pk === "Classic" ? "" : " (" + pk + " pack)")); });
+    c.__name = name; c.__pack = pk; c.__img = img; showIf(c, () => st.view.scenePack === pk); return c;
   });
   refs.thumbs = thumbs;
   bind(() => thumbs.forEach((t) => { if (t.__name === st.scene.name) t.classList.add("on"); else t.classList.remove("on"); }));
   refs.savedSel = el("select", {});
   refs.saveName = el("input", { type: "text", placeholder: "Scene name" });
   const sceneCard = card("Scenes", [
+    row("", segGroup("view.scenePack", [{ v: "Classic", l: "Classic" }].concat(PK.PACKS.map((p) => ({ v: p, l: p + " pack" }))))),
     el("div", { class: "wbgrid" }, thumbs),
     el("div", { class: "lbl3", text: "MY SCENES (models and textures are saved inside)" }),
     row("", refs.savedSel, btn("Load", () => { const s = saved[+refs.savedSel.value]; if (s) { const sc = S.fromJSON(s.json); sc.name = s.name; loadScene(sc); setStatus("Loaded " + s.name); } }),
@@ -406,6 +436,7 @@ function buildConsole(root) {
     el("div", { class: "hint", text: "Imported models and the Pawn / Rock samples. Import .obj, .stl, .glb or .gltf from the Viewport's Create strip." }),
     only(triLine, is("mesh")),
     only(checkRow("Smooth shading", "sel.smooth"), is("mesh")),
+    only(checkRow("Model colours", "sel.vc"), () => is("mesh")() && !!st.sel.mesh.tc),
     only(el("div", { class: "row wrap" }, [sliderRow("Size", "sel.s", 0.1, 15, 0.05, ""), sliderRow("Displace", "sel.disp", 0, 0.4, 0.01, "")]), is("mesh")),
     only(el("div", { class: "row wrap" }, [
       btn("Drop to ground", () => { ED.dropToGround(st.scene, st.sel); changed("sel"); }),
@@ -450,7 +481,7 @@ function buildConsole(root) {
 
 async function drawThumbs() {
   for (const t of refs.thumbs || []) {
-    const sc = S.loadPreset(t.__name), r = await E.render(sc, sc.cam, 96, 54, {}, { yield: () => tick() });
+    const sc = t.__pack === "Classic" ? S.loadPreset(t.__name) : PK.loadMap(t.__pack, t.__name), r = await E.render(sc, sc.cam, 96, 54, {}, { yield: () => tick() });
     t.__img.src = PNG.dataURL(r.rgba, 96, 54, 4);
     await tick();
   }
@@ -474,7 +505,7 @@ function kick() {
   drawViewport(); loop.schedule(100);
   if (started) return;
   started = true;
-  setTimeout(async () => { await loadSaved(); await drawIcons(); await drawThumbs(); }, 300);
+  setTimeout(async () => { await loadSaved(); await drawIcons(); await drawThumbs(); await drawAssetIcons(); }, 300);
 }
 try { document.addEventListener("keydown", onKey); } catch (e) { /* no document */ }
 try {

@@ -21,7 +21,7 @@ function dropToGround(scene, o) {
 }
 
 function addMesh(scene, m, mat, extra) {
-  const c = scene.cam, [dx, dz] = spot(scene), o = S.obj("mesh", +(c.tx + dx).toFixed(1), 0, +(c.tz + dz).toFixed(1), 1.2, mat, Object.assign({ mesh: m }, extra || {}));
+  const c = scene.cam, [dx, dz] = spot(scene), o = S.obj("mesh", +(c.tx + dx).toFixed(1), 0, +(c.tz + dz).toFixed(1), 1.2, mat, Object.assign({ mesh: m, vc: !!m.tc }, extra || {}));
   dropToGround(scene, o); scene.objs.push(o); return o;
 }
 

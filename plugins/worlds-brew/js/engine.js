@@ -22,9 +22,9 @@ function compile(scene) {
       hm: o.type === "terrain" ? heightmap(o) : null, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null };
   });
   // ---- imported models: world-space triangles + a bounding volume tree for fast ray hits
-  const MT = [], MN = [], MOWN = [];
-  O.forEach((b, k) => { if (b.type !== "mesh") return; const o = b.o, m = meshVerts(o), f = o.mesh.f, sx = o.s * o.sx, sy = o.s * o.sy, sz = o.s * o.sz;
-    for (let t = 0; t < f.length; t += 3) { for (let j = 0; j < 3; j++) { const i = f[t + j] * 3, lx = m.v[i] * sx, ly = m.v[i + 1] * sy, lz = m.v[i + 2] * sz;
+  const MT = [], MN = [], MOWN = [], MC = [];
+  O.forEach((b, k) => { if (b.type !== "mesh") return; const o = b.o, m = meshVerts(o), f = o.mesh.f, sx = o.s * o.sx, sy = o.s * o.sy, sz = o.s * o.sz, tc = o.vc !== false ? o.mesh.tc : null;
+    for (let t = 0; t < f.length; t += 3) { if (tc) MC.push(tc[t] / 255 * 0.92, tc[t + 1] / 255 * 0.92, tc[t + 2] / 255 * 0.92); else MC.push(-1, -1, -1); for (let j = 0; j < 3; j++) { const i = f[t + j] * 3, lx = m.v[i] * sx, ly = m.v[i + 1] * sy, lz = m.v[i + 2] * sz;
       MT.push(o.x + b.c * lx + b.sn * lz, o.y + ly, o.z - b.sn * lx + b.c * lz); const nx = m.n[i] / o.sx, ny = m.n[i + 1] / o.sy, nz = m.n[i + 2] / o.sz; MN.push(b.c * nx + b.sn * nz, ny, -b.sn * nx + b.c * nz); } MOWN.push(k); } });
   const TA = new Float32Array(MT), NA = new Float32Array(MN);
   let ROOT = null;
@@ -134,10 +134,10 @@ function compile(scene) {
     const ts = march(ox, oy, oz, dx, dy, dz, tm > 0 ? tm : maxT), t = ts >= 0 ? ts : tm;
     if (t < 0) { skyCol(dx, dy, dz, out); if (info) { info.t = -1; info.id = -1; } return; }
     const px = ox + dx * t, py = oy + dy * t, pz = oz + dz * t;
-    let id, nx, ny, nz;
+    let id, nx, ny, nz, tri = -1;
     if (ts >= 0) { map(px, py, pz); id = HIT; normal(px, py, pz, 0.0015 + t * 0.0008, nrm); nx = nrm[0]; ny = nrm[1]; nz = nrm[2]; }
     else { // model triangle: smooth (interpolated) or flat normal, facing the ray
-      id = MOWN[mtri]; const p = mtri * 9;
+      id = MOWN[mtri]; tri = mtri; const p = mtri * 9;
       if (O[id].o.smooth) { const w = 1 - mu - mv; nx = NA[p] * w + NA[p + 3] * mu + NA[p + 6] * mv; ny = NA[p + 1] * w + NA[p + 4] * mu + NA[p + 7] * mv; nz = NA[p + 2] * w + NA[p + 5] * mu + NA[p + 8] * mv; }
       else { const e1x = TA[p + 3] - TA[p], e1y = TA[p + 4] - TA[p + 1], e1z = TA[p + 5] - TA[p + 2], e2x = TA[p + 6] - TA[p], e2y = TA[p + 7] - TA[p + 1], e2z = TA[p + 8] - TA[p + 2]; nx = e1y * e2z - e1z * e2y; ny = e1z * e2x - e1x * e2z; nz = e1x * e2y - e1y * e2x; }
       const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l; if (nx * dx + ny * dy + nz * dz > 0) { nx = -nx; ny = -ny; nz = -nz; }
@@ -163,6 +163,7 @@ function compile(scene) {
         if (b.o.mat !== "Stone") { const m = b.col; cr = (cr + m[0]) / 2; cg = (cg + m[1]) / 2; cb = (cb + m[2]) / 2; }
       } else {
         cr = b.col[0]; cg = b.col[1]; cb = b.col[2]; refl = b.refl; spec = b.spec; emit = b.emit;
+        if (tri >= 0 && MC[tri * 3] >= 0) { cr = MC[tri * 3]; cg = MC[tri * 3 + 1]; cb = MC[tri * 3 + 2]; }   // the model's own colours
         if (b.tex === 1) { const n = fbm(px * 2, pz * 2 + py * 2, 4, 0.55); cr *= 0.7 + n * 0.6; cg *= 0.7 + n * 0.6; cb *= 0.7 + n * 0.6; }
         if (b.tex === 2) { const c = ((Math.floor(px * 2) + Math.floor(py * 2) + Math.floor(pz * 2)) & 1) ? 1 : 0.15; cr *= c; cg *= c; cb *= c; }
         if (b.img) { // image texture, projected from three sides (triplanar)

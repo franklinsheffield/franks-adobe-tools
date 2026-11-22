@@ -92,7 +92,7 @@ module.exports = async function (t) {
     const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
     assert.ok(P.document.getElementById("app") && P.document.getElementById("vp"), "two panel roots");
     assert.ok(/^data:image\/png/.test(R.vpImg.src) && /^data:image\/png/.test(R.preview.src), "viewport and mini render drawn");
-    assert.strictEqual(R.thumbs.length, 12);
+    assert.strictEqual(R.thumbs.length, 20, "12 classic scenes + 4 Fantasy + 4 Alien maps");
     const n0 = T.st.scene.objs.length, btn = (ty) => R.createBtns.find((b) => b.__type === ty);
     btn("sphere").click(); assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.type, "sphere");
     assert.ok(!shown("Mesh"), "Mesh tab only for models");
@@ -111,5 +111,49 @@ module.exports = async function (t) {
     assert.ok(calls.some((c) => c[0] === "putPixels" && c[3] === 96 * 54 * 4), "document-size RGBA layer");
     assert.ok(calls.some((c) => c[0] === "suspendHistory"), "one History step");
     assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
+  });
+
+  await t("Worlds Brew: PNG reader (zlib inflate) and model colours from glTF materials", () => {
+    const zlib = require("zlib"), D = require(J + "/pngdec.js");
+    const raw = Buffer.alloc(50000); for (let i = 0; i < raw.length; i++) raw[i] = (i * 7 + (i >> 8)) & 255;
+    for (const level of [0, 1, 9]) assert.strictEqual(Buffer.compare(Buffer.from(D.inflate(zlib.deflateSync(raw, { level }).subarray(2))), raw), 0, "inflate level " + level);
+    const PNG = require(path.join(ROOT, "shared/png.js")), px = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 128]);
+    const back = D.decodePNG(PNG.encodePNG(px, 2, 1, 4)); assert.deepStrictEqual(Array.from(back.rgba), Array.from(px));
+    const P = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), bin = new Uint8Array(36); bin.set(new Uint8Array(P.buffer));
+    const json = { asset: { version: "2.0" }, nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }], materials: [{ pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1] } }],
+      buffers: [{ byteLength: 36, uri: "data:application/octet-stream;base64," + Buffer.from(bin).toString("base64") }], bufferViews: [{ buffer: 0, byteLength: 36 }], accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: "VEC3" }] };
+    const m = M.parseGLTF(JSON.stringify(json), "red.gltf"); assert.deepStrictEqual(Array.from(m.tc), [255, 0, 0]);
+    const j = M.meshFromJSON(M.meshToJSON(m)); assert.deepStrictEqual(Array.from(j.tc), [255, 0, 0], "colours survive save / load");
+  });
+
+  await t("Worlds Brew: Fantasy (Kenney CC0) and Alien packs: coloured assets and 8 maps that render", async () => {
+    const PK = require(J + "/packs.js");
+    assert.deepStrictEqual(PK.PACKS, ["Fantasy", "Alien"]);
+    assert.ok(PK.assets("Fantasy").length >= 15 && PK.assets("Alien").length === 8);
+    for (const pk of PK.PACKS) for (const a of PK.assets(pk)) { assert.ok(a.mesh.tc && a.mesh.tc.length === a.mesh.f.length, a.name + " has colours"); assert.ok(a.credit, a.name + " credited"); }
+    let n = 0;
+    for (const pk of PK.PACKS) for (const name of Object.keys(PK.MAPS[pk])) {
+      const s = PK.loadMap(pk, name), r = await E.render(s, s.cam, 48, 27); n++;
+      let lo = 255, hi = 0; for (let i = 0; i < r.rgba.length; i += 4) { lo = Math.min(lo, r.rgba[i + 1]); hi = Math.max(hi, r.rgba[i + 1]); }
+      assert.ok(hi - lo > 20, name + " is not flat");
+      const back = S.fromJSON(S.toJSON(s)); assert.strictEqual(hash((await E.render(back, back.cam, 32, 18)).rgba), hash((await E.render(s, s.cam, 32, 18)).rgba), name + " saves and loads");
+    }
+    assert.strictEqual(n, 8);
+    const red = S.loadPreset("Model Showcase"); red.objs = [PK.put("fantasy/house", 0, 0, 1)]; const on = await E.render(red, red.cam, 40, 24); red.objs[0].vc = false;
+    assert.notStrictEqual(hash(on.rgba), hash((await E.render(red, red.cam, 40, 24)).rgba), "Model colours switch changes the render");
+  });
+
+  await t("Worlds Brew panels: pack scenes and the Assets card", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
+    await P.settle(800);
+    const T = P.mod._test, R = T.refs, vis = (n) => n.style.display !== "none";
+    assert.strictEqual(R.thumbs.filter(vis).length, 12, "Classic scenes first");
+    T.st.view.scenePack = "Alien"; T.changed("view"); assert.strictEqual(R.thumbs.filter(vis).length, 4);
+    R.thumbs.find((c) => c.__name === "Outpost Zeta").click(); assert.strictEqual(T.st.scene.name, "Outpost Zeta");
+    assert.ok(R.assetBtns.filter(vis).every((b) => b.__pack === "Fantasy"));
+    const n0 = T.st.scene.objs.length; R.assetBtns.find((b) => b.__asset.id === "fantasy/pine").click();
+    assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.asset, "fantasy/pine"); assert.strictEqual(T.st.sel.vc, true);
+    assert.ok(Math.abs(T.st.sel.y - T.st.sel.mesh.hy * T.st.sel.s) < 0.05, "stands on the ground");
   });
 };
