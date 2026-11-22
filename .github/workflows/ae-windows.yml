@@ -1,0 +1,26 @@
+# Builds Frank's Brew After Effects effects for Windows (.aex) on GitHub's free
+# Windows runners. Needs Adobe's AE SDK (free download) at ae/sdk/win/AfterEffectsSDK.
+name: AE effects (Windows)
+on:
+  workflow_dispatch:
+  push:
+    paths: ["ae/**", ".github/workflows/ae-windows.yml"]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - name: Build all effects
+        shell: cmd
+        run: call ae\tools\build-win.bat "%GITHUB_WORKSPACE%\ae\sdk\win\AfterEffectsSDK" all
+      - name: Package with installer
+        shell: pwsh
+        run: |
+          Copy-Item ae\tools\install-win.bat ae\dist\win\
+          Get-ChildItem ae\dist\win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: franks-brew-ae-windows
+          path: ae/dist/win/
