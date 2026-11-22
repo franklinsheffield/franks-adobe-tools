@@ -122,7 +122,8 @@ async function readSource(doc, target, view) {
 //   { name, color:[r,g,b], mask:Uint8Array(n) 0..255, blend }   one ink, or
 //   { name, rgba:Uint8Array(n*4), blend, opacity? }              full colour
 function layerRGBA(L, n) {
-  if (L.rgba) return L.rgba;
+  // Photoshop's imaging API takes only Uint8Array / Uint16Array / Float32Array (not Uint8ClampedArray)
+  if (L.rgba) return L.rgba.constructor === Uint8Array ? L.rgba : new Uint8Array(L.rgba.buffer, L.rgba.byteOffset, L.rgba.length);
   const out = new Uint8Array(n * 4), c = L.color, m = L.mask;
   for (let i = 0, p = 0; i < n; i++, p += 4) { out[p] = c[0]; out[p + 1] = c[1]; out[p + 2] = c[2]; out[p + 3] = m[i]; }
   return out;

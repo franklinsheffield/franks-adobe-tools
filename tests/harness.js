@@ -77,7 +77,11 @@ function makeHost(opts) {
         }
         return { imageData: { width: w, height: h, components: 4, async getData() { return out; }, dispose() {} } };
       },
-      async createImageDataFromBuffer(buf, o) { return { buf, o, dispose() {} }; },
+      async createImageDataFromBuffer(buf, o) {
+        // like Photoshop: only these typed arrays are accepted
+        if (![Uint8Array, Uint16Array, Float32Array].includes(buf && buf.constructor)) throw new Error("Incorrect type for typedarray. Possible types are Uint8Array, Uint16Array, Float32Array");
+        return { buf, o, dispose() {} };
+      },
       async putPixels(o) { calls.push(["putPixels", o.layerID, o.imageData.o.components, o.imageData.buf.length]); }
     }
   };
