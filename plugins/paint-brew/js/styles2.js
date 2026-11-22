@@ -35,6 +35,9 @@ function labelEdges(L, w, h) {
   }
   return E;
 }
+// a box-blurred 2 px edge peaks at 2/(2r+1): scale it back so a line keeps the
+// strength it has at r = 1 (the small preview) at any size
+const lineGain = (r) => (2 * Math.max(1, Math.round(r)) + 1) / 3;
 function fillRGBA(rgb, n, a) {
   const out = new Uint8Array(n * 4);
   for (let i = 0, p = 0; i < n; i++, p += 4) { out[p] = rgb[0]; out[p + 1] = rgb[1]; out[p + 2] = rgb[2]; out[p + 3] = a; }
@@ -134,11 +137,11 @@ async function paintInk(src, P, hooks) {
   }
   if (Q.rim > 0) {
     prog("Drying rims...");
-    const rw = Math.max(1, (0.4 + Q.rim / 100 * 1.4) * k * 2), Rb = M.boxBlur(Float32Array.from(E), w, h, rw, 2);
+    const rw = Math.max(1, (1.2 + Q.rim / 100 * 3) * k * 2), rg = 2.4 * lineGain(rw), Rb = M.boxBlur(Float32Array.from(E), w, h, rw, 2);
     const out = new Uint8Array(n * 4), g = Q.rim / 100;
     for (let i = 0, p = 0; i < n; i++, p += 4) {
       const vary = 0.45 + 0.55 * (0.5 + 0.5 * I.fbm((i % w) / k / 120, ((i / w) | 0) / k / 120, seed + 29, 2));
-      const a = Math.max(clamp(Rb[i] * 2.4, 0, 1) * vary, ring[i] * 0.8) * g;
+      const a = Math.max(clamp(Rb[i] * rg, 0, 1) * vary, ring[i] * 0.8) * g;
       if (a <= 0) continue;
       out[p] = cR[i] * cR[i] / 255 * 0.75; out[p + 1] = cG[i] * cG[i] / 255 * 0.75; out[p + 2] = cB[i] * cB[i] / 255 * 0.75; out[p + 3] = Math.round(a * 255);
     }
@@ -149,13 +152,13 @@ async function paintInk(src, P, hooks) {
   if (Q.veins > 0) {
     prog("Metallic veins...");
     const metal = METALS[Q.metal] || METALS.gold, v = Q.veins / 100;
-    const lw = Math.max(0.8, (0.6 + 0.9 * v) * k * 1.6), Vb = M.boxBlur(Float32Array.from(E), w, h, lw, 2);
+    const lw = Math.max(0.8, (2.4 + 3.6 * v) * k * 1.6), vg = 1.6 * lineGain(lw), Vb = M.boxBlur(Float32Array.from(E), w, h, lw, 2);
     const out = new Uint8Array(n * 4);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = y * w + x, p = i * 4;
       // only some edges carry a vein; more of them as Veins goes up
       const pick = smooth(0.78 - 0.32 * v, 0.88 - 0.32 * v, 0.5 + 0.5 * I.fbm(x / k / 260, y / k / 260, seed + 27, 2));
-      const a = clamp(Vb[i] * 1.6, 0, 1) * pick;
+      const a = clamp(Vb[i] * vg, 0, 1) * pick;
       if (a <= 0.01) continue;
       const sp = 0.72 + 0.5 * (0.5 + 0.5 * I.vnoise(x / k / 2.5, y / k / 2.5, seed + 28));
       out[p] = clamp(metal[0] * sp, 0, 255); out[p + 1] = clamp(metal[1] * sp, 0, 255); out[p + 2] = clamp(metal[2] * sp, 0, 255); out[p + 3] = Math.round(a * 255);
@@ -237,7 +240,7 @@ async function paintSpray(src, P, hooks) {
       const x = rnd() * w, y = rnd() * h, i = Math.min(n - 1, Math.floor(y) * w + Math.floor(x));
       if (rnd() > 0.25 + 0.75 * clamp(Eb[i] * 3, 0, 1)) continue;          // mostly near edges
       const col = pal[lab[i]];
-      dot(out, w, h, x, y, Math.max(0.4, (0.5 + rnd() * 1.4) * k * 1.3), col, 0.9);
+      dot(out, w, h, x, y, Math.max(0.4, (1 + rnd() * 2.5) * k * 1.3), col, 0.9);
     }
     layers.push({ name: "Speckle", rgba: out, blend: "NORMAL" });
     await yieldFn();
@@ -248,12 +251,12 @@ async function paintSpray(src, P, hooks) {
     const cnt = Math.round(dr * 50 * Math.sqrt(n / Math.max(1, k * k)) / 400 + dr * 6);
     const half = Math.floor(cans / 2);
     let made = 0;
-    for (let tries = 0; tries < cnt * 30 && made < cnt; tries++) {
+    for (let tries = 0; tries < cnt * 600 && made < cnt; tries++) {   // edges are thin at full size: try harder
       const x = Math.floor(rnd() * w), y = Math.floor(rnd() * (h - 2));
       const i = y * w + x, c = lab[i];
       if (c < half || lab[i + w] >= c) continue;    // start at the lower edge of a darker coat
       made++;
-      const col = pal[c], wd = Math.max(0.7, (2.2 + rnd() * 2.6) * k * (0.6 + P.brush.size / 80));
+      const col = pal[c], wd = Math.max(0.7, (3.5 + rnd() * 4) * k * (0.6 + P.brush.size / 80));
       const len = (Q.dripLength / 100) * (40 + rnd() * 200) * k;
       const sd = seed * 3 + made;
       for (let t = 0; t <= len; t += Math.max(0.5, wd * 0.5)) {
@@ -276,10 +279,10 @@ async function paintSpray(src, P, hooks) {
       if (y + 1 < h) { const b = pal[lab[i + w]]; d = Math.max(d, Math.abs(la - lum(b[0], b[1], b[2]))); }
       S2[i] = d > 45 ? 1 : 0;
     }
-    const lw = Math.max(1, (0.8 + Q.outline / 100 * 2.6) * k * 1.4), Ob = M.boxBlur(S2, w, h, lw, 2);
+    const lw = Math.max(1, (2.4 + Q.outline / 100 * 6) * k * 1.4), og = 4 * (2 * Math.max(1, Math.round(lw)) + 1) / 3, Ob = M.boxBlur(S2, w, h, lw, 2);
     const out = new Uint8Array(n * 4), g = Q.outline / 100;
     for (let i = 0, p = 0; i < n; i++, p += 4) {
-      const a = clamp(Ob[i] * 4 - 0.25, 0, 1) * (0.55 + 0.45 * g);
+      const a = clamp(Ob[i] * og - 0.25, 0, 1) * (0.55 + 0.45 * g);
       if (a <= 0.004) continue;
       out[p] = 18; out[p + 1] = 18; out[p + 2] = 20; out[p + 3] = Math.round(a * 255);
     }

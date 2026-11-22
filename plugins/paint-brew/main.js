@@ -16,6 +16,7 @@ const sourceLayer = (doc) => { try { return getState().out.source !== "flat" ? A
 
 const panel = createToolPanel({
   appName: "Frank's Paint Brew", title: "Frank's Paint Brew", sub: "oil  /  watercolour  /  impressionism  /  ink  /  spray  /  pastel", panelId: "paintPanel",
+  footer: "Frank's Paint Brew 1.1  -  Frank's Brew suite",
   presetFile: "presets.json", exportName: "paint-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cancellable: true,
