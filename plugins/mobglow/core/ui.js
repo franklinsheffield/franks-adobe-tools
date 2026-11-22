@@ -251,6 +251,17 @@ function createUI(opts) {
 
   // jump strip pinned under the preview: one button per section + fold all.
   // sections: [{ letter, name, id, node }] (node = the section bar in `scroller`)
+  // UXP (PS 28) draws a programmatic scroll but keeps hit-testing at the old position until a
+  // real scroll happens, so keys below the jump target (Apply) got no clicks (Colour Deck thread,
+  // 2026-11-22). Two 1 px moves on later frames make it re-sync, as one wheel tick does.
+  function nudgeScroll(scroller) {
+    const step = (d) => { try { scroller.scrollTop = scroller.scrollTop + d; } catch (e) { /* no scroller */ } };
+    setTimeout(() => {
+      const atEnd = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+      step(atEnd ? -1 : 1);
+      setTimeout(() => step(atEnd ? 1 : -1), 40);
+    }, 40);
+  }
   function jumpStrip(sections, scroller) {
     const btns = [];
     const row = el("div", { class: "jump" });
@@ -259,6 +270,7 @@ function createUI(opts) {
       b.addEventListener("click", () => {
         const top = sec.node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollTop = Math.max(0, scroller.scrollTop + top - 2);
+        nudgeScroll(scroller);
         mark(sec.id);
       });
       b.__sec = sec.id;

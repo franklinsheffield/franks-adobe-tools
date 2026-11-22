@@ -4,3 +4,11 @@
 .lbl3 { font-size: 11px; opacity: 0.75; margin: 6px 0 2px; }
 /* Plugin neon (hot pink): title text and every glow use this colour. */
 :root { --glow: #ff2fd6; --glowbg: #2e0826; }
+/* Mobglow 2.0 Glow card: Render key + three icon keys (Frank's reference panel) */
+.mgrender { display: block; width: 100%; text-align: center; padding: 6px 0; margin: 4px 0 8px; border-radius: 14px; font-weight: 600; }
+.mgkeys { justify-content: space-around; align-items: center; padding: 4px 0 8px; border-bottom: 1px solid rgba(255,255,255,0.35); margin-bottom: 6px; }
+.mgk { display: flex; align-items: center; }
+.mgkey { width: 34px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.mgkey.on { border-color: var(--glow); background-color: var(--glowbg); }
+.mgico { width: 18px; height: 18px; }
+.mgsrc { margin-left: 4px; }

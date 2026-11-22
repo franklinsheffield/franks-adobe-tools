@@ -290,7 +290,7 @@ async function t(name, fn) {
     assert.ok(/--arcade:\s*"Night Machine"/.test(css) && /\.sym \{ font-family: var\(--ui\)/.test(css));
   });
 
-  const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Background darken", "Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
+  const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
   for (const tool of Object.keys(NEW_TOOLS)) {
     await t(tool + " engine: deterministic, every preset renders full-size layers, first preset gives the expected layers", async () => {
       const E = require("../plugins/" + tool + "/js/engine.js"), S = require("../plugins/" + tool + "/js/state.js");

@@ -156,10 +156,50 @@ function createToolPanel(cfg) {
     lastSrc = src; lastScale = scale;
     if (lookBrowser) lookBrowser.sourceChanged();
     if (hasDeck) { applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
-    refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
+    lastShown = { rgb, w: res.w, h: res.h, before: cfg.split ? Engine.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null };
+    paintPreview();
     sizePreview(res.w, res.h);
     if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
     setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
+  }
+
+  // Before/After split (cfg.split, Mobglow 2.0): left of the divider is the untouched
+  // picture, right is the result. Dragging on the preview moves the divider without a re-render.
+  let lastShown = null;
+  function paintPreview() {
+    const L = lastShown;
+    if (!L) return;
+    const pos = cfg.split ? (state.view.split || 0) : 0;
+    if (!pos || !L.before) { refs.preview.src = PNG.dataURL(L.rgb, L.w, L.h, 3); return; }
+    const out = Uint8Array.from(L.rgb), cut = Math.round(L.w * pos / 100);
+    for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
+      const j = (y * L.w + x) * 3;
+      if (x === cut || x === cut - 1) { out[j] = out[j + 1] = out[j + 2] = 255; }
+      else if (x < cut) { out[j] = L.before[j]; out[j + 1] = L.before[j + 1]; out[j + 2] = L.before[j + 2]; }
+    }
+    refs.preview.src = PNG.dataURL(out, L.w, L.h, 3);
+  }
+  // where a pointer event lands on the preview, as 0..1 of the picture
+  function previewXY(e) {
+    const img = refs.preview;
+    let r = null; try { r = img.getBoundingClientRect(); } catch (err) { /* no layout */ }
+    const W = (r && r.width) || img.clientWidth || 1, H = (r && r.height) || img.clientHeight || 1;
+    const x = r ? e.clientX - r.left : (e.offsetX || 0), y = r ? e.clientY - r.top : (e.offsetY || 0);
+    return { u: Math.max(0, Math.min(1, x / W)), v: Math.max(0, Math.min(1, y / H)) };
+  }
+  const previewClickers = [];   // tool hooks, e.g. Mobglow's eyedropper; return true to take the press
+  let splitDrag = false;
+  function wirePreviewPointer() {
+    const img = refs.preview;
+    const moveSplit = (e) => { const { u } = previewXY(e); state.view.split = Math.max(1, Math.min(99, Math.round(u * 100))); paintPreview(); };
+    img.addEventListener("mousedown", (e) => {
+      const at = previewXY(e);
+      for (const f of previewClickers) { try { if (f(at, e)) return; } catch (err) { console.error(err); } }
+      if (cfg.split && state.view.split) { splitDrag = true; moveSplit(e); }
+    });
+    img.addEventListener("mousemove", (e) => { if (splitDrag) moveSplit(e); });
+    const end = () => { splitDrag = false; };
+    img.addEventListener("mouseup", end); img.addEventListener("mouseleave", end);
   }
 
   // The preview keeps the picture's exact shape. clientWidth includes the box's
@@ -264,7 +304,7 @@ function createToolPanel(cfg) {
       working = false; cancelReq = false;
       loop.setBusy(false);
       if (refs.led) refs.led.set(refs.status.className.includes("err") ? "err" : "ready");
-      if (!confirmArmed) btn.textContent = "Apply to document";
+      if (!confirmArmed) btn.textContent = cfg.applyLabel || "Apply to document";
       btn.removeAttribute("disabled");
     }
   }
@@ -496,7 +536,10 @@ function createToolPanel(cfg) {
     pinCb.checked = true;
     const setPin = (v) => { layout.setPinned(!!v); schedulePreview(0); };
     pinCb.addEventListener("change", () => setPin(pinCb.checked));
-    const kit = { gradientEditor, colourRow, touch, setStatus, schedulePreview, loop, get state() { return state; } };
+    const kit = { gradientEditor, colourRow, touch, setStatus, schedulePreview, loop, get state() { return state; },
+      applyNow: () => applyNow(), io: PS, onPreviewPress: (f) => previewClickers.push(f),
+      get source() { return lastSrc; }, get presetName() { return presetName; } };
+    wirePreviewPointer();
     top.appendChild(card("Preview", [
       refs.docline, refs.previewBox
     ].concat(cfg.previewRows ? cfg.previewRows(ui, kit) : [
@@ -505,6 +548,7 @@ function createToolPanel(cfg) {
         segGroup("view.bg", [{ v: "checker", l: "Checker" }, { v: "white", l: "White" }, { v: "black", l: "Black" }])
       ])
     ]).concat([
+      cfg.split && ui.brand ? el("div", { class: "row" }, [ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")]) : null,
       el("div", { class: "row" }, ui.brand ? [refresh,
         ui.brand.miniToggle("Auto-update", true, setAuto),
         ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
@@ -550,7 +594,7 @@ function createToolPanel(cfg) {
       return;
     }
 
-    refs.apply = el("button", { class: "apply", text: "Apply to document" });
+    refs.apply = el("button", { class: "apply", text: cfg.applyLabel || "Apply to document" });
     // Apply fires on mouse-up after a press on the key, with click as the fallback: UXP sometimes
     // drops the click on this key (CRT smoke test, 2026-11-22), while mousedown/up still arrive.
     let applyDown = false, skipClick = false, skipT = null;
