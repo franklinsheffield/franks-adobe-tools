@@ -19,6 +19,8 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item ae\tools\install-win.bat ae\dist\win\
+          Copy-Item ae\tools\install-console-win.bat ae\dist\win\
+          Copy-Item -Recurse ae\console ae\dist\win\console
           Get-ChildItem ae\dist\win
       - uses: actions/upload-artifact@v4
         with:
