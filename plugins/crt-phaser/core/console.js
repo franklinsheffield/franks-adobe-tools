@@ -102,6 +102,33 @@ function createConsoleKit(env) {
     if (d) d.redraw();
   }
 
+  // UXP (PS 28) never sends wheel events to panel elements: the wheel only
+  // scrolls the panel's scroller. So while the pointer is over a knob, a
+  // scroll of the scroller is undone and turned into knob steps instead.
+  let hovered = null, scroller = null, lastTop = 0, restoring = false;
+  function findScroller(n) {
+    for (let p = n; p; p = p.parentNode) if (p.classList && p.classList.contains("scroller")) return p;
+    return null;
+  }
+  function watchScroll(n) {
+    const sc = findScroller(n);
+    if (!sc || sc === scroller) return;
+    scroller = sc; lastTop = sc.scrollTop;
+    sc.addEventListener("scroll", () => {
+      const top = sc.scrollTop;
+      if (restoring) { restoring = false; lastTop = top; return; }
+      const delta = top - lastTop;
+      if (hovered && delta) {
+        hovered.wheelStep(delta < 0 ? 1 : -1);
+        restoring = true;
+        sc.scrollTop = lastTop;                          // put the panel back
+        if (sc.scrollTop === top) { restoring = false; lastTop = top; }   // host ignored the reset
+        return;
+      }
+      lastTop = top;
+    });
+  }
+
   function dial(label, path, min, max, step, unit) {
     const S = env.getState;
     const fmt = (v) => (step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.1 ? 2 : 1));
@@ -159,10 +186,19 @@ function createConsoleKit(env) {
     });
     img.addEventListener("mousemove", move);
     img.addEventListener("mouseup", up);
-    const wheel = (e) => {
-      const dir = e.deltaY < 0 ? 1 : -1;
+    me.wheelStep = (dir) => {
       pick();
       set(env.getPath(S(), path) + dir * Math.max(step, (max - min) / 50), true);
+    };
+    node.addEventListener("mouseover", () => { hovered = me; watchScroll(node); if (scroller) lastTop = scroller.scrollTop; });
+    node.addEventListener("mouseout", (e) => {
+      const to = e.relatedTarget;
+      if (to && node.contains && node.contains(to)) return;
+      if (hovered === me) hovered = null;
+    });
+    const wheel = (e) => {
+      const dir = e.deltaY < 0 ? 1 : -1;
+      me.wheelStep(dir);
       if (e.preventDefault) e.preventDefault();
       if (e.stopPropagation) e.stopPropagation();
     };

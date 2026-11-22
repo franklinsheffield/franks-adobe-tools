@@ -168,6 +168,17 @@ function createToolPanel(cfg) {
 
   // ---- apply
   let working = false, cancelReq = false;
+  // Right after Edit > Undo (or while another plugin works) Photoshop can say
+  // "host is in a modal state" for a moment. Wait and try again instead of failing.
+  async function whenNotModal(fn) {
+    for (let i = 0; ; i++) {
+      try { return await fn(); } catch (e) {
+        if (i >= 8 || !/modal state/i.test(String(e && e.message || e))) throw e;
+        setStatus("Photoshop is busy, retrying...");
+        await new Promise((r) => setTimeout(r, 250 + i * 150));
+      }
+    }
+  }
   async function applyNow() {
     if (working) { if (cfg.cancellable) { cancelReq = true; setStatus("Cancelling..."); } return; }
     let doc = PS.activeDoc();
@@ -175,6 +186,8 @@ function createToolPanel(cfg) {
     const btn = refs.apply, tStart = Date.now();
     loop.setBusy(true);
     try {
+      // a preview render may still hold Photoshop's modal scope: let it finish first
+      for (let i = 0; i < 100 && loop.rendering; i++) await new Promise((r) => setTimeout(r, 50));
       const targets = PS.collectTargets(doc, state.out.source);
       const info = PS.docInfo(doc);
       const work = info.w * info.h * targets.length * (cfg.costFactor ? cfg.costFactor(engineState()) : 1);
@@ -198,7 +211,7 @@ function createToolPanel(cfg) {
       let done = 0;
       for (const t of runTargets) {
         setStatus("Reading pixels " + (done + 1) + "/" + runTargets.length + "...");
-        const r = await PS.readSource(doc, t, { kind: "full" });
+        const r = await whenNotModal(() => PS.readSource(doc, t, { kind: "full" }));
         if (cfg.prepareSource) await cfg.prepareSource(doc, r, "apply");
         setStatus("Rendering " + (done + 1) + "/" + runTargets.length + "...");
         let res = await Engine.render(r.src, engineState({ scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
