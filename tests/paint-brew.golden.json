@@ -1,0 +1,49 @@
+{
+ "cards": [
+  "Preview",
+  "Library",
+  "Style",
+  "Brush",
+  "Colour",
+  "Texture",
+  "Water and paper",
+  "Focus",
+  "Output"
+ ],
+ "controls": "input:36 select:5 button:14 textarea:0",
+ "previewDefault": "da39a3ee5e6b",
+ "presets": [
+  "Oil - Studio Oil = fc8b769bf60f",
+  "Oil - Palette Knife = ee7c6489c59b",
+  "Oil - Glaze = d151866cbf13",
+  "Watercolour - Loose Wash = e7a270e33d39",
+  "Watercolour - Ink and Wash = 9d9ce2b0482c",
+  "Watercolour - Splash Pop = 97f85c5ae094",
+  "Impressionism - Garden Light = 3c163536aa48",
+  "Impressionism - Harbour Morning = cbe5b29ea6da",
+  "Impressionism - Broken Colour = fc1d478d3d03"
+ ],
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  6 layers",
+ "applyCalls": [
+  "executeAsModal|Frank's Paint Brew: print-ready copy",
+  "duplicate|test - Paint Brew print",
+  "resizeImage|2500|1875|300",
+  "executeAsModal|Frank's Paint Brew: reading pixels",
+  "getPixels|{\"left\":0,\"top\":0,\"right\":2500,\"bottom\":1875}|null",
+  "executeAsModal|Frank's Paint Brew",
+  "suspendHistory|Frank's Paint Brew",
+  "createPixelLayer|Underpainting",
+  "putPixels|100|4|18750000",
+  "createPixelLayer|Broad strokes",
+  "putPixels|101|4|18750000",
+  "createPixelLayer|Detail strokes",
+  "putPixels|102|4|18750000",
+  "createPixelLayer|Impasto light",
+  "putPixels|103|4|18750000",
+  "createPixelLayer|Canvas weave",
+  "putPixels|104|4|18750000",
+  "createLayerGroup|Frank's Paint Brew - Studio Oil|5",
+  "resumeHistory"
+ ],
+ "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
+}

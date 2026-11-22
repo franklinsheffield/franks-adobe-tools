@@ -9,7 +9,10 @@
 //
 //   createToolPanel({ appName, title, sub, panelId, presetFile, exportName,
 //     Engine, DEFAULTS, PRESETS, merge, clone, cards(ui, kit), outputRows(ui),
-//     viewDefaultBg, footer })
+//     viewDefaultBg, footer,
+//     prepareSource(doc, r, phase)  optional: add extra inputs to r.src (e.g. a focus mask); phase "preview" | "apply"
+//     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
+//     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 // ======================================================================
 const PNG = require("./png.js");
@@ -93,13 +96,14 @@ function createToolPanel(cfg) {
       const target = (state.out.source !== "flat") ? tryLayerTarget(doc) : { kind: "flat" };
       const r = await PS.readSource(doc, target, { kind: state.view.kind, size: state.view.size });
       src = r.src; scale = r.scale;
+      if (cfg.prepareSource) { try { await cfg.prepareSource(doc, r, "preview"); } catch (e) { console.error(e); } }
       docCache = { ppi: r.ppi, name: r.info.name, w: r.info.w, h: r.info.h, demo: false };
     } else {
       src = Engine.demoImage(state.view.size, Math.round(state.view.size * 0.75));
       docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
     }
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
-    const res = await Engine.render(src, Object.assign({}, state, { scale, fullH: docCache.h }), { yield: tick });
+    const res = await Engine.render(src, Object.assign({}, state, { scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
     const avail = (refs.previewBox.clientWidth || 320) - 4;
@@ -111,8 +115,10 @@ function createToolPanel(cfg) {
   }
 
   // ---- apply
+  let working = false, cancelReq = false;
   async function applyNow() {
-    const doc = PS.activeDoc();
+    if (working) { if (cfg.cancellable) { cancelReq = true; setStatus("Cancelling..."); } return; }
+    let doc = PS.activeDoc();
     if (!doc) { setStatus("Open a document first. The preview is only using the demo image.", true); return; }
     const btn = refs.apply;
     loop.setBusy(true);
@@ -127,14 +133,21 @@ function createToolPanel(cfg) {
         return;
       }
       confirmArmed = false;
-      btn.textContent = "Working...";
-      btn.setAttribute("disabled", "true");
+      working = true; cancelReq = false;
+      btn.textContent = cfg.cancellable ? "Cancel" : "Working...";
+      if (!cfg.cancellable) btn.setAttribute("disabled", "true");
+      if (cfg.prepareApply) doc = await cfg.prepareApply(doc, setStatus);
+      const runTargets = cfg.prepareApply ? PS.collectTargets(doc, state.out.source) : targets;
+      const hooks = cfg.cancellable
+        ? { yield: async () => { await tick(); if (cancelReq) throw new Error("Cancelled. Nothing was added."); }, progress: (m) => setStatus(m) }
+        : { yield: tick };
       let done = 0;
-      for (const t of targets) {
-        setStatus("Reading pixels " + (done + 1) + "/" + targets.length + "...");
+      for (const t of runTargets) {
+        setStatus("Reading pixels " + (done + 1) + "/" + runTargets.length + "...");
         const r = await PS.readSource(doc, t, { kind: "full" });
-        setStatus("Rendering " + (done + 1) + "/" + targets.length + "...");
-        const res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h }), { yield: tick });
+        if (cfg.prepareSource) await cfg.prepareSource(doc, r, "apply");
+        setStatus("Rendering " + (done + 1) + "/" + runTargets.length + "...");
+        const res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
         setStatus("Writing layers...");
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
         const warnings = await PS.writeResult(doc, res, {
@@ -149,8 +162,10 @@ function createToolPanel(cfg) {
       if (!refs.status.className.includes("err")) setStatus("Done. " + done + " group" + (done === 1 ? "" : "s") + " added. Undo with one Ctrl/Cmd+Z.");
     } catch (e) {
       console.error(e);
-      setStatus("Apply failed: " + (e && e.message ? e.message : e), true);
+      const msg = e && e.message ? e.message : String(e);
+      setStatus(/^Cancelled/.test(msg) ? msg : "Apply failed: " + msg, true);
     } finally {
+      working = false; cancelReq = false;
       loop.setBusy(false);
       if (!confirmArmed) btn.textContent = "Apply to document";
       btn.removeAttribute("disabled");

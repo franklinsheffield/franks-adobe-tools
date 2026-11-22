@@ -43,6 +43,9 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   P.host.calls.length = 0;
   P.document.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
   await P.settle(800);
+  // long jobs (Paint Brew): wait until the Apply button is idle again
+  const ab = P.document.querySelector(".apply");
+  for (let i = 0; i < 1200 && /^(Working|Cancel$)/.test(ab.textContent); i++) await P.settle(100);
   out.applyCalls = P.host.calls.map((c) => c.join("|"));
   out.applyStatus = P.document.querySelector(".status").textContent;
   console.log(JSON.stringify(out, null, 1));

@@ -81,7 +81,13 @@ const BLENDS = {
   SCREEN: (o, v) => 255 - (255 - o) * (255 - v) / 255,
   MULTIPLY: (o, v) => o * v / 255,
   LIGHTEN: (o, v) => (v > o ? v : o),
-  LINEARDODGE: (o, v) => Math.min(255, o + v)
+  LINEARDODGE: (o, v) => Math.min(255, o + v),
+  OVERLAY: (o, v) => (o < 128 ? 2 * o * v / 255 : 255 - 2 * (255 - o) * (255 - v) / 255),
+  SOFTLIGHT: (o, v) => {
+    const a = o / 255, b = v / 255;
+    const d = a <= 0.25 ? ((16 * a - 12) * a + 4) * a : Math.sqrt(a);
+    return 255 * (b <= 0.5 ? a - (1 - 2 * b) * a * (1 - a) : a + (2 * b - 1) * (d - a));
+  }
 };
 // RGB preview: background, then (if res.overSource) the source, then layers
 function composite(res, bg, src) {

@@ -24,13 +24,21 @@ function makeHost(opts) {
   const calls = [];
   const W = opts.docW || 400, H = opts.docH || 300;
   const pixels = fakeImage(W, H);
-  let nextId = 100;
+  let nextId = 100, doc2W = 0, doc2H = 0;
   const layers = [];
   const doc = opts.withDoc ? {
     id: 1, name: "test.psd", width: W, height: H, resolution: 300,
     layers, activeLayers: [],
     async createPixelLayer(o) { const L = { id: nextId++, name: o.name, opacity: o.opacity, visible: true, kind: "pixel", blendMode: null }; layers.push(L); calls.push(["createPixelLayer", o.name]); return L; },
-    async createLayerGroup(o) { calls.push(["createLayerGroup", o.name, (o.fromLayers || []).length]); const G = { id: nextId++, name: o.name, kind: "group" }; return G; }
+    async createLayerGroup(o) { calls.push(["createLayerGroup", o.name, (o.fromLayers || []).length]); const G = { id: nextId++, name: o.name, kind: "group" }; return G; },
+    // Paint Brew's print-ready copy: a duplicate that can be resized (same fake pixels, stretched)
+    async duplicate(name) {
+      calls.push(["duplicate", name]);
+      const d2 = Object.assign({}, doc, { id: 2, name, layers: [] });
+      d2.createPixelLayer = async (o) => { const L = { id: nextId++, name: o.name, opacity: o.opacity, visible: true, kind: "pixel", blendMode: null }; d2.layers.push(L); calls.push(["createPixelLayer", o.name]); return L; };
+      d2.resizeImage = async (w, h, ppi) => { calls.push(["resizeImage", w, h, ppi]); d2.width = w; d2.height = h; d2.resolution = ppi; doc2W = w; doc2H = h; };
+      return d2;
+    }
   } : null;
   const photoshop = {
     app: { get activeDocument() { return doc; } },
@@ -54,7 +62,9 @@ function makeHost(opts) {
         let w = b.right - b.left, h = b.bottom - b.top;
         let out = new Uint8Array(w * h * 4);
         for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-          const s = ((y + b.top) * W + (x + b.left)) * 4, d = (y * w + x) * 4;
+          const dw = o.documentID === 2 && doc2W ? doc2W : W, dh = o.documentID === 2 && doc2H ? doc2H : H;
+          const sxp = Math.min(W - 1, Math.floor((x + b.left) * W / dw)), syp = Math.min(H - 1, Math.floor((y + b.top) * H / dh));
+          const s = (syp * W + sxp) * 4, d = (y * w + x) * 4;
           out[d] = pixels[s]; out[d + 1] = pixels[s + 1]; out[d + 2] = pixels[s + 2]; out[d + 3] = pixels[s + 3];
         }
         if (o.targetSize) {

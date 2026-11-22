@@ -88,6 +88,23 @@ def glyph_mock(d, s, c):
            (cx, top + s * 0.035)]
     d.polygon(tee, fill=c)
 
+def glyph_paint(d, s, c):
+    # a fat round brush laid diagonally, its tip finishing a filled paint swoosh
+    top = [(s * (0.22 + 0.64 * t), s * (0.79 - 0.10 * math.sin(t * math.pi) - 0.04 * t)) for t in [i / 40 for i in range(41)]]
+    bot = [(x, y + s * (0.012 + 0.075 * math.sin(i / 40 * math.pi) ** 0.7)) for i, (x, y) in enumerate(top)]
+    d.polygon(top + bot[::-1], fill=c)
+    d.line([(s * 0.86, s * 0.12), (s * 0.60, s * 0.38)], fill=c, width=int(s * 0.085))
+    d.line([(s * 0.61, s * 0.37), (s * 0.50, s * 0.48)], fill=c, width=int(s * 0.13))
+    ux, uy, nx, ny = -0.7071, 0.7071, 0.7071, 0.7071
+    cx, cy, L = s * 0.52, s * 0.46, s * 0.30
+    left, right = [], []
+    for k in range(60):
+        t = k / 59
+        r = s * 0.078 * (math.sin(math.pi * min(1.0, 0.5 + t * 0.62)) ** 0.9 if t > 0.0 else 1)
+        x, y = cx + ux * t * L, cy + uy * t * L
+        left.append((x + nx * r, y - ny * r * -1)); right.append((x - nx * r, y + ny * r * -1))
+    d.polygon(left + right[::-1], fill=c)
+
 TOOLS = {
     "dithers-brew": (glyph_dithers, "icon_D", "icon_N"),
     "chrometone": (glyph_chrome, "icon_C", "icon_CL"),
@@ -96,6 +113,7 @@ TOOLS = {
     "decompressor": (glyph_decomp, "icon_C", "icon_CL"),
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
     "batch-mock-brew": (glyph_mock, "icon_C", "icon_CL"),
+    "paint-brew": (glyph_paint, "icon_C", "icon_CL"),
 }
 
 def draw(glyph, size, color, tile, glow=GLOW):
