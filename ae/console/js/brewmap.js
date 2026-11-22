@@ -1933,15 +1933,928 @@ window.BREW = {
      "name": "Titan Block"
     }
    ]
+  },
+  {
+   "id": "dithers-brew",
+   "pre": "di",
+   "code": "DB-01",
+   "glow": "#ff9f1c",
+   "title": "Frank's Dithers Brew",
+   "match": "com.franks.dithers.ae",
+   "look": 2,
+   "lookB": 3,
+   "morph": 4,
+   "motion": {
+    "topic": 130,
+    "animate": 131,
+    "speed": 132,
+    "loop": 133,
+    "seed": 134,
+    "boil": 135,
+    "driftx": 136,
+    "drifty": 137,
+    "spin": 138,
+    "pulse": 139,
+    "pulser": 140,
+    "flick": 141,
+    "flickr": 142,
+    "jit": 143,
+    "jitr": 144,
+    "reveal": 145,
+    "revmode": 146,
+    "revang": 147,
+    "end": 148
+   },
+   "keys": {
+    "lpi": {
+     "id": 12,
+     "kind": "num"
+    },
+    "angle": {
+     "id": 13,
+     "kind": "num"
+    },
+    "pixel": {
+     "id": 14,
+     "kind": "num"
+    },
+    "ppi": {
+     "id": 11,
+     "kind": "num"
+    },
+    "tune.threshold": {
+     "id": 18,
+     "kind": "num"
+    },
+    "tune.strength": {
+     "id": 19,
+     "kind": "num"
+    },
+    "tune.weight": {
+     "id": 21,
+     "kind": "num"
+    },
+    "tune.spacing": {
+     "id": 22,
+     "kind": "num"
+    },
+    "tune.jitter": {
+     "id": 23,
+     "kind": "num"
+    },
+    "ascii.size": {
+     "id": 26,
+     "kind": "num"
+    },
+    "ascii.edge": {
+     "id": 27,
+     "kind": "num"
+    },
+    "grade.spread": {
+     "id": 70,
+     "kind": "num"
+    },
+    "cmyk.gcr": {
+     "id": 82,
+     "kind": "num"
+    },
+    "fx.pre.brightness": {
+     "id": 97,
+     "kind": "num"
+    },
+    "fx.pre.contrast": {
+     "id": 98,
+     "kind": "num"
+    },
+    "fx.pre.gamma": {
+     "id": 99,
+     "kind": "num"
+    },
+    "fx.pre.black": {
+     "id": 100,
+     "kind": "num"
+    },
+    "fx.pre.white": {
+     "id": 101,
+     "kind": "num"
+    },
+    "fx.pre.blur": {
+     "id": 102,
+     "kind": "num"
+    },
+    "fx.pre.sharpen": {
+     "id": 103,
+     "kind": "num"
+    },
+    "fx.pre.radius": {
+     "id": 104,
+     "kind": "num"
+    },
+    "fx.pre.noise": {
+     "id": 105,
+     "kind": "num"
+    },
+    "fx.pre.haze": {
+     "id": 106,
+     "kind": "num"
+    },
+    "fx.edges.strength": {
+     "id": 109,
+     "kind": "num"
+    },
+    "fx.edges.thick": {
+     "id": 110,
+     "kind": "num"
+    },
+    "fx.dtf.fuzz": {
+     "id": 115,
+     "kind": "num"
+    },
+    "fx.dtf.feather": {
+     "id": 116,
+     "kind": "num"
+    },
+    "fx.gain.amount": {
+     "id": 121,
+     "kind": "num"
+    },
+    "fx.misreg.amount": {
+     "id": 123,
+     "kind": "num"
+    },
+    "fx.clean.mm": {
+     "id": 125,
+     "kind": "num"
+    },
+    "fx.distress.amount": {
+     "id": 127,
+     "kind": "num"
+    },
+    "aa": {
+     "id": 15,
+     "kind": "bool"
+    },
+    "ascii.keepOrder": {
+     "id": 28,
+     "kind": "bool"
+    },
+    "ascii.textMode": {
+     "id": 29,
+     "kind": "bool"
+    },
+    "grade.skipLightest": {
+     "id": 71,
+     "kind": "bool"
+    },
+    "fx.pre.on": {
+     "id": 96,
+     "kind": "bool"
+    },
+    "fx.edges.on": {
+     "id": 108,
+     "kind": "bool"
+    },
+    "fx.dtf.on": {
+     "id": 113,
+     "kind": "bool"
+    },
+    "fx.dtf.dots": {
+     "id": 117,
+     "kind": "bool"
+    },
+    "fx.gain.on": {
+     "id": 120,
+     "kind": "bool"
+    },
+    "fx.misreg.on": {
+     "id": 122,
+     "kind": "bool"
+    },
+    "fx.clean.on": {
+     "id": 124,
+     "kind": "bool"
+    },
+    "fx.distress.on": {
+     "id": 126,
+     "kind": "bool"
+    },
+    "mono.ink": {
+     "id": 33,
+     "kind": "color"
+    },
+    "fx.dtf.garment": {
+     "id": 114,
+     "kind": "color"
+    },
+    "engine": {
+     "values": [
+      "halftone",
+      "dither",
+      "ascii"
+     ],
+     "kind": "popup",
+     "id": 7
+    },
+    "mode": {
+     "values": [
+      "mono",
+      "tonal",
+      "grade",
+      "rgb",
+      "cmyk"
+     ],
+     "kind": "popup",
+     "id": 32
+    },
+    "algo.halftone": {
+     "values": [
+      "round",
+      "ellipse",
+      "diamond",
+      "square",
+      "line",
+      "cross",
+      "hex",
+      "rings",
+      "wave",
+      "checker",
+      "grain"
+     ],
+     "kind": "popup",
+     "id": 8
+    },
+    "algo.dither": {
+     "values": [
+      "fs",
+      "fsj",
+      "atk",
+      "jjn",
+      "stu",
+      "bur",
+      "sl",
+      "sierra3",
+      "sierra2",
+      "b2",
+      "b4",
+      "b8",
+      "b16",
+      "c4",
+      "c8",
+      "d8",
+      "l6",
+      "ign",
+      "white",
+      "thr",
+      "wavescan",
+      "waveamp",
+      "lineweight",
+      "contour",
+      "spiral",
+      "ripple",
+      "stipple",
+      "crosswave"
+     ],
+     "kind": "popup",
+     "id": 9
+    },
+    "algo.ascii": {
+     "values": [
+      "classic",
+      "dense",
+      "digits",
+      "binary",
+      "letters",
+      "math",
+      "hatch",
+      "symbols",
+      "blocks",
+      "dots",
+      "bars",
+      "custom"
+     ],
+     "kind": "popup",
+     "id": 10
+    },
+    "tune.direction": {
+     "values": [
+      "h",
+      "v",
+      "d",
+      "r"
+     ],
+     "kind": "popup",
+     "id": 20
+    },
+    "mono.paper": {
+     "kind": "optcolor",
+     "on": 34,
+     "id": 35
+    },
+    "tonal.paper": {
+     "kind": "optcolor",
+     "on": 49,
+     "id": 50
+    },
+    "tonal.inks": {
+     "kind": "list",
+     "c": 39,
+     "stride": 2,
+     "count": 38,
+     "countOff": 0,
+     "min": 1,
+     "max": 5
+    },
+    "grade.colors": {
+     "kind": "list",
+     "c": 54,
+     "stride": 1,
+     "count": 53,
+     "countOff": 1,
+     "min": 2,
+     "max": 16
+    },
+    "ascii.custom": {
+     "kind": "skip"
+    },
+    "ascii.text": {
+     "kind": "skip"
+    },
+    "fx.pre.invert": {
+     "kind": "num",
+     "id": 107
+    },
+    "tonal.angles.0": {
+     "kind": "num",
+     "id": 40
+    },
+    "tonal.angles.1": {
+     "kind": "num",
+     "id": 42
+    },
+    "tonal.angles.2": {
+     "kind": "num",
+     "id": 44
+    },
+    "tonal.angles.3": {
+     "kind": "num",
+     "id": 46
+    },
+    "tonal.angles.4": {
+     "kind": "num",
+     "id": 48
+    },
+    "cmyk.on.0": {
+     "kind": "bool",
+     "id": 74
+    },
+    "cmyk.angles.0": {
+     "kind": "num",
+     "id": 75
+    },
+    "cmyk.on.1": {
+     "kind": "bool",
+     "id": 76
+    },
+    "cmyk.angles.1": {
+     "kind": "num",
+     "id": 77
+    },
+    "cmyk.on.2": {
+     "kind": "bool",
+     "id": 78
+    },
+    "cmyk.angles.2": {
+     "kind": "num",
+     "id": 79
+    },
+    "cmyk.on.3": {
+     "kind": "bool",
+     "id": 80
+    },
+    "cmyk.angles.3": {
+     "kind": "num",
+     "id": 81
+    },
+    "rgb.on.0": {
+     "kind": "bool",
+     "id": 85
+    },
+    "rgb.angles.0": {
+     "kind": "num",
+     "id": 86
+    },
+    "rgb.strength.0": {
+     "kind": "num",
+     "id": 87
+    },
+    "rgb.on.1": {
+     "kind": "bool",
+     "id": 88
+    },
+    "rgb.angles.1": {
+     "kind": "num",
+     "id": 89
+    },
+    "rgb.strength.1": {
+     "kind": "num",
+     "id": 90
+    },
+    "rgb.on.2": {
+     "kind": "bool",
+     "id": 91
+    },
+    "rgb.angles.2": {
+     "kind": "num",
+     "id": 92
+    },
+    "rgb.strength.2": {
+     "kind": "num",
+     "id": 93
+    }
+   },
+   "params": {
+    "2": "Look",
+    "3": "P_LOOKB",
+    "4": "Morph to Look B",
+    "7": "P_ENGINE",
+    "8": "P_SCREEN",
+    "9": "P_DITHER",
+    "10": "P_ASCII",
+    "11": "Resolution (PPI)",
+    "12": "Screen (LPI)",
+    "13": "Screen angle",
+    "14": "Pixel scale",
+    "15": "P_AA",
+    "18": "Threshold",
+    "19": "Strength (%)",
+    "20": "P_DIR",
+    "21": "Line weight",
+    "22": "Line spacing (px)",
+    "23": "Jitter (%)",
+    "26": "Glyph scale",
+    "27": "Edge glyphs (%)",
+    "28": "P_AKEEP",
+    "29": "P_ATEXT",
+    "32": "P_MODE",
+    "33": "P_MONO_INK",
+    "34": "P_MONO_PAPER_ON",
+    "35": "P_MONO_PAPER",
+    "38": "P_TN_COUNT",
+    "39": "P_TN1",
+    "40": "P_TA1",
+    "41": "P_TN2",
+    "42": "P_TA2",
+    "43": "P_TN3",
+    "44": "P_TA3",
+    "45": "P_TN4",
+    "46": "P_TA4",
+    "47": "P_TN5",
+    "48": "P_TA5",
+    "49": "P_TN_PAPER_ON",
+    "50": "P_TN_PAPER",
+    "53": "P_PAL_COUNT",
+    "54": "P_PC1",
+    "55": "P_PC2",
+    "56": "P_PC3",
+    "57": "P_PC4",
+    "58": "P_PC5",
+    "59": "P_PC6",
+    "60": "P_PC7",
+    "61": "P_PC8",
+    "62": "P_PC9",
+    "63": "P_PC10",
+    "64": "P_PC11",
+    "65": "P_PC12",
+    "66": "P_PC13",
+    "67": "P_PC14",
+    "68": "P_PC15",
+    "69": "P_PC16",
+    "70": "Dither spread (%)",
+    "71": "P_SKIP",
+    "74": "P_C_ON",
+    "75": "P_C_ANG",
+    "76": "P_M_ON",
+    "77": "P_M_ANG",
+    "78": "P_Y_ON",
+    "79": "P_Y_ANG",
+    "80": "P_K_ON",
+    "81": "P_K_ANG",
+    "82": "Black generation (%)",
+    "85": "P_R_ON",
+    "86": "P_R_ANG",
+    "87": "P_R_STR",
+    "88": "P_G_ON",
+    "89": "P_G_ANG",
+    "90": "P_G_STR",
+    "91": "P_B_ON",
+    "92": "P_B_ANG",
+    "93": "P_B_STR",
+    "96": "P_PRE_ON",
+    "97": "Brightness",
+    "98": "Contrast",
+    "99": "Gamma",
+    "100": "Black point",
+    "101": "White point",
+    "102": "Blur (px)",
+    "103": "Sharpen (%)",
+    "104": "Sharpen radius (px)",
+    "105": "Noise -/+",
+    "106": "Haze (%)",
+    "107": "Invert (%)",
+    "108": "P_EDGE_ON",
+    "109": "Edge strength (%)",
+    "110": "Edge thickness (px)",
+    "113": "P_DTF_ON",
+    "114": "P_GARMENT",
+    "115": "Fuzziness (%)",
+    "116": "Feather (%)",
+    "117": "P_DOTS",
+    "120": "P_GAIN_ON",
+    "121": "Dot gain (px)",
+    "122": "P_MIS_ON",
+    "123": "Misregistration (px)",
+    "124": "P_CLEAN_ON",
+    "125": "Smallest dot (mm)",
+    "126": "P_DIS_ON",
+    "127": "Distress (%)",
+    "128": "P_BG",
+    "131": "P_MO_ANIMATE",
+    "132": "P_MO_SPEED",
+    "133": "P_MO_LOOP",
+    "134": "P_MO_SEED",
+    "135": "P_MO_BOIL",
+    "136": "P_MO_DRIFTX",
+    "137": "P_MO_DRIFTY",
+    "138": "P_MO_SPIN",
+    "139": "P_MO_PULSE",
+    "140": "P_MO_PULSER",
+    "141": "P_MO_FLICK",
+    "142": "P_MO_FLICKR",
+    "143": "P_MO_JIT",
+    "144": "P_MO_JITR",
+    "145": "P_MO_REVEAL",
+    "146": "P_MO_REVMODE",
+    "147": "P_MO_REVANG",
+    "150": "Screen breathe (%)",
+    "151": "Breathe rate (Hz)",
+    "152": "Tone sweep (%)",
+    "153": "Tone rate (Hz)"
+   },
+   "defaults": {
+    "engine": "halftone",
+    "algo": {
+     "halftone": "round",
+     "dither": "fs",
+     "ascii": "classic"
+    },
+    "mode": "mono",
+    "lpi": 35,
+    "angle": 45,
+    "pixel": 1,
+    "aa": false,
+    "tune": {
+     "threshold": 50,
+     "strength": 100,
+     "direction": "h",
+     "weight": 2,
+     "spacing": 6,
+     "jitter": 0
+    },
+    "ascii": {
+     "size": 4,
+     "custom": "FRANK",
+     "keepOrder": false,
+     "edge": 0,
+     "textMode": false,
+     "text": "FRANK"
+    },
+    "mono": {
+     "ink": "#000000",
+     "paper": ""
+    },
+    "tonal": {
+     "tone": "duonavy",
+     "inks": [
+      "#7FA6C9",
+      "#1B2A49"
+     ],
+     "paper": "#F4EBD0",
+     "angles": [
+      45,
+      15,
+      75,
+      0,
+      60
+     ]
+    },
+    "grade": {
+     "palette": "pico8",
+     "colors": [
+      "#000000",
+      "#1D2B53",
+      "#7E2553",
+      "#008751",
+      "#AB5236",
+      "#5F574F",
+      "#C2C3C7",
+      "#FFF1E8",
+      "#FF004D",
+      "#FFA300",
+      "#FFEC27",
+      "#00E436",
+      "#29ADFF",
+      "#83769C",
+      "#FF77A8",
+      "#FFCCAA"
+     ],
+     "off": [],
+     "count": 8,
+     "spread": 50,
+     "skipLightest": false
+    },
+    "cmyk": {
+     "angles": [
+      15,
+      75,
+      0,
+      45
+     ],
+     "on": [
+      true,
+      true,
+      true,
+      true
+     ],
+     "gcr": 100
+    },
+    "rgb": {
+     "angles": [
+      15,
+      75,
+      45
+     ],
+     "on": [
+      true,
+      true,
+      true
+     ],
+     "strength": [
+      100,
+      100,
+      100
+     ]
+    },
+    "fx": {
+     "pre": {
+      "on": false,
+      "brightness": 0,
+      "contrast": 0,
+      "gamma": 1,
+      "black": 0,
+      "white": 255,
+      "blur": 0,
+      "sharpen": 0,
+      "radius": 1.5,
+      "noise": 0,
+      "haze": 0,
+      "invert": 0
+     },
+     "edges": {
+      "on": false,
+      "strength": 60,
+      "thick": 1
+     },
+     "dtf": {
+      "on": false,
+      "garment": "#1A1A1A",
+      "fuzz": 15,
+      "feather": 20,
+      "dots": true,
+      "view": "garment"
+     },
+     "gain": {
+      "on": false,
+      "amount": 0
+     },
+     "misreg": {
+      "on": false,
+      "amount": 3
+     },
+     "clean": {
+      "on": false,
+      "mm": 0.5
+     },
+     "distress": {
+      "on": false,
+      "amount": 30
+     }
+    }
+   },
+   "looks": [
+    {
+     "i": 1,
+     "cat": "Print",
+     "name": "Newsprint 45 deg / 35 LPI"
+    },
+    {
+     "i": 2,
+     "cat": "Print",
+     "name": "Coarse screen print / 25 LPI"
+    },
+    {
+     "i": 3,
+     "cat": "Print",
+     "name": "Fine halftone / 60 LPI"
+    },
+    {
+     "i": 4,
+     "cat": "Print",
+     "name": "Line screen 0 deg / 30 LPI"
+    },
+    {
+     "i": 5,
+     "cat": "Print",
+     "name": "Diagonal line etching / 40 LPI"
+    },
+    {
+     "i": 6,
+     "cat": "Print",
+     "name": "Cross-hatch engraving"
+    },
+    {
+     "i": 7,
+     "cat": "Print",
+     "name": "Hex dot poster"
+    },
+    {
+     "i": 8,
+     "cat": "Print",
+     "name": "Xerox grain photocopy"
+    },
+    {
+     "i": 9,
+     "cat": "Print",
+     "name": "Concentric rings"
+    },
+    {
+     "i": 10,
+     "cat": "Print",
+     "name": "Wavy lines (CRT feel)"
+    },
+    {
+     "i": 11,
+     "cat": "Print",
+     "name": "Vintage distressed screen"
+    },
+    {
+     "i": 12,
+     "cat": "DTF",
+     "name": "DTF soft edge / 45 LPI (knock out garment)"
+    },
+    {
+     "i": 13,
+     "cat": "DTF",
+     "name": "DTF stipple (Atkinson, 3 px)"
+    },
+    {
+     "i": 14,
+     "cat": "Colour",
+     "name": "CMYK rosette / 55 LPI"
+    },
+    {
+     "i": 15,
+     "cat": "Colour",
+     "name": "CMYK coarse pop + misregistration"
+    },
+    {
+     "i": 16,
+     "cat": "Colour",
+     "name": "RGB split (Bayer 4x4)"
+    },
+    {
+     "i": 17,
+     "cat": "Colour",
+     "name": "Riso pink + blue tonal"
+    },
+    {
+     "i": 18,
+     "cat": "Colour",
+     "name": "Sunset tonal stipple"
+    },
+    {
+     "i": 19,
+     "cat": "Colour",
+     "name": "Game Boy (Bayer 4x4)"
+    },
+    {
+     "i": 20,
+     "cat": "Colour",
+     "name": "PICO-8 (Floyd-Steinberg)"
+    },
+    {
+     "i": 21,
+     "cat": "Colour",
+     "name": "CGA arcade"
+    },
+    {
+     "i": 22,
+     "cat": "Dither",
+     "name": "1-bit Mac (Atkinson, 2 px)"
+    },
+    {
+     "i": 23,
+     "cat": "Dither",
+     "name": "Retro Bayer 4x4 (3 px)"
+    },
+    {
+     "i": 24,
+     "cat": "Dither",
+     "name": "Fine stipple (Floyd-Steinberg)"
+    },
+    {
+     "i": 25,
+     "cat": "Dither",
+     "name": "Riso grain (gradient noise, 2 px)"
+    },
+    {
+     "i": 26,
+     "cat": "Dither",
+     "name": "Jarvis newsprint (3 px)"
+    },
+    {
+     "i": 27,
+     "cat": "ASCII",
+     "name": "Classic ASCII"
+    },
+    {
+     "i": 28,
+     "cat": "ASCII",
+     "name": "Edge ASCII"
+    },
+    {
+     "i": 29,
+     "cat": "ASCII",
+     "name": "Digit matrix (terminal green)"
+    },
+    {
+     "i": 30,
+     "cat": "ASCII",
+     "name": "Binary rain"
+    },
+    {
+     "i": 31,
+     "cat": "ASCII",
+     "name": "Text halftone: FRANK"
+    },
+    {
+     "i": 32,
+     "cat": "ASCII",
+     "name": "Dot blocks (pixel patterns)"
+    },
+    {
+     "i": 33,
+     "cat": "Line Art",
+     "name": "Wave scan portrait (night violet)"
+    },
+    {
+     "i": 34,
+     "cat": "Line Art",
+     "name": "Diagonal wave engraving"
+    },
+    {
+     "i": 35,
+     "cat": "Line Art",
+     "name": "Seismograph"
+    },
+    {
+     "i": 36,
+     "cat": "Line Art",
+     "name": "Banknote line engraving"
+    },
+    {
+     "i": 37,
+     "cat": "Line Art",
+     "name": "Topo contours (orange on black)"
+    },
+    {
+     "i": 38,
+     "cat": "Line Art",
+     "name": "Hypno spiral"
+    },
+    {
+     "i": 39,
+     "cat": "Line Art",
+     "name": "Crosswave riso"
+    },
+    {
+     "i": 40,
+     "cat": "Line Art",
+     "name": "Blue-noise stipple"
+    }
+   ]
   }
  ],
  "coming": [
-  {
-   "id": "dithers-brew",
-   "code": "DB-01",
-   "glow": "#ff9f1c",
-   "title": "Frank's Dithers Brew"
-  },
   {
    "id": "paint-brew",
    "code": "PB-09",

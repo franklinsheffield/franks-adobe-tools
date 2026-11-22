@@ -13,7 +13,7 @@ function decode(smp) {
   return { w: smp.w, h: smp.h, c: 4, data };
 }
 (async () => {
-  for (const tool of ["crt-phaser", "mobglow", "depthtone", "decompressor", "chrometone"]) {
+  for (const tool of ["crt-phaser", "mobglow", "depthtone", "decompressor", "chrometone", "dithers-brew"]) {
     const dir = path.join(root, "plugins", tool);
     const Engine = require(path.join(dir, "js/engine.js"));
     const { DEFAULTS, PRESETS } = require(path.join(dir, "js/state.js"));
@@ -22,7 +22,7 @@ function decode(smp) {
     for (const pr of PRESETS) {
       i++;
       const P = merge(DEFAULTS, pr.p);
-      Object.assign(P, { scale: 1, fullH: src.h, fullW: src.w });
+      Object.assign(P, { scale: 1, fullH: src.h, fullW: src.w, ppi: 300 });
       const res = await Engine.render(src, P);
       const rgb = Engine.composite(res, { type: (DEFAULTS.view && DEFAULTS.view.bg) || "black" }, src);
       fs.writeFileSync(path.join(dest, `${tool}-${i}.png`), Buffer.from(PNG.encodePNG(rgb, res.w, res.h, 3)));

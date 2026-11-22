@@ -12,16 +12,34 @@ const TOOLS = [
   { id: "mobglow", pre: "mob", code: "MG-04", glow: "#ff2fd6", title: "Frank's Mobglow Brew", match: "com.franks.mobglow.ae" },
   { id: "depthtone", pre: "dt", code: "DT-03", glow: "#f5ff3b", title: "Frank's Depthtone Brew", match: "com.franks.depthtone.ae" },
   { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Frank's Decompressor Brew", match: "com.franks.decompressor.ae" },
-  { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew", match: "com.franks.chrometone.ae" }
+  { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew", match: "com.franks.chrometone.ae" },
+  { id: "dithers-brew", pre: "di", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew", match: "com.franks.dithers.ae" }
 ];
 // Batch B tools, shown in the rack as "coming soon" until their AE effects exist.
 const COMING = [
-  { id: "dithers-brew", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew" },
   { id: "paint-brew", code: "PB-09", glow: "#4d7cff", title: "Frank's Paint Brew" }
 ];
 // Keys that need a value conversion the generic reader can't see.
 //   popup: PS value -> AE popup index (1-based)   stops: gradient [{p,c}] -> count popup + colour/position pairs
+const DI = require(path.join(root, "plugins/dithers-brew/js/engine.js"));
 const SPECIAL = {
+  // list: colour array -> count popup (value = length - countOff) + colours every `stride` ids
+  // optcolor: "" (none) or a colour -> checkbox `on` + colour; skip: Photoshop-only text / panel state
+  "dithers-brew": Object.assign({
+    "engine": { popup: "P_ENGINE", values: ["halftone", "dither", "ascii"] },
+    "mode": { popup: "P_MODE", values: ["mono", "tonal", "grade", "rgb", "cmyk"] },
+    "algo.halftone": { popup: "P_SCREEN", values: DI.SCREENS.map((x) => x.id) },
+    "algo.dither": { popup: "P_DITHER", values: DI.DITHERS.map((x) => x.id) },
+    "algo.ascii": { popup: "P_ASCII", values: DI.ASCII_SETS.map((x) => x.id) },
+    "tune.direction": { popup: "P_DIR", values: ["h", "v", "d", "r"] },
+    "mono.paper": { kind: "optcolor", on: "P_MONO_PAPER_ON", color: "P_MONO_PAPER" },
+    "tonal.paper": { kind: "optcolor", on: "P_TN_PAPER_ON", color: "P_TN_PAPER" },
+    "tonal.inks": { kind: "list", c: "P_TN1", stride: 2, count: "P_TN_COUNT", countOff: 0, min: 1, max: 5 },
+    "grade.colors": { kind: "list", c: "P_PC1", stride: 1, count: "P_PAL_COUNT", countOff: 1, min: 2, max: 16 },
+    "ascii.custom": { kind: "skip" }, "ascii.text": { kind: "skip" }, "fx.pre.invert": { num: "P_INVERT" }
+  }, ...[0, 1, 2, 3, 4].map((k) => ({ [`tonal.angles.${k}`]: { num: `P_TA1+${k * 2}` } })),
+     ...[0, 1, 2, 3].map((k) => ({ [`cmyk.on.${k}`]: { bool: `P_C_ON+${k * 2}` }, [`cmyk.angles.${k}`]: { num: `P_C_ANG+${k * 2}` } })),
+     ...[0, 1, 2].map((k) => ({ [`rgb.on.${k}`]: { bool: `P_R_ON+${k * 3}` }, [`rgb.angles.${k}`]: { num: `P_R_ANG+${k * 3}` }, [`rgb.strength.${k}`]: { num: `P_R_STR+${k * 3}` } }))),
   "crt-phaser": {
     "mask.type": { popup: "P_MASK_TYPE", values: ["none", "grille", "shadow", "slot", "dots"] },
     "finish.tint": { popup: "P_TINT", values: ["none", "green", "amber", "white"] },
@@ -102,9 +120,9 @@ for (const t of TOOLS) {
   }
   for (const [k, sp] of Object.entries(SPECIAL[t.id])) {
     const e = Object.assign({}, sp);
-    const res = (nm) => { const m = /^(\w+)\+(\d+)$/.exec(nm); const v = m ? ids[m[1]] + Number(m[2]) * (ids.T_G2_START - ids.T_G1_START) : ids[nm]; if (v === undefined) throw new Error(t.id + " no " + nm); return v; };
-    for (const f of ["popup", "color", "stops", "c", "p", "bool", "num"]) if (typeof e[f] === "string") e[f] = res(e[f]);
-    e.kind = "stops" in sp ? "stops" : sp.color ? "color" : sp.bool ? "bool" : sp.num ? "num" : "popup";
+    const res = (nm) => { const m = /^(\w+)\+(\d+)$/.exec(nm); const v = m ? ids[m[1]] + Number(m[2]) * (t.id === "chrometone" ? ids.T_G2_START - ids.T_G1_START : 1) : ids[nm]; if (v === undefined) throw new Error(t.id + " no " + nm); return v; };
+    for (const f of ["popup", "color", "stops", "c", "p", "bool", "num", "on", "count"]) if (typeof e[f] === "string") e[f] = res(e[f]);
+    e.kind = sp.kind ? sp.kind : "stops" in sp ? "stops" : sp.color ? "color" : sp.bool ? "bool" : sp.num ? "num" : "popup";
     for (const f of ["color", "popup", "bool", "num"]) if (e[f] !== undefined) { e.id = e[f]; delete e[f]; }
     keys[k] = e;
   }

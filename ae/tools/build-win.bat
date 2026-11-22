@@ -45,8 +45,15 @@ if "%TOOL%"=="chrometone" (
   set PIPL=!SRC!\ae\ct_pipl.r
   set ENG=!SRC!\ct_engine.cpp
 )
+if "%TOOL%"=="dithers-brew" (
+  set NAME=Franks Dithers Brew
+  set SRC=%HERE%\effects\dithers-brew
+  set MAIN=!SRC!\ae\di_ae.cpp
+  set PIPL=!SRC!\ae\di_pipl.r
+  set ENG=!SRC!\di_engine.cpp
+)
 if "%TOOL%"=="all" (
-  for %%T in (crt-phaser mobglow depthtone decompressor chrometone) do call "%~f0" "%SDK%" %%T || exit /b 1
+  for %%T in (crt-phaser mobglow depthtone decompressor chrometone dithers-brew) do call "%~f0" "%SDK%" %%T || exit /b 1
   exit /b 0
 )
 if not defined NAME ( echo unknown tool %TOOL% & exit /b 1 )

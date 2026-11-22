@@ -11,6 +11,7 @@ const toText = require("./params-text.js");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "par-"));
 const cases = [{ w: 240, h: 180, scale: 1 }, { w: 160, h: 120, scale: 0.5, fullH: 240, fullW: 320 }];
 // Chrometone also builds an outline surface from transparent shapes: test that path too
+if (tool === "dithers-brew") cases.push({ w: 200, h: 150, scale: 1, shape: true, ppi: 300 }, { w: 180, h: 140, scale: 1, ppi: 150 });
 if (tool === "chrometone") cases.push({ w: 200, h: 150, scale: 1, shape: true }, { w: 200, h: 150, scale: 0.5, shape: true });
 function shapeImage(w, h) {          // a soft-edged ring + bar logo on transparency
   const s = M.demoImage(w, h);
@@ -28,8 +29,9 @@ let worst = 0, fails = 0;
     fs.writeFileSync(path.join(tmp, "in.rgba"), Buffer.from(src.data));
     for (const pr of PRESETS) {
       const P = merge(DEFAULTS, pr.p); P.scale = c.scale; if (P.out) P.out.layers = "merged"; if (c.fullH) { P.fullH = c.fullH; P.fullW = c.fullW; }
+      if (tool === "dithers-brew") P.ppi = c.ppi || 300;
       const res = await Engine.render(src, P);
-      const js = tool === "decompressor" || tool === "chrometone" ? res.layers[0].rgba : M.composite(res, { type: "black" }, src);
+      const js = tool === "dithers-brew" ? Engine.composite(res, { type: "white" }) : tool === "decompressor" || tool === "chrometone" ? res.layers[0].rgba : M.composite(res, { type: "black" }, src);
       fs.writeFileSync(path.join(tmp, "p.txt"), toText(P));
       execFileSync(cli, [tool, path.join(tmp, "in.rgba"), c.w, c.h, path.join(tmp, "p.txt"), path.join(tmp, "out.bin")].map(String));
       const cc = fs.readFileSync(path.join(tmp, "out.bin"));

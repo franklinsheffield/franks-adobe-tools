@@ -135,7 +135,8 @@
     "mobglow": ["glow.strength", "glow.radius", "finish.grain"],
     "depthtone": ["light.strength", "look.fog", "lines.width"],
     "decompressor": ["mosh.amount", "glitch.offset", "glitch.slices", "finish.mix"],
-    "chrometone": ["relief.depth", "finish.bloom", "shine.sweep.strength", "bands.phase"]
+    "chrometone": ["relief.depth", "finish.bloom", "shine.sweep.strength", "bands.phase"],
+    "dithers-brew": ["tune.threshold", "lpi", "angle", "fx.pre.contrast"]
   };
   function audioIds() { return (AUDIO[tool.id] || []).map((k) => tool.keys[k].id).concat([tool.motion.pulse, tool.morph]); }
   function buildAudio() {
@@ -182,6 +183,12 @@
         const n = Math.max(e.min, Math.min(e.max, v.length)), st = e.stride || 2;
         if (e.stops != null) out[e.stops] = n - 1;
         for (let s = 0; s < n && s < v.length; s++) { out[e.c + st * s] = hexToAE(v[s].c); if (e.p != null) out[e.p + st * s] = Number(v[s].p); }
+      } else if (e.kind === "list" && Array.isArray(v)) {         // colour list + count popup
+        const n = Math.max(e.min, Math.min(e.max, v.length));
+        out[e.count] = n - e.countOff;
+        for (let s = 0; s < n && s < v.length; s++) out[e.c + e.stride * s] = hexToAE(v[s]);
+      } else if (e.kind === "optcolor") {                            // "" = none
+        out[e.on] = v ? 1 : 0; if (v) out[e.id] = hexToAE(v);
       }
     }
     return out;
@@ -189,7 +196,7 @@
   function aeToPS(t, vals) {
     const p = {};
     for (const [k, e] of Object.entries(t.keys)) {
-      const id = e.kind === "stops" ? (e.stops != null ? e.stops : e.c) : e.id, v = vals[id]; if (v === undefined) continue;
+      const id = e.kind === "stops" ? (e.stops != null ? e.stops : e.c) : e.kind === "list" ? e.count : e.kind === "optcolor" ? e.on : e.id, v = vals[id]; if (v === undefined) continue;
       let o;
       if (e.kind === "num") o = Math.round(v * 1000) / 1000;
       else if (e.kind === "bool") o = !!v;
@@ -200,7 +207,11 @@
       } else if (e.kind === "stops") {
         const st = e.stride || 2, n = e.stops != null ? v + 1 : e.max;
         o = []; for (let s = 0; s < n; s++) if (vals[e.c + st * s]) o.push({ p: e.p != null ? Math.round(vals[e.p + st * s]) : Math.round(100 * s / Math.max(1, n - 1)), c: aeToHex(vals[e.c + st * s]) });
-      }
+      } else if (e.kind === "list") {
+        o = []; for (let s = 0; s < v + e.countOff; s++) if (vals[e.c + e.stride * s]) o.push(aeToHex(vals[e.c + e.stride * s]));
+      } else if (e.kind === "optcolor") {
+        o = v && vals[e.id] ? aeToHex(vals[e.id]) : "";
+      } else continue;
       setPath(p, k, o);
     }
     return p;
