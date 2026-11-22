@@ -1,0 +1,3 @@
+/* Worlds Brew overrides on top of core/panel.css. */
+/* Plugin neon (aurora mint): title text and every glow use this colour. */
+:root { --glow: #5effc8; --glowbg: #0b2e24; }
