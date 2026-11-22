@@ -35,8 +35,19 @@ Nothing else is needed. Batch Mock Brew's MP4 export uses Photoshop's built-in v
 
 ### Download
 
-1. Open this repo's **[Releases](../../releases)** page (right side of the repo home page).
-2. Under the newest release, open **Assets** and download the `.ccx` file for each plugin you want (for example `chrometone-1.1.0.ccx`).
+1. Open the **[downloads](downloads/)** folder in this repo.
+2. Click the `.ccx` file for each plugin you want (for example `chrometone-1.1.0.ccx`), then click the **Download raw file** button (the down arrow at the top right of the file view).
+
+| Plugin | File |
+|---|---|
+| Frank's Dithers Brew 1.1 | [dithers-brew-1.1.0.ccx](downloads/dithers-brew-1.1.0.ccx) |
+| Frank's Chrometone Brew 1.1 | [chrometone-1.1.0.ccx](downloads/chrometone-1.1.0.ccx) |
+| Frank's Depthtone Brew 1.0 | [depthtone-1.0.0.ccx](downloads/depthtone-1.0.0.ccx) |
+| Frank's Mobglow Brew 2.0 | [mobglow-2.0.0.ccx](downloads/mobglow-2.0.0.ccx) |
+| Frank's Decompressor Brew 1.0 | [decompressor-1.0.0.ccx](downloads/decompressor-1.0.0.ccx) |
+| Frank's CRT Phaser Brew 1.1 | [crt-phaser-1.1.0.ccx](downloads/crt-phaser-1.1.0.ccx) |
+| Frank's Paint Brew 1.1 | [paint-brew-1.1.0.ccx](downloads/paint-brew-1.1.0.ccx) |
+| Frank's Batch Mock Brew 1.0 | [batch-mock-brew-1.0.0.ccx](downloads/batch-mock-brew-1.0.0.ccx) |
 
 You can only see this private repo if Frank has added your GitHub account as a collaborator.
 
