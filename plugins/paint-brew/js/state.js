@@ -4,9 +4,9 @@ const { clone, merge } = require("../core/imgmath.js");
 const DEFAULTS = {
   style: "oil",
   seed: 1,
-  brush: { size: 40, length: 1, detail: 3, randomness: 30, follow: 70 },
+  brush: { size: 40, length: 1, detail: 3, randomness: 30, follow: 70, tool: "brush", mix: 30 },
   colour: { simplify: 50, saturation: 15, warmth: 0, jitter: 20, palette: 0 },
-  texture: { impasto: 55, light: 135, bristle: 50, canvas: 30, canvasScale: 7, lift: 0 },
+  texture: { impasto: 55, light: 135, bristle: 50, canvas: 30, canvasScale: 7, lift: 0, thickLights: 45 },
   water: { paperColour: "#F7F2E6", density: 85, wetEdge: 60, granulation: 45, bleed: 14, paperTexture: 45, pencil: 40, splashes: 0, splashSize: 70, fade: 45 },
   ink: { flow: 55, rim: 60, cells: 45, blend: 40, veins: 35, metal: "gold" },
   spray: { cans: 5, soft: 40, overspray: 50, speckle: 40, halftone: 0, drips: 30, dripLength: 50, outline: 30, highlight: 0, wall: "concrete", wallColour: "#A8A49C", relief: 50, bare: 0 },
@@ -17,8 +17,10 @@ const DEFAULTS = {
 };
 const PRESETS = [
   { cat: "Oil", name: "Studio Oil", p: { style: "oil" } },
-  { cat: "Oil", name: "Palette Knife", p: { style: "oil", brush: { size: 70, length: 0.7, detail: 2, randomness: 45, follow: 50 }, colour: { simplify: 80, saturation: 25 }, texture: { impasto: 95, bristle: 20, canvas: 15 } } },
-  { cat: "Oil", name: "Glaze", p: { style: "oil", brush: { size: 28, length: 1.6, detail: 4, randomness: 15, follow: 85 }, colour: { simplify: 30, saturation: 5, warmth: 10 }, texture: { impasto: 20, bristle: 70, canvas: 45 } } },
+  { cat: "Oil", name: "Palette Knife", p: { style: "oil", brush: { size: 70, length: 0.7, detail: 2, randomness: 45, follow: 50, tool: "knife", mix: 55 }, colour: { simplify: 80, saturation: 25 }, texture: { impasto: 90, bristle: 20, canvas: 15, thickLights: 70 } } },
+  { cat: "Oil", name: "Glaze", p: { style: "oil", brush: { size: 28, length: 1.6, detail: 4, randomness: 15, follow: 85, mix: 15 }, colour: { simplify: 30, saturation: 5, warmth: 10 }, texture: { impasto: 20, bristle: 70, canvas: 45, thickLights: 20 } } },
+  { cat: "Oil", name: "Coastal Knife", p: { style: "oil", brush: { size: 46, length: 0.9, detail: 3, randomness: 40, follow: 60, tool: "knife", mix: 45 }, colour: { simplify: 55, saturation: 45, warmth: 5 }, texture: { impasto: 75, bristle: 25, canvas: 10, thickLights: 75, lift: 20 } } },
+  { cat: "Oil", name: "Golden Hour", p: { style: "oil", brush: { size: 34, length: 1.2, detail: 3, randomness: 25, follow: 75, tool: "brush", mix: 35 }, colour: { simplify: 45, saturation: 30, warmth: 25 }, texture: { impasto: 45, bristle: 55, canvas: 60, thickLights: 55, lift: 55 } } },
   { cat: "Watercolour", name: "Loose Wash", p: { style: "watercolour", brush: { size: 26 }, colour: { simplify: 70, saturation: 10 }, water: { density: 75, fade: 70, pencil: 15, wetEdge: 70 } } },
   { cat: "Watercolour", name: "Ink and Wash", p: { style: "watercolour", brush: { size: 18 }, colour: { simplify: 50, saturation: -35 }, water: { density: 70, pencil: 90, granulation: 30, fade: 40, paperColour: "#F4F1EA" } } },
   { cat: "Watercolour", name: "Splash Pop", p: { style: "watercolour", brush: { size: 22 }, colour: { simplify: 60, saturation: 45 }, water: { density: 95, splashes: 9, splashSize: 80, pencil: 30, fade: 55, wetEdge: 80 } } },

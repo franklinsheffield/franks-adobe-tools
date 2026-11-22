@@ -18,6 +18,7 @@
 const M = require("../core/imgmath.js");
 const { clamp } = M;
 const REF = 3000;
+const smoothstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 // ---------------------------------------------------------------- noise
 function vnoise(x, y, seed) {
@@ -146,18 +147,26 @@ function bufToRGBA(buf, n) {
   }
   return out;
 }
-function rasterStroke(ctx, buf, pts, rad, col, sid, st) {
+// ex (optional): { col2, thick } - a second colour the brush picked up (streaks in along the stroke) and a thickness factor
+function rasterStroke(ctx, buf, pts, rad, col, sid, st, ex) {
   const { w, h, mark, cov, H } = ctx;
   const nSeg = Math.max(1, pts.length - 1), single = pts.length === 1;
-  const nBr = st.bristles, seedB = sid * 7 + 3;
-  const aa = Math.min(1, 1.2 / Math.max(0.5, rad));
+  const knife = !!st.knife, nBr = knife ? 26 : st.bristles, seedB = sid * 7 + 3;
+  const aa = Math.min(1, (knife ? 0.7 : 1.2) / Math.max(0.5, rad));
+  const col2 = ex && ex.col2, mix = col2 ? (st.mix || 0) : 0, thick = st.thick * (ex && ex.thick != null ? ex.thick : 1);
   // per-bristle colour shift and dry-brush cut, per-segment edge wobble (precomputed for speed)
-  const BN = new Float32Array(nBr + 1), CUT = new Float32Array(nBr + 1);
-  for (let b = 0; b <= nBr; b++) { BN[b] = M.hashNoise(b, seedB, 5); CUT[b] = 1 - st.dry * (0.55 + 0.45 * M.hashNoise(b, seedB, 9)); }
+  const BN = new Float32Array(nBr + 1), CUT = new Float32Array(nBr + 1), SW = new Float32Array(nBr + 1);
+  for (let b = 0; b <= nBr; b++) {
+    BN[b] = M.hashNoise(b, seedB, 5); CUT[b] = 1 - st.dry * (0.55 + 0.45 * M.hashNoise(b, seedB, 9));
+    // which bristles carry the second colour: streaks, more of them with more mixing
+    const sw = 0.5 + 0.5 * M.hashNoise(b, seedB, 13); SW[b] = sw < 1 - mix ? 0 : Math.min(1, (sw - (1 - mix)) / Math.max(0.05, mix) * 1.6);
+  }
   const segLen = new Float32Array(nSeg + 1);
   for (let j = 0; j < pts.length - 1; j++) segLen[j + 1] = segLen[j] + Math.hypot(pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]);
+  // edge wobble per traced point, blended along each segment so the width never jumps at a joint
+  const WB = new Float32Array(nSeg + 1);
+  for (let j = 0; j <= nSeg; j++) WB[j] = 1 + (knife ? 0.35 : 1) * st.rough * vnoise(segLen[j] / (rad * 0.9 + 1), sid, 11);
   for (let j = 0; j < nSeg; j++) {
-    const wob = 1 + st.rough * vnoise((segLen[j] + segLen[j + 1]) * 0.5 / (rad * 0.9 + 1), sid, 11);
     const A = pts[j], Bp = single ? pts[0] : pts[j + 1];
     const ax = A[0], ay = A[1], dx = Bp[0] - ax, dy = Bp[1] - ay, len2 = dx * dx + dy * dy, len = Math.sqrt(len2) || 1;
     const R1 = rad * 1.15 + 1;
@@ -169,26 +178,38 @@ function rasterStroke(ctx, buf, pts, rad, col, sid, st) {
       // flat brush: square-ish ends on the first and last segment (ragged by bristle), round joins inside
       let over = 0;
       if (!single && ((t0 < 0 && j === 0) || (t0 > 1 && j === nSeg - 1))) { over = (t0 < 0 ? -t0 : t0 - 1) * len / Math.max(0.5, rad); if (over > st.cap) continue; }
+      if (t0 > 1 && j < nSeg - 1) continue;          // the next segment paints past this joint: no round cap (and no ring of bristles) here
       const t = t0 < 0 ? 0 : t0 > 1 ? 1 : t0;
       const qx = px - dx * t, qy = py - dy * t;
       const dist = over > 0 ? Math.abs(dx * py - dy * px) / len : Math.sqrt(qx * qx + qy * qy);
       const side = (dx * py - dy * px) >= 0 ? 1 : -1;
       const u = single ? 0.5 : (j + t) / nSeg;
       const uu = u < 0 ? 0 : u > 1 ? 1 : u;
-      const rr = rad * (0.86 + 0.56 * uu * (1 - uu)) * wob;
+      const wob = WB[j] + (WB[j + 1] - WB[j]) * t;
+      const rr = rad * (knife ? 0.78 + 0.34 * uu : 0.86 + 0.56 * uu * (1 - uu)) * wob;      // a knife spreads the paint wider as it goes
       const v = dist / rr;
       if (v >= 1) continue;
       let a = clamp((1 - v) / aa, 0, 1) * st.load;
-      const bi = Math.min(nBr, Math.floor((side * v + 1) * 0.5 * nBr));
+      // bristles and ridges follow the stroke's direction: measured straight across it, never round a joint
+      const vp = Math.min(0.999, Math.abs(dx * py - dy * px) / len / rr);
+      const bi = Math.min(nBr, Math.floor((side * vp + 1) * 0.5 * nBr));
       const bn = BN[bi];
       if (over > 0) { const lim = st.cap * (0.725 + 0.275 * bn); if (over > lim) continue; a *= clamp((lim - over) * rad / 1.2, 0, 1); }
       if (st.dry > 0 && !single) { const cut = CUT[bi]; if (u > cut) a *= clamp(1 - (u - cut) * 12, 0, 1); }
       if (a <= 0.003) continue;
       const i = y * w + x;
-      const bf = 1 + st.bristle * bn;
-      const c0 = clamp(col[0] * bf, 0, 255), c1 = clamp(col[1] * bf, 0, 255), c2 = clamp(col[2] * bf, 0, 255);
-      // flat-topped paint with a ridge pushed to the edges, streaked by bristles
-      const hv = H ? st.thick * (0.62 + 0.38 * bn) * (v < 0.8 ? 0.7 + 0.45 * v * v : (1 - v) * 5 * 0.99) : 0;
+      const bf = 1 + st.bristle * bn * (knife ? 0.35 : 1);
+      let r0 = col[0], r1 = col[1], r2 = col[2];
+      if (mix > 0) { const mw = SW[bi] * (0.35 + 0.65 * uu); if (mw > 0) { r0 += (col2[0] - r0) * mw; r1 += (col2[1] - r1) * mw; r2 += (col2[2] - r2) * mw; } }
+      const c0 = clamp(r0 * bf, 0, 255), c1 = clamp(r1 * bf, 0, 255), c2 = clamp(r2 * bf, 0, 255);
+      // paint height: bristle grooves along the stroke, a low ridge at the sides and paint piled where the
+      // brush lifts; a knife leaves a flat top, a sharp lip and a heavier pile at the end
+      let hv = 0;
+      if (H) {
+        if (knife) hv = thick * (0.72 + 0.08 * bn + 0.55 * smoothstep(0.82, 1, uu) + 0.3 * smoothstep(0.86, 0.97, vp));
+        else hv = thick * ((0.5 + 0.5 * bn) * (0.78 + 0.22 * smoothstep(0.6, 1, uu)) + 0.28 * smoothstep(0.74, 0.9, vp) * (1 - smoothstep(0.9, 1, vp)) + 0.3 * smoothstep(0.8, 1, uu));
+        if (over > 0) hv *= 0.6;
+      }
       if (mark[i] === sid) {
         const a0 = cov[i];
         if (a <= a0 || a0 >= 0.999) continue;
@@ -242,12 +263,19 @@ async function strokePass(ctx, buf, ref, o, yieldFn) {
     if (rnd() < 0.5) { dxp = -dxp; dyp = -dyp; }
     let x = px, y = py;
     const steps = o.minLen + Math.floor(rnd() * (o.maxLen - o.minLen + 1));
+    let bent = 0;
     for (let s = 0; s < steps; s++) {
       const j = clamp(Math.round(y), 0, h - 1) * w + clamp(Math.round(x), 0, w - 1);
       let tx = TX[j], ty = TY[j];
       if (tx * dxp + ty * dyp < 0) { tx = -tx; ty = -ty; }
       let nx = dxp * (1 - o.follow) + tx * o.follow, ny = dyp * (1 - o.follow) + ty * o.follow;
       const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+      if (o.maxBend) {
+        // a painter's stroke is a gentle arc: no hooks or U-turns
+        const turn = Math.atan2(dxp * ny - dyp * nx, dxp * nx + dyp * ny);
+        bent += Math.abs(turn);
+        if (bent > o.maxBend && s >= 2) break;
+      }
       x += nx * rad * o.step; y += ny * rad * o.step;
       if (x < -rad || y < -rad || x > w + rad || y > h + rad) break;
       const k2 = clamp(Math.round(y), 0, h - 1) * w + clamp(Math.round(x), 0, w - 1);
@@ -256,7 +284,18 @@ async function strokePass(ctx, buf, ref, o, yieldFn) {
     }
     // draw with every second traced point: same curve, about half the overdraw
     const dpts = pts.length > 3 ? pts.filter((q, qi) => qi % 2 === 0 || qi === pts.length - 1) : pts;
-    rasterStroke(ctx, buf, dpts, rad, col, ++ctx.sid, o.style);
+    let ex = null;
+    if (o.style.mix > 0 || o.thickLights > 0) {
+      ex = {};
+      if (o.style.mix > 0) {
+        // the brush picks up a neighbouring colour: from the end of the stroke, or beside it
+        const e = pts[pts.length - 1], side = (rnd() < 0.5 ? -1 : 1) * rad * 1.6;
+        const sx = clamp(Math.round(e[0] + (pts.length > 1 ? 0 : side)), 0, w - 1), sy = clamp(Math.round(e[1] + (pts.length > 1 ? side * 0.6 : 0)), 0, h - 1), j2 = sy * w + sx;
+        ex.col2 = o.colourFn ? o.colourFn([rR[j2], rG[j2], rB[j2]], rnd, sx, sy) : [rR[j2], rG[j2], rB[j2]];
+      }
+      if (o.thickLights > 0) { const l = (0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2]) / 255; ex.thick = 1 - o.thickLights + o.thickLights * (0.25 + 1.1 * l); }
+    }
+    rasterStroke(ctx, buf, dpts, rad, col, ++ctx.sid, o.style, ex);
     if (++count % 400 === 0) await yieldFn();
   }
   return count;
@@ -270,13 +309,16 @@ function overCanvas(canvas, rgba, n) {
 }
 function opaque(R, G, B, n) { return M.toRGBA(R, G, B, null, n); }
 // grey overlay layer from a height field (lit emboss); amp in grey levels
-function litLayer(Hf, w, h, angleDeg, amp, extra) {
+// gloss: lit slopes catch a sharper, brighter highlight than the shaded side darkens (wet oil sheen)
+function litLayer(Hf, w, h, angleDeg, amp, extra, gloss) {
   const n = w * h, out = new Uint8Array(n * 4), a = angleDeg * Math.PI / 180, lx = Math.cos(a), ly = -Math.sin(a);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x;
     const gx = Hf[y * w + Math.min(w - 1, x + 1)] - Hf[y * w + Math.max(0, x - 1)];
     const gy = Hf[Math.min(h - 1, y + 1) * w + x] - Hf[Math.max(0, y - 1) * w + x];
-    let v = 128 + (-(gx * lx + gy * ly)) * amp;
+    let g = -(gx * lx + gy * ly) * amp;
+    if (gloss) g = g > 0 ? g * 1.25 + g * g / 160 : g * 0.6;
+    let v = 128 + g;
     if (extra) v += extra[i];
     v = clamp(Math.round(v), 0, 255);
     out[i * 4] = v; out[i * 4 + 1] = v; out[i * 4 + 2] = v; out[i * 4 + 3] = 255;
@@ -348,7 +390,8 @@ async function paintStrokes(src, P, hooks, kind) {
     return hsv2rgb(hsv[0] + (r() - 0.5) * 0.22 * jit, hsv[1] * (1 + 0.3 * jit) + (r() - 0.5) * 0.35 * jit, hsv[2] * (1 + (r() - 0.5) * 0.4 * jit));
   };
   const style = kind === "oil"
-    ? { bristles: 7 + Math.round(B.size / 6), bristle: 0.06 + T.bristle / 100 * 0.18, rough: 0.12, dry: 0.12 + B.randomness / 100 * 0.2, load: 1, thick: 1, cap: 0.35 }
+    ? { bristles: 7 + Math.round(B.size / 6), bristle: 0.06 + T.bristle / 100 * 0.18, rough: 0.12, dry: B.tool === "knife" ? 0.05 + B.randomness / 100 * 0.1 : 0.12 + B.randomness / 100 * 0.2, load: 1, thick: 1,
+        cap: B.tool === "knife" ? 0.06 : 0.35, knife: B.tool === "knife", mix: (B.mix || 0) / 100 }
     : { bristles: 5, bristle: 0.04 + T.bristle / 100 * 0.12, rough: 0.2, dry: 0.05, load: 0.96, thick: 1, cap: 0.6 };
   const passes = clamp(Math.round(B.detail), 1, 4);
   const follow = B.follow / 100;
@@ -367,9 +410,10 @@ async function paintStrokes(src, P, hooks, kind) {
       const refAbs = abstraction(R, G, Bl, w, h, Math.max(1, r * 0.5 * simp));
       await yieldFn();
       const o = kind === "oil"
-        ? { seed: seed * 31 + p, radius: r, spacing: r * (p === 0 ? 1.1 : 1.0), fillAll: p === 0, thresh: 30 + 12 * p, minLen: Math.max(3, Math.round((p === 0 ? 6 : 4) * B.length)),
+        ? { seed: seed * 31 + p, radius: r * (B.tool === "knife" ? 1.25 : 1), spacing: r * (p === 0 ? 1.1 : 1.0), fillAll: p === 0, thresh: 30 + 12 * p, minLen: Math.max(3, Math.round((p === 0 ? 6 : 4) * B.length)),
             maxLen: Math.max(4, Math.round((p === 0 ? 14 : 10) * B.length)), step: 0.6, follow, jitter: B.randomness / 100 * 0.5, stopAfter: Math.max(3, Math.round(5 * B.length)), stopDiff: 90 + 50 * (1 - p / 3),
-            outsideSuppress: (1 - fOut) * 3, outsideGrow: (1 - fOut) * 0.8, colourFn, style: Object.assign({}, style, { thick: 1 - p * 0.18 }) }
+            outsideSuppress: (1 - fOut) * 3, outsideGrow: (1 - fOut) * 0.8, colourFn, style: Object.assign({}, style, { thick: 1 - p * 0.18 }), thickLights: (T.thickLights || 0) / 100,
+            maxBend: B.tool === "knife" ? 0.45 : 1.1 }
         : { seed: seed * 31 + p, radius: r, spacing: r * 1.05, fillAll: p === 0, thresh: 34 + 10 * p, minLen: Math.max(1, Math.round(2 * B.length)), maxLen: Math.max(2, Math.round(3.2 * B.length)),
             step: 0.8, follow: follow * 0.6, jitter: 0.35 + B.randomness / 100 * 0.9, stopAfter: 1, stopDiff: 200,
             outsideSuppress: (1 - fOut) * 3, outsideGrow: (1 - fOut) * 0.7, colourFn: brokenFn, style };
@@ -385,12 +429,13 @@ async function paintStrokes(src, P, hooks, kind) {
   let weave = null;
   if (weaveAmt > 0) weave = weaveField(w, h, k, T.canvasScale, seed + 5);
   if (kind === "oil" && T.impasto > 0) {
-    const Hs = M.boxBlur(ctx.H, w, h, Math.max(1, 0.8 * k), 2);
-    layers.push({ name: "Impasto light", rgba: litLayer(Hs, w, h, T.light, T.impasto / 100 * 260 / Math.max(0.6, k * 1.2)), blend: "OVERLAY" });
+    const Hs = M.boxBlur(ctx.H, w, h, Math.max(1, 1.4 * k), 2);
+    layers.push({ name: "Impasto light", rgba: litLayer(Hs, w, h, T.light, T.impasto / 100 * 190 / Math.max(0.6, k * 1.2), null, true), blend: "OVERLAY" });
   }
-  if (kind === "impressionism" && T.lift > 0) {
+  if ((kind === "impressionism" || kind === "oil") && T.lift > 0) {
     const out = new Uint8Array(n * 4), a = Math.round(T.lift / 100 * 255), cv = ctx.canvas;
-    const shadow = [70, 80, 190], light = [255, 214, 140];
+    // impressionism: violet shadows, peach light; oil: a golden sunlit glow over cool shadows
+    const shadow = kind === "oil" ? [60, 84, 170] : [70, 80, 190], light = kind === "oil" ? [255, 200, 110] : [255, 214, 140];
     for (let i = 0, p = 0; i < n; i++, p += 4) {
       const l = (0.299 * cv[0][i] + 0.587 * cv[1][i] + 0.114 * cv[2][i]) / 255, t = l * l * (3 - 2 * l);
       out[p] = shadow[0] + (light[0] - shadow[0]) * t; out[p + 1] = shadow[1] + (light[1] - shadow[1]) * t; out[p + 2] = shadow[2] + (light[2] - shadow[2]) * t; out[p + 3] = a;
@@ -590,5 +635,5 @@ function demoImage(w, h) {
   return { w, h, c: 4, data };
 }
 
-module.exports = { render, composite, demoImage, _internal: { vnoise, fbm, abstraction, flowField, rgb2hsv, hsv2rgb, weaveField,
+module.exports = { render, composite, demoImage, _internal: { rasterStroke, vnoise, fbm, abstraction, flowField, rgb2hsv, hsv2rgb, weaveField,
   opaquePlanes, adjustColour, focusOf, palette, nearest, blur, strokePass, bufToRGBA, overCanvas } };

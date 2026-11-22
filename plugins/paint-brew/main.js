@@ -78,6 +78,8 @@ const panel = createToolPanel({
       only(sliderRow("Detail passes", "brush.detail", 1, 4, 1, ""), strokes),
       only(sliderRow("Randomness", "brush.randomness", 0, 100, 1, "%"), strokes),
       only(sliderRow("Follow edges", "brush.follow", 0, 100, 1, "%"), strokes),
+      only(row("Tool", segGroup("brush.tool", [{ v: "brush", l: "Brush" }, { v: "knife", l: "Palette knife" }])), is("oil")),
+      only(sliderRow("Paint mixing", "brush.mix", 0, 100, 1, "%"), is("oil")),
       sliderRow("Variation", "seed", 1, 99, 1, "")
     ], { hint: "Sizes are for a 3000 px image and scale with yours." });
     const colour = card("Colour", [
@@ -89,11 +91,12 @@ const panel = createToolPanel({
     ], { hint: "Palette limit 0 keeps every colour." });
     const texture = only(card("Texture", [
       only(sliderRow("Impasto depth", "texture.impasto", 0, 100, 1, "%"), () => kit.state.style === "oil"),
+      only(sliderRow("Thick lights", "texture.thickLights", 0, 100, 1, "%"), () => kit.state.style === "oil"),
       sliderRow("Light angle", "texture.light", 0, 360, 5, " deg"),
       sliderRow("Bristle streaks", "texture.bristle", 0, 100, 1, "%"),
       sliderRow("Canvas weave", "texture.canvas", 0, 100, 1, "%"),
       sliderRow("Weave size", "texture.canvasScale", 3, 16, 1, " px"),
-      only(sliderRow("Light and colour lift", "texture.lift", 0, 100, 1, "%"), () => kit.state.style === "impressionism")
+      only(sliderRow("Light and colour lift", "texture.lift", 0, 100, 1, "%"), is("impressionism", "oil"))
     ], { bypass: { "texture.impasto": 0, "texture.bristle": 0, "texture.canvas": 0 } }), is("oil", "impressionism"));
     const water = only(card("Water and paper", [
       kit.colourRow("Paper colour", "water.paperColour"),

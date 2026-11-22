@@ -20,8 +20,8 @@ module.exports = async function (t) {
   };
   const run = (src, p, extra) => { const P = S.merge(S.DEFAULTS, p); Object.assign(P, { scale: 0.12, fullH: src.h / 0.12, fullW: src.w / 0.12 }, extra || {}); return E.render(src, P, {}); };
 
-  await t("Paint Brew engine: 20 looks, deterministic, full-size layers, the right stack per style", async () => {
-    assert.strictEqual(S.PRESETS.length, 20);
+  await t("Paint Brew engine: 22 looks, deterministic, full-size layers, the right stack per style", async () => {
+    assert.strictEqual(S.PRESETS.length, 22);
     const src = E.demoImage(120, 90);
     const seen = new Set();
     for (const pr of S.PRESETS) {
@@ -167,6 +167,11 @@ module.exports = async function (t) {
     const src = E.demoImage(120, 90);
     const names = async (p) => (await run(src, p)).layers.map((L) => L.name);
     const hash = async (p) => { const r = await run(src, p); return require("crypto").createHash("sha1").update(Buffer.from(E.composite(r, { type: "white" }, src))).digest("hex"); };
+    // oil: knife and brush differ, paint mixing and thick lights change the paint, light lift adds its layer
+    assert.notStrictEqual(await hash({ style: "oil", brush: { tool: "brush" } }), await hash({ style: "oil", brush: { tool: "knife" } }), "Palette knife paints differently");
+    assert.notStrictEqual(await hash({ style: "oil", brush: { mix: 0 } }), await hash({ style: "oil", brush: { mix: 90 } }), "Paint mixing streaks a second colour in");
+    assert.notStrictEqual(await hash({ style: "oil", texture: { thickLights: 0 } }), await hash({ style: "oil", texture: { thickLights: 100 } }), "Thick lights changes the impasto");
+    assert.ok((await names({ style: "oil", texture: { lift: 40 } })).includes("Light and colour lift"), "oil can take the warm light lift");
     // ink: Veins 0 drops the metal layer; the metal colour changes the veins
     assert.ok(!(await names({ style: "ink", ink: { veins: 0 } })).includes("Metallic veins"));
     assert.notStrictEqual(await hash({ style: "ink", ink: { metal: "gold" } }), await hash({ style: "ink", ink: { metal: "silver" } }));
@@ -247,7 +252,7 @@ module.exports = async function (t) {
     assert.ok(P.host.calls.some((c) => c[0] === "createLayerGroup" && /Pastel/.test(c[1])), "group named for the style: " + JSON.stringify(P.host.calls.filter((c) => c[0] === "createLayerGroup")));
   });
 
-  await t("Paint Brew panel matches its golden fingerprint (UI, 20 looks, Apply)", () => {
+  await t("Paint Brew panel matches its golden fingerprint (UI, 22 looks, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), DIR], { encoding: "utf8", env: process.env, timeout: 600000 });
     const got = JSON.parse(outp), gp = path.join(__dirname, "paint-brew.golden.json");
     if (process.env.UPDATE_GOLDEN || !fs.existsSync(gp)) fs.writeFileSync(gp, JSON.stringify(got, null, 1) + "\n");
