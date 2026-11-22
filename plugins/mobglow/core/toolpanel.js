@@ -14,6 +14,9 @@
 //     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
 //     groupLabel(state, presetName) optional: the look's name in the layer group
 //     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress
+//     reEdit                        optional: every applied group gets a " #K3F9" tag and its settings are
+//                                   saved; a Re-edit button loads them back from the selected group, and the
+//                                   next Apply hides that old group (non-destructive re-runs)
 //     code, glow                    the tool's rack code ("PB-09") and neon hex for the knobs
 //     brand                         "console" (default, the suite look since 2026-11-22) or "none" })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
@@ -176,15 +179,18 @@ function createToolPanel(cfg) {
         const res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
         setStatus("Writing layers...");
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
+        const tag = cfg.reEdit ? " #" + newTag() : "";
         const warnings = await PS.writeResult(doc, res, {
           origin: r.origin,
-          groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName),
+          groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName) + tag,
           hideSource: state.out.hide,
           hideLayers: t.kind === "layer" ? [t.layer] : null
         });
+        if (tag) await rememberLook(tag.slice(2));
         done++;
         if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
       }
+      if (reEditing) { const old = reEditing; reEditing = null; try { await PS.hideLayer(old); } catch (e) { console.error(e); } }
       if (refs.meter) refs.meter.done((Date.now() - tStart) / 1000);
       if (!refs.status.className.includes("err")) setStatus("Done. " + done + " group" + (done === 1 ? "" : "s") + " added. Undo with one Ctrl/Cmd+Z.");
     } catch (e) {
@@ -199,6 +205,34 @@ function createToolPanel(cfg) {
       if (!confirmArmed) btn.textContent = "Apply to document";
       btn.removeAttribute("disabled");
     }
+  }
+
+  // ---- re-edit: settings saved per applied group, keyed by its #tag
+  const LOOKS_FILE = "applied-looks.json";
+  let reEditing = null;
+  function newTag() {
+    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = ""; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)];
+    return s;
+  }
+  async function rememberLook(tag) {
+    const all = (await PS.loadData(LOOKS_FILE)) || {};
+    all[tag] = { name: presetName, p: stateForSave(), t: Date.now() };
+    const keys = Object.keys(all).sort((a, b) => all[b].t - all[a].t);
+    keys.slice(300).forEach((k) => delete all[k]);     // keep the newest 300
+    try { await PS.saveData(LOOKS_FILE, all); } catch (e) { console.error(e); }
+  }
+  async function reEditNow() {
+    const doc = PS.activeDoc();
+    const layer = doc ? PS.activeLayer(doc) : null;
+    const m = layer && /#([A-Z0-9]{4})\s*$/.exec(String(layer.name || ""));
+    if (!m) { setStatus("Select a group made by " + cfg.title + " (its name ends in #CODE), then press Re-edit.", true); return; }
+    const all = (await PS.loadData(LOOKS_FILE)) || {};
+    const hit = all[m[1]];
+    if (!hit) { setStatus("No saved settings for #" + m[1] + " on this computer.", true); return; }
+    applyPatch(hit.p, hit.name);
+    reEditing = layer;
+    setStatus("Loaded #" + m[1] + ". Change anything, then Apply: the old group is hidden, not deleted.");
   }
 
   // ---- presets
@@ -278,6 +312,7 @@ function createToolPanel(cfg) {
       checkRow("Hide source artwork afterwards", "out.hide"),
       refs.meter ? refs.meter.node : null,
       refs.apply,
+      cfg.reEdit ? (() => { const b = el("button", { class: "btn small reedit", text: "Re-edit selected group", title: "Load the settings of a group this tool made" }); b.addEventListener("click", () => { reEditNow().catch((e) => setStatus("Re-edit failed: " + e.message, true)); }); return b; })() : null,
       el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
     ])));
     root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
@@ -300,7 +335,7 @@ function createToolPanel(cfg) {
   } catch (e) { /* older hosts: fall through to direct init */ }
   setTimeout(() => { init(); }, 0);
 
-  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, runPreview: () => loop.run(), init, refs, touch } };
+  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch } };
 }
 
 module.exports = { createToolPanel };

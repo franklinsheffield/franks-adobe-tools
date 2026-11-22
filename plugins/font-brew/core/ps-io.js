@@ -250,7 +250,23 @@ async function importPresets() {
   return Array.isArray(parsed) ? parsed : null;
 }
 
+// ---- small JSON store in the plugin's data folder (e.g. settings saved per applied group)
+async function loadData(name) {
+  try { const folder = await fsys.getDataFolder(); const f = await folder.getEntry(name); return JSON.parse(await f.read()); } catch (e) { return null; }
+}
+async function saveData(name, obj) {
+  const folder = await fsys.getDataFolder();
+  const f = await folder.createFile(name, { overwrite: true });
+  await f.write(JSON.stringify(obj));
+}
+// the first selected layer of `doc` (or null)
+function activeLayer(doc) { try { const a = Array.from(doc.activeLayers || []); return a[0] || null; } catch (e) { return null; } }
+// hide one layer or group in its own modal step
+async function hideLayer(layer) {
+  await core.executeAsModal(async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { commandName: CFG.appName + ": hide old version" });
+}
+
 module.exports = {
-  configure, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  configure, loadData, saveData, activeLayer, hideLayer, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

@@ -47,7 +47,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   // long jobs (Paint Brew): wait until the Apply button is idle again
   const ab = P.document.querySelector(".apply");
   for (let i = 0; i < 1200 && /^(Working|Cancel$)/.test(ab.textContent); i++) await P.settle(100);
-  out.applyCalls = P.host.calls.map((c) => c.join("|"));
+  out.applyCalls = P.host.calls.map((c) => c.join("|").replace(/ #[A-Z0-9]{4}(\||$)/, " #TAG$1"));   // re-edit tags are random
   out.applyStatus = P.document.querySelector(".status").textContent;
   console.log(JSON.stringify(out, null, 1));
   process.exit(0);

@@ -4,6 +4,7 @@
 // rounded corners, vignette, noise and a rolling band.
 const M = require("../core/imgmath.js");
 const { clamp } = M;
+const { renderPhase } = require("./phase.js");
 
 function sample(C, w, h, x, y) {              // bilinear
   x = clamp(x, 0, w - 1); y = clamp(y, 0, h - 1);
@@ -16,6 +17,7 @@ function sample(C, w, h, x, y) {              // bilinear
 const TINTS = { green: [0.35, 1.08, 0.45], amber: [1.1, 0.72, 0.2], white: [1, 1, 1.04] };
 
 async function render(src, P, hooks) {
+  if (P.phase && P.phase.mode && P.phase.mode !== "off") return renderPhase(src, P, hooks);
   const yieldFn = (hooks && hooks.yield) || (async () => {});
   const w = src.w, h = src.h, n = w * h, sc = P.scale == null ? 1 : P.scale;
   const fullH = P.fullH || h;
