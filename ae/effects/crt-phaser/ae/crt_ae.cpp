@@ -147,7 +147,7 @@ static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   ENDTOPIC(T_TUBE_END);
 
   TOPIC("Motion", T_MO_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", FALSE, 0, P_MO_ANIMATE);
+  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", 0, 0, P_MO_ANIMATE);
   FS("Speed (%)", 0, 400, 0, 400, 100, 0, P_MO_SPEED);
   FS("Loop (frames, 0 = endless)", 0, 600, 0, 600, 0, 0, P_MO_LOOP);
   FS("Seed", 0, 9999, 0, 999, 0, 0, P_MO_SEED);

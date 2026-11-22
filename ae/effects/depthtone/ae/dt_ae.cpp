@@ -63,7 +63,7 @@ static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
 
   BREW_TOPIC("Style", T_STYLE_START, false);
   AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Style", 3, D.style + 1, STYLES, P_STYLE);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Show original underneath", FALSE, 0, P_OVER);
+  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Show original underneath", 0, 0, P_OVER);
   BREW_ENDTOPIC(T_STYLE_END);
 
   BREW_TOPIC("Colour", T_COL_START, true);

@@ -25,7 +25,7 @@ enum { MO_TOPIC = 0, MO_ANIMATE, MO_SPEED, MO_LOOP, MO_SEED, MO_BOIL, MO_DRIFTX,
 inline PF_Err addMotion(PF_InData* in_data, int base, const char* spinName, const char* driftXName, const char* driftYName) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   BREW_TOPIC("Motion", base + MO_TOPIC, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", FALSE, 0, base + MO_ANIMATE);
+  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", 0, 0, base + MO_ANIMATE);
   BREW_FS("Speed (%)", 0, 400, 0, 400, 100, 0, base + MO_SPEED);
   BREW_FS("Loop (frames, 0 = endless)", 0, 600, 0, 600, 0, 0, base + MO_LOOP);
   BREW_FS("Seed", 0, 9999, 0, 999, 0, 0, base + MO_SEED);
