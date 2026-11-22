@@ -134,7 +134,8 @@
     "crt-phaser": ["phase.amp", "tube.bloom", "phase.glow", "signal.noise"],
     "mobglow": ["glow.strength", "glow.radius", "finish.grain"],
     "depthtone": ["light.strength", "look.fog", "lines.width"],
-    "decompressor": ["mosh.amount", "glitch.offset", "glitch.slices", "finish.mix"]
+    "decompressor": ["mosh.amount", "glitch.offset", "glitch.slices", "finish.mix"],
+    "chrometone": ["relief.depth", "finish.bloom", "shine.sweep.strength", "bands.phase"]
   };
   function audioIds() { return (AUDIO[tool.id] || []).map((k) => tool.keys[k].id).concat([tool.motion.pulse, tool.morph]); }
   function buildAudio() {
@@ -162,7 +163,11 @@
     return out;
   }
   const getPath = (o, k) => k.split(".").reduce((a, s) => (a == null ? a : a[s]), o);
-  function setPath(o, k, v) { const s = k.split("."); let a = o; for (let i = 0; i < s.length - 1; i++) a = a[s[i]] = isObj(a[s[i]]) ? a[s[i]] : {}; a[s[s.length - 1]] = v; }
+  function setPath(o, k, v) {         // numeric parts make arrays ("glow.modules.0.on")
+    const s = k.split("."); let a = o;
+    for (let i = 0; i < s.length - 1; i++) { const nx = /^\d+$/.test(s[i + 1]); if (!(a[s[i]] && typeof a[s[i]] === "object")) a[s[i]] = nx ? [] : {}; a = a[s[i]]; }
+    a[s[s.length - 1]] = v;
+  }
   function hexToAE(h) { const n = parseInt(String(h || "#000000").replace("#", ""), 16) || 0; return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1]; }
   function aeToHex(c) { return "#" + c.slice(0, 3).map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, "0")).join("").toUpperCase(); }
   function psToAE(t, p) {
@@ -174,8 +179,9 @@
       else if (e.kind === "color") out[e.id] = hexToAE(v);
       else if (e.kind === "popup") out[e.id] = e.values ? Math.max(1, e.values.indexOf(String(v)) + 1) : (e.map[String(v)] || e.other);
       else if (e.kind === "stops" && Array.isArray(v)) {
-        const n = Math.max(e.min, Math.min(e.max, v.length)); out[e.stops] = n - 1;
-        for (let s = 0; s < n && s < v.length; s++) { out[e.c + 2 * s] = hexToAE(v[s].c); out[e.p + 2 * s] = Number(v[s].p); }
+        const n = Math.max(e.min, Math.min(e.max, v.length)), st = e.stride || 2;
+        if (e.stops != null) out[e.stops] = n - 1;
+        for (let s = 0; s < n && s < v.length; s++) { out[e.c + st * s] = hexToAE(v[s].c); if (e.p != null) out[e.p + st * s] = Number(v[s].p); }
       }
     }
     return out;
@@ -183,7 +189,7 @@
   function aeToPS(t, vals) {
     const p = {};
     for (const [k, e] of Object.entries(t.keys)) {
-      const id = e.kind === "stops" ? e.stops : e.id, v = vals[id]; if (v === undefined) continue;
+      const id = e.kind === "stops" ? (e.stops != null ? e.stops : e.c) : e.id, v = vals[id]; if (v === undefined) continue;
       let o;
       if (e.kind === "num") o = Math.round(v * 1000) / 1000;
       else if (e.kind === "bool") o = !!v;
@@ -192,7 +198,8 @@
         if (e.values) o = e.values[v - 1] || e.values[0];
         else { o = Object.keys(e.map).find((x) => e.map[x] === v); if (o === undefined) o = getPath(t.defaults, k); if (/^\d+$/.test(o) && typeof getPath(t.defaults, k) === "number") o = Number(o); }
       } else if (e.kind === "stops") {
-        o = []; for (let s = 0; s < v + 1; s++) if (vals[e.c + 2 * s]) o.push({ p: Math.round(vals[e.p + 2 * s]), c: aeToHex(vals[e.c + 2 * s]) });
+        const st = e.stride || 2, n = e.stops != null ? v + 1 : e.max;
+        o = []; for (let s = 0; s < n; s++) if (vals[e.c + st * s]) o.push({ p: e.p != null ? Math.round(vals[e.p + st * s]) : Math.round(100 * s / Math.max(1, n - 1)), c: aeToHex(vals[e.c + st * s]) });
       }
       setPath(p, k, o);
     }

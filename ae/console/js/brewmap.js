@@ -1126,15 +1126,816 @@ window.BREW = {
      "name": "Fax Machine"
     }
    ]
+  },
+  {
+   "id": "chrometone",
+   "pre": "ct",
+   "code": "CT-02",
+   "glow": "#00e5ff",
+   "title": "Frank's Chrometone Brew",
+   "match": "com.franks.chrometone.ae",
+   "look": 2,
+   "lookB": 3,
+   "morph": 4,
+   "motion": {
+    "topic": 125,
+    "animate": 126,
+    "speed": 127,
+    "loop": 128,
+    "seed": 129,
+    "boil": 130,
+    "driftx": 131,
+    "drifty": 132,
+    "spin": 133,
+    "pulse": 134,
+    "pulser": 135,
+    "flick": 136,
+    "flickr": 137,
+    "jit": 138,
+    "jitr": 139,
+    "reveal": 140,
+    "revmode": 141,
+    "revang": 142,
+    "end": 143
+   },
+   "keys": {
+    "tone.blur": {
+     "id": 23,
+     "kind": "num"
+    },
+    "tone.contrast": {
+     "id": 24,
+     "kind": "num"
+    },
+    "tone.mid": {
+     "id": 25,
+     "kind": "num"
+    },
+    "bands.count": {
+     "id": 26,
+     "kind": "num"
+    },
+    "bands.phase": {
+     "id": 27,
+     "kind": "num"
+    },
+    "bands.soft": {
+     "id": 29,
+     "kind": "num"
+    },
+    "bands.mix": {
+     "id": 30,
+     "kind": "num"
+    },
+    "relief.depth": {
+     "id": 33,
+     "kind": "num"
+    },
+    "relief.angle": {
+     "id": 34,
+     "kind": "num"
+    },
+    "relief.gloss": {
+     "id": 35,
+     "kind": "num"
+    },
+    "relief.spec": {
+     "id": 36,
+     "kind": "num"
+    },
+    "relief.soft": {
+     "id": 37,
+     "kind": "num"
+    },
+    "finish.grain": {
+     "id": 40,
+     "kind": "num"
+    },
+    "finish.bloom": {
+     "id": 41,
+     "kind": "num"
+    },
+    "finish.mix": {
+     "id": 42,
+     "kind": "num"
+    },
+    "surface.key": {
+     "id": 46,
+     "kind": "num"
+    },
+    "surface.bevel": {
+     "id": 47,
+     "kind": "num"
+    },
+    "surface.horizon": {
+     "id": 50,
+     "kind": "num"
+    },
+    "surface.wave": {
+     "id": 51,
+     "kind": "num"
+    },
+    "surface.waveSize": {
+     "id": 52,
+     "kind": "num"
+    },
+    "extrude.depth": {
+     "id": 68,
+     "kind": "num"
+    },
+    "extrude.angle": {
+     "id": 69,
+     "kind": "num"
+    },
+    "extrude.persp": {
+     "id": 70,
+     "kind": "num"
+    },
+    "extrude.shade": {
+     "id": 73,
+     "kind": "num"
+    },
+    "extrude.lines": {
+     "id": 74,
+     "kind": "num"
+    },
+    "extrude.shadow": {
+     "id": 75,
+     "kind": "num"
+    },
+    "shine.glints.count": {
+     "id": 107,
+     "kind": "num"
+    },
+    "shine.glints.size": {
+     "id": 108,
+     "kind": "num"
+    },
+    "shine.glints.rays": {
+     "id": 109,
+     "kind": "num"
+    },
+    "shine.glints.rot": {
+     "id": 110,
+     "kind": "num"
+    },
+    "shine.sweep.angle": {
+     "id": 113,
+     "kind": "num"
+    },
+    "shine.sweep.pos": {
+     "id": 114,
+     "kind": "num"
+    },
+    "shine.sweep.width": {
+     "id": 115,
+     "kind": "num"
+    },
+    "shine.sweep.strength": {
+     "id": 116,
+     "kind": "num"
+    },
+    "shine.rim.width": {
+     "id": 119,
+     "kind": "num"
+    },
+    "shine.arcs.count": {
+     "id": 121,
+     "kind": "num"
+    },
+    "shine.arcs.spread": {
+     "id": 123,
+     "kind": "num"
+    },
+    "look.invert": {
+     "id": 20,
+     "kind": "bool"
+    },
+    "extrude.on": {
+     "id": 67,
+     "kind": "bool"
+    },
+    "shine.glints.on": {
+     "id": 106,
+     "kind": "bool"
+    },
+    "shine.sweep.on": {
+     "id": 112,
+     "kind": "bool"
+    },
+    "shine.rim.on": {
+     "id": 117,
+     "kind": "bool"
+    },
+    "shine.arcs.on": {
+     "id": 120,
+     "kind": "bool"
+    },
+    "shine.glints.color": {
+     "id": 111,
+     "kind": "color"
+    },
+    "shine.rim.color": {
+     "id": 118,
+     "kind": "color"
+    },
+    "shine.arcs.color": {
+     "id": 122,
+     "kind": "color"
+    },
+    "look.stops": {
+     "stops": 7,
+     "c": 8,
+     "p": 9,
+     "max": 6,
+     "min": 2,
+     "kind": "stops"
+    },
+    "surface.sky": {
+     "stops": null,
+     "c": 53,
+     "p": 54,
+     "max": 3,
+     "min": 3,
+     "kind": "stops"
+    },
+    "surface.ground": {
+     "stops": null,
+     "c": 59,
+     "p": 60,
+     "max": 3,
+     "min": 3,
+     "kind": "stops"
+    },
+    "extrude.stops": {
+     "stops": null,
+     "c": 71,
+     "p": null,
+     "stride": 1,
+     "max": 2,
+     "min": 2,
+     "kind": "stops"
+    },
+    "bands.shape": {
+     "values": [
+      "sine",
+      "triangle",
+      "hard"
+     ],
+     "kind": "popup",
+     "id": 28
+    },
+    "surface.from": {
+     "values": [
+      "brightness",
+      "auto",
+      "outline"
+     ],
+     "kind": "popup",
+     "id": 45
+    },
+    "surface.profile": {
+     "values": [
+      "chamfer",
+      "round",
+      "rim"
+     ],
+     "kind": "popup",
+     "id": 48
+    },
+    "surface.reflect": {
+     "values": [
+      "gradient",
+      "horizon"
+     ],
+     "kind": "popup",
+     "id": 49
+    },
+    "glow.modules.0.on": {
+     "kind": "bool",
+     "id": 78
+    },
+    "glow.modules.0.type": {
+     "values": [
+      "dreamy",
+      "halo",
+      "neon",
+      "bloom",
+      "inner"
+     ],
+     "kind": "popup",
+     "id": 79
+    },
+    "glow.modules.0.color": {
+     "kind": "color",
+     "id": 80
+    },
+    "glow.modules.0.size": {
+     "kind": "num",
+     "id": 81
+    },
+    "glow.modules.0.strength": {
+     "kind": "num",
+     "id": 82
+    },
+    "glow.modules.1.on": {
+     "kind": "bool",
+     "id": 85
+    },
+    "glow.modules.1.type": {
+     "values": [
+      "dreamy",
+      "halo",
+      "neon",
+      "bloom",
+      "inner"
+     ],
+     "kind": "popup",
+     "id": 86
+    },
+    "glow.modules.1.color": {
+     "kind": "color",
+     "id": 87
+    },
+    "glow.modules.1.size": {
+     "kind": "num",
+     "id": 88
+    },
+    "glow.modules.1.strength": {
+     "kind": "num",
+     "id": 89
+    },
+    "glow.modules.2.on": {
+     "kind": "bool",
+     "id": 92
+    },
+    "glow.modules.2.type": {
+     "values": [
+      "dreamy",
+      "halo",
+      "neon",
+      "bloom",
+      "inner"
+     ],
+     "kind": "popup",
+     "id": 93
+    },
+    "glow.modules.2.color": {
+     "kind": "color",
+     "id": 94
+    },
+    "glow.modules.2.size": {
+     "kind": "num",
+     "id": 95
+    },
+    "glow.modules.2.strength": {
+     "kind": "num",
+     "id": 96
+    },
+    "glow.modules.3.on": {
+     "kind": "bool",
+     "id": 99
+    },
+    "glow.modules.3.type": {
+     "values": [
+      "dreamy",
+      "halo",
+      "neon",
+      "bloom",
+      "inner"
+     ],
+     "kind": "popup",
+     "id": 100
+    },
+    "glow.modules.3.color": {
+     "kind": "color",
+     "id": 101
+    },
+    "glow.modules.3.size": {
+     "kind": "num",
+     "id": 102
+    },
+    "glow.modules.3.strength": {
+     "kind": "num",
+     "id": 103
+    }
+   },
+   "params": {
+    "2": "Look",
+    "3": "P_LOOKB",
+    "4": "Morph to Look B",
+    "7": "P_STOPS",
+    "8": "P_SC1",
+    "9": "P_SP1",
+    "10": "P_SC2",
+    "11": "P_SP2",
+    "12": "P_SC3",
+    "13": "P_SP3",
+    "14": "P_SC4",
+    "15": "P_SP4",
+    "16": "P_SC5",
+    "17": "P_SP5",
+    "18": "P_SC6",
+    "19": "P_SP6",
+    "20": "P_INVERT",
+    "23": "Pre-blur (px)",
+    "24": "Contrast (%)",
+    "25": "Midpoint (%)",
+    "26": "Bands",
+    "27": "Band phase (deg)",
+    "28": "P_BSHAPE",
+    "29": "Band softness (%)",
+    "30": "Band mix (%)",
+    "33": "Depth (%)",
+    "34": "Light angle",
+    "35": "Gloss",
+    "36": "Specular (%)",
+    "37": "Softness (px)",
+    "40": "Grain (%)",
+    "41": "Bloom (%)",
+    "42": "Mix with original (%)",
+    "45": "P_FROM",
+    "46": "Dark key (%)",
+    "47": "Bevel (px)",
+    "48": "P_PROFILE",
+    "49": "P_REFLECT",
+    "50": "Horizon (%)",
+    "51": "Horizon wave (%)",
+    "52": "Wave size (%)",
+    "53": "P_SKC1",
+    "54": "P_SKP1",
+    "55": "P_SKC2",
+    "56": "P_SKP2",
+    "57": "P_SKC3",
+    "58": "P_SKP3",
+    "59": "P_GRC1",
+    "60": "P_GRP1",
+    "61": "P_GRC2",
+    "62": "P_GRP2",
+    "63": "P_GRC3",
+    "64": "P_GRP3",
+    "67": "P_EX_ON",
+    "68": "Depth (px)",
+    "69": "Direction (deg)",
+    "70": "Perspective (%)",
+    "71": "P_EX_FRONT",
+    "72": "P_EX_BACK",
+    "73": "Shading (%)",
+    "74": "Edge lines (%)",
+    "75": "Long shadow (%)",
+    "78": "P_G1_ON",
+    "79": "P_G1_TYPE",
+    "80": "P_G1_COL",
+    "81": "P_G1_SIZE",
+    "82": "P_G1_STR",
+    "85": "P_G2_ON",
+    "86": "P_G2_TYPE",
+    "87": "P_G2_COL",
+    "88": "P_G2_SIZE",
+    "89": "P_G2_STR",
+    "92": "P_G3_ON",
+    "93": "P_G3_TYPE",
+    "94": "P_G3_COL",
+    "95": "P_G3_SIZE",
+    "96": "P_G3_STR",
+    "99": "P_G4_ON",
+    "100": "P_G4_TYPE",
+    "101": "P_G4_COL",
+    "102": "P_G4_SIZE",
+    "103": "P_G4_STR",
+    "106": "P_GL_ON",
+    "107": "Glint count",
+    "108": "Glint size (px)",
+    "109": "Glint rays",
+    "110": "Glint rotation (deg)",
+    "111": "P_GL_COL",
+    "112": "P_SW_ON",
+    "113": "Sweep angle (deg)",
+    "114": "Sweep position (%)",
+    "115": "Sweep width (%)",
+    "116": "Sweep strength (%)",
+    "117": "P_RIM_ON",
+    "118": "P_RIM_COL",
+    "119": "Rim width (px)",
+    "120": "P_ARC_ON",
+    "121": "Arc count",
+    "122": "P_ARC_COL",
+    "123": "Arc spread (%)",
+    "126": "P_MO_ANIMATE",
+    "127": "P_MO_SPEED",
+    "128": "P_MO_LOOP",
+    "129": "P_MO_SEED",
+    "130": "P_MO_BOIL",
+    "131": "P_MO_DRIFTX",
+    "132": "P_MO_DRIFTY",
+    "133": "P_MO_SPIN",
+    "134": "P_MO_PULSE",
+    "135": "P_MO_PULSER",
+    "136": "P_MO_FLICK",
+    "137": "P_MO_FLICKR",
+    "138": "P_MO_JIT",
+    "139": "P_MO_JITR",
+    "140": "P_MO_REVEAL",
+    "141": "P_MO_REVMODE",
+    "142": "P_MO_REVANG",
+    "145": "Band flow (deg/s)",
+    "146": "Sweep travel (%/s)",
+    "147": "Glint twinkle (%)",
+    "148": "Twinkle rate (Hz)"
+   },
+   "defaults": {
+    "look": {
+     "stops": [
+      {
+       "p": 0,
+       "c": "#0A0C10"
+      },
+      {
+       "p": 30,
+       "c": "#5A6270"
+      },
+      {
+       "p": 55,
+       "c": "#F4F7FA"
+      },
+      {
+       "p": 70,
+       "c": "#8C95A3"
+      },
+      {
+       "p": 100,
+       "c": "#FFFFFF"
+      }
+     ],
+     "invert": false
+    },
+    "tone": {
+     "blur": 2,
+     "contrast": 140,
+     "mid": 50
+    },
+    "bands": {
+     "count": 3,
+     "phase": 0,
+     "shape": "sine",
+     "soft": 50,
+     "mix": 60
+    },
+    "relief": {
+     "depth": 45,
+     "angle": 135,
+     "gloss": 40,
+     "spec": 60,
+     "soft": 3
+    },
+    "finish": {
+     "grain": 0,
+     "bloom": 20,
+     "mix": 0
+    },
+    "surface": {
+     "from": "brightness",
+     "key": 12,
+     "bevel": 30,
+     "profile": "chamfer",
+     "reflect": "gradient",
+     "horizon": 52,
+     "wave": 35,
+     "waveSize": 40,
+     "sky": [
+      {
+       "p": 0,
+       "c": "#FFFFFF"
+      },
+      {
+       "p": 55,
+       "c": "#BFD9FF"
+      },
+      {
+       "p": 100,
+       "c": "#7FA8E8"
+      }
+     ],
+     "ground": [
+      {
+       "p": 0,
+       "c": "#3A2418"
+      },
+      {
+       "p": 45,
+       "c": "#B86A3C"
+      },
+      {
+       "p": 100,
+       "c": "#FFF1DC"
+      }
+     ]
+    },
+    "extrude": {
+     "on": false,
+     "depth": 80,
+     "angle": 290,
+     "persp": 0,
+     "stops": [
+      {
+       "p": 0,
+       "c": "#E8EEF6"
+      },
+      {
+       "p": 100,
+       "c": "#20242C"
+      }
+     ],
+     "shade": 60,
+     "lines": 50,
+     "shadow": 0
+    },
+    "glow": {
+     "modules": [
+      {
+       "on": false,
+       "type": "dreamy",
+       "color": "#BFD8FF",
+       "size": 60,
+       "strength": 50
+      },
+      {
+       "on": false,
+       "type": "halo",
+       "color": "#FFFFFF",
+       "size": 25,
+       "strength": 50
+      },
+      {
+       "on": false,
+       "type": "neon",
+       "color": "#00E5FF",
+       "size": 12,
+       "strength": 60
+      },
+      {
+       "on": false,
+       "type": "bloom",
+       "color": "#FFFFFF",
+       "size": 30,
+       "strength": 50
+      }
+     ]
+    },
+    "shine": {
+     "glints": {
+      "on": false,
+      "count": 4,
+      "size": 80,
+      "rays": 4,
+      "rot": 0,
+      "color": "#FFFFFF"
+     },
+     "sweep": {
+      "on": false,
+      "angle": 60,
+      "pos": 40,
+      "width": 20,
+      "strength": 60
+     },
+     "rim": {
+      "on": false,
+      "color": "#FFD9A8",
+      "width": 8
+     },
+     "arcs": {
+      "on": false,
+      "count": 4,
+      "color": "#D9A8FF",
+      "spread": 50
+     }
+    }
+   },
+   "looks": [
+    {
+     "i": 1,
+     "cat": "Chrome",
+     "name": "Liquid Silver"
+    },
+    {
+     "i": 2,
+     "cat": "Chrome",
+     "name": "Polished Gold"
+    },
+    {
+     "i": 3,
+     "cat": "Chrome",
+     "name": "Gunmetal"
+    },
+    {
+     "i": 4,
+     "cat": "Chrome",
+     "name": "Black Mirror"
+    },
+    {
+     "i": 5,
+     "cat": "Colour",
+     "name": "Holo Foil"
+    },
+    {
+     "i": 6,
+     "cat": "Colour",
+     "name": "Rose Chrome"
+    },
+    {
+     "i": 7,
+     "cat": "Colour",
+     "name": "Y2K Ice"
+    },
+    {
+     "i": 8,
+     "cat": "Colour",
+     "name": "Copper Wire"
+    },
+    {
+     "i": 9,
+     "cat": "Retro chrome",
+     "name": "Glacier Rim"
+    },
+    {
+     "i": 10,
+     "cat": "Retro chrome",
+     "name": "Sunset Slab"
+    },
+    {
+     "i": 11,
+     "cat": "Retro chrome",
+     "name": "Lilac Storm"
+    },
+    {
+     "i": 12,
+     "cat": "Retro chrome",
+     "name": "Dreamy Pearl"
+    },
+    {
+     "i": 13,
+     "cat": "Retro chrome",
+     "name": "Midnight Edge"
+    },
+    {
+     "i": 14,
+     "cat": "Retro chrome",
+     "name": "Heavy Metal"
+    },
+    {
+     "i": 15,
+     "cat": "Retro chrome",
+     "name": "Arcade Gold"
+    },
+    {
+     "i": 16,
+     "cat": "Retro chrome",
+     "name": "Frostbite"
+    },
+    {
+     "i": 17,
+     "cat": "Retro chrome",
+     "name": "Hot Rod Candy"
+    },
+    {
+     "i": 18,
+     "cat": "Retro chrome",
+     "name": "Vapor Mint"
+    },
+    {
+     "i": 19,
+     "cat": "Retro chrome",
+     "name": "Ultra Blue"
+    },
+    {
+     "i": 20,
+     "cat": "Retro chrome",
+     "name": "Rose Ingot"
+    },
+    {
+     "i": 21,
+     "cat": "Retro chrome",
+     "name": "Night Drive"
+    },
+    {
+     "i": 22,
+     "cat": "Retro chrome",
+     "name": "Mercury Drop"
+    },
+    {
+     "i": 23,
+     "cat": "Retro chrome",
+     "name": "Prism Foil"
+    },
+    {
+     "i": 24,
+     "cat": "Retro chrome",
+     "name": "Titan Block"
+    }
+   ]
   }
  ],
  "coming": [
-  {
-   "id": "chrometone",
-   "code": "CT-02",
-   "glow": "#00e5ff",
-   "title": "Frank's Chrometone Brew"
-  },
   {
    "id": "dithers-brew",
    "code": "DB-01",

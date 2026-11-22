@@ -1,9 +1,10 @@
 // Parity CLI for the wave-2 tools: tool_cli <tool> <in.rgba> <w> <h> <params.txt> <out.rgb|out.rgba>
 // mobglow / depthtone: writes the Photoshop layer stack composited on black (RGB, like imgmath composite()).
-// decompressor: writes the single layer (RGBA).
+// decompressor / chrometone: write the single (merged) layer (RGBA).
 #include "../effects/mobglow/mob_params_io.h"
 #include "../effects/depthtone/dt_params_io.h"
 #include "../effects/decompressor/dc_params_io.h"
+#include "../effects/chrometone/ct_params_io.h"
 #include <fstream>
 #include <iterator>
 #include <cstring>
@@ -21,6 +22,9 @@ int main(int argc, char** argv) {
   else if (tool == "depthtone") { dt::Params P; dt::parseParams(P, txt); std::vector<Layer> L; dt::render(im, P, L); rgbOut(L, false); }
   else if (tool == "decompressor") {
     dc::Params P; dc::parseParams(P, txt); Layer L; dc::render(im, P, L);
+    b.resize(L.rgba.size()); for (size_t i = 0; i < b.size(); i++) b[i] = (unsigned char)(int)clamp(L.rgba[i], 0, 255);
+  } else if (tool == "chrometone") {
+    ct::Params P; ct::parseParams(P, txt); Layer L; ct::render(im, P, L);
     b.resize(L.rgba.size()); for (size_t i = 0; i < b.size(); i++) b[i] = (unsigned char)(int)clamp(L.rgba[i], 0, 255);
   } else return 3;
   std::ofstream fo(argv[6], std::ios::binary); fo.write((char*)b.data(), b.size());

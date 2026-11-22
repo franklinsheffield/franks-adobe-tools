@@ -13,7 +13,7 @@ function decode(smp) {
   return { w: smp.w, h: smp.h, c: 4, data };
 }
 (async () => {
-  for (const tool of ["crt-phaser", "mobglow", "depthtone", "decompressor"]) {
+  for (const tool of ["crt-phaser", "mobglow", "depthtone", "decompressor", "chrometone"]) {
     const dir = path.join(root, "plugins", tool);
     const Engine = require(path.join(dir, "js/engine.js"));
     const { DEFAULTS, PRESETS } = require(path.join(dir, "js/state.js"));

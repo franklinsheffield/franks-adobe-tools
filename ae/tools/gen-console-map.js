@@ -11,11 +11,11 @@ const TOOLS = [
   { id: "crt-phaser", pre: "crt", code: "CRT-06", glow: "#b14cff", title: "Frank's CRT Phaser Brew", match: "com.franks.crtphaser.ae" },
   { id: "mobglow", pre: "mob", code: "MG-04", glow: "#ff2fd6", title: "Frank's Mobglow Brew", match: "com.franks.mobglow.ae" },
   { id: "depthtone", pre: "dt", code: "DT-03", glow: "#f5ff3b", title: "Frank's Depthtone Brew", match: "com.franks.depthtone.ae" },
-  { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Frank's Decompressor Brew", match: "com.franks.decompressor.ae" }
+  { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Frank's Decompressor Brew", match: "com.franks.decompressor.ae" },
+  { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew", match: "com.franks.chrometone.ae" }
 ];
 // Batch B tools, shown in the rack as "coming soon" until their AE effects exist.
 const COMING = [
-  { id: "chrometone", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew" },
   { id: "dithers-brew", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew" },
   { id: "paint-brew", code: "PB-09", glow: "#4d7cff", title: "Frank's Paint Brew" }
 ];
@@ -36,6 +36,19 @@ const SPECIAL = {
     "look.stops": { stops: "P_STOPS", c: "P_SC1", p: "P_SP1", max: 5, min: 2 },
     "lines.colorBy": { popup: "P_COLORBY", map: { depth: 2 }, other: 1 }
   },
+  "chrometone": Object.assign({
+    "look.stops": { stops: "P_STOPS", c: "P_SC1", p: "P_SP1", max: 6, min: 2 },
+    "surface.sky": { stops: null, c: "P_SKC1", p: "P_SKP1", max: 3, min: 3 },
+    "surface.ground": { stops: null, c: "P_GRC1", p: "P_GRP1", max: 3, min: 3 },
+    "extrude.stops": { stops: null, c: "P_EX_FRONT", p: null, stride: 1, max: 2, min: 2 },
+    "bands.shape": { popup: "P_BSHAPE", values: ["sine", "triangle", "hard"] },
+    "surface.from": { popup: "P_FROM", values: ["brightness", "auto", "outline"] },
+    "surface.profile": { popup: "P_PROFILE", values: ["chamfer", "round", "rim"] },
+    "surface.reflect": { popup: "P_REFLECT", values: ["gradient", "horizon"] }
+  }, ...[0, 1, 2, 3].map((g) => ({
+    [`glow.modules.${g}.on`]: { bool: `P_G1_ON+${g}` }, [`glow.modules.${g}.type`]: { popup: `P_G1_TYPE+${g}`, values: ["dreamy", "halo", "neon", "bloom", "inner"] },
+    [`glow.modules.${g}.color`]: { color: `P_G1_COL+${g}` }, [`glow.modules.${g}.size`]: { num: `P_G1_SIZE+${g}` }, [`glow.modules.${g}.strength`]: { num: `P_G1_STR+${g}` }
+  }))),
   "decompressor": {
     "jpeg.chroma": { popup: "P_CHROMA", map: { "444": 1, "420": 2, "411": 3 }, other: 1 },
     "mosh.block": { popup: "P_MOSH_BLOCK", map: { "8": 1 }, other: 2 }
@@ -81,6 +94,7 @@ for (const t of TOOLS) {
   const keys = {}, skipped = [];
   for (const [k, f] of Object.entries(keyField)) {
     if (/^m\.|^scale$|^full[WH]$/.test(k)) continue;
+    if (SPECIAL[t.id][k]) continue;
     const sp = SPECIAL[t.id][k];
     if (sp) continue;
     if (field[f]) keys[k] = { id: ids[field[f].id], kind: field[f].kind };
@@ -88,10 +102,10 @@ for (const t of TOOLS) {
   }
   for (const [k, sp] of Object.entries(SPECIAL[t.id])) {
     const e = Object.assign({}, sp);
-    for (const f of ["popup", "color", "stops", "c", "p"]) if (typeof e[f] === "string") { if (ids[e[f]] === undefined) throw new Error(t.id + " no " + e[f]); e[f] = ids[e[f]]; }
-    e.kind = sp.stops ? "stops" : sp.color ? "color" : "popup";
-    if (e.kind === "color") { e.id = e.color; delete e.color; }
-    if (e.kind === "popup") { e.id = e.popup; delete e.popup; }
+    const res = (nm) => { const m = /^(\w+)\+(\d+)$/.exec(nm); const v = m ? ids[m[1]] + Number(m[2]) * (ids.T_G2_START - ids.T_G1_START) : ids[nm]; if (v === undefined) throw new Error(t.id + " no " + nm); return v; };
+    for (const f of ["popup", "color", "stops", "c", "p", "bool", "num"]) if (typeof e[f] === "string") e[f] = res(e[f]);
+    e.kind = "stops" in sp ? "stops" : sp.color ? "color" : sp.bool ? "bool" : sp.num ? "num" : "popup";
+    for (const f of ["color", "popup", "bool", "num"]) if (e[f] !== undefined) { e.id = e[f]; delete e[f]; }
     keys[k] = e;
   }
   if (skipped.length) throw new Error(t.id + ": unmapped Photoshop keys " + skipped.join(", "));
