@@ -83,7 +83,7 @@ function createUI(opts) {
   function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); }
   // Optional "Hardware Console" brand: dials and switches instead of sliders and checkboxes.
   const brand = opts.brand === "console"
-    ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), glow: opts.glow })
+    ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), onLive: opts.onLive, glow: opts.glow })
     : null;
 
   function row(label, ...controls) {

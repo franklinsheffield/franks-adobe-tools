@@ -8,6 +8,7 @@
 //             mouse wheel, or type the value under it)
 //   toggle(): on/off switch for a boolean setting
 //   meter():  12-segment LED render meter for Apply
+// createUI({ onLive(path) }) is called while a dial is being dragged (Dithers live frames).
 // Knobs are drawn as small PNGs (shared/png.js) because UXP's SVG and
 // canvas support is patchy; images are cached per position and colour.
 // Styles live in panel.css under #app.brand-console.
@@ -112,6 +113,7 @@ function createConsoleKit(env) {
       if (!drag) return;
       const k = (e.shiftKey ? 0.2 : 1) * (max - min) / 160;
       set(drag.v + (drag.y - e.clientY) * k, false);
+      if (env.onLive) env.onLive(path);   // optional: tools that render live frames while a knob turns
     };
     const up = () => {
       if (!drag) return;

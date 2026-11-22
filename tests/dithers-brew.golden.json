@@ -17,7 +17,7 @@
   "Distress",
   "Output"
  ],
- "controls": "input:61 select:9 button:45 textarea:1",
+ "controls": "input:53 select:9 button:45 textarea:1",
  "previewDefault": "2807e930cda1",
  "presets": [
   "Print - Newsprint 45 deg / 35 LPI = 6eb46d7800c8",

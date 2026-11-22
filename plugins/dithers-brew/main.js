@@ -27,19 +27,33 @@ let quickNext = false;     // next preview is a fast half-size frame (slider bei
 let lastScale = 1, lastPpi = 300;
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex) });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame() });
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers
-function touch() { quickNext = false; refreshAll(); updateInfo(); if (auto) schedulePreview(150); }
+// Image card: editing any of its values switches the adjustments on (loading a look does not)
+let preSig = "";
+const preKey = () => { const p = Object.assign({}, state.fx.pre); delete p.on; return JSON.stringify(p); };
+function touch() {
+  quickNext = false;
+  const k = preKey();
+  if (k !== preSig) { if (preSig && !state.fx.pre.on) state.fx.pre.on = true; preSig = k; }
+  refreshAll(); updateInfo(); if (auto) schedulePreview(150);
+}
+function liveFrame() {
+  if (!auto || !lastSrc) return;
+  const k = preKey();
+  if (k !== preSig && !state.fx.pre.on) state.fx.pre.on = true;
+  quickNext = true;
+  if (!loop.rendering) loop.schedule(0); else loop.run();
+}
 const effPpi = (ppi) => (state.out.dpi > 0 ? state.out.dpi : ppi);
 
 // live drag: a slider being held renders a fast half-size frame from the cached source
 function onDragInput(ev) {
   const t = ev.target;
-  if (!auto || !lastSrc || !t || t.tagName !== "INPUT" || t.getAttribute("type") !== "range") return;
-  quickNext = true;
-  if (!loop.rendering) loop.schedule(0); else loop.run();
+  if (!t || t.tagName !== "INPUT" || t.getAttribute("type") !== "range") return;
+  liveFrame();
 }
 function halfSrc(src) {
   const c = src.c || 4, w2 = Math.max(1, src.w >> 1), h2 = Math.max(1, src.h >> 1), out = new Uint8Array(w2 * h2 * c);
@@ -55,6 +69,7 @@ function setStatus(msg, isErr) {
   if (!refs.status) return;
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
+  if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Brewing)/.test(msg) ? "busy" : "ready"));
 }
 
 // ---------------------------------------------------------------- palette widgets
@@ -203,7 +218,7 @@ function levelsWidget() {
       const t = Math.max(0.02, Math.min(0.98, (v - p.black) / Math.max(1, p.white - p.black)));
       p.gamma = Math.round(Math.max(0.1, Math.min(4, Math.log(t) / Math.log(0.5))) * 100) / 100;
     }
-    if (live) { refreshAll(); if (auto && lastSrc) { quickNext = true; if (!loop.rendering) loop.schedule(0); else loop.run(); } }
+    if (live) { refreshAll(); liveFrame(); }
   }
   const down = (ev) => {
     const v = posOf(ev), p = pre(), c = [p.black, midPos(), p.white].map((x) => Math.abs(x - v));
@@ -342,6 +357,11 @@ async function previewFrame(src, scale, ppi, quick) {
   refs.preview.style.height = dh + "px";
   updateInfo();
   const notes = res.notes && res.notes.length ? "  |  " + res.notes.join("; ") : "";
+  if (refs.scrL) {
+    const algo = state.engine === "ascii" ? "ASCII " + state.algo.ascii : (algoList(state.engine).find((a) => a.id === state.algo[state.engine]) || {}).name || "";
+    refs.scrL.textContent = ("CH1  " + state.mode + "  " + String(algo).replace(/ \(.*\)$/, "")).toUpperCase();
+    refs.scrR.textContent = res.w + " x " + res.h + " PX" + (quick ? "  LIVE" : "");
+  }
   setStatus((quick ? "Live " : "Preview ") + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s") + notes);
 }
 
@@ -367,6 +387,8 @@ async function applyNow() {
       return;
     }
     confirmArmed = false;
+    var tStart = Date.now();
+    refs.meter.run();
     btn.textContent = "Brewing...";
     btn.setAttribute("disabled", "true");
     let done = 0;
@@ -393,9 +415,11 @@ async function applyNow() {
       done++;
       if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
     }
+    refs.meter.done((Date.now() - tStart) / 1000);
     if (!refs.status.className.includes("err")) setStatus("Done. " + done + " group" + (done === 1 ? "" : "s") + " added. Undo with one Ctrl/Cmd+Z.");
   } catch (e) {
     console.error(e);
+    if (refs.meter) refs.meter.idle();
     setStatus("Apply failed: " + (e && e.message ? e.message : e), true);
   } finally {
     loop.setBusy(false);
@@ -411,6 +435,7 @@ function applyPatch(p) {
   state.out = keepOut; state.view = keepView;
   // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
   if (typeof state.fx.pre.invert !== "number") state.fx.pre.invert = state.fx.pre.invert ? 100 : 0;
+  preSig = preKey();
   touch();
 }
 function stateForSave() {
@@ -427,15 +452,16 @@ function build(root) {
   const top = layout.pinned;
 
   // header
-  top.appendChild(el("div", { class: "hdr" }, [
-    el("div", { class: "title", text: "Frank's Dithers Brew" }),
-    el("div", { class: "sub", text: "dither  /  halftone  /  ASCII  /  print separations" })
-  ]));
+  root.classList.add("brand-console");
+  refs.led = ui.brand.header({ title: "Frank's Dithers Brew", code: "DB-01" });
+  top.appendChild(refs.led.node);
 
   // ---- preview card
   refs.docline = el("div", { class: "docline", text: "" });
   refs.preview = el("img", { class: "preview" });
-  refs.previewBox = el("div", { class: "previewbox" }, [refs.preview]);
+  refs.scrL = el("span", { class: "scrl", text: "CH1" });
+  refs.scrR = el("span", { class: "scrr", text: "" });
+  refs.previewBox = el("div", { class: "previewbox" }, [el("div", { class: "scrstrip" }, [refs.scrL, refs.scrR]), refs.preview]);
   refs.status = el("div", { class: "status", text: "Starting..." });
   refs.info = el("div", { class: "info" });
   const refresh = el("button", { class: "btn small", text: "Refresh" });
@@ -661,18 +687,8 @@ function build(root) {
     sliderRow("Invert", "fx.pre.invert", 0, 100, 1, "%"),
     el("div", { class: "row" }, [moreBtn]),
     more,
-    (function () {
-      const cb = el("input", { type: "checkbox" });
-      cb.addEventListener("change", () => { state.fx.pre.on = !cb.checked; touch(); });
-      bind(() => { cb.checked = !state.fx.pre.on; });
-      return el("div", { class: "row chk" }, [cb, el("span", { class: "lbl2", text: "Bypass image adjustments" })]);
-    })()
+    checkRow("Image adjustments on", "fx.pre.on")
   ]);
-  // any edit inside the card (except Bypass) switches the adjustments on
-  imgCard.addEventListener("change", (ev) => {
-    if (ev.target && ev.target.getAttribute("type") === "checkbox") return;
-    if (!state.fx.pre.on) { state.fx.pre.on = true; touch(); }
-  });
   root.insertBefore(imgCard, colourCard);
   root.appendChild(fxCard("edges", "Edge lines", [
     sliderRow("Strength", "fx.edges.strength", 0, 100, 1, "%"),
@@ -692,12 +708,14 @@ function build(root) {
   root.appendChild(fxCard("distress", "Distress", [sliderRow("Amount", "fx.distress.amount", 0, 100, 1, "%")]));
 
   // ---- output
+  refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),
     checkRow("Add a white paper layer", "out.paper"),
+    refs.meter.node,
     refs.apply,
     el("div", { class: "hint", text: "Creates a layer group of ink layers with transparent paper. One undo step." })
   ]));
@@ -705,6 +723,7 @@ function build(root) {
   root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.1  -  your artwork is never changed; results land in new layers." }));
 
   root.addEventListener("input", onDragInput);
+  preSig = preKey();
   refreshAll();
   updateInfo();
 }
