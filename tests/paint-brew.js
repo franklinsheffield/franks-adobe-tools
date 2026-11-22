@@ -13,12 +13,15 @@ module.exports = async function (t) {
   const LAYERS = {
     oil: ["Underpainting", "Broad strokes", "Detail strokes", "Impasto light", "Canvas weave"],
     watercolour: ["Washes", "Wet edges", "Granulation", "Pencil", "Paper texture"],
-    impressionism: ["Ground", "Large dabs", "Medium dabs", "Fine detail", "Light and colour lift", "Canvas weave"]
+    impressionism: ["Ground", "Large dabs", "Medium dabs", "Fine detail", "Light and colour lift", "Canvas weave"],
+    ink: ["Gloss paper", "Pools", "Rims", "Cells", "Metallic veins"],
+    spray: ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Speckle", "Drips", "Outline"],
+    pastel: ["Toned paper", "Smudge", "Strokes", "Highlights", "Dust"]
   };
   const run = (src, p, extra) => { const P = S.merge(S.DEFAULTS, p); Object.assign(P, { scale: 0.12, fullH: src.h / 0.12, fullW: src.w / 0.12 }, extra || {}); return E.render(src, P, {}); };
 
-  await t("Paint Brew engine: 9 looks, deterministic, full-size layers, the right stack per style", async () => {
-    assert.strictEqual(S.PRESETS.length, 9);
+  await t("Paint Brew engine: 18 looks, deterministic, full-size layers, the right stack per style", async () => {
+    assert.strictEqual(S.PRESETS.length, 18);
     const src = E.demoImage(120, 90);
     const seen = new Set();
     for (const pr of S.PRESETS) {
@@ -143,7 +146,7 @@ module.exports = async function (t) {
     D.dispatchEvent(new P.window.MouseEvent("mousemove", { clientY: 140, bubbles: true }));
     D.dispatchEvent(new P.window.MouseEvent("mouseup", { clientY: 140, bubbles: true }));
     assert.ok(st.brush.size < 120 && st.brush.size >= 4, "dragging down turns it down: " + st.brush.size);
-    const sw = D.querySelector(".switch");
+    const sw = Array.from(D.querySelectorAll(".swrow")).find((r) => /Print-ready/.test(r.textContent)).querySelector(".switch");
     const before = st.out.printCopy;
     sw.dispatchEvent(new P.window.Event("click"));
     assert.strictEqual(st.out.printCopy, !before, "switch toggles");
@@ -159,7 +162,72 @@ module.exports = async function (t) {
     assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
   });
 
-  await t("Paint Brew panel matches its golden fingerprint (UI, 9 looks, Apply)", () => {
+  await t("Paint Brew 1.1: Ink, Spray and Pastel controls change the paint; 1.0 looks still load", async () => {
+    const src = E.demoImage(120, 90);
+    const names = async (p) => (await run(src, p)).layers.map((L) => L.name);
+    const hash = async (p) => { const r = await run(src, p); return require("crypto").createHash("sha1").update(Buffer.from(E.composite(r, { type: "white" }, src))).digest("hex"); };
+    // ink: Veins 0 drops the metal layer; the metal colour changes the veins
+    assert.ok(!(await names({ style: "ink", ink: { veins: 0 } })).includes("Metallic veins"));
+    assert.notStrictEqual(await hash({ style: "ink", ink: { metal: "gold" } }), await hash({ style: "ink", ink: { metal: "silver" } }));
+    assert.notStrictEqual(await hash({ style: "ink", ink: { flow: 0 } }), await hash({ style: "ink", ink: { flow: 100 } }), "Flow moves the ink");
+    // spray: one layer per can; outline / drips / speckle at 0 drop their layers; each wall is different
+    for (const c of [3, 6, 8]) assert.strictEqual((await names({ style: "spray", spray: { cans: c } })).filter((n) => /^Can /.test(n)).length, c);
+    assert.deepStrictEqual(await names({ style: "spray", spray: { outline: 0, drips: 0, speckle: 0 } }), ["Wall", "Base fade", "Can 1", "Can 2", "Can 3", "Can 4", "Can 5"]);
+    const walls = await Promise.all(["plain", "concrete", "brick"].map((wl) => run(src, { style: "spray", spray: { wall: wl } })));
+    assert.strictEqual(new Set(walls.map((r) => require("crypto").createHash("sha1").update(Buffer.from(r.layers[0].rgba)).digest("hex"))).size, 3, "three different walls");
+    // pastel: paper colour, oil pastel (no dust), fixed hatch angle
+    const pp = await run(src, { style: "pastel", pastel: { paper: "#1E1E1E" } });
+    assert.ok(Math.abs(pp.layers[0].rgba[0] - 30) < 6, "black paper: " + pp.layers[0].rgba[0]);
+    assert.ok(!(await names({ style: "pastel", pastel: { oil: true } })).includes("Dust"), "oil pastel has no chalk dust");
+    assert.notStrictEqual(await hash({ style: "pastel", pastel: { hatch: "fixed", angle: 0 } }), await hash({ style: "pastel", pastel: { hatch: "fixed", angle: 90 } }));
+    // a look saved by 1.0 has no ink / spray / pastel keys: it still loads and paints the same way
+    const old = { style: "oil", brush: { size: 50 } }, P = S.merge(S.DEFAULTS, old);
+    assert.strictEqual(P.ink.flow, S.DEFAULTS.ink.flow);
+    assert.strictEqual(await hash(old), await hash(Object.assign({}, old, { ink: { flow: 1 }, spray: { cans: 8 }, pastel: { oil: true } })), "1.1 settings don't touch the 1.0 styles");
+    // focus: less pigment detail outside for spray (bigger overspray), pastel keeps fewer strokes outside
+    const n = 120 * 90, focus = new Float32Array(n);
+    for (let y = 0; y < 90; y++) for (let x = 0; x < 60; x++) focus[y * 120 + x] = 1;
+    const pf = await run(Object.assign({}, src, { focus }), { style: "pastel", focus: { outside: 0 } });
+    const stk = pf.layers.find((L) => L.name === "Strokes").rgba; let li = 0, lo = 0;
+    for (let y = 0; y < 90; y++) for (let x = 0; x < 120; x++) { const a = stk[(y * 120 + x) * 4 + 3]; if (x < 55) li += a; else if (x > 65) lo += a; }
+    assert.ok(lo < li, "fewer pastel strokes outside the focus (" + lo + " vs " + li + ")");
+  });
+
+  await t("Paint Brew panel: six style buttons, one style card at a time, swatch + hex colours", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(DIR, { withDoc: true, docW: 200, docH: 150 });
+    const D = P.document, st = P.mod._test.state;
+    for (let i = 0; i < 100 && !/^Preview /.test(D.querySelector(".status").textContent); i++) await P.settle(50);
+    const styleBtns = Array.from(D.querySelectorAll(".segbtn")).filter((b) => ["Oil", "Watercolour", "Impressionism", "Alcohol Ink", "Spray Paint", "Pastel"].includes(b.textContent));
+    assert.strictEqual(styleBtns.length, 6);
+    const cardOf = (title) => Array.from(D.querySelectorAll(".card")).find((c) => c.textContent.trim().toUpperCase().startsWith(title.toUpperCase()));
+    const shown = (c) => c && c.style.display !== "none";
+    for (const [label, style, card] of [["Alcohol Ink", "ink", "Ink"], ["Spray Paint", "spray", "Spray"], ["Pastel", "pastel", "Pastel"]]) {
+      styleBtns.find((b) => b.textContent === label).dispatchEvent(new P.window.Event("click"));
+      assert.strictEqual(st.style, style);
+      assert.ok(shown(cardOf(card)), card + " card shows");
+      assert.ok(!shown(cardOf("Water and paper")) && !shown(cardOf("Texture")), "other style cards hidden for " + style);
+      for (const other of ["Ink", "Spray", "Pastel"].filter((c) => c !== card)) assert.ok(!shown(cardOf(other)), other + " hidden for " + style);
+    }
+    // pastel paper: swatch button, then a typed hex; a bad hex is refused
+    const pc = cardOf("Pastel");
+    Array.from(pc.querySelectorAll(".segbtn")).find((b) => b.textContent === "Tan").dispatchEvent(new P.window.Event("click"));
+    assert.strictEqual(st.pastel.paper, "#C8AE86");
+    const hex = pc.querySelector("input.hex");
+    hex.value = "336699"; hex.dispatchEvent(new P.window.Event("change"));
+    assert.strictEqual(st.pastel.paper, "#336699");
+    hex.value = "nope"; hex.dispatchEvent(new P.window.Event("change"));
+    assert.strictEqual(st.pastel.paper, "#336699", "bad hex refused");
+    assert.strictEqual(hex.value, "#336699");
+    // Apply paints the pastel and names the group after the style
+    st.out.minLong = 150; P.host.calls.length = 0;
+    D.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
+    for (let i = 0; i < 300 && !/^(Done|Apply failed)/.test(D.querySelector(".status").textContent); i++) await P.settle(50);
+    assert.ok(/^Done/.test(D.querySelector(".status").textContent), D.querySelector(".status").textContent);
+    assert.ok(P.host.calls.some((c) => c[0] === "createLayerGroup" && /Pastel/.test(c[1])), "group named for the style: " + JSON.stringify(P.host.calls.filter((c) => c[0] === "createLayerGroup")));
+  });
+
+  await t("Paint Brew panel matches its golden fingerprint (UI, 18 looks, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), DIR], { encoding: "utf8", env: process.env, timeout: 600000 });
     const got = JSON.parse(outp), gp = path.join(__dirname, "paint-brew.golden.json");
     if (process.env.UPDATE_GOLDEN || !fs.existsSync(gp)) fs.writeFileSync(gp, JSON.stringify(got, null, 1) + "\n");

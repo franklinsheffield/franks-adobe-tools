@@ -7,10 +7,13 @@
   "Colour",
   "Texture",
   "Water and paper",
+  "Ink",
+  "Spray",
+  "Pastel",
   "Focus",
   "Output"
  ],
- "controls": "input:34 select:5 button:14 textarea:0",
+ "controls": "input:51 select:5 button:33 textarea:0",
  "previewDefault": "fc8b769bf60f",
  "presets": [
   "Oil - Studio Oil = fc8b769bf60f",
@@ -21,9 +24,18 @@
   "Watercolour - Splash Pop = 97f85c5ae094",
   "Impressionism - Garden Light = 3c163536aa48",
   "Impressionism - Harbour Morning = cbe5b29ea6da",
-  "Impressionism - Broken Colour = fc1d478d3d03"
+  "Impressionism - Broken Colour = fc1d478d3d03",
+  "Alcohol Ink - Gold Vein = abce7147ecc1",
+  "Alcohol Ink - Ocean Bloom = 394d486bfedd",
+  "Alcohol Ink - Neon Pour = ccc497aed660",
+  "Spray Paint - Street Stencil = 96c822486b6f",
+  "Spray Paint - Soft Fade Mural = a6d728de383b",
+  "Spray Paint - Drip Pop = 2d88257a85bd",
+  "Pastel - Chalk on Grey = 7a372bea48b4",
+  "Pastel - Warm Sketch = 2523768b987e",
+  "Pastel - Oil Pastel = 3c29098f829d"
  ],
- "statusAfterPresets": "Preview 360 x 270 in N ms  |  6 layers",
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  4 layers",
  "applyCalls": [
   "executeAsModal|Frank's Paint Brew: print-ready copy",
   "duplicate|test - Paint Brew print",

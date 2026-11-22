@@ -1,6 +1,7 @@
 "use strict";
 // ======================================================================
-// Paint Brew engine: Oil, Watercolour and Impressionism from a photo.
+// Paint Brew engine: Oil, Watercolour and Impressionism from a photo
+// (Alcohol Ink, Spray Paint and Pastel live in styles2.js).
 // Pure JS, no host calls, deterministic (seeded noise).
 //
 // Shared analysis: colour adjust -> edge-preserving abstraction (Kuwahara
@@ -556,6 +557,10 @@ async function paintWatercolour(src, P, hooks) {
 
 async function render(src, P, hooks) {
   if (P.style === "watercolour") return paintWatercolour(src, P, hooks);
+  if (P.style === "ink" || P.style === "spray" || P.style === "pastel") {
+    const S2 = require("./styles2.js");      // 1.1 styles (required here, not at the top: styles2 uses this file's internals)
+    return P.style === "ink" ? S2.paintInk(src, P, hooks) : P.style === "spray" ? S2.paintSpray(src, P, hooks) : S2.paintPastel(src, P, hooks);
+  }
   return paintStrokes(src, P, hooks, P.style === "impressionism" ? "impressionism" : "oil");
 }
 // preview: paper (if any) under the layers
@@ -585,4 +590,5 @@ function demoImage(w, h) {
   return { w, h, c: 4, data };
 }
 
-module.exports = { render, composite, demoImage, _internal: { vnoise, fbm, abstraction, flowField, rgb2hsv, hsv2rgb, weaveField } };
+module.exports = { render, composite, demoImage, _internal: { vnoise, fbm, abstraction, flowField, rgb2hsv, hsv2rgb, weaveField,
+  opaquePlanes, adjustColour, focusOf, palette, nearest, blur, strokePass, bufToRGBA, overCanvas } };

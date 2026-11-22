@@ -1,10 +1,12 @@
 "use strict";
-// Frank's Paint Brew - panel UI (oil, watercolour and impressionism paintings)
+// Frank's Paint Brew - panel UI (oil, watercolour, impressionism, alcohol ink, spray paint and pastel)
 const Engine = require("./js/engine.js");
-const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
+const { DEFAULTS, PRESETS, SWATCHES, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 const PS = require("./core/ps-io.js");
 const PP = require("./js/paintps.js");
+const M = require("./core/imgmath.js");
+const STYLE_NAMES = { oil: "Oil", watercolour: "Watercolour", impressionism: "Impressionism", ink: "Alcohol Ink", spray: "Spray Paint", pastel: "Pastel" };
 
 let getState = () => DEFAULTS;
 let printFocus = null;          // focus read from the original before a print copy: { w, h, m, W, H }
@@ -13,7 +15,7 @@ const minLong = () => (isWater() ? getState().out.minLongWater : getState().out.
 const sourceLayer = (doc) => { try { return getState().out.source !== "flat" ? Array.from(doc.activeLayers || [])[0] : null; } catch (e) { return null; } };
 
 const panel = createToolPanel({
-  appName: "Frank's Paint Brew", title: "Frank's Paint Brew", sub: "oil  /  watercolour  /  impressionism", panelId: "paintPanel",
+  appName: "Frank's Paint Brew", title: "Frank's Paint Brew", sub: "oil  /  watercolour  /  impressionism  /  ink  /  spray  /  pastel", panelId: "paintPanel",
   presetFile: "presets.json", exportName: "paint-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cancellable: true,
@@ -21,10 +23,10 @@ const panel = createToolPanel({
   // the group says which style was painted, even after the style was changed by hand
   groupLabel: (s, name) => {
     const pr = PRESETS.find((p) => p.name === name);
-    const style = { oil: "Oil", watercolour: "Watercolour", impressionism: "Impressionism" }[s.style] || s.style;
+    const style = STYLE_NAMES[s.style] || s.style;
     return pr && pr.p.style === s.style ? name : style + " (custom)";
   },
-  costFactor: (s) => (s.style === "watercolour" ? 2 : s.style === "oil" ? 4 : 3),
+  costFactor: (s) => ({ watercolour: 2, oil: 4, impressionism: 3, ink: 2, spray: 2, pastel: 3 }[s.style] || 3),
   async prepareApply(doc, setStatus) {
     printFocus = null;
     const s = getState(), info = PS.docInfo(doc);
@@ -53,9 +55,20 @@ const panel = createToolPanel({
     try { const m = await PP.readFocus(doc, s.out.focus, sourceLayer(doc), r); if (m) r.src.focus = m; } catch (e) { console.warn("No focus area found: " + (e && e.message)); }
   },
   cards: (ui, kit) => {
-    const { card, sliderRow, segGroup, selectRow, el, showIf } = ui;
+    const { card, sliderRow, segGroup, selectRow, checkRow, el, bind, row, getPath, setPath, showIf } = ui;
     getState = () => kit.state;
-    const strokes = () => kit.state.style !== "watercolour";
+    const is = (...st) => () => st.includes(kit.state.style);
+    const strokes = is("oil", "impressionism", "pastel");
+    // named swatches plus a typed hex value; never opens Photoshop's colour picker
+    const swatchRow = (label, path, list) => {
+      const hex = el("input", { type: "text", class: "num hex", title: label + " as #RRGGBB" });
+      hex.addEventListener("change", () => {
+        const v = String(hex.value).trim();
+        if (M.isHex(v)) { setPath(kit.state, path, ("#" + v.replace("#", "")).toUpperCase()); kit.touch(); } else hex.value = getPath(kit.state, path);
+      });
+      bind(() => { hex.value = getPath(kit.state, path); });
+      return el("div", {}, [row(label, hex), el("div", { class: "row wrap" }, [segGroup(path, list)])]);
+    };
     const only = (node, fn) => { showIf(node, fn); return node; };
     const brush = card("Brush", [
       sliderRow("Stroke size", "brush.size", 4, 120, 1, " px"),
@@ -79,7 +92,7 @@ const panel = createToolPanel({
       sliderRow("Canvas weave", "texture.canvas", 0, 100, 1, "%"),
       sliderRow("Weave size", "texture.canvasScale", 3, 16, 1, " px"),
       only(sliderRow("Light and colour lift", "texture.lift", 0, 100, 1, "%"), () => kit.state.style === "impressionism")
-    ]), strokes);
+    ]), is("oil", "impressionism"));
     const water = only(card("Water and paper", [
       kit.colourRow("Paper colour", "water.paperColour"),
       sliderRow("Pigment", "water.density", 20, 100, 1, "%"),
@@ -92,13 +105,44 @@ const panel = createToolPanel({
       sliderRow("Splash size", "water.splashSize", 10, 200, 1, " px"),
       sliderRow("Fade to paper", "water.fade", 0, 100, 1, "%")
     ]), isWater);
+    const ink = only(card("Ink", [
+      sliderRow("Flow", "ink.flow", 0, 100, 1, "%"),
+      sliderRow("Rim strength", "ink.rim", 0, 100, 1, "%"),
+      sliderRow("Cells", "ink.cells", 0, 100, 1, "%"),
+      sliderRow("Blend", "ink.blend", 0, 100, 1, "%"),
+      sliderRow("Veins", "ink.veins", 0, 100, 1, "%"),
+      row("Vein metal", segGroup("ink.metal", [{ v: "gold", l: "Gold" }, { v: "silver", l: "Silver" }, { v: "copper", l: "Copper" }]))
+    ], { hint: "Veins 0 turns the metallic lines off." }), is("ink"));
+    const spray = only(card("Spray", [
+      sliderRow("Cans", "spray.cans", 3, 8, 1, " colours"),
+      sliderRow("Overspray", "spray.overspray", 0, 100, 1, "%"),
+      sliderRow("Speckle", "spray.speckle", 0, 100, 1, "%"),
+      sliderRow("Drips", "spray.drips", 0, 100, 1, "%"),
+      sliderRow("Drip length", "spray.dripLength", 0, 100, 1, "%"),
+      sliderRow("Outline", "spray.outline", 0, 100, 1, "%"),
+      row("Wall", segGroup("spray.wall", [{ v: "plain", l: "Plain" }, { v: "concrete", l: "Concrete" }, { v: "brick", l: "Brick" }])),
+      swatchRow("Wall colour", "spray.wallColour", SWATCHES.wall)
+    ], { hint: "Outline 0 turns the dark line off." }), is("spray"));
+    const angle = sliderRow("Hatch angle", "pastel.angle", 0, 180, 5, " deg");
+    showIf(angle, () => kit.state.pastel.hatch === "fixed");
+    const pastel = only(card("Pastel", [
+      swatchRow("Paper", "pastel.paper", SWATCHES.paper),
+      sliderRow("Tooth", "pastel.tooth", 0, 100, 1, "%"),
+      sliderRow("Smudge", "pastel.smudge", 0, 100, 1, "%"),
+      sliderRow("Pressure", "pastel.pressure", 0, 100, 1, "%"),
+      row("Hatch", segGroup("pastel.hatch", [{ v: "follow", l: "Follow image" }, { v: "fixed", l: "Fixed angle" }])),
+      angle,
+      checkRow("Oil pastel", "pastel.oil")
+    ], { hint: "Low pressure lets more paper show through." }), is("pastel"));
     const focus = card("Focus", [
       selectRow("Subject", "out.focus", [{ v: "none", l: "Whole image" }, { v: "selection", l: "Current selection" }, { v: "mask", l: "Source layer mask" }]),
       sliderRow("Edge softness", "focus.falloff", 0, 400, 5, " px"),
       sliderRow("Detail outside", "focus.outside", 0, 100, 1, "%")
     ], { hint: "Mark the subject: smaller strokes and more detail there, looser paint and more paper around it." });
-    return [card("Style", [segGroup("style", [{ v: "oil", l: "Oil" }, { v: "watercolour", l: "Watercolour" }, { v: "impressionism", l: "Impressionism" }])]),
-      brush, colour, texture, water, focus];
+    return [card("Style", [
+      segGroup("style", [{ v: "oil", l: "Oil" }, { v: "watercolour", l: "Watercolour" }, { v: "impressionism", l: "Impressionism" }]),
+      segGroup("style", [{ v: "ink", l: "Alcohol Ink" }, { v: "spray", l: "Spray Paint" }, { v: "pastel", l: "Pastel" }])
+    ]), brush, colour, texture, water, ink, spray, pastel, focus];
   },
   outputRows: (ui, kit) => {
     const { checkRow, sliderRow, selectRow, showIf } = ui;
