@@ -26,7 +26,30 @@ module.exports = async function (t) {
       assert.strictEqual(shown.length, 1, tool + " exactly one tab pane shown");
       assert.ok(D.querySelectorAll(".dial .dialrow .dialval").length === D.querySelectorAll(".dial").length, tool + " every knob has its value box beside it");
       // Library is in A, Output/Export in D
-      assert.ok(D.querySelector("#sec-look").nextSibling.querySelector(".ctitle").textContent === "Library", tool + " Library first in A");
+      const first = D.querySelector("#sec-look").nextSibling.querySelector(".ctitle").textContent;
+      assert.strictEqual(first, tool === "font-brew" ? "Library" : "Look browser", tool + " first card in Look");
+      assert.ok(Array.from(D.querySelectorAll(".jumpbtn")).every((b) => !/^[ABCD] /.test(b.textContent)), tool + " no A-D letters: " + Array.from(D.querySelectorAll(".jumpbtn")).map((b) => b.textContent));
+      assert.ok(Array.from(D.querySelectorAll(".secl")).every((n) => n.textContent === ""), tool + " section bars without letters");
+    }
+  });
+
+  await t("Look browser: top of every pixel tool, renders every built-in look, click loads it", async () => {
+    for (const tool of TOOLS.filter((x) => x !== "font-brew")) {
+      const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
+      const D = P.document, T = P.mod._test;
+      await ready(P);
+      const lb = T.lookBrowser;
+      assert.ok(lb, tool + " has a look browser");
+      lb._test.setShown(true);
+      for (let i = 0; i < 400 && lb._test.cells.some((c) => !c.img.src); i++) await P.settle(50);
+      const cells = Array.from(D.querySelectorAll(".lookgrid .look"));
+      assert.ok(cells.length >= 4, tool + " looks: " + cells.length);
+      assert.ok(lb._test.cells.every((c) => /^data:image\/png/.test(c.img.src)), tool + " every look rendered");
+      const pick = cells[cells.length - 1], name = pick.querySelector(".lookname").textContent;
+      pick.dispatchEvent(new P.window.Event("click"));
+      assert.ok(pick.classList.contains("on"), tool + " picked look lights");
+      await P.settle(300); await ready(P);
+      assert.ok(cells.filter((c) => c.classList.contains("on")).length === 1, tool + " one look lit (" + name + ")");
     }
   });
 

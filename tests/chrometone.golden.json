@@ -1,6 +1,7 @@
 {
  "cards": [
   "Preview",
+  "Look browser",
   "Library",
   "Effects",
   "Surface",
@@ -15,7 +16,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:139 select:11 button:84 textarea:0",
+ "controls": "input:139 select:11 button:85 textarea:0",
  "previewDefault": "df52dd25b629",
  "presets": [
   "Chrome - Liquid Silver = df52dd25b629",

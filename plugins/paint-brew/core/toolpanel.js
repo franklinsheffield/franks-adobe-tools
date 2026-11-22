@@ -52,7 +52,7 @@ function createToolPanel(cfg) {
   let state = PRESETS[0] ? merge(DEFAULTS, PRESETS[0].p) : clone(DEFAULTS);   // start on the first preset so its name matches
   const hasDeck = cfg.colour !== false && !cfg.previewRender && !cfg.outputCard;
   if (hasDeck) state.deck = Colour.normalize(PRESETS[0] && PRESETS[0].p.deck);
-  let lastSrc = null, deck = null;
+  let lastSrc = null, lastScale = 1, deck = null, lookBrowser = null;
   const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));   // states set from outside may lack it
   let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
   let auto = true, built = false, confirmArmed = false, lib = null, layout = null;
@@ -151,7 +151,9 @@ function createToolPanel(cfg) {
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
     const res = await Engine.render(src, engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
-    if (hasDeck) { lastSrc = src; applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
+    lastSrc = src; lastScale = scale;
+    if (lookBrowser) lookBrowser.sourceChanged();
+    if (hasDeck) { applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
     sizePreview(res.w, res.h);
     if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
@@ -275,6 +277,82 @@ function createToolPanel(cfg) {
     setStatus("Loaded #" + m[1] + ". The old group is hidden (not deleted) and the original is showing. Change anything, then Apply.");
   }
 
+  // ---- look browser (Frank, 2026-11-22: from Dithers Brew, at the top of every plugin):
+  // every built-in look rendered small on the current preview source; click one to load it
+  function halfSrc(src) {
+    const c = src.c || 4, w2 = Math.max(1, src.w >> 1), h2 = Math.max(1, src.h >> 1), out = new Uint8Array(w2 * h2 * c);
+    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) for (let k = 0; k < c; k++) {
+      const a = ((2 * y) * src.w + 2 * x) * c + k, b = a + src.w * c;
+      out[(y * w2 + x) * c + k] = (src.data[a] + src.data[a + c] + src.data[b] + src.data[b + c] + 2) >> 2;
+    }
+    return { w: w2, h: h2, c, data: out };
+  }
+  function createLookBrowser() {
+    const KEY = "brew.looks." + (cfg.appName || cfg.title);
+    const grid = el("div", { class: "lookgrid" });
+    const btn = el("button", { class: "btn small", text: "Show looks" });
+    let shown = false, sig = "", runId = 0, cells = [];
+    function setShown(v) {
+      shown = v;
+      grid.style.display = v ? "" : "none";
+      btn.textContent = v ? "Hide looks" : "Show looks";
+      try { localStorage.setItem(KEY, v ? "1" : "0"); } catch (e) { /* no storage */ }
+      if (v) render();
+    }
+    btn.addEventListener("click", () => setShown(!shown));
+    function build() {
+      clear(grid);
+      cells = PRESETS.map((pr) => {
+        const img = el("img", { class: "lookimg" });
+        const c = el("div", { class: "look", title: (pr.cat ? pr.cat + " - " : "") + pr.name + ": click to load" }, [img, el("div", { class: "lookname", text: pr.name })]);
+        c.addEventListener("click", () => { applyPatch(pr.p, pr.name); mark(); });
+        grid.appendChild(c);
+        return { pr, img, node: c };
+      });
+    }
+    function mark() { cells.forEach((o) => { if (o.pr.name === presetName) o.node.classList.add("on"); else o.node.classList.remove("on"); }); }
+    async function render() {
+      const src0 = lastSrc || Engine.demoImage(160, 120);
+      const s2 = (lastSrc ? docCache.name + docCache.w + "x" + docCache.h : "demo") + "|" + src0.w + "x" + src0.h + "|" + (state.view && state.view.bg);
+      if (!cells.length) build();
+      mark();
+      if (s2 === sig) return;
+      sig = s2;
+      const id = ++runId;
+      let src = src0;
+      const plain = Object.keys(src0).every((k) => k === "w" || k === "h" || k === "c" || k === "data");   // extra inputs (masks) stay full size
+      while (plain && src.w > 200) src = halfSrc(src);
+      const scale = (lastSrc ? lastScale : 1) * src.w / src0.w;
+      for (const o of cells) {
+        if (id !== runId || !shown) return;
+        try {
+          const P = merge(DEFAULTS, o.pr.p);
+          P.out = clone(state.out); P.view = clone(state.view);
+          (Array.isArray(o.pr.p._off) ? o.pr.p._off : []).forEach((t) => { const m = bypassMaps[t]; if (m) Object.keys(m).forEach((k) => { try { ui.setPath(P, k, m[k]); } catch (e) { /* not in state */ } }); });
+          Object.assign(P, { scale, fullH: docCache.h || src.h, fullW: docCache.w || src.w });
+          const res = await Engine.render(src, P, { yield: tick });
+          const rgb = Engine.composite(res, { type: state.view.bg }, src);
+          if (hasDeck && o.pr.p.deck) applyDeckPreview(rgb, res, Colour.normalize(o.pr.p.deck), Engine, src, state.view.bg, cfg.colourBase);
+          o.img.src = PNG.dataURL(rgb, res.w, res.h, 3);
+        } catch (e) { /* leave this one blank */ }
+        await tick();
+      }
+    }
+    const node = card("Look browser", [
+      el("div", { class: "row" }, [btn, el("span", { class: "hint", text: "Every built-in look, rendered on your image. Click one to load it." })]),
+      grid
+    ], { section: "look" });
+    let want = false;
+    try { want = localStorage.getItem(KEY) === "1"; } catch (e) { /* no storage */ }
+    grid.style.display = "none";
+    return {
+      card: node,
+      sourceChanged() { if (shown) render(); else mark(); },
+      start() { if (want) setShown(true); },
+      _test: { setShown, get cells() { return cells; } }
+    };
+  }
+
   // ---- presets
   function applyPatch(p, name) {
     const keepOut = clone(state.out), keepView = clone(state.view), keepColour = state.deck;
@@ -373,7 +451,8 @@ function createToolPanel(cfg) {
       secs.push({ letter, name, id, node: bar });
     };
     refs.sections = by;
-    addSection("A", "LOOK", "look", [lib.card].concat(by.look));
+    if (!cfg.previewRender && PRESETS.length) lookBrowser = createLookBrowser();
+    addSection("A", "LOOK", "look", (lookBrowser ? [lookBrowser.card] : []).concat([lib.card]).concat(by.look));
     const ctl = by.controls.length > 1 && ui.brand ? [ui.tabs(by.controls, { title: "Effects", isOn: fxOn, setOn: setFxOn })] : by.controls;
     addSection("B", "CONTROLS", "controls", ctl);
     refs.colourSection = { cards: by.colour };
@@ -405,6 +484,7 @@ function createToolPanel(cfg) {
     if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
     root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
     refreshAll();
+    if (lookBrowser) lookBrowser.start();
   }
 
   async function init() {
@@ -424,7 +504,7 @@ function createToolPanel(cfg) {
   } catch (e) { /* older hosts: fall through to direct init */ }
   setTimeout(() => { init(); }, 0);
 
-  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch } };
+  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, get lookBrowser() { return lookBrowser; } } };
 }
 
 module.exports = { createToolPanel };

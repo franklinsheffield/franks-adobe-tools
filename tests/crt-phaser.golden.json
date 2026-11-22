@@ -1,6 +1,7 @@
 {
  "cards": [
   "Preview",
+  "Look browser",
   "Library",
   "Effects",
   "Phase FX",
@@ -16,7 +17,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:74 select:8 button:61 textarea:0",
+ "controls": "input:74 select:8 button:62 textarea:0",
  "previewDefault": "ba98f44d8e73",
  "presets": [
   "Arcade - Arcade Cabinet = ba98f44d8e73",

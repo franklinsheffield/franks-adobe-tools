@@ -1,6 +1,7 @@
 {
  "cards": [
   "Preview",
+  "Look browser",
   "Library",
   "Style",
   "Effects",
@@ -15,7 +16,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:73 select:7 button:59 textarea:0",
+ "controls": "input:73 select:7 button:60 textarea:0",
  "previewDefault": "fc8b769bf60f",
  "presets": [
   "Oil - Studio Oil = fc8b769bf60f",

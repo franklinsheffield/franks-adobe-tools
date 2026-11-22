@@ -1,6 +1,7 @@
 {
  "cards": [
   "Preview",
+  "Look browser",
   "Library",
   "Style",
   "Effects",
@@ -11,7 +12,7 @@
   "Colour Deck",
   "Output"
  ],
- "controls": "input:53 select:6 button:49 textarea:0",
+ "controls": "input:53 select:6 button:50 textarea:0",
  "previewDefault": "9c5143177f52",
  "presets": [
   "Map - Topo Map = 9c5143177f52",

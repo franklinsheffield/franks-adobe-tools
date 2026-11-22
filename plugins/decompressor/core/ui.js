@@ -242,9 +242,9 @@ function createUI(opts) {
   function foldAll(open) { allCards.forEach((i) => { if (i.node.parentNode && !i.inTabs) i.setOpen(open, true); }); }
   function anyOpen() { return allCards.some((i) => !i.inTabs && i.node.parentNode && i.isOpen()); }
 
-  // section bar: "A  LOOK" with a thin rule after it
+  // section bar: a glow marker, "LOOK" and a thin rule (no A-D letters, Frank 2026-11-22)
   function section(letter, name, id) {
-    const n = el("div", { class: "section", id: "sec-" + id }, [el("span", { class: "secl", text: letter }), el("span", { class: "secn", text: name }), el("div", { class: "secrule" })]);
+    const n = el("div", { class: "section", id: "sec-" + id }, [el("span", { class: "secl" }), el("span", { class: "secn", text: name }), el("div", { class: "secrule" })]);
     n.__section = id;
     return n;
   }
@@ -255,7 +255,7 @@ function createUI(opts) {
     const btns = [];
     const row = el("div", { class: "jump" });
     sections.forEach((sec) => {
-      const b = el("button", { class: "jumpbtn", text: sec.letter + " " + sec.name, title: "Jump to " + sec.name.toLowerCase() });
+      const b = el("button", { class: "jumpbtn", text: sec.name, title: "Jump to " + sec.name.toLowerCase() });
       b.addEventListener("click", () => {
         const top = sec.node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
         scroller.scrollTop = Math.max(0, scroller.scrollTop + top - 2);

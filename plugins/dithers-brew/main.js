@@ -505,14 +505,11 @@ function build(root) {
   ]));
 
   root = layout.scroller;   // everything below scrolls under the pinned preview
-  // organized panel (Frank, 2026-11-22): A Look / B Controls (tabs) / C Colour / D Output
+  // organized panel (Frank, 2026-11-22): Look (look browser first) / Controls (tabs) / Colour / Output
   const secs = [];
   const sec = (letter, name, id) => { const n = ui.section(letter, name, id); root.appendChild(n); secs.push({ letter, name, id, node: n }); };
   sec("A", "LOOK", "look");
 
-  // ---- presets (shared Library card)
-  lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
-  root.appendChild(lib.card);
   const lookList = el("div", { class: "lookgrid" });
   lookList.style.display = "none";
   const lookBtn = el("button", { class: "btn small", text: "Show looks" });
@@ -526,6 +523,10 @@ function build(root) {
     el("div", { class: "row" }, [lookBtn, el("span", { class: "hint", text: "Every built-in look, rendered on your image. Click one to load it." })]),
     lookList
   ]));
+
+  // ---- presets (shared Library card), under the look browser
+  lib = createLibrary(ui, { builtins: PRESETS, applyPatch, getSaveable: stateForSave, io: PS, setStatus });
+  root.appendChild(lib.card);
 
   // ---- effect type toggles
   root.appendChild(card("Effect type", [
