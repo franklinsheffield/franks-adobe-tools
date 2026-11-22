@@ -17,6 +17,32 @@ if "%TOOL%"=="crt-phaser" (
   set PIPL=!SRC!\ae\crt_pipl.r
   set ENG=!SRC!\crt_engine.cpp
 )
+if "%TOOL%"=="mobglow" (
+  set NAME=Franks Mobglow Brew
+  set SRC=%HERE%\effects\mobglow
+  set MAIN=!SRC!\ae\mob_ae.cpp
+  set PIPL=!SRC!\ae\mob_pipl.r
+  set ENG=!SRC!\mob_engine.cpp
+)
+if "%TOOL%"=="depthtone" (
+  set NAME=Franks Depthtone Brew
+  set SRC=%HERE%\effects\depthtone
+  set MAIN=!SRC!\ae\dt_ae.cpp
+  set PIPL=!SRC!\ae\dt_pipl.r
+  set ENG=!SRC!\dt_engine.cpp
+)
+if "%TOOL%"=="decompressor" (
+  set NAME=Franks Decompressor Brew
+  set SRC=%HERE%\effects\decompressor
+  set MAIN=!SRC!\ae\dc_ae.cpp
+  set PIPL=!SRC!\ae\dc_pipl.r
+  set ENG=!SRC!\dc_engine.cpp
+)
+if "%TOOL%"=="all" (
+  for %%T in (crt-phaser mobglow depthtone decompressor) do call "%~f0" "%SDK%" %%T || exit /b 1
+  exit /b 0
+)
+if not defined NAME ( echo unknown tool %TOOL% & exit /b 1 )
 set OUT=%HERE%\dist\win
 set OBJ=%TEMP%\brew-%TOOL%
 if not exist "%OUT%" mkdir "%OUT%"
