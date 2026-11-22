@@ -110,8 +110,15 @@ async function mapSelected() {
   refs.mapBtn.setAttribute("disabled", "true");
   try {
     const info = H.docInfo(doc);
-    if (project.doc !== info.name) { project.glyphs = {}; project.layers = {}; project.unassigned = []; project.current = null; }
-    project.doc = info.name;
+    // A different document (even one with the same name) starts a fresh map.
+    if (project.doc !== info.name || project.docId !== info.id) { project.glyphs = {}; project.layers = {}; project.unassigned = []; project.current = null; }
+    project.doc = info.name; project.docId = info.id;
+    // Forget glyphs whose layer has been deleted since the last Map.
+    const alive = H.layerIds(doc);
+    if (alive) {
+      for (const c of Object.keys(project.glyphs)) if (!alive.has(project.glyphs[c].layerId)) { delete project.layers[project.glyphs[c].layerId]; delete project.glyphs[c]; }
+      project.unassigned = project.unassigned.filter((u) => alive.has(u.id));
+    }
     const keep = saved[info.name] || { assign: {}, adj: {} };
     project.custom = keep.custom || project.custom || "";
     guides = H.horizontalGuides(doc);

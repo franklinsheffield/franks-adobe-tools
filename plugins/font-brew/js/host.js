@@ -32,6 +32,11 @@ function selectedLayers(doc) {
   return leaves(sel, []).filter((l) => { if (seen.has(l.id)) return false; seen.add(l.id); return true; });
 }
 
+// Ids of every layer in the document (groups opened up), or null if unreadable.
+function layerIds(doc) {
+  try { return new Set(leaves(Array.from(doc.layers || []), []).map((l) => l.id)); } catch (e) { return null; }
+}
+
 // Layer pixels, longest side capped at maxSize (scale = image px per doc px).
 async function readLayer(doc, layer, maxSize) {
   const r = await PS.readSource(doc, { kind: "layer", layer }, { kind: "whole", size: maxSize || 1000 });
@@ -90,4 +95,4 @@ async function saveProjects(all) {
   await f.write(JSON.stringify(all));
 }
 
-module.exports = { hasVectorMask, activeDoc: PS.activeDoc, docInfo: PS.docInfo, selectedLayers, readLayer, readVectorMask, horizontalGuides, saveFont, loadProjects, saveProjects };
+module.exports = { hasVectorMask, layerIds, activeDoc: PS.activeDoc, docInfo: PS.docInfo, selectedLayers, readLayer, readVectorMask, horizontalGuides, saveFont, loadProjects, saveProjects };

@@ -65,6 +65,7 @@ function fakeLetters(host, chars, opts) {
   }
   const group = { id: 499, name: "Letters", kind: "group", layers };
   doc.activeLayers = opts.flat ? layers : [group];
+  doc.layers = [group];
   doc.guides = [];
   host.photoshop.imaging.getPixels = async (o) => {
     host.calls.push(["getPixels", o.layerID]);
@@ -210,6 +211,19 @@ module.exports = async function (t) {
       assert.ok(r.areas.I > 0 && r.areas.O > 0);
       if (r.ots !== null) assert.strictEqual(r.ots, true);
     }
+    // a deleted layer drops out on the next Map
+    const grp = P.host.doc.layers[0];
+    grp.layers = grp.layers.filter((l) => l.name !== "B");
+    mapBtn.dispatchEvent(new P.window.Event("click"));
+    await P.settle(900);
+    assert.ok(!api.project.glyphs.B && api.project.glyphs.A, "B gone, A kept");
+    // another document with the same name (closed and remade) starts fresh, not with the old layers
+    P.host.doc.id = 77;
+    grp.layers = grp.layers.filter((l) => l.name === "H");
+    mapBtn.dispatchEvent(new P.window.Event("click"));
+    await P.settle(900);
+    assert.deepStrictEqual(Object.keys(api.project.glyphs), ["H"]);
+    assert.strictEqual(api.project.unassigned.length, 0);
   });
 
   await t("Font Brew panel: 8 presets give 8 different previews", async () => {
