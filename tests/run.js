@@ -99,11 +99,78 @@ async function t(name, fn) {
     assert.strictEqual(a1.layers.length, 2); assert.strictEqual(a1.layers[1].blend, "SCREEN");
   });
 
-  await t("Chrometone panel matches its golden fingerprint (UI, 8 presets, Apply)", () => {
+  await t("Chrometone panel matches its golden fingerprint (UI, 24 presets, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins/chrometone")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "chrometone.golden.json"), "utf8"));
     assert.deepStrictEqual(got, want);
     assert.strictEqual(new Set(got.presets.map((p) => p.split(" = ")[1])).size, got.presets.length, "every preset looks different");
+  });
+
+  await t("Chrometone 1.1: a saved 1.0 look loads with every new effect off and renders like 1.0", async () => {
+    const E = require("../plugins/chrometone/js/engine.js"), { DEFAULTS, merge, PRESETS } = require("../plugins/chrometone/js/state.js");
+    const old = { look: { stops: [{ p: 0, c: "#000000" }, { p: 100, c: "#FFFFFF" }], invert: false }, tone: { blur: 2, contrast: 140, mid: 50 }, bands: { count: 3, phase: 0, shape: "sine", soft: 50, mix: 60 }, relief: { depth: 45, angle: 135, gloss: 40, spec: 60, soft: 3 }, finish: { grain: 0, bloom: 20, mix: 0 } };
+    const P = merge(DEFAULTS, old); P.scale = 1;
+    assert.strictEqual(P.surface.from, "brightness"); assert.strictEqual(P.extrude.on, false);
+    assert.ok(P.glow.modules.length === 4 && P.glow.modules.every((m) => !m.on));
+    const res = await E.render(E.demoImage(80, 60), P);
+    assert.deepStrictEqual(res.layers.map((l) => l.name), ["Chrome colour", "Chrome shine"]);
+    assert.strictEqual(PRESETS.length, 24); assert.strictEqual(PRESETS.filter((p) => p.cat === "Retro chrome").length, 16);
+    const short = merge(DEFAULTS, { glow: { modules: [{ on: true, type: "halo" }] } });
+    assert.strictEqual(short.glow.modules.length, 4); assert.strictEqual(short.glow.modules[0].size, DEFAULTS.glow.modules[0].size);
+  });
+
+  await t("Chrometone 1.1: outline bevel, extrusion, glow stack and shine on a transparent shape", async () => {
+    const E = require("../plugins/chrometone/js/engine.js"), { DEFAULTS, merge } = require("../plugins/chrometone/js/state.js");
+    const w = 120, h = 120, data = new Uint8Array(w * h * 4);
+    for (let y = 30; y < 70; y++) for (let x = 30; x < 90; x++) { const i = (y * w + x) * 4; data.fill(255, i, i + 4); }
+    const src = { w, h, c: 4, data };
+    const P = merge(DEFAULTS, { surface: { from: "auto", bevel: 8, reflect: "horizon" }, extrude: { on: true, depth: 20, angle: 270, shadow: 50 },
+      glow: { modules: [{ on: true, type: "halo", size: 6, strength: 80 }, { on: true, type: "neon", size: 3, strength: 60 }] },
+      shine: { glints: { on: true, count: 2, size: 12 }, sweep: { on: true }, rim: { on: true }, arcs: { on: true, count: 2 } } });
+    P.scale = 1;
+    const res = await E.render(src, P);
+    assert.deepStrictEqual(res.layers.map((l) => l.name + ":" + l.blend), ["Glow:SCREEN", "Long shadow:MULTIPLY", "Extrusion:NORMAL", "Chrome colour:NORMAL", "Chrome shine:SCREEN", "Sparkle:SCREEN"]);
+    const L = (name) => res.layers.find((l) => l.name === name).rgba, a = (rgba, x, y) => rgba[(y * w + x) * 4 + 3];
+    const col = L("Chrome colour"), ex = L("Extrusion"), gl = L("Glow");
+    assert.strictEqual(a(col, 60, 50), 255); assert.strictEqual(a(col, 10, 10), 0, "colour layer follows the outline");
+    assert.ok(a(ex, 60, 80) > 200 && a(ex, 60, 95) === 0 && a(ex, 60, 25) === 0, "wall runs 20 px straight down only");
+    assert.ok(a(gl, 60, 25) > 0 && a(gl, 5, 5) < a(gl, 60, 25), "glow surrounds the shape and fades");
+    const lum = (x, y) => col[(y * w + x) * 4] + col[(y * w + x) * 4 + 1] + col[(y * w + x) * 4 + 2];
+    assert.notStrictEqual(lum(60, 31), lum(60, 50), "bevel edge differs from the flat face");
+    const again = await E.render(src, P);
+    for (let k = 0; k < res.layers.length; k++) assert.deepStrictEqual(Buffer.from(again.layers[k].rgba), Buffer.from(res.layers[k].rgba), "deterministic " + res.layers[k].name);
+    const Pm = merge(P, { out: { layers: "merged" } }); Pm.scale = 1;
+    const m = await E.render(src, Pm);
+    assert.strictEqual(m.layers.length, 1); assert.ok(m.layers[0].rgba[(80 * w + 60) * 4 + 3] > 200, "merged keeps the wall");
+    // half-size preview: the wall reaches proportionally (scale-aware)
+    const hw = 60, hd = new Uint8Array(hw * hw * 4);
+    for (let y = 15; y < 35; y++) for (let x = 15; x < 45; x++) { const i = (y * hw + x) * 4; hd.fill(255, i, i + 4); }
+    const Ph = merge(P, {}); Ph.scale = 0.5;
+    const hr = await E.render({ w: hw, h: hw, c: 4, data: hd }, Ph);
+    const hex = hr.layers.find((l) => l.name === "Extrusion").rgba;
+    assert.ok(hex[(44 * hw + 30) * 4 + 3] > 200 && hex[(47 * hw + 30) * 4 + 3] === 0, "preview wall is 10 px at 50%");
+  });
+
+  await t("Chrometone 1.1: Auto keys out a black background; layer sources widen for glow and extrusion", async () => {
+    const E = require("../plugins/chrometone/js/engine.js"), { DEFAULTS, merge, PRESETS } = require("../plugins/chrometone/js/state.js");
+    const w = 100, h = 60, data = new Uint8Array(w * h * 4);
+    for (let i = 0; i < w * h; i++) { data[i * 4 + 3] = 255; data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = 6; }
+    for (let y = 20; y < 40; y++) for (let x = 20; x < 80; x++) data.fill(240, (y * w + x) * 4, (y * w + x) * 4 + 3);
+    const P = merge(DEFAULTS, PRESETS.find((p) => p.name === "Glacier Rim").p); P.scale = 1;
+    const res = await E.render({ w, h, c: 4, data }, P);
+    const col = res.layers.find((l) => l.name === "Chrome colour").rgba;
+    assert.strictEqual(col[(5 * w + 5) * 4 + 3], 0); assert.strictEqual(col[(30 * w + 50) * 4 + 3], 255);
+    const { loadPanel } = require("./harness.js");
+    const Pn = await loadPanel(path.join(ROOT, "plugins/chrometone"), { withDoc: false });
+    const ch = Pn.mod._chrome;
+    assert.strictEqual(ch.reach(merge(DEFAULTS, {})), 0);
+    assert.strictEqual(ch.reach(merge(DEFAULTS, { extrude: { on: true, depth: 100 } })), 115);
+    Pn.mod._test.state = merge(DEFAULTS, { extrude: { on: true, depth: 40 } });
+    const r = { info: { w: 1000, h: 800 }, origin: { left: 20, top: 300 }, scale: 0.5, src: { w: 100, h: 50, c: 4, data: new Uint8Array(100 * 50 * 4).fill(255) } };
+    await ch.prepareSource(null, r);
+    assert.deepStrictEqual(r.origin, { left: 0, top: 254 });
+    assert.strictEqual(r.src.w, 133); assert.strictEqual(r.src.h, 96);
+    assert.strictEqual(r.src.data[((23) * 133 + 10) * 4 + 3], 255); assert.strictEqual(r.src.data[3], 0);
   });
 
   await t("colour swatches open the host colour picker and apply the picked colour (every tool with colour settings)", async () => {
