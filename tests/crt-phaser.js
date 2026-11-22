@@ -7,10 +7,10 @@ const ROOT = path.resolve(__dirname, "..");
 module.exports = async function (t) {
   const E = require("../plugins/crt-phaser/js/engine.js"), S = require("../plugins/crt-phaser/js/state.js");
 
-  await t("crt-phaser 1.1: 15 Phase looks, 5 per mode, all different", async () => {
+  await t("crt-phaser 1.1: 20 Phase looks, 5 per mode (incl. Flux Dots), all different", async () => {
     const ph = S.PRESETS.filter((p) => p.p.phase && p.p.phase.mode);
-    assert.strictEqual(ph.length, 15);
-    for (const m of ["waveform", "linear", "flux"]) assert.strictEqual(ph.filter((p) => p.p.phase.mode === m).length, 5, m);
+    assert.strictEqual(ph.length, 20);
+    for (const m of ["waveform", "linear", "flux", "fluxdots"]) assert.strictEqual(ph.filter((p) => p.p.phase.mode === m).length, 5, m);
     assert.strictEqual(S.DEFAULTS.phase.mode, "off", "Phase off by default keeps 1.0 looks");
     const src = E.demoImage(80, 60), seen = new Set();
     for (const pr of ph) {
@@ -18,7 +18,7 @@ module.exports = async function (t) {
       const r = await E.render(src, P);
       seen.add(Buffer.from(r.layers[0].rgba).toString("base64"));
     }
-    assert.strictEqual(seen.size, 15);
+    assert.strictEqual(seen.size, 20);
   });
 
   await t("crt-phaser 1.1: editable stack has Base, Lines, Glow, Dot Grid, Flare with the right blends", async () => {

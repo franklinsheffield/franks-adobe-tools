@@ -9,6 +9,7 @@
 //   Waveform: F = y/sp - bend * Ls          beam lines pushed up by brightness
 //   Linear:   F = t/sp  (t across the angle) straight raster, width swells with brightness
 //   Flux:     F = y/sp * (1-k) + levels * Ld + warp * flow   contour swirls around shapes
+//   Flux Dots: the Flux field, drawn as round phosphor dots on a staggered grid
 const M = require("../core/imgmath.js");
 const { clamp } = M;
 
@@ -65,7 +66,7 @@ async function renderPhase(src, P, hooks) {
   const F = new Float32Array(n), bend = Q.amp / 100 * 10;
   const ang = (mode === "linear" ? Q.angle : 0) * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
   let flow = null;
-  if (mode === "flux" || Q.warp > 0) flow = flowNoise(w, h, sp * 6, Q.seed | 0);
+  if (mode === "flux" || mode === "fluxdots" || Q.warp > 0) flow = flowNoise(w, h, sp * 6, Q.seed | 0);
   const warp = Q.warp / 100 * 1.5, levels = 2 + Q.amp / 100 * 10;
   for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
     if (mode === "waveform") F[i] = y / sp - bend * (0.7 * Ls[i] + 0.3 * Ld[i]) + (flow ? warp * 0.4 * flow[i] : 0);
@@ -78,6 +79,7 @@ async function renderPhase(src, P, hooks) {
   const I = new Float32Array(n), core = new Float32Array(n);
   const wBase = clamp(Q.width / 100, 0.05, 1) * sp * 0.32, dots = Q.dots / 100;
   const pitch = Math.max(2, sp * 0.55);
+  const dp3 = Math.max(2.5, sp * (0.45 + 0.5 * Q.dots / 100));      // Flux Dots grid pitch (Dot size dial)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
@@ -85,6 +87,22 @@ async function renderPhase(src, P, hooks) {
       const gy = (F[Math.min(y + 1, h - 1) * w + x] - F[Math.max(y - 1, 0) * w + x]) / ((y > 0 && y < h - 1) ? 2 : 1);
       const gm = Math.max(Math.hypot(gx, gy), 0.15 / sp);
       const fr = F[i] - Math.round(F[i]), d = Math.abs(fr) / gm;          // pixels to the nearest line
+      if (mode === "fluxdots") {
+        // light the grid dot whose centre sits on a contour; dot size follows line strength there
+        const row = Math.floor(y / dp3), ox = (row & 1) ? dp3 / 2 : 0;
+        const cxp = Math.floor((x + ox) / dp3) * dp3 + dp3 / 2 - ox, cyp = row * dp3 + dp3 / 2;
+        const ci = Math.min(h - 1, Math.max(0, cyp | 0)) * w + Math.min(w - 1, Math.max(0, cxp | 0));
+        const vc = Math.pow(clamp((Ld[ci] - th) / (1 - th), 0, 1), 1.25);
+        if (vc <= 0) continue;
+        const fc = F[ci] - Math.round(F[ci]), dc = Math.abs(fc) / gm;
+        const sg = Math.max(1.1, wBase * (1.3 + 1.1 * vc));
+        const pc = Math.exp(-(dc * dc) / (2 * sg * sg)), amt = Math.min(1, Math.pow(vc, 0.7) * (0.82 * pc + 0.18));   // faint dots fill the subject between contours
+        if (amt < 0.04) continue;
+        const rad = dp3 * 0.55 * Math.sqrt(amt), disc = clamp(rad - Math.hypot(x - cxp, y - cyp) + 0.5, 0, 1);
+        if (disc <= 0) continue;
+        I[i] = Math.min(1, amt * 1.6) * disc; core[i] = disc * Math.pow(pc, 3) * vc * vc;
+        continue;
+      }
       const v = Math.pow(clamp((Ld[i] - th) / (1 - th), 0, 1), 1.25);
       if (v <= 0) continue;
       const sig = Math.max(0.55, wBase * (mode === "linear" ? (0.25 + 1.1 * v) : (0.45 + 0.55 * v)));

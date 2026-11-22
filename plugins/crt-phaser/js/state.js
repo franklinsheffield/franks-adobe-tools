@@ -63,6 +63,12 @@ const PRESETS = [
   { cat: "Flux", name: "Cyan Flux", p: phaseLook({ mode: "flux", lines: 190, amp: 45, warp: 20, detail: 50, width: 40, threshold: 10, dots: 50, glow: 60, fringe: 45, flare: 60, debris: 25, grain: 20, ramp: RAMPS.ice, base: "#01040A" }, { mask: { strength: 55 } }) },
   { cat: "Flux", name: "Contour Map", p: phaseLook({ mode: "flux", lines: 90, amp: 80, warp: 5, detail: 30, width: 30, threshold: 4, dots: 0, glow: 25, fringe: 0, grain: 10, ramp: RAMPS.white }, { mask: { type: "none" }, scan: { strength: 0 } }) },
   { cat: "Flux", name: "Plasma Bend", p: phaseLook({ mode: "flux", lines: 150, amp: 60, warp: 70, detail: 45, width: 50, threshold: 6, dots: 25, glow: 80, fringe: 40, grain: 30, ramp: RAMPS.plasma, base: "#07020A" }) },
-  { cat: "Flux", name: "Bent Signal", p: phaseLook({ mode: "flux", lines: 170, amp: 50, warp: 30, detail: 60, width: 45, threshold: 10, dots: 45, glow: 60, fringe: 35, debris: 80, grain: 25, ramp: RAMPS.teal, base: "#010605" }) }
+  { cat: "Flux", name: "Bent Signal", p: phaseLook({ mode: "flux", lines: 170, amp: 50, warp: 30, detail: 60, width: 45, threshold: 10, dots: 45, glow: 60, fringe: 35, debris: 80, grain: 25, ramp: RAMPS.teal, base: "#010605" }) },
+  // ---- Flux Dots (Frank, 2026-11-22): the Flux contours as round phosphor dots
+  { cat: "Flux Dots", name: "Dot Flux Ice", p: phaseLook({ mode: "fluxdots", lines: 170, amp: 50, warp: 20, detail: 50, width: 55, threshold: 8, dots: 30, glow: 65, fringe: 40, debris: 25, grain: 20, ramp: RAMPS.ice, base: "#01040A" }, { mask: { type: "none" } }) },
+  { cat: "Flux Dots", name: "Dot Flux Ember", p: phaseLook({ mode: "fluxdots", lines: 150, amp: 55, warp: 15, detail: 55, width: 60, threshold: 6, dots: 40, glow: 75, fringe: 35, grain: 30, ramp: RAMPS.ember, base: "#0E0503" }, { mask: { type: "none" } }) },
+  { cat: "Flux Dots", name: "Dot Flux Matrix", p: phaseLook({ mode: "fluxdots", lines: 190, amp: 45, warp: 30, detail: 60, width: 50, threshold: 10, dots: 20, glow: 55, fringe: 25, debris: 30, grain: 20, ramp: RAMPS.scope }, { mask: { type: "none" } }) },
+  { cat: "Flux Dots", name: "Dot Flux Plasma", p: phaseLook({ mode: "fluxdots", lines: 140, amp: 60, warp: 60, detail: 45, width: 60, threshold: 6, dots: 45, glow: 80, fringe: 45, flare: 40, grain: 25, ramp: RAMPS.plasma, base: "#07020A" }, { mask: { type: "none" } }) },
+  { cat: "Flux Dots", name: "Dot Flux Heat", p: phaseLook({ mode: "fluxdots", lines: 160, amp: 55, warp: 15, detail: 55, width: 55, threshold: 6, dots: 35, glow: 70, fringe: 30, grain: 25, ramp: RAMPS.heat }, { mask: { type: "none" } }) }
 ];
 module.exports = { DEFAULTS, PRESETS, RAMPS, clone, merge };

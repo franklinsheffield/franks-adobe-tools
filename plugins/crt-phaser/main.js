@@ -22,7 +22,8 @@ const panel = createToolPanel({
         { v: "off", l: "Off", t: "Classic tube render (1.0 looks)" },
         { v: "waveform", l: "Waveform", t: "Beam lines pushed up by brightness" },
         { v: "linear", l: "Linear", t: "Straight raster, line width follows brightness" },
-        { v: "flux", l: "Flux", t: "Contour swirls that flow around shapes" }
+        { v: "flux", l: "Flux", t: "Contour swirls that flow around shapes" },
+        { v: "fluxdots", l: "Flux Dots", t: "Flux contours drawn as round phosphor dots" }
       ]),
       only(el("div", {}, [
         sliderRow("Lines (on the full image)", "phase.lines", 20, 600, 5, ""),
@@ -30,10 +31,11 @@ const panel = createToolPanel({
         only(sliderRow("Smoothness", "phase.smooth", 0, 100, 1, "%"), (s) => s.phase.mode === "waveform"),
         only(sliderRow("Angle", "phase.angle", 0, 90, 1, " deg"), (s) => s.phase.mode === "linear"),
         only(sliderRow("Flow warp", "phase.warp", 0, 100, 1, "%"), (s) => s.phase.mode !== "linear"),
-        only(sliderRow("Detail", "phase.detail", 0, 100, 1, "%"), (s) => s.phase.mode === "flux"),
+        only(sliderRow("Detail", "phase.detail", 0, 100, 1, "%"), (s) => /^flux/.test(s.phase.mode)),
         sliderRow("Beam width", "phase.width", 5, 100, 1, "%"),
         sliderRow("Threshold", "phase.threshold", 0, 90, 1, "%"),
-        sliderRow("Dot break-up", "phase.dots", 0, 100, 1, "%")
+        only(sliderRow("Dot break-up", "phase.dots", 0, 100, 1, "%"), (s) => s.phase.mode !== "fluxdots"),
+        only(sliderRow("Dot size", "phase.dots", 0, 100, 1, "%"), (s) => s.phase.mode === "fluxdots")
       ]), phaseOn)
     ]);
     const lookCard = only(card("Phase look", [
