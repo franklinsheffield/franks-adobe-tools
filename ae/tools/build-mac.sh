@@ -18,7 +18,7 @@ rm -rf "$B"; mkdir -p "$B/Contents/MacOS" "$B/Contents/Resources"
 INC=(-I"$EX/Headers" -I"$EX/Headers/SP" -I"$EX/Headers/Win" -I"$EX/Util" -I"$EX/Resources" -I"$HERE/core" -I"$HERE/$SRC" -I"$HERE/$SRC/ae")
 for ARCH in arm64 x86_64; do
   clang++ -std=c++17 -O3 -arch $ARCH -mmacosx-version-min=11.0 -fvisibility=hidden -bundle \
-    -DAE_OS_MAC=1 "${INC[@]}" "$HERE/$SRC/$MAIN" "$HERE/$SRC/$ENG" \
+    "${INC[@]}" "$HERE/$SRC/$MAIN" "$HERE/$SRC/$ENG" \
     -framework CoreFoundation -o "$TMP/bin-$ARCH"
 done
 lipo -create "$TMP/bin-arm64" "$TMP/bin-x86_64" -output "$B/Contents/MacOS/$NAME"
