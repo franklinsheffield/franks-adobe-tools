@@ -294,6 +294,12 @@ function weaveField(w, h, k, period, seed) {
   }
   return F;
 }
+// see-through pixels count as white (paper / bare canvas), so transparent PNGs paint cleanly
+function opaquePlanes(src) {
+  const pl = M.planes(src), n = src.w * src.h, A = pl.A;
+  for (let i = 0; i < n; i++) if (A[i] < 255) { const t = A[i] / 255; pl.R[i] = pl.R[i] * t + 255 * (1 - t); pl.G[i] = pl.G[i] * t + 255 * (1 - t); pl.B[i] = pl.B[i] * t + 255 * (1 - t); }
+  return pl;
+}
 function focusOf(src, n) { return src.focus && src.focus.length === n ? src.focus : null; }
 
 // ---------------------------------------------------------------- styles
@@ -305,7 +311,7 @@ async function paintStrokes(src, P, hooks, kind) {
   const k = Math.max(0.02, sc * fullLong / REF);
   const B = P.brush, C = P.colour, T = P.texture, seed = (P.seed | 0) + 1;
   prog("Analysing the photo...");
-  const { R, G, B: Bl } = M.planes(src);
+  const { R, G, B: Bl } = opaquePlanes(src);
   adjustColour(R, G, Bl, n, C.saturation, C.warmth);
   const rnd = M.rng(seed * 977);
   const pal = C.palette > 1 ? palette(R, G, Bl, n, C.palette, rnd) : null;
@@ -406,7 +412,7 @@ async function paintWatercolour(src, P, hooks) {
   const k = Math.max(0.02, sc * fullLong / REF);
   const B = P.brush, C = P.colour, W = P.water, seed = (P.seed | 0) + 1;
   prog("Analysing the photo...");
-  const { R, G, B: Bl } = M.planes(src);
+  const { R, G, B: Bl } = opaquePlanes(src);
   adjustColour(R, G, Bl, n, C.saturation, C.warmth);
   const rad0 = Math.max(0.8, B.size * k), simp = 0.25 + C.simplify / 100;
   let [aR, aG, aB] = abstraction(R, G, Bl, w, h, rad0 * 0.5 * simp);

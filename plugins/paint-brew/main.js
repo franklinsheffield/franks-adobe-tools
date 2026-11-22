@@ -17,6 +17,12 @@ const panel = createToolPanel({
   presetFile: "presets.json", exportName: "paint-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cancellable: true,
+  // the group says which style was painted, even after the style was changed by hand
+  groupLabel: (s, name) => {
+    const pr = PRESETS.find((p) => p.name === name);
+    const style = { oil: "Oil", watercolour: "Watercolour", impressionism: "Impressionism" }[s.style] || s.style;
+    return pr && pr.p.style === s.style ? name : style + " (custom)";
+  },
   costFactor: (s) => (s.style === "watercolour" ? 2 : s.style === "oil" ? 4 : 3),
   async prepareApply(doc, setStatus) {
     printFocus = null;
@@ -103,4 +109,5 @@ const panel = createToolPanel({
     return [checkRow("Print-ready copy for small photos", "out.printCopy"), a, b, ppi];
   }
 });
+if (typeof window !== "undefined") window.__paintBrew_test = panel._test;   // for scripted smoke tests in the UXP Debug console
 if (typeof module !== "undefined" && module && module.exports) module.exports = panel;

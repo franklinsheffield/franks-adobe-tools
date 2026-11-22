@@ -12,6 +12,7 @@
 //     viewDefaultBg, footer,
 //     prepareSource(doc, r, phase)  optional: add extra inputs to r.src (e.g. a focus mask); phase "preview" | "apply"
 //     prepareApply(doc, setStatus)  optional: returns the document to write into (e.g. a print-ready copy)
+//     groupLabel(state, presetName) optional: the look's name in the layer group
 //     cancellable                   optional: Apply turns into Cancel while working; the engine gets hooks.progress })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 //
@@ -169,7 +170,7 @@ function createToolPanel(cfg) {
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
         const warnings = await PS.writeResult(doc, res, {
           origin: r.origin,
-          groupName: base + cfg.title + " - " + presetName,
+          groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName),
           hideSource: state.out.hide,
           hideLayers: t.kind === "layer" ? [t.layer] : null
         });
