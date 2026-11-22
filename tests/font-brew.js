@@ -83,6 +83,8 @@ function fakeLetters(host, chars, opts) {
     if (c._obj === "get") {
       host.calls.push(["batchPlay", "get"]);
       const lid = (c._target.find((t) => t._ref === "layer") || {})._id;
+      if (c._target[0]._property === "hasVectorMask") { host.calls.push(["hasVectorMask", lid]); return [{ hasVectorMask: !!(host.vectorMasks && host.vectorMasks[lid]) }]; }
+      if (!(host.vectorMasks && host.vectorMasks[lid])) throw new Error("path asked for on a layer without a vector mask (Photoshop would quit)");
       return [host.vectorMasks && host.vectorMasks[lid] ? host.vectorMasks[lid] : {}];
     }
     return bp(cmds, o);

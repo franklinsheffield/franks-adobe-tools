@@ -39,7 +39,16 @@ async function readLayer(doc, layer, maxSize) {
 }
 
 // Shape layers: the vector mask path, or null. Read-only batchPlay "get".
+// Photoshop 28 quits when asked for a path that doesn't exist, so the layer's
+// hasVectorMask flag is checked first and only shape layers are asked.
+async function hasVectorMask(doc, layer) {
+  try {
+    const r = await action.batchPlay([{ _obj: "get", _target: [{ _property: "hasVectorMask" }, { _ref: "layer", _id: layer.id }, { _ref: "document", _id: doc.id }], _options: { dialogOptions: "dontDisplay" } }], {});
+    return !!(r && r[0] && r[0].hasVectorMask === true);
+  } catch (e) { return false; }
+}
 async function readVectorMask(doc, layer) {
+  if (!(await hasVectorMask(doc, layer))) return null;
   const targets = [
     [{ _ref: "path", _enum: "path", _value: "vectorMask" }, { _ref: "layer", _id: layer.id }, { _ref: "document", _id: doc.id }],
     [{ _property: "pathContents" }, { _ref: "path", _enum: "path", _value: "vectorMask" }, { _ref: "layer", _id: layer.id }, { _ref: "document", _id: doc.id }]
@@ -81,4 +90,4 @@ async function saveProjects(all) {
   await f.write(JSON.stringify(all));
 }
 
-module.exports = { activeDoc: PS.activeDoc, docInfo: PS.docInfo, selectedLayers, readLayer, readVectorMask, horizontalGuides, saveFont, loadProjects, saveProjects };
+module.exports = { hasVectorMask, activeDoc: PS.activeDoc, docInfo: PS.docInfo, selectedLayers, readLayer, readVectorMask, horizontalGuides, saveFont, loadProjects, saveProjects };
