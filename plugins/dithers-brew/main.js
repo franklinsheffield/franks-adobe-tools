@@ -13,6 +13,8 @@ const { createUI } = require("./core/ui.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
+const Colour = require("./core/colour.js");
+const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = require("./core/colourdeck.js");
 
 PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
@@ -25,6 +27,15 @@ let confirmArmed = false;
 let lib = null;
 let quickNext = false;     // next preview is a fast half-size frame (slider being dragged)
 let lastScale = 1, lastPpi = 300;
+let deck = null;
+// Colour Deck state (shared suite colour control); states set from outside may lack it
+const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));
+// ink layers recoloured, or one Colour Deck layer read from the print on white paper
+function withDeck(res) {
+  const C = D();
+  if (!Colour.active(C)) return res;
+  return C.inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
+}
 
 const refs = {};
 const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame() });
@@ -347,7 +358,9 @@ async function previewFrame(src, scale, ppi, quick) {
   const dtf = state.fx.dtf;
   const bgType = state.view.bg;
   const bg = (dtf.on && dtf.view === "garment") ? { type: "garment", color: Engine.hexToRgb(dtf.garment) } : { type: bgType };
-  const rgb = Engine.composite(res, bg);
+  let rgb;
+  if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
+  else { rgb = Engine.composite(res, bg); applyDeckPreview(rgb, res, D(), Engine, null, bgType, "white"); }
   refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
   const avail = (refs.previewBox.clientWidth || 320) - 4;
   const maxH = layout ? layout.previewMaxHeight() : Infinity;   // pinned preview leaves room for controls
@@ -396,10 +409,11 @@ async function applyNow() {
       setStatus("Reading pixels " + (done + 1) + "/" + targets.length + "...");
       const r = await PS.readSource(doc, t, { kind: "full" });
       const P = Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 });
-      const res = await Engine.render(r.src, P, {
+      const res0 = await Engine.render(r.src, P, {
         yield: tick,
         progress: (i, n, name) => setStatus("Rendering " + (done + 1) + "/" + targets.length + ": " + name + " (" + (i + 1) + "/" + n + ")...")
       });
+      const res = withDeck(res0);
       setStatus("Writing layers...");
       const label = state.engine === "halftone" ? Engine.SCREENS.find((s) => s.id === state.algo.halftone).name
         : state.engine === "dither" ? Engine.DITHERS.find((s) => s.id === state.algo.dither).name
@@ -430,9 +444,10 @@ async function applyNow() {
 
 // ---------------------------------------------------------------- presets
 function applyPatch(p) {
-  const keepOut = clone(state.out), keepView = clone(state.view);
+  const keepOut = clone(state.out), keepView = clone(state.view), keepDeck = state.deck;
   state = merge(DEFAULTS, p);
   state.out = keepOut; state.view = keepView;
+  state.deck = p && p.deck ? Colour.normalize(p.deck) : keepDeck;   // looks without colour keep the current deck
   // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
   if (typeof state.fx.pre.invert !== "number") state.fx.pre.invert = state.fx.pre.invert ? 100 : 0;
   preSig = preKey();
@@ -711,6 +726,8 @@ function build(root) {
   refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
+  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true });
+  root.appendChild(deck.card);
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),
@@ -733,6 +750,7 @@ async function init() {
   built = true;
   build(document.getElementById("app"));
   await lib.load();
+  if (deck) await deck.load();
   schedulePreview(100);
 }
 

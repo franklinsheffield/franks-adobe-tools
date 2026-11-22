@@ -315,6 +315,7 @@ async function t(name, fn) {
   await require("./paint-brew.js")(t);
   await require("./font-brew.js")(t);
   await require("./crt-phaser.js")(t);
+  await require("./colour-deck.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);

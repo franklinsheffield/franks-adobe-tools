@@ -99,6 +99,7 @@ function composite(res, bg, src) {
   }
   const stack = (res.overSource && src ? [{ rgba: null, blend: "NORMAL", src: true }] : []).concat(res.layers);
   for (const L of stack) {
+    if (L.hidden) continue;
     const f = BLENDS[L.blend] || BLENDS.NORMAL;
     const c = src ? (src.c || 4) : 4;
     for (let i = 0; i < n; i++) {

@@ -11,9 +11,10 @@
   "Glow",
   "Shine FX",
   "Finish",
+  "Colour Deck",
   "Output"
  ],
- "controls": "input:117 select:9 button:58 textarea:0",
+ "controls": "input:141 select:11 button:79 textarea:0",
  "previewDefault": "df52dd25b629",
  "presets": [
   "Chrome - Liquid Silver = df52dd25b629",

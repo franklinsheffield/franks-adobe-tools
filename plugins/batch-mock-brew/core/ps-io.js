@@ -165,7 +165,7 @@ async function writeResult(doc, res, opts) {
       // the source is hidden at the end: Photoshop 2027 ignores hiding a
       // document's only layer, so it must happen after our layers exist
       const sourceLayers = opts.hideSource ? (opts.hideLayers && opts.hideLayers.length ? opts.hideLayers : Array.from(doc.layers)) : [];
-      const made = [];
+      const made = [], toHide = [];   // layers flagged hidden (Colour Deck "only") are hidden after the group exists
       const paper = res.paper || (opts.paperLayer ? [255, 255, 255] : null);
       if (paper) {
         const pl = await doc.createPixelLayer({ name: "Paper " + toHex(paper), opacity: 100, fillNeutral: false });
@@ -173,6 +173,7 @@ async function writeResult(doc, res, opts) {
         for (let i = 0, p = 0; i < n; i++, p += 4) { buf[p] = paper[0]; buf[p + 1] = paper[1]; buf[p + 2] = paper[2]; buf[p + 3] = 255; }
         await putLayerPixels(doc, pl, buf, res.w, res.h, 4, opts.origin);
         made.push(pl);
+        if (res.paperHidden) toHide.push(pl);
       }
       for (const L of res.layers) {
         const pl = await doc.createPixelLayer({ name: L.name, opacity: L.opacity == null ? 100 : L.opacity, fillNeutral: false });
@@ -187,6 +188,7 @@ async function writeResult(doc, res, opts) {
         }
         try { pl.blendMode = constants.BlendMode[blend] || constants.BlendMode.NORMAL; } catch (e) { /* ignore */ }
         made.push(pl);
+        if (L.hidden) toHide.push(pl);
       }
       let group = null;
       try {
@@ -195,6 +197,7 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { L.visible = false; } catch (e) { /* locked or group */ } }
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }

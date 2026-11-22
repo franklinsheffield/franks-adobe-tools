@@ -11,9 +11,10 @@
   "Spray",
   "Pastel",
   "Focus",
+  "Colour Deck",
   "Output"
  ],
- "controls": "input:51 select:5 button:33 textarea:0",
+ "controls": "input:75 select:7 button:54 textarea:0",
  "previewDefault": "fc8b769bf60f",
  "presets": [
   "Oil - Studio Oil = fc8b769bf60f",

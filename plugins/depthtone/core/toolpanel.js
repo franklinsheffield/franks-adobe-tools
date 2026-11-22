@@ -18,7 +18,9 @@
 //                                   saved; a Re-edit button loads them back from the selected group, and the
 //                                   next Apply hides that old group (non-destructive re-runs)
 //     code, glow                    the tool's rack code ("PB-09") and neon hex for the knobs
-//     brand                         "console" (default, the suite look since 2026-11-22) or "none" })
+//     brand                         "console" (default, the suite look since 2026-11-22) or "none"
+//     colour                        false = no Colour Deck card (export-mode tools never get one)
+//     colourBase                    background the Colour Deck reads tones from: "black" (default) or "white" })
 // Engine must export render(src, P, hooks) and composite(res, bg) (+ demoImage).
 //
 // Export mode (tools that write a file instead of layers, e.g. Font Brew):
@@ -32,6 +34,8 @@ const { createUI, getPath } = require("./ui.js");
 const { createPreviewLoop, tick } = require("./preview.js");
 const { splitLayout } = require("./layout.js");
 const { createLibrary } = require("./library.js");
+const Colour = require("./colour.js");
+const { createColourDeck, applyDeckPreview, addDeckLayer } = require("./colourdeck.js");
 
 function createToolPanel(cfg) {
   const { Engine, DEFAULTS, PRESETS, merge, clone } = cfg;
@@ -40,6 +44,10 @@ function createToolPanel(cfg) {
   PS.configure({ appName: cfg.appName, presetFile: cfg.presetFile || "presets.json", exportName: cfg.exportName || "looks.json" });
 
   let state = PRESETS[0] ? merge(DEFAULTS, PRESETS[0].p) : clone(DEFAULTS);   // start on the first preset so its name matches
+  const hasDeck = cfg.colour !== false && !cfg.previewRender && !cfg.outputCard;
+  if (hasDeck) state.deck = Colour.normalize(PRESETS[0] && PRESETS[0].p.deck);
+  let lastSrc = null, deck = null;
+  const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));   // states set from outside may lack it
   let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
   let auto = true, built = false, confirmArmed = false, lib = null, layout = null;
   let presetName = PRESETS[0] ? PRESETS[0].name : "Custom";
@@ -127,6 +135,7 @@ function createToolPanel(cfg) {
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
     const res = await Engine.render(src, Object.assign({}, state, { scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
+    if (hasDeck) { lastSrc = src; applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
     refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
     sizePreview(res.w, res.h);
     if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
@@ -176,7 +185,8 @@ function createToolPanel(cfg) {
         const r = await PS.readSource(doc, t, { kind: "full" });
         if (cfg.prepareSource) await cfg.prepareSource(doc, r, "apply");
         setStatus("Rendering " + (done + 1) + "/" + runTargets.length + "...");
-        const res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
+        let res = await Engine.render(r.src, Object.assign({}, state, { scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
+        if (hasDeck && Colour.active(D())) { setStatus("Colour Deck..."); res = addDeckLayer(res, D(), Engine, r.src, cfg.colourBase); }
         setStatus("Writing layers...");
         const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
         const tag = cfg.reEdit ? " #" + newTag() : "";
@@ -237,9 +247,10 @@ function createToolPanel(cfg) {
 
   // ---- presets
   function applyPatch(p, name) {
-    const keepOut = clone(state.out), keepView = clone(state.view);
+    const keepOut = clone(state.out), keepView = clone(state.view), keepColour = state.deck;
     state = merge(DEFAULTS, p);
     state.out = keepOut; state.view = keepView;
+    if (hasDeck) state.deck = p && p.deck ? Colour.normalize(p.deck) : keepColour;   // looks without colour keep the current deck
     presetName = name || "Custom";
     touch();
   }
@@ -296,6 +307,10 @@ function createToolPanel(cfg) {
     });
     root.appendChild(lib.card);
     cfg.cards(ui, kit).forEach((c) => root.appendChild(c));
+    if (hasDeck) {
+      deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus });
+      root.appendChild(deck.card);
+    }
     if (cfg.outputCard) {
       root.appendChild(cfg.outputCard(ui, kit));
       root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
@@ -324,6 +339,7 @@ function createToolPanel(cfg) {
     built = true;
     build(document.getElementById("app"));
     await lib.load();
+    if (deck) await deck.load();
     schedulePreview(100);
   }
 

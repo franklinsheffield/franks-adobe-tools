@@ -6,9 +6,10 @@
   "Tint",
   "Halos",
   "Finish",
+  "Colour Deck",
   "Output"
  ],
- "controls": "input:17 select:3 button:17 textarea:0",
+ "controls": "input:41 select:5 button:38 textarea:0",
  "previewDefault": "27e37fe099d9",
  "presets": [
   "Neon - Neon Sign = 27e37fe099d9",

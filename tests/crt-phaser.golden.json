@@ -12,9 +12,10 @@
   "Tube",
   "Signal",
   "Finish",
+  "Colour Deck",
   "Output"
  ],
- "controls": "input:52 select:6 button:31 textarea:0",
+ "controls": "input:76 select:8 button:52 textarea:0",
  "previewDefault": "ba98f44d8e73",
  "presets": [
   "Arcade - Arcade Cabinet = ba98f44d8e73",
@@ -56,7 +57,7 @@
   "putPixels|100|4|480000",
   "createLayerGroup|Frank's CRT Phaser Brew - Arcade Cabinet #TAG|1",
   "resumeHistory",
-  "fileWrite|690"
+  "fileWrite|1145"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
 }
