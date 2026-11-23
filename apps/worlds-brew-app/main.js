@@ -74,7 +74,9 @@ function menu() {
       { label: "Redo", accelerator: "CmdOrCtrl+Shift+Z", click: send("redo") },
       { type: "separator" },
       { role: "cut" }, { role: "copy" }, { role: "paste" },
-      { label: "Duplicate", accelerator: "CmdOrCtrl+D", click: send("duplicate") }
+      { label: "Duplicate", accelerator: "CmdOrCtrl+D", click: send("duplicate") },
+      { type: "separator" },
+      { label: "Command Palette...", accelerator: "CmdOrCtrl+K", click: send("palette") }
     ] },
     { label: "View", submenu: [
       { label: "Frame All", click: send("frameAll") },

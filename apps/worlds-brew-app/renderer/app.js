@@ -2,6 +2,7 @@
 // Library (scenes, drag-and-drop assets, object list) | live GPU viewport + control pads | Inspector tabs,
 // with a render bar along the bottom. The scene is the same plain data the Photoshop plugin uses.
 import { Viewport, snapshot } from "./view3d.js";
+import { axisGizmo, palette } from "./ux.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -15,7 +16,7 @@ const { createUI, el, clear } = req("../engine/ui.js");
 const { pressGlow } = req("../engine/layout.js");
 const SC = req("./scaletools.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.6.0";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.6.1";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -56,6 +57,7 @@ function changed(kind) {
   else if (refs.insp) refs.insp.refreshAll();
   refreshObjList();
   vp.sync(st.scene, hasSel() ? st.sel : null, st.view.gizmo);
+  if (refs.axes) refs.axes.update();
   updateHint();
 }
 function select(o) { st.sel = o || NONE; lastStretch = hasSel() ? { sx: st.sel.sx || 1, sy: st.sel.sy || 1, sz: st.sel.sz || 1 } : null; changed("sel"); }
@@ -108,11 +110,26 @@ function placeFrameGuide() {
   g.style.left = (W - w) / 2 + "px"; g.style.top = (H - h) / 2 + "px"; g.style.width = w + "px"; g.style.height = h + "px";
 }
 
+// live key hints in the status bar: they follow the tool, the selection and what the pointer is over
+let hover = "none";   // none | obj | empty | gizmo
+function keyHints() {
+  const g = st.view.gizmo, sel = hasSel(), K = (k, t) => [k, t];
+  if (drag && drag.kind === "move") return [K("Shift", "lift instead"), K("Esc", "deselect after")];
+  if (drag && (drag.kind === "orbit" || drag.kind === "pan")) return [K("Drag", drag.kind === "orbit" ? "orbit" : "pan"), K("Wheel", "zoom")];
+  if (g === "sculpt") return [K("Drag", "sculpt terrain"), K("Alt-drag", "orbit"), K("Right-drag", "pan"), K("W", "back to move")];
+  const out = [];
+  if (hover === "obj") out.push(K("Drag", g === "move" ? "move" : "select"), K("Shift-drag", "up / down"), K("Double-click", "frame it"));
+  else if (hover === "empty") out.push(K("Drag", "orbit"), K("Right-drag", "pan"), K("Wheel", "zoom"), K("Click", "deselect"));
+  if (sel) out.push(K("Arrows", "nudge"), K("[ ]", "spin"), K("- =", "size"), K("Del", "remove"), K("F", "frame"));
+  else out.push(K("Tab", "select next"), K("A", "frame all"), K("H", "home view"));
+  out.push(K("W E R B", "tools"), K(MOD + "K", "commands"));
+  return out;
+}
+const MOD = /Mac/.test(navigator.platform) ? "\u2318" : "Ctrl+";
 function updateHint() {
-  const h = document.getElementById("vphint"); if (!h) return;
-  const g = st.view.gizmo;
-  h.textContent = g === "sculpt" ? "SCULPT: drag on a terrain.  Alt-drag orbits, right-drag pans, wheel zooms."
-    : "Drag an object to move it (Shift = up/down).  Drag empty space to orbit, right-drag or Shift-drag to pan, wheel to zoom.  W move  E rotate  R scale  B sculpt";
+  const h = refs.keys; if (!h) return;
+  const sig = JSON.stringify(keyHints()); if (h.__sig === sig) return; h.__sig = sig; clear(h);
+  keyHints().forEach(([k, t]) => { h.appendChild(el("span", { class: "kh" }, [el("kbd", { text: k }), el("span", { text: t })])); });
 }
 
 // ---- pointer: select, drag-move, orbit / pan / zoom, sculpt
@@ -139,6 +156,7 @@ canvas.addEventListener("pointerdown", (e) => {
   drag = Object.assign(base, { kind: "orbit", clickPick: hit ? hit.obj : null });
 });
 canvas.addEventListener("pointermove", (e) => {
+  if (!drag) { const h = vp.overGizmo() ? "gizmo" : vp.pick(e.clientX, e.clientY), hv = h === "gizmo" ? "gizmo" : h && h.obj.type !== "terrain" ? "obj" : "empty"; if (hv !== hover) { hover = hv; updateHint(); } }
   if (!drag) { if (st.view.gizmo === "sculpt") { const t = terrainUnder(e.clientX, e.clientY); vp.setRing(t ? t.p : null, t ? st.view.bsize * 2 * t.o.s : 1); } return; }
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; if (!drag.moved) return;
   const sc = st.scene;
@@ -153,7 +171,7 @@ canvas.addEventListener("pointermove", (e) => {
 });
 function endDrag(e) {
   if (!drag) return;
-  const d = drag; drag = null;
+  const d = drag; drag = null; updateHint();
   try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ok */ }
   if (d.kind === "orbit" && !d.moved) select(d.clickPick);      // a click: select the terrain under it, or nothing
   else if ((d.kind === "move" || d.kind === "lift" || d.kind === "sculpt") && d.moved) { commit(); changed("val"); }
@@ -164,7 +182,7 @@ canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
 canvas.addEventListener("dblclick", (e) => { const h = vp.pick(e.clientX, e.clientY); if (h) { select(h.obj); CT.frame(st.scene, h.obj); changed("view"); } });
 canvas.addEventListener("wheel", (e) => { e.preventDefault(); if (st.view.camLock) return; CT.camZoom(st.scene.cam, Math.pow(1.0015, e.deltaY)); changed("view"); }, { passive: false });
-canvas.addEventListener("pointerleave", () => vp.setRing(null));
+canvas.addEventListener("pointerleave", () => { vp.setRing(null); hover = "none"; updateHint(); });
 
 function terrainUnder(cx, cy, only) {
   const ray = vp.rayAt(cx, cy); let best = null, bd = Infinity;
@@ -487,19 +505,66 @@ function buildInspector(ui) {
 function buildBar(ui) {
   const bar = document.getElementById("bar"), { segGroup } = ui;
   refs.status = el("div", { class: "status", text: "Starting..." });
+  refs.keys = el("div", { class: "keyhints", title: "Keys for what you're doing now" });
   refs.meter = ui.brand.meter(12);
   refs.go = el("button", { class: "apply", text: "Render PNG", title: "Full-quality ray-traced render (Cmd+R)" }); refs.go.addEventListener("click", () => renderNow());
   const num = (path, title) => { const i = el("input", { type: "text", class: "num", title }); ui.bind(() => { i.value = String(st.out[path]); }); i.addEventListener("change", () => { const v = Math.round(parseFloat(i.value)); if (v >= 16 && v <= 8000) st.out[path] = v; ui.refreshAll(); placeFrameGuide(); }); return i; };
   const size = el("select", {}); [["", "Size..."], ["1920x1080", "HD 1920 x 1080"], ["3840x2160", "4K 3840 x 2160"], ["1080x1080", "Square 1080"], ["1080x1920", "Story 1080 x 1920"], ["2400x1600", "Print 3:2"], ["view", "Match the view"]].forEach(([v, l]) => size.appendChild(el("option", { value: v, text: l })));
   size.addEventListener("change", () => { const v = size.value; if (v === "view") { st.out.h = 1080; st.out.w = Math.round(1080 * vpwrap.clientWidth / vpwrap.clientHeight); } else if (v) { const [w, h] = v.split("x").map(Number); st.out.w = w; st.out.h = h; } size.value = ""; ui.refreshAll(); placeFrameGuide(); });
-  bar.appendChild(refs.status);
+  bar.appendChild(refs.status); bar.appendChild(refs.keys);
   bar.appendChild(el("span", { class: "lbl3", text: "OUTPUT" })); bar.appendChild(num("w", "Width (px)")); bar.appendChild(el("span", { text: "x" })); bar.appendChild(num("h", "Height (px)")); bar.appendChild(size);
   bar.appendChild(segGroup("out.quality", [{ v: "draft", l: "Draft", t: "One ray per pixel, fast" }, { v: "final", l: "Final", t: "Four rays per pixel, smooth edges" }]));
   bar.appendChild(refs.meter.node); bar.appendChild(refs.go);
 }
 
+// ---- command palette (Cmd/Ctrl+K): every action in one searchable list
+function commands() {
+  const C = [], add = (group, label, run, keys, top) => C.push({ group, label, run, keys, top });
+  const M = MOD, sc = () => st.scene, view = (fn) => () => { fn(); changed("view"); };
+  add("File", "New scene", () => newScene(), M + "N", true); add("File", "Open scene...", () => openScene(), M + "O", true);
+  add("File", "Save", () => save(false), M + "S", true); add("File", "Save as...", () => save(true), M + "Shift+S");
+  add("File", "Import model...", () => importModel(), M + "I", true); add("Render", "Render PNG", () => renderNow(), M + "R", true);
+  add("Render", "Draft quality", () => { st.out.quality = "draft"; changed("val"); }); add("Render", "Final quality", () => { st.out.quality = "final"; changed("val"); });
+  [["HD 1920 x 1080", 1920, 1080], ["4K 3840 x 2160", 3840, 2160], ["Square 1080", 1080, 1080], ["Story 1080 x 1920", 1080, 1920], ["Print 3:2", 2400, 1600]].forEach(([l, w, h]) => add("Render size", l, () => { st.out.w = w; st.out.h = h; uis.forEach((u) => u.refreshAll()); placeFrameGuide(); }));
+  add("Edit", "Undo", () => undo(), M + "Z", true); add("Edit", "Redo", () => redo(), M + "Shift+Z");
+  if (hasSel()) {
+    add("Edit", "Duplicate selected", () => { select(ED.duplicate(sc(), st.sel)); commit(); }, M + "D", true);
+    add("Edit", "Delete selected", () => { ED.remove(sc(), st.sel); select(null); commit(); }, "Del");
+    add("Edit", "Drop selected to ground", () => { CT.rest(sc(), st.sel); edited(); });
+    add("Edit", "Deselect", () => select(null), "Esc");
+    if (st.sel.type !== "light") {
+      SC.REAL.forEach(([l, m]) => add("Size", l + " height (" + m + " m)", () => { SC.setHeight(sc(), st.sel, m, st.view.stick); edited(); }));
+      [0.5, 2].forEach((k) => add("Size", "Scale x" + k, () => { SC.mul(sc(), st.sel, k, st.view.stick); edited(); }));
+      add("Size", "Reset stretch", () => { SC.resetStretch(sc(), st.sel, st.view.stick); edited(); });
+      Object.keys(S.MATS).forEach((m) => add("Material", m, () => { st.sel.mat = m; st.sel.refl = null; edited(); }));
+      if (st.sel.type !== "terrain") add("Material", "Load surface image...", () => loadTexture());
+    }
+  }
+  [["move", "Move", "W"], ["rotate", "Rotate", "E"], ["scale", "Scale", "R"], ["sculpt", "Sculpt", "B"]].forEach(([g, l, k]) => add("Tool", l, () => { st.view.gizmo = g; changed("view"); }, k));
+  CT.VIEWS.forEach(([v, l]) => add("View", l + " view", view(() => CT.camView(sc().cam, v))));
+  add("View", "Frame all", view(() => CT.frame(sc())), "A", true); add("View", "Frame selected", view(() => { if (hasSel()) CT.frame(sc(), st.sel); }), "F");
+  add("View", "Home view", view(() => { if (homeCam) CT.camSet(sc().cam, homeCam); }), "H");
+  add("View", st.view.camLock ? "Unlock camera" : "Lock camera", () => { st.view.camLock = !st.view.camLock; changed("val"); });
+  if (refs.tabs && refs.tabs.__tabs) refs.tabs.__tabs.items.forEach((it) => add("Inspector", it.title + " tab", () => refs.tabs.__tabs.choose(it.title)));
+  Object.keys(S.SKIES).forEach((k) => add("Sky", k, () => { sc().sky = k; edited(); }));
+  Object.keys(WATER_LOOKS).forEach((k) => add("Water", k + " water", () => { Object.assign(sc(), WATER_LOOKS[k]); sc().water = true; edited(); }));
+  add("Water", sc().water ? "Remove water" : "Add water", () => { sc().water = !sc().water; edited(); });
+  add("Light", "Add light", () => { select(ED.addObject(sc(), "light")); commit(); });
+  SHAPES.forEach(([k, l]) => add("Add shape", l, () => addThing("shape:" + k)));
+  PK.PACKS.forEach((pk) => PK.assets(pk).forEach((a) => add("Add " + pk, a.name, () => addThing("asset:" + a.id))));
+  const load = (pk, name) => async () => { if (!(await askSave())) return; loadScene(pk === "Classic" ? S.loadPreset(name) : PK.loadMap(pk, name)); setStatus("Loaded " + name); };
+  Object.keys(S.PRESETS).forEach((n) => add("Scene", n, load("Classic", n)));
+  PK.PACKS.forEach((pk) => Object.keys(PK.MAPS[pk]).forEach((n) => add(pk + " map", n, load(pk, n))));
+  sc().objs.forEach((o) => add("Select", ED.label(o).toLowerCase().replace(/^\w/, (c) => c.toUpperCase()), () => { select(o); }));
+  return C;
+}
+let lastPalKey = 0;   // the menu accelerator and the key handler can both see Cmd+K: act once
+const pal = palette(commands, (c) => setStatus(c.group + ": " + c.label));
+
 // ---- keys
 function onKey(e) {
+  if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === "k") { e.preventDefault(); lastPalKey = Date.now(); pal.toggle(); return; }
+  if (pal.isOpen) return;
   const t = e.target && e.target.tagName; if (/INPUT|SELECT|TEXTAREA/.test(t || "")) return;
   if (uis.some((u) => u.brand && u.brand.selectedDial) && /Arrow/.test(e.key)) return;   // a selected knob takes the arrows
   if (e.metaKey || e.ctrlKey) return;   // menu shortcuts
@@ -523,7 +588,7 @@ function onKey(e) {
 }
 document.addEventListener("keydown", onKey);
 ipcRenderer.on("menu", (e, cmd) => ({ new: newScene, open: () => openScene(), save: () => save(false), saveAs: () => save(true), importModel, render: renderNow, undo, redo,
-  duplicate: () => { if (hasSel()) { select(ED.duplicate(st.scene, st.sel)); commit(); } }, frameAll: () => { CT.frame(st.scene); changed("view"); }, home: () => { if (homeCam) { CT.camSet(st.scene.cam, homeCam); changed("view"); } } }[cmd] || (() => {}))());
+  palette: () => { if (Date.now() - lastPalKey > 200) pal.toggle(); }, duplicate: () => { if (hasSel()) { select(ED.duplicate(st.scene, st.sel)); commit(); } }, frameAll: () => { CT.frame(st.scene); changed("view"); }, home: () => { if (homeCam) { CT.camSet(st.scene.cam, homeCam); changed("view"); } } }[cmd] || (() => {}))());
 ipcRenderer.on("app:close-request", async () => { if (await askSave()) ipcRenderer.send("app:close-ok"); });
 
 // ---- start-up
@@ -532,10 +597,11 @@ const ui = createUI({ getState: () => st, onChange: () => edited(), onLive: () =
 const lui = createUI({ getState: () => st, onChange: () => changed("val"), pickColor, brand: "console", glow: GLOW, storeKey: "worlds-app-lib" });
 uis = [ui, lui]; refs.insp = ui;
 buildTop(lui); buildLibrary(lui); buildToolbar(lui); buildPads(lui); buildInspector(ui); buildBar(lui);
+refs.axes = axisGizmo(vpwrap, () => st.scene.cam, (yaw, pitch, name) => { if (st.view.camLock) return; const c = st.scene.cam; if (yaw !== null) c.yaw = yaw; c.pitch = pitch; changed("view"); setStatus(name); });
 pressGlow(root);
 homeCam = CT.camCopy(st.scene.cam); resetHistory(); uis.forEach((u) => u.refreshAll()); changed("scene"); title();
 setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.");
 setTimeout(() => drawLibrary().catch((err) => console.error(err)), 50);
 
 // for the automated tests
-window.__wb = { st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

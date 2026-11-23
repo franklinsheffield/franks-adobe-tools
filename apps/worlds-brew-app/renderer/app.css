@@ -1,5 +1,16 @@
 /* Frank's Worlds Brew app layout, on top of the suite's panel.css (Hardware Console brand). */
-:root { --glow: #5effc8; --glowbg: #0b2e24; }
+/* Colours in OKLCH (UI research quick win): the mint and its hover / press / background shades keep the same hue
+   and step evenly in perceived brightness. Hex fallbacks first for anything that can't read oklch(). */
+:root {
+  --glow: #5effc8; --glowbg: #0b2e24;
+  --mint-l: 0.901; --mint-c: 0.156; --mint-h: 166.7;   /* WB-10 mint #5effc8 */
+  --glow: oklch(var(--mint-l) var(--mint-c) var(--mint-h));
+  --glow-hover: oklch(0.80 0.14 var(--mint-h));
+  --glow-press: oklch(0.70 0.12 var(--mint-h));
+  --glow-dim: oklch(0.55 0.09 var(--mint-h));
+  --glowbg: oklch(0.27 0.05 var(--mint-h));
+  --ax-x: oklch(0.72 0.17 25); --ax-y: oklch(0.72 0.17 145); --ax-z: oklch(0.72 0.17 255);   /* axis colours, equal brightness */
+}
 html, body { height: 100%; overflow: hidden; user-select: none; }
 #app { height: 100vh; padding: 0; overflow: hidden; display: grid; grid-template-columns: 290px minmax(400px, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top top top" "lib centre insp" "bar bar bar"; }
 #top { grid-area: top; display: flex; align-items: stretch; border-bottom: 1px solid var(--soft); }
@@ -16,11 +27,23 @@ html, body { height: 100%; overflow: hidden; user-select: none; }
 #vpwrap { position: relative; flex: 1 1 auto; min-height: 200px; background: #000; overflow: hidden; }
 #vp { display: block; width: 100%; height: 100%; outline: none; }
 #vpwrap.drop { outline: 2px solid var(--glow); outline-offset: -2px; }
-#vphint { position: absolute; left: 10px; bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.75); pointer-events: none; text-shadow: 0 1px 2px #000; }
+#vphint { display: none; }
+/* axis cube (ViewHelper style): click an axis end to snap the view */
+.axisgizmo { position: absolute; right: 8px; top: 8px; z-index: 3; cursor: pointer; overflow: visible; }
+.axisgizmo .agring { fill: rgba(0,0,0,0.35); stroke: rgba(255,255,255,0.18); }
+.axisgizmo:hover .agring { fill: rgba(0,0,0,0.55); stroke: var(--glow-dim); }
+.axisgizmo line { stroke-width: 2.5; }
+.axisgizmo circle:not(.agring) { stroke-width: 1.5; }
+.axisgizmo text { font: 700 9px var(--ui, sans-serif); fill: #000; pointer-events: none; }
+.axisgizmo .agaxis:hover circle { stroke: #fff; stroke-width: 2; }
 #dropmark { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid var(--glow); border-radius: 50%; pointer-events: none; display: none; }
 #pad { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 8px; border-top: 1px solid var(--soft); max-height: 40vh; overflow-y: auto; }
 #bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--soft); }
-#bar .status { flex: 1 1 200px; margin: 0; }
+#bar .status { flex: 0 1 260px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* live key hints */
+.keyhints { flex: 1 1 200px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: center; font-size: 10px; color: rgba(255,255,255,0.7); min-width: 0; max-height: 34px; overflow: hidden; }
+.kh { white-space: nowrap; }
+.kh kbd { font: 9px var(--ui, sans-serif); color: var(--glow); border: 1px solid var(--glow-dim); border-radius: 3px; padding: 0 4px; margin-right: 4px; background: var(--glowbg); }
 #bar input.num { width: 64px; }
 #bar .apply { padding: 6px 16px; min-width: 150px; width: auto; flex: none; }
 #bar select { width: auto; flex: none; }
@@ -34,6 +57,8 @@ html, body { height: 100%; overflow: hidden; user-select: none; }
 .wbcap { font-size: 8px; letter-spacing: 1px; margin-top: 2px; opacity: 0.8; text-align: center; grid-column: 1 / 4; }
 .wbcol { display: flex; flex-direction: column; align-items: center; margin-right: 8px; }
 .btn.on { border-color: var(--glow); color: var(--glow); }
+.btn:hover:not([disabled]) { border-color: var(--glow-hover); }
+.btn:active:not([disabled]) { border-color: var(--glow-press); color: var(--glow-press); }
 /* library */
 .wbgrid { display: flex; flex-wrap: wrap; gap: 5px; }
 .wbcell { width: calc(50% - 3px); border: 1px solid rgba(255,255,255,0.35); padding: 1px; cursor: pointer; }
@@ -62,3 +87,28 @@ input.num.wide { width: 70px; }
 .shotbox { border: 1px solid var(--glow); background: #000; padding: 10px; max-width: 92vw; max-height: 92vh; display: flex; flex-direction: column; gap: 8px; }
 .shotbox img { max-width: 88vw; max-height: 78vh; object-fit: contain; }
 .shotrow { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+
+/* dense inspector (Tweakpane-style density): smaller knobs, tighter rows and tabs, more controls on screen */
+#app.brand-console #insp .knob { width: 32px; height: 32px; }
+#app.brand-console #insp .dial { margin-bottom: 3px; padding: 1px 1px 1px 0; }
+#app.brand-console #insp .dialval { width: 42px; padding: 2px 1px; font-size: 10px; margin-left: 3px; }
+#app.brand-console #insp .dlabel { font-size: 7px; margin-top: 1px; }
+#app.brand-console #insp .row { margin-bottom: 3px; }
+#app.brand-console #insp .btn.small { padding: 2px 6px; font-size: 10px; }
+#app.brand-console #insp .tabbtn { padding: 3px 5px; font-size: 8px; }
+#app.brand-console #insp .hint { font-size: 9px; margin: 2px 0 4px; }
+#app.brand-console #insp .lbl3 { margin-top: 4px; }
+/* command palette */
+#palette { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.55); display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
+#palette[hidden] { display: none; }
+.palbox { width: min(620px, 92vw); background: #000; border: 1px solid var(--glow); box-shadow: 0 0 24px var(--glowbg); display: flex; flex-direction: column; }
+.palin { font: 14px var(--ui, sans-serif); color: #fff; background: #000; border: none; border-bottom: 1px solid rgba(255,255,255,0.25); padding: 12px 14px; outline: none; }
+.pallist { max-height: 52vh; overflow-y: auto; padding: 4px 0; }
+.palrow { display: flex; align-items: center; gap: 10px; padding: 5px 14px; font-size: 12px; color: #ddd; cursor: pointer; }
+.palrow.on { background: var(--glowbg); color: #fff; box-shadow: inset 2px 0 0 var(--glow); }
+.palg { width: 110px; flex: none; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--glow-dim); }
+.palrow.on .palg { color: var(--glow); }
+.pall { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palk { font-size: 10px; color: rgba(255,255,255,0.5); }
+.palnone { padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.5); }
+.palfoot { font-size: 9px; color: rgba(255,255,255,0.45); padding: 5px 14px; border-top: 1px solid rgba(255,255,255,0.12); }

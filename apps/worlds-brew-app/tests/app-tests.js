@@ -149,6 +149,37 @@ async function uiTests() {
     const sig = await W(() => Array.from(document.getElementById("shotimg").src.slice(0, 22)).join(""));
     assert.strictEqual(sig, "data:image/png;base64,");
   });
+  await t("app: Ctrl+K command palette finds and runs actions (search 'top view', 'add knight')", async () => {
+    await win.locator("#vp").click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await win.keyboard.press("Control+k");
+    assert.ok(await W(() => window.__wb.pal.isOpen), "palette opens");
+    assert.ok(await W(() => window.__wb.commands().length) > 120, "covers files, tools, views, tabs, sky, water, every asset and scene");
+    await win.keyboard.type("top view");
+    assert.strictEqual(await win.locator(".palrow.on .pall").textContent(), "Top view");
+    await win.screenshot({ path: path.join(OUT, "app-palette.png") });
+    await win.keyboard.press("Enter");
+    assert.ok(!(await W(() => window.__wb.pal.isOpen)), "closes after running");
+    assert.strictEqual(await W(() => window.__wb.st.scene.cam.pitch), 89);
+    const n = await W(() => window.__wb.st.scene.objs.length);
+    await win.keyboard.press("Control+k"); await win.keyboard.type("knight"); await win.keyboard.press("Enter");
+    assert.strictEqual(await W(() => window.__wb.st.scene.objs.length), n + 1);
+    assert.strictEqual(await W(() => window.__wb.st.sel.asset), "fantasy/knight");
+    await win.keyboard.press("Control+k"); await win.keyboard.press("Escape"); assert.ok(!(await W(() => window.__wb.pal.isOpen)), "Esc closes");
+  });
+  await t("app: axis cube snaps the view; status bar shows live key hints", async () => {
+    await W(() => { const w = window.__wb; w.st.scene.cam.yaw = 30; w.st.scene.cam.pitch = 20; w.changed("view"); });
+    assert.strictEqual(await win.locator(".axisgizmo .agaxis").count(), 6);
+    await win.locator(".axisgizmo .agaxis title", { hasText: "Right view" }).locator("..").dispatchEvent("pointerdown");
+    assert.deepStrictEqual(await W(() => [window.__wb.st.scene.cam.yaw, window.__wb.st.scene.cam.pitch]), [90, 6]);
+    await win.locator(".axisgizmo .agaxis title", { hasText: "Top view" }).locator("..").dispatchEvent("pointerdown");
+    assert.strictEqual(await W(() => window.__wb.st.scene.cam.pitch), 89);
+    await W(() => { const w = window.__wb; w.CT.camView(w.st.scene.cam, "three"); w.select(w.st.scene.objs.find((o) => o.type === "cube")); });
+    const k1 = await win.locator(".keyhints").textContent(); assert.ok(/nudge/.test(k1) && /Del/.test(k1), "selection hints: " + k1);
+    await W(() => window.__wb.select(null)); const k2 = await win.locator(".keyhints").textContent(); assert.ok(/select next/.test(k2) && !/nudge/.test(k2), "no-selection hints: " + k2);
+    await W(() => { const w = window.__wb; w.st.view.gizmo = "sculpt"; w.changed("view"); }); assert.ok(/sculpt terrain/.test(await win.locator(".keyhints").textContent()));
+    await W(() => { const w = window.__wb; w.st.view.gizmo = "move"; w.select(w.st.scene.objs.find((o) => o.type === "cube")); w.changed("view"); });
+    await win.screenshot({ path: path.join(OUT, "app-axes-hints.png") });
+  });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
   await app.close();
 }
