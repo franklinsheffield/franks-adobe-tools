@@ -317,6 +317,7 @@ async function t(name, fn) {
   await require("./crt-phaser.js")(t);
   await require("./colour-deck.js")(t);
   await require("./panel-system.js")(t);
+  await require("./quick-wins.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
