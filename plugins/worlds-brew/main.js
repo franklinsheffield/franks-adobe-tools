@@ -18,14 +18,14 @@ const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.3.0";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.4.1";
 PS.configure({ appName: APP, presetFile: "scenes.json", exportName: "worlds-scene.json" });
 let uxp = null; try { uxp = require("uxp"); } catch (e) { uxp = null; }
 const psHost = require("photoshop");   // loaded once at start-up (the test harness only serves it then)
 
 // ---- shared state: the scene, the selection (a placeholder when nothing is selected) and panel options
 const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
-const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move", scenePack: "Classic", assetPack: "Fantasy" }, out: { quality: "final" }, saveName: "" };
+const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move", scenePack: "Classic", assetPack: "Fantasy", brush: "raise", bsize: 0.12, bpow: 0.5 }, out: { quality: "final" }, saveName: "" };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
 const is = (...types) => () => hasSel() && types.includes(st.sel.type);
 const refs = {};
@@ -48,11 +48,12 @@ function changed(what) {
   drawViewport();
   loop.schedule(what === "live" ? 400 : 150);
 }
-function select(o) { st.sel = o || NONE; if (o && refs.tabs && o.type === "mesh" && refs.tabs.__tabs.current === "Object") { /* stay */ } changed("sel"); }
+function select(o) { brushAt = null; st.sel = o || NONE; if (o && refs.tabs && o.type === "mesh" && refs.tabs.__tabs.current === "Object") { /* stay */ } changed("sel"); }
 
 // ---- the two UIs (one per panel, each with its own dial selection)
-const cui = createUI({ getState: () => st, onChange: () => changed("val"), onLive: () => { drawViewport(); }, brand: "console", glow: GLOW, storeKey: APP });
-const vui = createUI({ getState: () => st, onChange: () => changed("val"), brand: "console", glow: GLOW, storeKey: APP + " viewport" });
+const pickColor = (hex) => PS.pickColor(hex);
+const cui = createUI({ getState: () => st, onChange: () => changed("val"), onLive: () => { drawViewport(); }, pickColor, brand: "console", glow: GLOW, storeKey: APP });
+const vui = createUI({ getState: () => st, onChange: () => changed("val"), pickColor, brand: "console", glow: GLOW, storeKey: APP + " viewport" });
 
 // ---- console mini render (the pinned preview)
 const loop = createPreviewLoop({ renderOnce: () => miniRender(), onError: (e) => { setStatus("Preview problem: " + (e && e.message || e), true); console.error(e); } });
@@ -98,7 +99,7 @@ function drawViewport() {
   const { w, h } = vpSize();
   if (st.view.mode === "wire" || dragging) {
     vpGen++;
-    lastWire = WF.wireframe(st.scene, st.scene.cam, w, h, { sel: hasSel() ? st.sel : null, gizmo: st.view.gizmo });
+    lastWire = WF.wireframe(st.scene, st.scene.cam, w, h, { sel: hasSel() ? st.sel : null, gizmo: st.view.gizmo, brush: brushRing() });
     refs.vpImg.src = PNG.dataURL(lastWire.rgba, w, h, 4);
     refs.vpImg.style.width = w + "px"; refs.vpImg.style.height = h + "px";
     return;
@@ -116,6 +117,12 @@ function drawViewport() {
   })().catch((e) => setStatus("Viewport render problem: " + e.message, true));
 }
 
+// sculpt brush: where the pointer meets the selected terrain (null when off it)
+let brushAt = null;
+const sculpting = () => st.view.gizmo === "sculpt" && is("terrain")();
+function brushRing() { return sculpting() && brushAt ? { o: st.sel, u: brushAt.u, v: brushAt.v, r: st.view.bsize } : null; }
+function terrainUnder(mx, my) { if (!lastWire) return null; return ED.terrainHit(st.sel, ED.screenRay(st.scene.cam, lastWire.w, lastWire.h, mx, my)); }
+
 // pointer position in wireframe pixels
 function vpXY(e) {
   const img = refs.vpImg; let r = null; try { r = img.getBoundingClientRect(); } catch (err) { r = null; }
@@ -124,16 +131,21 @@ function vpXY(e) {
   return [x * W / rw, y * H / rh];
 }
 function vpHint(t) { if (refs.vpHint) refs.vpHint.textContent = t; }
-const HINT = "Drag = orbit  -  Shift-drag = pan  -  wheel = zoom  -  click = select. Drag the coloured handles to move, rotate or scale (W / E / R).";
+const HINT = "Drag = orbit  -  Shift-drag = pan  -  wheel = zoom  -  click = select. Drag the coloured handles to move, rotate or scale (W / E / R). Sculpt (B) paints a selected terrain.";
 function wireViewportPointer(img) {
   img.addEventListener("mousedown", (e) => {
     const [mx, my] = vpXY(e);
+    if (sculpting() && !e.shiftKey) { const hit = terrainUnder(mx, my);
+      if (hit) { const o = st.sel; o._undo = o.sculpt ? o.sculpt.slice() : null;
+        dragging = { x: e.clientX, y: e.clientY, moved: true, sculpt: true, ref: ED.heightAt(o, hit.u, hit.v) };
+        brushAt = hit; ED.sculpt(o, st.view.brush, hit.u, hit.v, st.view.bsize, st.view.bpow, dragging.ref); drawViewport(); if (e.preventDefault) e.preventDefault(); return; } }
     const h = hasSel() && lastWire ? WF.pickHandle(lastWire.gizmo, mx, my) : null;
     dragging = { x: e.clientX, y: e.clientY, mx, my, moved: false, shift: e.shiftKey, cam: Object.assign({}, st.scene.cam), h, start: hasSel() ? Object.assign({}, st.sel) : null };
     if (e.preventDefault) e.preventDefault();
   });
   const move = (e) => {
-    if (!dragging) return;
+    if (dragging && dragging.sculpt) { const [mx, my] = vpXY(e), hit = terrainUnder(mx, my); if (hit) { brushAt = hit; ED.sculpt(st.sel, st.view.brush, hit.u, hit.v, st.view.bsize, st.view.bpow, dragging.ref); drawViewport(); } return; }
+    if (!dragging) { if (sculpting() && e.currentTarget === img) { const [mx, my] = vpXY(e); brushAt = terrainUnder(mx, my); if (st.view.mode === "wire") drawViewport(); } return; }
     const rect = (() => { try { return img.getBoundingClientRect(); } catch (err) { return null; } })();
     const k = lastWire && rect && rect.width ? lastWire.w / rect.width : 1;
     const dx = (e.clientX - dragging.x) * k, dy = (e.clientY - dragging.y) * k;
@@ -150,6 +162,7 @@ function wireViewportPointer(img) {
   const up = (e) => {
     if (!dragging) return;
     const d = dragging; dragging = null;
+    if (d.sculpt) { vpHint("Sculpted with " + st.view.brush + ". Undo stroke is in the Shape tab."); changed("sel"); return; }
     if (!d.moved && !d.h) { const [mx, my] = vpXY(e); select(WF.pick(st.scene, st.scene.cam, lastWire ? lastWire.w : 1, lastWire ? lastWire.h : 1, mx, my)); return; }
     st.scene.cam.yaw = ((st.scene.cam.yaw % 360) + 360) % 360;
     vpHint(HINT);
@@ -351,8 +364,9 @@ function buildViewport(root) {
     refs.vpBox,
     el("div", { class: "row wrap" }, [
       vui.segGroup("view.mode", [{ v: "wire", l: "Wire" }, { v: "render", l: "Render" }]),
-      vui.segGroup("view.gizmo", [{ v: "move", l: "Move", t: "Move handles (W)" }, { v: "rotate", l: "Rotate", t: "Rotate handle (E)" }, { v: "scale", l: "Scale", t: "Scale handles (R)" }])
+      vui.segGroup("view.gizmo", [{ v: "move", l: "Move", t: "Move handles (W)" }, { v: "rotate", l: "Rotate", t: "Rotate handle (E)" }, { v: "scale", l: "Scale", t: "Scale handles (R)" }, { v: "sculpt", l: "Sculpt", t: "Paint the selected terrain with the brush (B)" }])
     ]),
+    sculptRow(vui),
     el("div", { class: "row wrap" }, [viewBtn("persp", "Perspective"), viewBtn("top", "Top"), viewBtn("front", "Front"), viewBtn("eye", "Eye level"), viewBtn("frame", "Frame selection")]),
     el("div", { class: "row wrap" }, [
       act("Drop to ground", () => { if (hasSel()) { ED.dropToGround(st.scene, st.sel); changed("sel"); } }),
@@ -364,6 +378,24 @@ function buildViewport(root) {
   lay.scroller.appendChild(el("div", { class: "foot", text: "Frank's Worlds Brew " + VERSION + "  -  Viewport  -  Frank's Brew suite" }));
   vui.refreshAll();
 }
+
+// the brush controls (shown in both panels while a terrain is selected)
+function sculptRow(ui) {
+  const n = el("div", {}, [
+    el("div", { class: "row wrap" }, [ui.segGroup("view.brush", ED.BRUSHES.map(([v, l]) => ({ v, l })))]),
+    el("div", { class: "row wrap" }, [ui.sliderRow("Brush size", "view.bsize", 0.03, 0.4, 0.01, ""), ui.sliderRow("Strength", "view.bpow", 0.05, 1, 0.05, "")])
+  ]);
+  ui.showIf(n, () => is("terrain")() && st.view.gizmo === "sculpt"); return n;
+}
+const LIGHT_SW = [["Warm", "#FFC37A"], ["White", "#FFFFFF"], ["Cool", "#9CC8FF"], ["Rose", "#FF5FB4"], ["Mint", "#5EFFC8"], ["Violet", "#A66BFF"], ["Fire", "#FF6A2A"]];
+const WATER_SW = [["Deep", "#05171F"], ["Ocean", "#0A2E4A"], ["Tropical", "#0E5A5C"], ["Lagoon", "#1F7A6E"], ["Murky", "#2A2A18"], ["Alien", "#2A0E3A"]];
+const WATER_LOOKS = {
+  Calm: { waveH: 0, waveSize: 1, ripple: 0.6, clarity: 20, waterRefl: 110, foam: 0 },
+  Breezy: { waveH: 0.15, waveSize: 1.2, ripple: 1, clarity: 10, waterRefl: 100, foam: 20 },
+  Choppy: { waveH: 0.35, waveSize: 0.8, ripple: 1.6, clarity: 0, waterRefl: 90, foam: 45 },
+  Stormy: { waveH: 0.9, waveSize: 2.2, ripple: 2.2, clarity: 0, waterRefl: 70, foam: 80, waterCol: "#16242A" },
+  Tropical: { waveH: 0.08, waveSize: 1, ripple: 0.8, clarity: 75, waterRefl: 100, foam: 30, waterCol: "#0E5A5C" }
+};
 
 // ---- Console panel
 function buildConsole(root) {
@@ -408,9 +440,10 @@ function buildConsole(root) {
   const matOpts = Object.keys(S.MATS).map((m) => ({ v: m, l: m }));
   const objCard = card("Object", [
     none("Click an object in the Viewport, or add one from its Create strip."),
-    only(el("div", { class: "row wrap" }, [sliderRow("Size", "sel.s", 0.2, 15, 0.1, ""), sliderRow("Height", "sel.y", -2, 12, 0.1, ""), sliderRow("Spin", "sel.ry", 0, 360, 1, " deg")]), hasSel),
+    only(el("div", { class: "row wrap" }, [sliderRow("Size", "sel.s", 0.2, 15, 0.1, ""), sliderRow("Spin", "sel.ry", 0, 360, 1, " deg")]), () => hasSel() && st.sel.type !== "light"),
+    only(el("div", { class: "row wrap" }, [sliderRow("Left/right", "sel.x", -40, 40, 0.1, ""), sliderRow("Height", "sel.y", -2, 20, 0.1, ""), sliderRow("Back/front", "sel.z", -60, 40, 0.1, "")]), hasSel),
     only(el("div", { class: "row wrap" }, [sliderRow("Peak", "sel.h", 0.5, 12, 0.1, ""), sliderRow("Shape", "sel.seed", 0, 99, 1, "")]), is("terrain")),
-    only(selectRow("Material", "sel.mat", matOpts, () => { st.sel.refl = null; }), hasSel),
+    only(selectRow("Material", "sel.mat", matOpts, () => { st.sel.refl = null; }), () => hasSel() && st.sel.type !== "light"),
     only(el("div", { class: "row wrap" }, [
       btn("Drop to ground", () => { ED.dropToGround(st.scene, st.sel); changed("sel"); }),
       btn("Frame", () => { ED.view(st.scene, "frame", st.sel); changed("view"); }),
@@ -420,10 +453,11 @@ function buildConsole(root) {
   ]);
   const texName = el("span", { class: "lbl2" });
   bind(() => { texName.textContent = hasSel() && st.sel.img ? "IMAGE  " + String(st.sel.img.name || "").slice(0, 18).toUpperCase() : "NO IMAGE"; });
-  const surf = () => hasSel() && st.sel.type !== "terrain";
+  const surf = () => hasSel() && st.sel.type !== "terrain" && st.sel.type !== "light";
   const matCard = card("Material", [
     none("Select an object to edit its material."),
     only(el("div", { class: "hint", text: "Terrains colour themselves by height and slope: sand at the water, grass, rock and snow on the peaks." }), is("terrain")),
+    only(el("div", { class: "hint", text: "Lights have no material: set their colour and brightness in the Light tab." }), is("light")),
     only(selectRow("Preset", "sel.mat", matOpts, () => { st.sel.refl = null; }), surf),
     only(row("Pattern", segGroup("sel.pat", ["None", "Marble", "Wood", "Grid", "Noise"].map((p) => ({ v: p, l: p })))), surf),
     only(el("div", { class: "row wrap" }, [texName, btn("From active layer", () => textureFromLayer(), "Use the selected Photoshop layer as this object's image texture"), btn("Load image...", () => textureFromFile()),
@@ -445,18 +479,72 @@ function buildConsole(root) {
     ]), () => true)
   ]);
   showIf(meshCard, is("mesh"));
+  // Shape: surface shaping for terrains (generator dials + brush sculpting)
+  const shapeCard = card("Shape", [
+    el("div", { class: "lbl3", text: "SURFACE" }),
+    el("div", { class: "row wrap" }, [sliderRow("Peak", "sel.h", 0.5, 12, 0.1, ""), sliderRow("Roughness", "sel.rough", 0.3, 0.75, 0.01, ""), sliderRow("Erosion", "sel.erosion", 0, 8, 1, "")]),
+    el("div", { class: "row wrap" }, [sliderRow("Terraces", "sel.terrace", 0, 14, 1, ""), sliderRow("Plateau", "sel.plateau", 0, 0.8, 0.01, ""), sliderRow("Sharpness", "sel.sharp", 0.4, 3, 0.05, "")]),
+    el("div", { class: "row wrap" }, [sliderRow("Shape", "sel.seed", 0, 99, 1, "")]),
+    checkRow("Crater (bowl with a rim)", "sel.crater"),
+    el("div", { class: "row wrap" }, [
+      btn("New shape", () => { st.sel.seed = Math.floor(Math.random() * 100); changed("sel"); }, "A new random landform with the same settings"),
+      btn("Undo stroke", () => { if (st.sel._undo !== undefined) { st.sel.sculpt = st.sel._undo; st.sel._undo = undefined; st.sel.sculptV++; changed("sel"); } }),
+      btn("Clear sculpting", () => { ED.clearSculpt(st.sel); changed("sel"); })
+    ]),
+    el("div", { class: "lbl3", text: "BRUSH" }),
+    el("div", { class: "row wrap" }, [segGroup("view.brush", ED.BRUSHES.map(([v, l]) => ({ v, l })))]),
+    el("div", { class: "row wrap" }, [sliderRow("Brush size", "view.bsize", 0.03, 0.4, 0.01, ""), sliderRow("Strength", "view.bpow", 0.05, 1, 0.05, "")]),
+    el("div", { class: "row wrap" }, [btn("Sculpt in Viewport", () => { st.view.gizmo = "sculpt"; st.view.mode = "wire"; changed("view"); setStatus("Sculpt mode: drag on the terrain in the Viewport. Shift-drag still pans."); }, "Switch the Viewport to the sculpt brush (B)")]),
+    el("div", { class: "hint", text: "Raise and Lower build or dig, Smooth softens, Flatten levels to the height where the stroke started, Roughen adds rocky detail, Restore paints back the original shape." })
+  ]);
+  showIf(shapeCard, is("terrain"));
+  // Light: sun + sky light, and point lights
+  const swatchBtn = (l, hex, set, t) => { const b = el("button", { class: "btn small wbsw", title: t || hex }, [el("span", { class: "wbdot", style: { backgroundColor: hex } }), el("span", { text: l })]); b.addEventListener("click", () => { set(hex); changed("val"); }); return b; };
+  const lightSel = () => (is("light")() ? st.sel : null);
+  const lightCard = card("Light", [
+    el("div", { class: "lbl3", text: "SUN" }),
+    el("div", { class: "row wrap" }, [sliderRow("Sun angle", "scene.sunAz", 0, 359, 1, " deg"), sliderRow("Sun height", "scene.sunAlt", -5, 85, 1, " deg")]),
+    el("div", { class: "row wrap" }, [sliderRow("Sun bright", "scene.sunPow", 0, 300, 1, "%"), sliderRow("Sky light", "scene.ambPow", 0, 300, 1, "%")]),
+    row("Sun colour", ui.hexField(() => st.scene.sunCol || "", (v) => { st.scene.sunCol = v; }, true)),
+    el("div", { class: "row wrap" }, [swatchBtn("Sky", "", (v) => { st.scene.sunCol = v; }, "Use the sky's own sun colour")].concat(LIGHT_SW.map(([l, h]) => swatchBtn(l, h, (v) => { st.scene.sunCol = v; })))),
+    el("div", { class: "lbl3", text: "LIGHTS" }),
+    el("div", { class: "row wrap" }, [
+      btn("Add light", () => { select(ED.addObject(st.scene, "light")); }, "A point light in front of the camera; move it with the Viewport handles"),
+      btn("Next light", () => { const L = st.scene.objs.filter((o) => o.type === "light"); if (!L.length) return; const i = L.indexOf(st.sel); select(L[(i + 1) % L.length]); })
+    ]),
+    only(el("div", { class: "hint", text: "Select a light (or add one) to set its colour, brightness and reach." }), () => !lightSel()),
+    only(row("Colour", ui.hexField(() => (lightSel() ? lightSel().col : "#FFFFFF"), (v) => { if (lightSel()) lightSel().col = v; })), () => !!lightSel()),
+    only(el("div", { class: "row wrap" }, LIGHT_SW.map(([l, h]) => swatchBtn(l, h, (v) => { if (lightSel()) lightSel().col = v; }))), () => !!lightSel()),
+    only(el("div", { class: "row wrap" }, [sliderRow("Brightness", "sel.pow", 0, 800, 5, "%"), sliderRow("Reach", "sel.range", 0.5, 40, 0.5, ""), sliderRow("Bulb size", "sel.s", 0.05, 1.5, 0.01, "")]), () => !!lightSel()),
+    only(el("div", { class: "row wrap" }, [sliderRow("Left/right", "sel.x", -40, 40, 0.1, ""), sliderRow("Height", "sel.y", -2, 20, 0.1, ""), sliderRow("Back/front", "sel.z", -60, 40, 0.1, "")]), () => !!lightSel()),
+    only(el("div", { class: "row wrap" }, [checkRow("Visible glow", "sel.glow"), checkRow("Casts shadows", "sel.shadow"), btn("Delete light", () => { ED.remove(st.scene, st.sel); select(null); })]), () => !!lightSel())
+  ]);
+  // Water
+  const waterCard = card("Water", [
+    checkRow("Water plane", "scene.water"),
+    el("div", { class: "row wrap" }, Object.keys(WATER_LOOKS).map((k) => btn(k, () => { Object.assign(st.scene, WATER_LOOKS[k]); st.scene.water = true; changed("val"); setStatus(k + " water"); }, "Water look: " + k))),
+    el("div", { class: "row wrap" }, [sliderRow("Level", "scene.waterLvl", -3, 8, 0.05, ""), sliderRow("Wave height", "scene.waveH", 0, 1.5, 0.01, ""), sliderRow("Wave size", "scene.waveSize", 0.3, 4, 0.05, "")]),
+    el("div", { class: "row wrap" }, [sliderRow("Wind", "scene.wind", 0, 359, 1, " deg"), sliderRow("Ripples", "scene.ripple", 0, 3, 0.05, ""), sliderRow("Foam", "scene.foam", 0, 100, 1, "%")]),
+    el("div", { class: "row wrap" }, [sliderRow("Clarity", "scene.clarity", 0, 100, 1, "%"), sliderRow("Reflection", "scene.waterRefl", 0, 150, 1, "%")]),
+    row("Colour", ui.hexField(() => st.scene.waterCol, (v) => { st.scene.waterCol = v; })),
+    el("div", { class: "row wrap" }, WATER_SW.map(([l, h]) => swatchBtn(l, h, (v) => { st.scene.waterCol = v; }))),
+    el("div", { class: "hint", text: "Clarity lets you see the ground and terrain under the water (turn on the Ground plane for a sea floor). Foam whitens shorelines and wave crests." })
+  ]);
   const skyCard = card("Sky", [
     row("", segGroup("scene.sky", Object.keys(S.SKIES).map((k) => ({ v: k, l: k })))),
-    el("div", { class: "row wrap" }, [sliderRow("Sun angle", "scene.sunAz", 0, 359, 1, " deg"), sliderRow("Sun height", "scene.sunAlt", -5, 85, 1, " deg"), sliderRow("Haze", "scene.haze", 0, 100, 1, "%")]),
-    checkRow("Water plane", "scene.water"), checkRow("Ground plane", "scene.ground")
+    el("div", { class: "row wrap" }, [sliderRow("Haze", "scene.haze", 0, 100, 1, "%"), sliderRow("Clouds", "scene.clouds", 0, 100, 1, "%")]),
+    el("div", { class: "row wrap" }, [sliderRow("Fog", "scene.fog", 0, 100, 1, "%"), sliderRow("Fog height", "scene.fogH", 0.2, 6, 0.1, "")]),
+    checkRow("Ground plane", "scene.ground"),
+    el("div", { class: "hint", text: "Sun position, colour and brightness are in the Light tab; water is in the Water tab." })
   ]);
   const vbtn = (v, l) => btn(l, () => { ED.view(st.scene, v, hasSel() ? st.sel : null); changed("view"); });
   const camCard = card("Camera", [
     el("div", { class: "row wrap" }, [sliderRow("Orbit", "scene.cam.yaw", 0, 359, 1, " deg"), sliderRow("Tilt", "scene.cam.pitch", -10, 89, 1, " deg"), sliderRow("Distance", "scene.cam.dist", 3, 120, 0.5, "")]),
+    el("div", { class: "row wrap" }, [sliderRow("Lens", "scene.cam.fov", 15, 100, 1, " deg"), sliderRow("Aim height", "scene.cam.ty", -2, 15, 0.1, "")]),
     el("div", { class: "row wrap" }, [vbtn("persp", "Perspective"), vbtn("top", "Top"), vbtn("front", "Front"), vbtn("eye", "Eye level"), vbtn("frame", "Frame selection")]),
     el("div", { class: "hint", text: "Or drag in the Viewport: drag = orbit, Shift-drag = pan, wheel = zoom." })
   ]);
-  refs.tabs = ui.tabs([objCard, matCard, meshCard, skyCard, camCard], { title: "Controls" });
+  refs.tabs = ui.tabs([objCard, matCard, meshCard, shapeCard, lightCard, waterCard, skyCard, camCard], { title: "Controls" });
 
   // C Render
   refs.go = el("button", { class: "apply", text: "Render to layer" });
@@ -491,7 +579,7 @@ async function drawThumbs() {
 function onKey(e) {
   const t = e.target && e.target.tagName;
   if (/INPUT|SELECT|TEXTAREA/.test(t || "")) return;
-  const g = { w: "move", e: "rotate", r: "scale" }[String(e.key || "").toLowerCase()];
+  const g = { w: "move", e: "rotate", r: "scale", b: "sculpt" }[String(e.key || "").toLowerCase()];
   if (g) { st.view.gizmo = g; changed("view"); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && hasSel()) { ED.remove(st.scene, st.sel); select(null); }
 }

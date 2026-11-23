@@ -4,22 +4,40 @@
 // plus a bounding-volume tree of triangles for imported models. Sun + sky light, soft shadows,
 // reflections, water ripples, aerial haze, height fog and procedural clouds.
 const { clamp, vnoise, fbm } = require("./noise.js");
-const { MATS, SKIES, heightmap, hmAt, camBasis } = require("./scene.js");
+const { MATS, SKIES, heightmap, hmAt, camBasis, withDefaults } = require("./scene.js");
 const { meshVerts } = require("./models.js");
 
+// "#RRGGBB" -> linear-ish 0..1 floats
+function hexRGB(h, fb) { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || "")); if (!m) return fb; const n = parseInt(m[1], 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map((v) => Math.pow(v, 2.2)); }
+
 function compile(scene) {
-  const sky = SKIES[scene.sky];
+  scene = withDefaults(Object.assign({}, scene));
+  const sk = SKIES[scene.sky] || SKIES.Noon, sunK = scene.sunPow / 100, ambK = scene.ambPow / 100;
+  // sun colour: the sky's own unless the user picked one (kept at the sky's brightness)
+  let sunC = sk.sun;
+  if (scene.sunCol) { const c = hexRGB(scene.sunCol, null); if (c) { const m = Math.max(c[0], c[1], c[2]) || 1, lv = Math.max(sk.sun[0], sk.sun[1], sk.sun[2]); sunC = [c[0] / m * lv, c[1] / m * lv, c[2] / m * lv]; } }
+  const sky = { zen: sk.zen, hor: sk.hor, sun: [sunC[0] * sunK, sunC[1] * sunK, sunC[2] * sunK], glowC: sunC, amb: [sk.amb[0] * ambK, sk.amb[1] * ambK, sk.amb[2] * ambK] };
   const az = scene.sunAz * Math.PI / 180, al = scene.sunAlt * Math.PI / 180;
   const Lx = Math.cos(al) * Math.sin(az), Ly = Math.sin(al), Lz = Math.cos(al) * Math.cos(az);
   const haze = scene.haze / 100 * 0.06, fogD = scene.fog / 100, fogH = Math.max(0.2, scene.fogH), clouds = scene.clouds / 100;
   const wl = scene.waterLvl || 0;
-  const O = scene.objs.map((o) => {
+  // water: wave height / size / wind direction, colour, clarity (see-through), reflection, shore foam
+  const WH = Math.max(0, scene.waveH), WK = 1 / Math.max(0.2, scene.waveSize), wa = scene.wind * Math.PI / 180, WC = Math.cos(wa), WS = Math.sin(wa);
+  const WCOL = hexRGB(scene.waterCol, [0.02, 0.09, 0.12]), CLAR = scene.clarity / 100, WREF = scene.waterRefl / 100, FOAM = scene.foam / 100, RIP = scene.ripple;
+  function wave(x, z) { // about -1..1, long swells along the wind plus cross chop
+    const a = (x * WC + z * WS) * WK, c = (-x * WS + z * WC) * WK;
+    return Math.sin(a * 1.6 + vnoise(a * 0.35, c * 0.35) * 4) * 0.5 + Math.sin(a * 3.1 + c * 1.3) * 0.22 + (vnoise(a * 1.9 + 7, c * 1.9) - 0.5) * 0.6;
+  }
+  // point lights: objects of type "light"
+  const LT = scene.objs.filter((o) => o.type === "light").map((o) => { const c = hexRGB(o.col, [1, 0.9, 0.7]), k = (o.pow == null ? 100 : o.pow) / 100 * 1.6;
+    return { x: o.x, y: o.y, z: o.z, r: c[0] * k, g: c[1] * k, b: c[2] * k, R: Math.max(0.3, o.range || 6), sh: o.shadow !== false, glow: o.glow !== false, s: Math.max(0.05, o.s || 0.25) }; });
+  const O = scene.objs.filter((o) => o.type !== "light").map((o) => {
     const m = MATS[o.mat] || MATS.Matte, ry = o.ry * Math.PI / 180;
     let col = m.col;
     if (o.hue) { const h = o.hue / 360 * 6, s = 0.7, v = Math.max(...m.col); const c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), mm = v - c;
       const r = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h) % 6]; col = [r[0] + mm, r[1] + mm, r[2] + mm]; }
     return { o, type: o.type, x: o.x, y: o.y, z: o.z, s: o.s, c: Math.cos(ry), sn: Math.sin(ry), col, refl: o.refl != null ? o.refl : m.refl, spec: m.spec, emit: m.emit || 0, tex: m.tex || 0,
-      hm: o.type === "terrain" ? heightmap(o) : null, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null };
+      hm: o.type === "terrain" ? heightmap(o) : null, sc: !!o.sculpt, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null };
   });
   // ---- imported models: world-space triangles + a bounding volume tree for fast ray hits
   const MT = [], MN = [], MOWN = [], MC = [];
@@ -81,7 +99,7 @@ function compile(scene) {
       case "terrain": {
         // lower bound: the box, and outside radius 0.95*s the heightmap is sunk to -0.08*H (scene.js),
         // so empty space around the island never casts false soft shadows
-        const top = b.H + 0.05, bd = sdBox(px, py - (top - 1) / 2, pz, s, (top + 1) / 2, s), d = Math.max(bd, Math.min(Math.sqrt(px * px + pz * pz) - 0.95 * s, py + 0.08 * b.H));
+        const top = b.H * Math.max(1, b.hm.top || 1) + 0.05, bd = sdBox(px, py - (top - 1) / 2, pz, s, (top + 1) / 2, s), d = b.sc ? bd : Math.max(bd, Math.min(Math.sqrt(px * px + pz * pz) - 0.95 * s, py + 0.08 * b.H)); // sculpted terrains can rise anywhere in the square
         if (d > 0.08) return d;
         const h = hmAt(b.hm, px / s * 0.5 + 0.5, pz / s * 0.5 + 0.5) * b.H;
         return (py - h) * 0.42;
@@ -89,9 +107,11 @@ function compile(scene) {
     }
     return 1e9;
   }
+  let NOWATER = false;
+  function waterD(x, y, z) { const dy = y - wl; if (WH <= 0) return dy; if (dy > WH + 0.05) return dy - WH; return (dy - WH * wave(x, z)) * 0.6; }
   function map(x, y, z) {
     let d = 1e9, id = -1;
-    if (scene.water) { const dw = y - wl; if (dw < d) { d = dw; id = -3; } }
+    if (scene.water && !NOWATER) { const dw = waterD(x, y, z); if (dw < d) { d = dw; id = -3; } }
     if (scene.ground) { const dg = y + 0.01; if (dg < d) { d = dg; id = -4; } }
     for (let k = 0; k < O.length; k++) { const dk = sdo(O[k], x, y, z); if (dk < d) { d = dk; id = k; } }
     HIT = id; return d;
@@ -101,10 +121,11 @@ function compile(scene) {
     for (let i = 0; i < 220; i++) { const d = map(ox + dx * t, oy + dy * t, oz + dz * t); if (d < 0.0008 * t + 0.0015) return t; t += d; if (t > maxT) break; }
     return -1;
   }
-  function shadow(ox, oy, oz) {
-    if (ROOT && meshHit(ox, oy, oz, Lx, Ly, Lz, 40, true) > 0) return 0;
+  function shadow(ox, oy, oz, lx, ly, lz, maxT) {
+    if (lx === undefined) { lx = Lx; ly = Ly; lz = Lz; maxT = 40; }
+    if (ROOT && meshHit(ox, oy, oz, lx, ly, lz, maxT, true) > 0) return 0;
     let t = 0.04, res = 1;
-    for (let i = 0; i < 48 && t < 40; i++) { const d = map(ox + Lx * t, oy + Ly * t, oz + Lz * t); if (d < 0.001) return 0; if (t > 0.3) res = Math.min(res, 24 * d / t); /* no penumbra right at the surface: heightfield distances are estimates */ t += clamp(d, 0.03, 1.5); }
+    for (let i = 0; i < 48 && t < maxT; i++) { const d = map(ox + lx * t, oy + ly * t, oz + lz * t); if (d < 0.001) return 0; if (t > 0.3) res = Math.min(res, 24 * d / t); /* no penumbra right at the surface: heightfield distances are estimates */ t += clamp(d, 0.03, 1.5); }
     return clamp(res, 0, 1);
   }
   function skyCol(dx, dy, dz, out) {
@@ -113,12 +134,12 @@ function compile(scene) {
     if (dy < 0) { const f = Math.min(-dy * 4, 1) * 0.35; r *= 1 - f; g *= 1 - f; b *= 1 - f; }
     const sd = Math.max(dx * Lx + dy * Ly + dz * Lz, 0);
     const glow = Math.pow(sd, 12) * 0.35 + Math.pow(sd, 900) * 2.5;
-    r += sky.sun[0] * glow; g += sky.sun[1] * glow; b += sky.sun[2] * glow;
+    const gk = Math.min(1.6, 0.25 + sunK * 0.75); r += sky.glowC[0] * glow * gk; g += sky.glowC[1] * glow * gk; b += sky.glowC[2] * glow * gk;
     if (clouds > 0 && dy > 0.02) {
       const t = 40 / dy, cx = dx * t * 0.025, cz = dz * t * 0.025;
       let c = fbm(cx + 3.1, cz + 7.7, 5, 0.5); c = clamp((c - (0.72 - clouds * 0.42)) * 3.2, 0, 1) * Math.min(dy * 6, 1);
       const lit = 0.75 + 0.35 * Math.pow(sd, 3);
-      r += (sky.sun[0] * lit * 0.9 - r) * c; g += (sky.sun[1] * lit * 0.9 - g) * c; b += (sky.sun[2] * lit * 0.92 - b) * c;
+      const ck = 0.35 + 0.65 * Math.min(1.5, sunK); r += (sky.glowC[0] * ck * lit * 0.9 - r) * c; g += (sky.glowC[1] * ck * lit * 0.9 - g) * c; b += (sky.glowC[2] * ck * lit * 0.92 - b) * c;
     }
     out[0] = r; out[1] = g; out[2] = b;
   }
@@ -132,7 +153,7 @@ function compile(scene) {
   function trace(ox, oy, oz, dx, dy, dz, depth, out, info) {
     const maxT = 160, tm = meshHit(ox, oy, oz, dx, dy, dz, maxT, false), mtri = MTRI, mu = MU, mv = MV;
     const ts = march(ox, oy, oz, dx, dy, dz, tm > 0 ? tm : maxT), t = ts >= 0 ? ts : tm;
-    if (t < 0) { skyCol(dx, dy, dz, out); if (info) { info.t = -1; info.id = -1; } return; }
+    if (t < 0) { skyCol(dx, dy, dz, out); if (depth === 0) bulbs(ox, oy, oz, dx, dy, dz, 1e9, out); if (info) { info.t = -1; info.id = -1; } return; }
     const px = ox + dx * t, py = oy + dy * t, pz = oz + dz * t;
     let id, nx, ny, nz, tri = -1;
     if (ts >= 0) { map(px, py, pz); id = HIT; normal(px, py, pz, 0.0015 + t * 0.0008, nrm); nx = nrm[0]; ny = nrm[1]; nz = nrm[2]; }
@@ -144,11 +165,23 @@ function compile(scene) {
     }
     if (info) { info.t = t; info.id = id; }
     let cr, cg, cb, refl = 0, spec = 0.2, emit = 0;
+    let foamK = 0;
     if (id === -3) { // water
-      const w1 = vnoise(px * 1.3, pz * 1.3 + 0.5) - 0.5, w2 = vnoise(px * 4.1 + 9, pz * 4.1) - 0.5;
-      nx += (w1 * 0.08 + w2 * 0.03); nz += (w2 * 0.08 - w1 * 0.03); const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
-      cr = 0.02; cg = 0.09; cb = 0.12; spec = 1.0;
-      const ci = Math.max(-(dx * nx + dy * ny + dz * nz), 0); refl = 0.06 + 0.94 * Math.pow(1 - ci, 5); refl = Math.max(refl, 0.25);
+      const q = WK, w1 = vnoise(px * 1.3 * q, pz * 1.3 * q + 0.5) - 0.5, w2 = vnoise(px * 4.1 * q + 9, pz * 4.1 * q) - 0.5;
+      nx += (w1 * 0.08 + w2 * 0.03) * RIP; nz += (w2 * 0.08 - w1 * 0.03) * RIP; const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+      cr = WCOL[0]; cg = WCOL[1]; cb = WCOL[2]; spec = 1.0;
+      const ci = Math.max(-(dx * nx + dy * ny + dz * nz), 0); refl = 0.06 + 0.94 * Math.pow(1 - ci, 5); refl = Math.max(refl, 0.25) * WREF;
+      if (CLAR > 0 && depth < 2) { // see through: bend the ray into the water and tint by how far it travels
+        const eta = 0.75, cosi = ci, k = 1 - eta * eta * (1 - cosi * cosi);
+        if (k > 0) { const f = eta * cosi - Math.sqrt(k), tx = eta * dx + f * nx, ty = eta * dy + f * ny, tz = eta * dz + f * nz;
+          NOWATER = true; const sub = [0, 0, 0], tin = { t: 0, id: 0 }; trace(px - nx * 0.02, py - ny * 0.02, pz - nz * 0.02, tx, ty, tz, 2, sub, tin); NOWATER = false;
+          const tr = tin.t < 0 ? 0 : Math.exp(-tin.t / (CLAR * CLAR * 6 + 0.05));
+          cr = cr * (1 - tr) + sub[0] * tr * 0.9; cg = cg * (1 - tr) + sub[1] * tr * 0.95; cb = cb * (1 - tr) + sub[2] * tr; emit = tr; }
+      }
+      if (FOAM > 0) { // white water where the surface meets land, and on wave crests
+        NOWATER = true; const dl = map(px, py, pz); NOWATER = false;
+        const brk = vnoise(px * 3.3, pz * 3.3), shore = clamp(1 - dl / (FOAM * 0.9 + 0.02), 0, 1), crest = WH > 0 ? clamp(((py - wl) / WH - 0.4) * 2.5, 0, 1) * FOAM : 0;
+        foamK = clamp(Math.max(shore * (0.55 + brk * 0.7), crest * brk * 1.4), 0, 1); }
     } else if (id === -4) { // ground plane
       const n = fbm(px * 0.35, pz * 0.35, 4, 0.5); cr = 0.62 + n * 0.25; cg = 0.52 + n * 0.2; cb = 0.4 + n * 0.12;
       if (scene.sky === "Night") { const ch = ((Math.floor(px) + Math.floor(pz)) & 1) ? 0.08 : 0.16; cr = cg = cb = ch; refl = 0.25; }
@@ -184,14 +217,26 @@ function compile(scene) {
       }
     }
     const sx = px + nx * 0.01, sy = py + ny * 0.01, sz = pz + nz * 0.01;
-    const ndl = Math.max(nx * Lx + ny * Ly + nz * Lz, 0), sh = ndl > 0 && Ly > -0.05 ? shadow(sx, sy, sz) : 0;
+    const seen = id === -3 ? 1 - emit : 1;   // water: the see-through part is already lit
+    if (foamK > 0) { cr += (0.9 - cr) * foamK; cg += (0.93 - cg) * foamK; cb += (0.95 - cb) * foamK; refl *= 1 - foamK; spec *= 1 - foamK * 0.8; }
+    const fk = id === -3 ? Math.max(seen, foamK) : 1;
+    const ndl = Math.max(nx * Lx + ny * Ly + nz * Lz, 0), sh = ndl > 0 && Ly > -0.05 && sunK > 0 ? shadow(sx, sy, sz) : 0;
     const amb = 0.55 + 0.45 * ny;
-    let r = cr * (sky.sun[0] * ndl * sh + sky.amb[0] * amb), g = cg * (sky.sun[1] * ndl * sh + sky.amb[1] * amb), bb = cb * (sky.sun[2] * ndl * sh + sky.amb[2] * amb);
+    let r = cr * (sky.sun[0] * ndl * sh + sky.amb[0] * amb) * fk, g = cg * (sky.sun[1] * ndl * sh + sky.amb[1] * amb) * fk, bb = cb * (sky.sun[2] * ndl * sh + sky.amb[2] * amb) * fk;
+    if (id === -3 && foamK < seen) { r += cr * (1 - fk); g += cg * (1 - fk); bb += cb * (1 - fk); }
     // specular
     const rdx = dx - 2 * (dx * nx + dy * ny + dz * nz) * nx, rdy = dy - 2 * (dx * nx + dy * ny + dz * nz) * ny, rdz = dz - 2 * (dx * nx + dy * ny + dz * nz) * nz;
     const sp = Math.pow(Math.max(rdx * Lx + rdy * Ly + rdz * Lz, 0), 60) * spec * sh;
     r += sky.sun[0] * sp; g += sky.sun[1] * sp; bb += sky.sun[2] * sp;
-    if (emit) { r = cr * 1.1 + r * 0.2; g = cg * 1.1 + g * 0.2; bb = cb * 1.1 + bb * 0.2; }
+    // point lights: soft falloff over their reach, optional shadows
+    for (let k = 0; k < LT.length; k++) { const P = LT[k]; let lx = P.x - px, ly = P.y - py, lz = P.z - pz; const d2 = lx * lx + ly * ly + lz * lz, d = Math.sqrt(d2) || 1e-4;
+      if (d > P.R * 4) continue; lx /= d; ly /= d; lz /= d;
+      const nl = nx * lx + ny * ly + nz * lz; if (nl <= 0) continue;
+      const cut = clamp(1 - d / (P.R * 4), 0, 1), att = cut * cut / (1 + d2 / (P.R * P.R) * 4) * 1.6;
+      const lsh = P.sh ? shadow(sx, sy, sz, lx, ly, lz, d - P.s) : 1; if (lsh <= 0) continue;
+      const kd = nl * att * lsh * fk, ks = Math.pow(Math.max(rdx * lx + rdy * ly + rdz * lz, 0), 60) * spec * att * lsh;
+      r += (cr * kd + ks) * P.r; g += (cg * kd + ks) * P.g; bb += (cb * kd + ks) * P.b; }
+    if (emit && id !== -3) { r = cr * 1.1 + r * 0.2; g = cg * 1.1 + g * 0.2; bb = cb * 1.1 + bb * 0.2; }
     if (refl > 0.01 && depth < 2) {
       trace(sx, sy, sz, rdx, rdy, rdz, depth + 1, rc, null);
       const tint = id === -3 ? 1 : 0.6;
@@ -203,6 +248,14 @@ function compile(scene) {
     if (fogD > 0) { const hy = Math.max(py - wl, 0); f = 1 - (1 - f) * Math.exp(-fogD * 0.12 * t * Math.exp(-hy / fogH)); }
     skyCol(dx, Math.max(dy, 0.02) * 0.3, dz, tmp);
     out[0] = r + (tmp[0] - r) * f; out[1] = g + (tmp[1] - g) * f; out[2] = bb + (tmp[2] - bb) * f;
+    if (depth === 0) bulbs(ox, oy, oz, dx, dy, dz, t, out);
+  }
+  // visible glow around each light (bulb), only in front of whatever the ray hit
+  function bulbs(ox, oy, oz, dx, dy, dz, tHit, out) {
+    for (let k = 0; k < LT.length; k++) { const P = LT[k]; if (!P.glow) continue;
+      const vx = P.x - ox, vy = P.y - oy, vz = P.z - oz, tc = vx * dx + vy * dy + vz * dz; if (tc <= 0 || tc > tHit + P.s) continue;
+      const q2 = vx * vx + vy * vy + vz * vz - tc * tc, s2 = P.s * P.s, gl = Math.exp(-q2 / (s2 * 0.6)) * 2.2 + s2 / (q2 + s2) * 0.12;
+      out[0] += P.r * gl; out[1] += P.g * gl; out[2] += P.b * gl; }
   }
   return { trace };
 }
@@ -252,4 +305,4 @@ function layers(res, want) {
   return out;
 }
 
-module.exports = { compile, render, layers, tone };
+module.exports = { compile, render, layers, tone, hexRGB };

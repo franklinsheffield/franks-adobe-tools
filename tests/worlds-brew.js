@@ -156,4 +156,65 @@ module.exports = async function (t) {
     assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.asset, "fantasy/pine"); assert.strictEqual(T.st.sel.vc, true);
     assert.ok(Math.abs(T.st.sel.y - T.st.sel.mesh.hy * T.st.sel.s) < 0.05, "stands on the ground");
   });
+
+  await t("Worlds Brew 0.4: sun colour / brightness, point lights, water waves / clarity / foam all change the render", async () => {
+    const r = async (s) => hash((await E.render(s, s.cam, 40, 24)).rgba);
+    const base = S.loadPreset("Ocean Rock"), h0 = await r(base);
+    assert.strictEqual(await r(Object.assign(S.loadPreset("Ocean Rock"), S.DEFAULTS)), h0, "defaults reproduce the 0.3 look");
+    for (const [k, v] of [["sunCol", "#FF4020"], ["sunPow", 180], ["ambPow", 30], ["waveH", 0.5], ["clarity", 80], ["foam", 70], ["waterCol", "#30A060"], ["waterRefl", 20], ["wind", 120], ["ripple", 0]]) {
+      const s = S.loadPreset("Ocean Rock"); if (k === "wind") s.waveH = 0.4; s[k] = v; const h = await r(s);
+      assert.notStrictEqual(h, h0, k + " changes the picture");
+    }
+    const n = S.loadPreset("Moon Base"); assert.strictEqual(n.objs.filter((o) => o.type === "light").length, 2, "Moon Base has two lights");
+    const lit = await E.render(n, n.cam, 40, 24), off = S.loadPreset("Moon Base"); off.objs = off.objs.filter((o) => o.type !== "light");
+    const dark = await E.render(off, off.cam, 40, 24); let a = 0, b = 0; for (let i = 0; i < lit.rgba.length; i += 4) { a += lit.rgba[i]; b += dark.rgba[i]; }
+    assert.ok(a > b * 1.05, "lights brighten the scene");
+    const pink = S.loadPreset("Moon Base"); pink.objs.filter((o) => o.type === "light").forEach((o) => { o.col = "#0000FF"; });
+    assert.notStrictEqual(hash((await E.render(pink, pink.cam, 40, 24)).rgba), hash(lit.rgba), "light colour matters");
+    const back = S.fromJSON(S.toJSON(n)); assert.strictEqual(hash((await E.render(back, back.cam, 40, 24)).rgba), hash(lit.rgba), "lights save and load");
+  });
+
+  await t("Worlds Brew 0.4: surface shaping dials and sculpt brushes (raise, lower, smooth, flatten, roughen, restore), saved with the scene", async () => {
+    const ED = require(J + "/editor.js");
+    const s = S.loadPreset("Snow Peaks"), o = s.objs[0], h0 = hash((await E.render(s, s.cam, 40, 24)).rgba);
+    for (const [k, v] of [["plateau", 0.4], ["sharp", 2], ["crater", true], ["terrace", 5], ["rough", 0.7], ["erosion", 4]]) {
+      const c = S.loadPreset("Snow Peaks"); c.objs[0][k] = v; assert.notStrictEqual(hash((await E.render(c, c.cam, 40, 24)).rgba), h0, k + " reshapes the terrain");
+    }
+    const mid = () => ED.heightAt(o, 0.5, 0.5), m0 = mid();
+    ED.sculpt(o, "raise", 0.5, 0.5, 0.1, 1); assert.ok(mid() > m0, "raise"); const m1 = mid();
+    ED.sculpt(o, "lower", 0.5, 0.5, 0.1, 1); ED.sculpt(o, "lower", 0.5, 0.5, 0.1, 1); assert.ok(mid() < m1, "lower");
+    ED.sculpt(o, "flatten", 0.5, 0.5, 0.2, 1, 0.9); assert.ok(mid() > ED.heightAt(S.obj("terrain", 0, 0, 0, 1, "Stone", { seed: o.seed, rough: o.rough, h: o.h }), 0.5, 0.5) - 1, "flatten runs");
+    const before = o.sculpt.slice(); ED.sculpt(o, "roughen", 0.4, 0.4, 0.2, 1); assert.ok(o.sculpt.some((v, i) => v !== before[i]), "roughen");
+    const rough = o.sculpt.slice(); ED.sculpt(o, "smooth", 0.4, 0.4, 0.2, 1); assert.ok(o.sculpt.some((v, i) => v !== rough[i]), "smooth");
+    const sum = (a) => a.reduce((x, v) => x + Math.abs(v), 0), s1 = sum(o.sculpt); ED.sculpt(o, "restore", 0.5, 0.5, 0.4, 1); assert.ok(sum(o.sculpt) < s1, "restore");
+    const h1 = hash((await E.render(s, s.cam, 40, 24)).rgba); assert.notStrictEqual(h1, h0, "sculpting shows in the render");
+    const back = S.fromJSON(S.toJSON(s)); assert.ok(back.objs[0].sculpt instanceof Float32Array);
+    assert.strictEqual(hash((await E.render(back, back.cam, 40, 24)).rgba), h1, "sculpting saves and loads");
+    ED.clearSculpt(o); assert.strictEqual(hash((await E.render(s, s.cam, 40, 24)).rgba), h0, "Clear sculpting restores the shape");
+    // the brush finds the terrain under the pointer
+    const hit = ED.terrainHit(o, ED.screenRay(s.cam, 320, 180, 160, 100)); assert.ok(hit && hit.u > 0 && hit.u < 1 && hit.v > 0 && hit.v < 1, "ray meets terrain");
+    assert.strictEqual(ED.terrainHit(o, ED.screenRay(s.cam, 320, 180, 160, 2)), null, "sky misses");
+  });
+
+  await t("Worlds Brew 0.4 panels: Shape, Light and Water tabs, Light in the Create strip, sculpting in the Viewport", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
+    await P.settle(800);
+    const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
+    ["Shape", "Light", "Water", "Sky", "Camera"].forEach((n) => assert.ok(tabs.find((x) => x.title === n), n + " tab"));
+    R.createBtns.find((b) => b.__type === "light").click(); assert.strictEqual(T.st.sel.type, "light");
+    assert.ok(!shown("Shape") && shown("Light") && shown("Water"));
+    R.createBtns.find((b) => b.__type === "terrain").click(); assert.ok(shown("Shape"), "Shape tab for terrains");
+    const o = T.st.sel; T.onKey({ key: "b", target: P.document.body }); assert.strictEqual(T.st.view.gizmo, "sculpt");
+    T.st.scene.cam = { yaw: 0, pitch: 40, dist: 14, fov: 50, tx: o.x, ty: 0, tz: o.z }; T.drawViewport();
+    const img = R.vpImg, W = T.lastWire.w, H = T.lastWire.h, ev = (x, y) => ({ clientX: x, clientY: y, offsetX: x, offsetY: y, shiftKey: false, preventDefault() {}, currentTarget: img });
+    img.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H });
+    const m0 = require(J + "/editor.js").heightAt(o, 0.5, 0.5);
+    const fire = (type, x, y) => { const e = new P.window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }); img.dispatchEvent(e); };
+    fire("mousedown", W / 2, H / 2); fire("mousemove", W / 2 + 2, H / 2); fire("mouseup", W / 2 + 2, H / 2);
+    assert.ok(o.sculpt && require(J + "/editor.js").heightAt(o, 0.5, 0.5) !== m0, "a drag in sculpt mode reshapes the terrain");
+    assert.ok(o._undo !== undefined, "stroke can be undone");
+    T.st.scene.waveH = 0.4; T.st.scene.foam = 50; T.changed("val");
+    T.st.out.quality = "draft"; await T.renderNow(); assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
+  });
 };

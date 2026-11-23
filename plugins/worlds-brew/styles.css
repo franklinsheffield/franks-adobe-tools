@@ -14,3 +14,8 @@
 .wbcell.on { border-color: var(--glow); }
 .wbthumb { width: 96px; height: 54px; background: #111; }
 .wbname { font-size: 9px; padding: 2px 2px 1px; overflow: hidden; white-space: nowrap; }
+/* 0.4: colour chips for sun / light / water colours */
+#app .wbsw, #vp .wbsw { display: flex; align-items: center; }
+#app .wbdot, #vp .wbdot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.6); margin-right: 5px; }
+#app .tabrow { flex-wrap: wrap; }
+#app .seg, #vp .seg { flex-wrap: wrap; }

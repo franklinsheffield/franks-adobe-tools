@@ -78,6 +78,6 @@ const MAPS = {
   }
 };
 const PACKS = Object.keys(MAPS);
-function loadMap(pack, name) { const f = MAPS[pack] && MAPS[pack][name]; if (!f) throw new Error("No map called " + name); const s = f(); s.name = name; s.pack = pack; return s; }
+function loadMap(pack, name) { const f = MAPS[pack] && MAPS[pack][name]; if (!f) throw new Error("No map called " + name); const s = S.withDefaults(f()); s.name = name; s.pack = pack; return s; }
 
 module.exports = { PACKS, MAPS, assets, asset, put, loadMap };

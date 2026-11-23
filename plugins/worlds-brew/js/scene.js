@@ -21,9 +21,14 @@ const SKIES = {
   Night: { zen: [0.01, 0.012, 0.04], hor: [0.07, 0.09, 0.2], sun: [0.45, 0.5, 0.68], amb: [0.07, 0.08, 0.14] },
 };
 const HM_N = 96, hmCache = new Map();
-function heightmap(o) {
-  const key = [o.seed, o.rough, o.erosion, o.terrace].join("|");
+// smooth edge mask (1 inside, 0 at the footprint's rim) shared by the generator and the sculpt brush
+function edgeMask(p) { const N = HM_N, u = (p % N) / (N - 1) * 2 - 1, v = Math.floor(p / N) / (N - 1) * 2 - 1, rr = clamp((Math.hypot(u, v) - 0.5) / 0.45, 0, 1); return 1 - rr * rr * (3 - 2 * rr); }
+// the brush can reach the whole square footprint except a thin border, so the edges stay sealed
+function sculptMask(p) { const N = HM_N, u = Math.abs((p % N) / (N - 1) * 2 - 1), v = Math.abs(Math.floor(p / N) / (N - 1) * 2 - 1), t = clamp((Math.max(u, v) - 0.9) / 0.08, 0, 1); return 1 - t * t * (3 - 2 * t); }
+function baseHeightmap(o) {
+  const key = [o.seed, o.rough, o.erosion, o.terrace, o.plateau || 0, o.sharp || 1, o.crater ? 1 : 0].join("|");
   if (hmCache.has(key)) return hmCache.get(key);
+  if (hmCache.size > 60) hmCache.clear();   // dials make a new shape per value; keep memory bounded
   const N = HM_N, a = new Float32Array(N * N);
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const u = i / (N - 1) * 2 - 1, v = j / (N - 1) * 2 - 1;
@@ -33,11 +38,30 @@ function heightmap(o) {
   }
   for (let k = 0; k < o.erosion; k++) { const b = a.slice(); for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) { const p = j * N + i; a[p] = (b[p] * 4 + b[p - 1] + b[p + 1] + b[p - N] + b[p + N]) / 8; } }
   let mx = 0; for (let p = 0; p < N * N; p++) mx = Math.max(mx, a[p]);
+  const sharp = o.sharp || 1, pl = clamp(o.plateau || 0, 0, 0.9);
   for (let p = 0; p < N * N; p++) {
     // edge mask after erosion, so the footprint's border and corners sink below ground/water (no flat square skirt)
-    const u = (p % N) / (N - 1) * 2 - 1, v = Math.floor(p / N) / (N - 1) * 2 - 1, rr = clamp((Math.hypot(u, v) - 0.5) / 0.45, 0, 1), em = 1 - rr * rr * (3 - 2 * rr);
-    let h = ((a[p] / (mx || 1)) - 0.12) / 0.88 * em - 0.08 * (1 - em); /* low fringe sinks below ground */ if (o.terrace > 0 && h > 0) { const s = h * o.terrace, f = s - Math.floor(s); h = (Math.floor(s) + Math.pow(f, 4)) / o.terrace - 0.03; /* lowest step sits under the ground, not in it */ } a[p] = h; }
+    const em = edgeMask(p);
+    let n = ((a[p] / (mx || 1)) - 0.12) / 0.88;                  // lowlands stay below 0 (under the ground), as before
+    if (n > 0 && sharp !== 1) n = Math.pow(n, sharp);              // >1 = sharper peaks, <1 = rounder hills
+    if (n > 0 && pl > 0) n = Math.min(n, 1 - pl) / (1 - pl);       // flat-topped mesas
+    if (o.crater) { const u = (p % N) / (N - 1) * 2 - 1, v = Math.floor(p / N) / (N - 1) * 2 - 1, r = Math.hypot(u, v), rim = Math.exp(-Math.pow((r - 0.5) / 0.16, 2));
+      n = rim * 0.95 + Math.max(n, 0) * 0.3 - (r < 0.42 ? 0.12 * (1 - r / 0.42) : 0); } // bowl with a raised rim
+    let h = n * em - 0.08 * (1 - em); /* low fringe sinks below ground */
+    if (o.terrace > 0 && h > 0) { const s = h * o.terrace, f = s - Math.floor(s); h = (Math.floor(s) + Math.pow(f, 4)) / o.terrace - 0.03; /* lowest step sits under the ground, not in it */ }
+    a[p] = h; }
+  let top = 0; for (let p = 0; p < N * N; p++) top = Math.max(top, a[p]); a.top = top; a.key = key;
   hmCache.set(key, a); return a;
+}
+// final heights = generated shape + the brush sculpt layer (o.sculpt, kept inside the footprint)
+function heightmap(o) {
+  const base = baseHeightmap(o);
+  if (!o.sculpt) return base;
+  const key = base.key;
+  if (o._hm && o._hmKey === key + "|" + (o.sculptV || 0)) return o._hm;
+  const N = HM_N, a = new Float32Array(N * N); let top = 0;
+  for (let p = 0; p < N * N; p++) { a[p] = base[p] + o.sculpt[p] * sculptMask(p); if (a[p] > top) top = a[p]; }
+  a.top = top; o._hm = a; o._hmKey = key + "|" + (o.sculptV || 0); return a;
 }
 function hmAt(a, u, v) {
   const N = HM_N; u = clamp(u, 0, 1) * (N - 1); v = clamp(v, 0, 1) * (N - 1);
@@ -56,7 +80,8 @@ function camBasis(c, aspect) {
 
 let UID = 1;
 function obj(type, x, y, z, s, mat, extra) {
-  return Object.assign({ id: UID++, type, x, y, z, s, ry: 0, mat, hue: 0, refl: null, h: 3, rough: 0.5, erosion: 1, terrace: 0, seed: 3,
+  return Object.assign({ id: UID++, type, x, y, z, s, ry: 0, mat, hue: 0, refl: null, h: 3, rough: 0.5, erosion: 1, terrace: 0, seed: 3, plateau: 0, sharp: 1, crater: false, sculpt: null, sculptV: 0,
+    col: "#FFE2B0", pow: 100, range: 6, glow: true, shadow: true,
     mesh: null, smooth: true, sx: 1, sy: 1, sz: 1, disp: 0, pat: "None", ts: 1, bump: 0, img: null }, extra || {});
 }
 function meshObj(m, x, z, s, mat, extra) { const o = obj("mesh", x, 0, z, s, mat, Object.assign({ mesh: m }, extra || {})); o.y = m.hy * s; return o; }
@@ -64,6 +89,11 @@ const SAMPLES = MOD.SAMPLES;
 
 /* 12 built-in scenes (Frank's spec: 12 for the gate-2 contact sheet) */
 const BASE = { sky: "Noon", sunAz: 200, sunAlt: 30, haze: 15, fog: 0, fogH: 1, clouds: 30, water: false, ground: false, waterLvl: 0 };
+// lighting and water settings every scene gets (older saved scenes are filled in by withDefaults)
+const DEFAULTS = { sunCol: "", sunPow: 100, ambPow: 100, waveH: 0, waveSize: 1, wind: 30, ripple: 1, waterCol: "#05171F", clarity: 0, waterRefl: 100, foam: 0 };
+function withDefaults(s) { Object.keys(DEFAULTS).forEach((k) => { if (s[k] === undefined) s[k] = DEFAULTS[k]; }); return s; }
+// a point light: an object of type "light" (position x / y / z, colour, brightness %, reach)
+function light(x, y, z, col, pow, range, extra) { return obj("light", x, y, z, 0.25, "Matte", Object.assign({ col: col || "#FFE2B0", pow: pow == null ? 100 : pow, range: range || 6 }, extra || {})); }
 const sc = (o) => Object.assign({}, BASE, o);
 const PRESETS = {
   "Mint Lagoon": () => sc({ sky: "Alien", sunAz: 210, sunAlt: 22, haze: 10, fog: 8, fogH: 1.2, clouds: 40, water: true,
@@ -90,7 +120,8 @@ const PRESETS = {
     objs: [obj("terrain", -7, 0, -8, 7, "Stone", { h: 6, seed: 61, rough: 0.5, terrace: 8, erosion: 1 }), obj("terrain", 7, 0, -9, 7, "Stone", { h: 5.5, seed: 64, rough: 0.5, terrace: 7, erosion: 1 }), obj("terrain", 0, 0, -22, 9, "Stone", { h: 7, seed: 67, terrace: 9 })] }),
   "Moon Base": () => sc({ sky: "Night", sunAz: 300, sunAlt: 38, haze: 4, clouds: 0, ground: true,
     cam: { yaw: 40, pitch: 14, dist: 18, fov: 45, tx: 0, ty: 1, tz: 0 },
-    objs: [obj("sphere", 0, 0, 0, 2.4, "Matte"), obj("cylinder", 3.6, 1.2, 0.5, 0.9, "Chrome"), obj("cylinder", -3.4, 0.7, 1.4, 0.7, "Chrome"), obj("torus", 0, 0.5, 0, 3.6, "Chrome"), obj("cone", 2, 0.6, 4, 0.6, "Neon")] }),
+    objs: [obj("sphere", 0, 0, 0, 2.4, "Matte"), obj("cylinder", 3.6, 1.2, 0.5, 0.9, "Chrome"), obj("cylinder", -3.4, 0.7, 1.4, 0.7, "Chrome"), obj("torus", 0, 0.5, 0, 3.6, "Chrome"), obj("cone", 2, 0.6, 4, 0.6, "Neon"),
+      light(-2.5, 2.4, 3.2, "#FF4FD8", 200, 4), light(4.8, 1.4, 3, "#5EFFC8", 180, 3.5)] }),
   "Neon Grid": () => sc({ sky: "Alien", sunAz: 180, sunAlt: 10, haze: 12, fog: 10, fogH: 1, clouds: 25, ground: true,
     cam: { yaw: 0, pitch: 22, dist: 17, fov: 55, tx: 0, ty: 1.2, tz: 0 },
     objs: [obj("cube", 0, 1.6, 0, 1.6, "Chrome", { ry: 45 }), obj("torus", 0, 0.55, 0, 4.2, "Neon"), obj("sphere", -5, 1, -3, 1, "Matte", { pat: "Grid", hue: 300 }), obj("sphere", 5, 1, -3, 1, "Matte", { pat: "Grid", hue: 180 })] }),
@@ -105,11 +136,12 @@ const PRESETS = {
     objs: [meshObj(SAMPLES.pawn, 0, 0, 1.6, "Chrome"), meshObj(SAMPLES.pawn, -2.6, 0.8, 1.1, "Glossy", { pat: "Marble", mat: "Matte" }), meshObj(SAMPLES.pawn, 2.6, 0.8, 1.1, "Gold", { pat: "Wood", mat: "Matte" }),
       meshObj(SAMPLES.rock, 1.5, 3.2, 0.7, "Stone", { smooth: false, disp: 0.15 })] }),
 };
-function loadPreset(name) { const f = PRESETS[name]; if (!f) throw new Error("No scene called " + name); const s = f(); s.name = name; return s; }
+function loadPreset(name) { const f = PRESETS[name]; if (!f) throw new Error("No scene called " + name); const s = withDefaults(f()); s.name = name; return s; }
 
 /* save / load: models travel inside the scene file; image textures are kept as small RGBA */
 function toJSON(scene) {
-  return JSON.stringify(Object.assign({}, scene, { objs: scene.objs.map((o) => { const c = Object.assign({}, o); delete c._mk; delete c._mv;
+  return JSON.stringify(Object.assign({}, scene, { objs: scene.objs.map((o) => { const c = Object.assign({}, o); delete c._mk; delete c._mv; delete c._hm; delete c._hmKey; delete c._undo;
+    if (o.sculpt) c.sculpt = b64u8(new Uint8Array(o.sculpt.buffer, o.sculpt.byteOffset, o.sculpt.byteLength));
     if (o.mesh) c.mesh = MOD.meshToJSON(o.mesh);
     if (o.img) c.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: b64u8(o.img.d) };
     return c; }) }));
@@ -119,8 +151,9 @@ function fromJSON(text) {
   const s = JSON.parse(text);
   s.objs = s.objs.map((o) => { o.id = UID++; if (o.mesh) o.mesh = MOD.meshFromJSON(o.mesh);
     if (o.img) { const raw = typeof atob === "function" ? atob(o.img.d) : Buffer.from(o.img.d, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: u }; }
+    if (typeof o.sculpt === "string") { const raw = typeof atob === "function" ? atob(o.sculpt) : Buffer.from(o.sculpt, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.sculpt = new Float32Array(u.buffer); }
     return o; });
-  return s;
+  return withDefaults(s);
 }
 
-module.exports = { MATS, SKIES, heightmap, hmAt, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N };
+module.exports = { MATS, SKIES, heightmap, baseHeightmap, edgeMask, hmAt, light, DEFAULTS, withDefaults, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N };

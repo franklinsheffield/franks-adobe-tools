@@ -69,14 +69,27 @@ function wireframe(scene, cam, W, H, opt) {
     else if (o.type === "terrain") { const hm = heightmap(o), G = 24;
       for (let j = 0; j <= G; j++) { const ra = [], rb = []; for (let i = 0; i <= G; i++) { const u = i / G, v = j / G;
         ra.push(P((u * 2 - 1) * ss, hmAt(hm, u, v) * o.h, (v * 2 - 1) * ss)); rb.push(P((v * 2 - 1) * ss, hmAt(hm, v, u) * o.h, (u * 2 - 1) * ss)); } poly(ra); poly(rb); } }
+    else if (o.type === "light") { // a little star in the light's own colour, with its reach as a faint ring
+      const m = /^#?([0-9a-f]{6})$/i.exec(o.col || ""), n = m ? parseInt(m[1], 16) : 0xffe2b0, lc = [n >> 16 & 255, n >> 8 & 255, n & 255];
+      if (!isSel) col = lc; const r = Math.max(0.15, o.s);
+      [[1, 0, 0], [0, 1, 0], [0, 0, 1], [0.7, 0.7, 0], [-0.7, 0.7, 0], [0, 0.7, 0.7], [0, -0.7, 0.7]].forEach((d) => seg([o.x - d[0] * r * 1.6, o.y - d[1] * r * 1.6, o.z - d[2] * r * 1.6], [o.x + d[0] * r * 1.6, o.y + d[1] * r * 1.6, o.z + d[2] * r * 1.6]));
+      circ(r, 0, 16, "y"); circ(r, 0, 16, "z");
+      const keep = al; col = lc; al = 0.22; thick = false; circ(o.range || 6, -o.y + (scene.water ? scene.waterLvl || 0 : 0), 48, "y"); al = keep;
+      continue; }
     if (isSel) { const isM = o.type === "mesh", hx = isM ? ss * o.sx : ss, hzz = isM ? ss * o.sz : ss, hy = o.type === "terrain" ? o.h : isM ? ss * o.sy * o.mesh.hy : ss, ly = o.type === "terrain" ? 0 : -hy;
       col = C.sel; al = 0.5; thick = false;
       const v = [[-1, ly, -1], [1, ly, -1], [1, hy, -1], [-1, hy, -1], [-1, ly, 1], [1, ly, 1], [1, hy, 1], [-1, hy, 1]].map((q) => P(q[0] * hx, q[1], q[2] * hzz));
       [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]].forEach((e) => seg(v[e[0]], v[e[1]])); }
   }
+  // sculpt brush ring on the terrain surface
+  if (opt.brush && opt.brush.o) { const b = opt.brush, o = b.o, hm = heightmap(o), ry = o.ry * Math.PI / 180, c = Math.cos(ry), sn = Math.sin(ry), pts = [];
+    col = C.sun; al = 1; thick = true;
+    for (let k = 0; k <= 40; k++) { const a = k / 40 * Math.PI * 2, u = b.u + Math.cos(a) * b.r, v = b.v + Math.sin(a) * b.r, lx = (u * 2 - 1) * o.s, lz = (v * 2 - 1) * o.s;
+      pts.push([o.x + c * lx + sn * lz, o.y + hmAt(hm, u, v) * o.h + 0.02, o.z - sn * lx + c * lz]); }
+    poly(pts, false); thick = false; }
   // handles on the selection
   let gizmo = null;
-  if (sel) {
+  if (sel && !(opt.gizmo === "sculpt" && sel.type === "terrain")) {
     const o = sel, pv = [o.x, o.y + (o.type === "terrain" ? o.h * 0.5 : 0), o.z], L = cam.dist * 0.12, c0 = proj(pv[0], pv[1], pv[2]);
     if (c0[2] > 0.2) {
       const s0 = toS(c0); gizmo = { s0, axes: [], ring: null, L, mode };
