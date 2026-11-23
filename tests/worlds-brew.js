@@ -217,4 +217,58 @@ module.exports = async function (t) {
     T.st.scene.waveH = 0.4; T.st.scene.foam = 50; T.changed("val");
     T.st.out.quality = "draft"; await T.renderNow(); assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
   });
+  await t("Worlds Brew 0.5 controls: drag-and-drop placing, drag to move, object and camera pads, keys, Objects list", async () => {
+    const CT = require(J + "/controls.js"), ED = require(J + "/editor.js");
+    // host-free: surfaces, nudges, camera moves
+    const s = S.loadPreset("Snow Peaks"), ter = s.objs.find((o) => o.type === "terrain"), ball = S.obj("sphere", ter.x, 0, ter.z, 0.5, "Chrome"); s.objs.push(ball);
+    CT.rest(s, ball); assert.ok(ball.y > ED.groundY(s) + 0.6, "rests on the terrain, not under it");
+    const x0 = ball.x; s.cam.yaw = 0; CT.nudge(s, ball, "right", "big", true); assert.ok(Math.abs(ball.x - x0 - 2) < 1e-6, "camera-relative right");
+    const y0 = ball.y; CT.nudge(s, ball, "up", "med", true); assert.ok(Math.abs(ball.y - y0 - 0.5) < 1e-6);
+    CT.spin(ball, 1, "big"); assert.strictEqual(ball.ry % 45, 0); const s0 = ball.s; CT.grow(s, ball, 1, "med", false); assert.ok(ball.s > s0);
+    const c = s.cam; CT.camOrbit(c, 10, 5); CT.camPan(c, 1, 1, 1); CT.camZoom(c, 0.5); CT.camView(c, "top"); assert.strictEqual(c.pitch, 89);
+    CT.frame(s); assert.ok(c.dist > 2 && Number.isFinite(c.tx)); CT.frame(s, ball); assert.strictEqual(c.tx, +ball.x.toFixed(3));
+    assert.strictEqual(CT.cycle(s, s.objs[s.objs.length - 1], 1), s.objs[0], "Next wraps round");
+    // panel
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
+    await P.settle(800);
+    const T = P.mod._test, R = T.refs, st = T.st;
+    T.loadScene(S.loadPreset("Chrome Garden")); st.scene.cam = { yaw: 0, pitch: 35, dist: 14, fov: 50, tx: 0, ty: 0, tz: 0 }; T.drawViewport();
+    const img = R.vpImg, W = T.lastWire.w, H = T.lastWire.h;
+    img.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H });
+    const ev = (target, type, x, y, shift) => { const e = new P.window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true, shiftKey: !!shift }); target.dispatchEvent(e); };
+    // drag the Cube tile into the view: it lands under the pointer, on the ground
+    const n0 = st.scene.objs.length, tile = R.createBtns.find((b) => b.__type === "cube");
+    ev(tile, "mousedown", -50, -50); ev(img, "mousemove", W * 0.7, H * 0.6); ev(img, "mousemove", W * 0.72, H * 0.62); ev(img, "mouseup", W * 0.72, H * 0.62);
+    assert.strictEqual(st.scene.objs.length, n0 + 1, "one cube dropped " + n0 + " " + JSON.stringify(st.scene.objs.map((o) => o.type)) + " carry " + !!T.carry); const cube = st.scene.objs[n0];
+    assert.strictEqual(T.carry, null); assert.strictEqual(st.sel, cube); assert.ok(cube.x > 0.3, "landed right of centre, under the pointer (x " + cube.x + ")");
+    assert.ok(Math.abs(cube.y - cube.s - CT.surfaceY(st.scene, cube.x, cube.z, cube)) < 0.01, "sitting on the surface");
+    // a drag that ends outside the view cancels
+    const asset = R.assetBtns[0]; ev(asset, "mousedown", -50, -50); ev(img, "mousemove", W / 2, H / 2); ev(asset, "mouseup", -40, -40); await new Promise((r) => setTimeout(r, 600));
+    assert.strictEqual(st.scene.objs.length, n0 + 1, "drop outside the view = cancelled");
+    // clicking a tile still adds in front of the camera
+    asset.click(); assert.strictEqual(st.scene.objs.length, n0 + 2); assert.strictEqual(st.sel.asset, asset.__asset.id);
+    // grab the cube and drag it: it follows the pointer
+    T.select(cube); T.drawViewport(); const B = S.camBasis(st.scene.cam, W / H), f = (H / 2) / B.tan, px = cube.x - B.ex, py = cube.y - B.ey, pz = cube.z - B.ez, cz = px * B.fx + py * B.fy + pz * B.fz;
+    const sx = W / 2 + (px * B.rx + pz * B.rz) / cz * f, sy = H / 2 - (px * B.ux + py * B.uy + pz * B.uz) / cz * f, cx0 = cube.x;
+    st.view.gizmo = "rotate";   // so the move handles are not in the way
+    ev(img, "mousedown", sx + 1, sy + 1); ev(img, "mousemove", sx - 30, sy + 1); ev(img, "mouseup", sx - 30, sy + 1);
+    assert.ok(cube.x < cx0 - 0.3, "dragging the object moves it left (" + cx0 + " -> " + cube.x + ")"); assert.strictEqual(st.sel, cube);
+    // object pad buttons (hold-repeat buttons also work as clicks)
+    const btnByTitle = (re) => Array.from(P.document.querySelectorAll("#vp .wbpadbtn")).find((b) => re.test(b.getAttribute("title") || ""));
+    const z0 = cube.y; btnByTitle(/^Raise/).click(); assert.ok(cube.y > z0, "Height up");
+    const s1 = cube.s; btnByTitle(/^Bigger/).click(); assert.ok(cube.s > s1, "Size +");
+    const cam0 = Object.assign({}, st.scene.cam); btnByTitle(/^Circle left/).click(); assert.notStrictEqual(st.scene.cam.yaw, cam0.yaw, "Orbit");
+    btnByTitle(/^Move in/).click(); assert.ok(st.scene.cam.dist < cam0.dist, "Zoom in");
+    // keys
+    const kx = cube.x; T.onKey({ key: "ArrowRight", target: P.document.body }); assert.ok(cube.x > kx, "arrow key nudges");
+    T.onKey({ key: "Tab", target: P.document.body }); assert.notStrictEqual(st.sel, cube, "Tab selects the next object");
+    T.onKey({ key: "Escape", target: P.document.body }); assert.ok(!st.scene.objs.includes(st.sel), "Esc deselects");
+    T.onKey({ key: "h", target: P.document.body });
+    // the Objects list mirrors the scene and selects
+    const chips = R.objList.querySelectorAll(".pill"); assert.strictEqual(chips.length, st.scene.objs.length);
+    chips[0].click(); assert.strictEqual(st.sel, st.scene.objs[0]); assert.ok(R.objList.querySelector(".pill.on"));
+    // lock camera: an empty-space drag no longer orbits
+    st.view.camLock = true; const y1 = st.scene.cam.yaw; ev(img, "mousedown", 3, 3); ev(img, "mousemove", 60, 3); ev(img, "mouseup", 60, 3); assert.strictEqual(st.scene.cam.yaw, y1);
+  });
 };

@@ -12,20 +12,21 @@ const E = require("./js/engine.js");
 const WF = require("./js/wire.js");
 const ED = require("./js/editor.js");
 const PK = require("./js/packs.js");
+const CT = require("./js/controls.js");
 const PS = require("./core/ps-io.js");
 const PNG = require("./core/png.js");
 const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.4.1";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.5.0";
 PS.configure({ appName: APP, presetFile: "scenes.json", exportName: "worlds-scene.json" });
 let uxp = null; try { uxp = require("uxp"); } catch (e) { uxp = null; }
 const psHost = require("photoshop");   // loaded once at start-up (the test harness only serves it then)
 
 // ---- shared state: the scene, the selection (a placeholder when nothing is selected) and panel options
 const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
-const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move", scenePack: "Classic", assetPack: "Fantasy", brush: "raise", bsize: 0.12, bpow: 0.5 }, out: { quality: "final" }, saveName: "" };
+const st = { scene: S.loadPreset("Chrome Garden"), sel: NONE, view: { mode: "wire", gizmo: "move", scenePack: "Classic", assetPack: "Fantasy", brush: "raise", bsize: 0.12, bpow: 0.5, step: "med", stick: true, camLock: false, addPack: "Shapes" }, out: { quality: "final" }, saveName: "" };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
 const is = (...types) => () => hasSel() && types.includes(st.sel.type);
 const refs = {};
@@ -45,6 +46,7 @@ function setStatus(msg, err) {
 function changed(what) {
   if (what === "sel" || what === "scene") { cui.refreshAll(); vui.refreshAll(); }
   else { cui.refreshAll(); vui.refreshAll(); }
+  refreshObjList();
   drawViewport();
   loop.schedule(what === "live" ? 400 : 150);
 }
@@ -97,7 +99,7 @@ function vpSize() {
 function drawViewport() {
   if (!refs.vpImg) return;
   const { w, h } = vpSize();
-  if (st.view.mode === "wire" || dragging) {
+  if (st.view.mode === "wire" || dragging || carry) {
     vpGen++;
     lastWire = WF.wireframe(st.scene, st.scene.cam, w, h, { sel: hasSel() ? st.sel : null, gizmo: st.view.gizmo, brush: brushRing() });
     refs.vpImg.src = PNG.dataURL(lastWire.rgba, w, h, 4);
@@ -131,7 +133,58 @@ function vpXY(e) {
   return [x * W / rw, y * H / rh];
 }
 function vpHint(t) { if (refs.vpHint) refs.vpHint.textContent = t; }
-const HINT = "Drag = orbit  -  Shift-drag = pan  -  wheel = zoom  -  click = select. Drag the coloured handles to move, rotate or scale (W / E / R). Sculpt (B) paints a selected terrain.";
+const HINT = "Click an object to select it, drag it to move it (Shift-drag = up / down). Drag empty space to orbit, Shift-drag to pan, wheel to zoom. Drag a tile from Add into the view to place it.";
+const r2 = (v) => +(+v).toFixed(2);
+function moveHint(o) { vpHint("MOVE  " + ED.label(o) + "   x " + r2(o.x) + "   z " + r2(o.z) + "   height " + r2(o.y)); }
+function quick() { cui.refreshAll(); vui.refreshAll(); drawViewport(); }
+// is the pointer over the viewport picture?
+function inVp(e) {
+  const img = refs.vpImg; if (!img || !lastWire) return false;
+  let r = null; try { r = img.getBoundingClientRect(); } catch (err) { r = null; }
+  if (!r || !r.width) return e.target === img;
+  return e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
+}
+function rayAt(e) { const [mx, my] = vpXY(e); return ED.screenRay(st.scene.cam, lastWire.w, lastWire.h, mx, my); }
+
+// ---- drag and drop from the Add tiles: the new object follows the pointer over the view and lands where you let go
+let carry = null, pressTile = null;
+function makeFrom(src) {
+  if (src.asset) return addAsset(src.asset);
+  return ED.addObject(st.scene, src.type);
+}
+function carryTo(e) {
+  if (!carry || !lastWire) return;
+  const o = carry.o, hit = CT.groundHit(st.scene, rayAt(e), o);
+  if (!hit) return;
+  if (o.type === "terrain") CT.placeAt(st.scene, o, hit.x, hit.z, false);
+  else CT.placeAt(st.scene, o, hit.x, hit.z, true);
+  moveHint(o); drawViewport();
+}
+function dropCarry() { if (!carry) return; const o = carry.o; carry = null; vpHint(HINT); changed("scene"); setStatus("Placed " + ED.label(o).toLowerCase() + ". Drag it to move it."); }
+function cancelCarry() { if (!carry) return; ED.remove(st.scene, carry.o); carry = null; vpHint(HINT); select(null); setStatus("Drop cancelled."); }
+// a tile that can be clicked (adds in front of the camera) or dragged into the view
+function dragTile(b, src) {
+  try { b.__img.setAttribute("draggable", "false"); } catch (e) { /* ok */ }
+  b.addEventListener("mousedown", (e) => { pressTile = { src, b, x: e.clientX, y: e.clientY }; if (e.preventDefault) e.preventDefault(); });
+  b.addEventListener("click", () => {
+    if (b.__skipClick && Date.now() - b.__skipClick < 500) { b.__skipClick = 0; return; }
+    const o = makeFrom(src); select(o);
+    setStatus("Added " + (src.asset ? src.asset.name + "  -  " + src.asset.credit : ED.label(o).toLowerCase()) + ". Drag it in the view to move it.");
+  });
+}
+function docMove(e) {
+  if (e.__wb) return; e.__wb = true;
+  if (pressTile && !carry && inVp(e)) { const o = makeFrom(pressTile.src); st.sel = o; carry = { o }; }
+  if (carry && inVp(e)) carryTo(e);
+}
+function docUp(e) {
+  if (e.__wbUp) return; e.__wbUp = true;
+  holdStops.forEach((f) => f());
+  if (!pressTile) return;
+  const p = pressTile; pressTile = null;
+  if (carry) { p.b.__skipClick = Date.now(); if (inVp(e)) { carryTo(e); dropCarry(); } else cancelCarry(); }
+}
+
 function wireViewportPointer(img) {
   img.addEventListener("mousedown", (e) => {
     const [mx, my] = vpXY(e);
@@ -140,10 +193,21 @@ function wireViewportPointer(img) {
         dragging = { x: e.clientX, y: e.clientY, moved: true, sculpt: true, ref: ED.heightAt(o, hit.u, hit.v) };
         brushAt = hit; ED.sculpt(o, st.view.brush, hit.u, hit.v, st.view.bsize, st.view.bpow, dragging.ref); drawViewport(); if (e.preventDefault) e.preventDefault(); return; } }
     const h = hasSel() && lastWire ? WF.pickHandle(lastWire.gizmo, mx, my) : null;
+    if (!h && lastWire) {
+      // press on an object (not a terrain, they are too big to grab): select it and get ready to move it
+      const o = WF.pick(st.scene, st.scene.cam, lastWire.w, lastWire.h, mx, my);
+      if (o && o.type !== "terrain") {
+        const p = CT.planeHit(ED.screenRay(st.scene.cam, lastWire.w, lastWire.h, mx, my), o.y);
+        dragging = { x: e.clientX, y: e.clientY, moved: false, obj: o, off: p ? [o.x - p.x, o.z - p.z] : [0, 0], start: Object.assign({}, o) };
+        if (st.sel !== o) { brushAt = null; st.sel = o; quick(); }
+        if (e.preventDefault) e.preventDefault(); return;
+      }
+    }
     dragging = { x: e.clientX, y: e.clientY, mx, my, moved: false, shift: e.shiftKey, cam: Object.assign({}, st.scene.cam), h, start: hasSel() ? Object.assign({}, st.sel) : null };
     if (e.preventDefault) e.preventDefault();
   });
   const move = (e) => {
+    if (e.__wbV) return; e.__wbV = true;
     if (dragging && dragging.sculpt) { const [mx, my] = vpXY(e), hit = terrainUnder(mx, my); if (hit) { brushAt = hit; ED.sculpt(st.sel, st.view.brush, hit.u, hit.v, st.view.bsize, st.view.bpow, dragging.ref); drawViewport(); } return; }
     if (!dragging) { if (sculpting() && e.currentTarget === img) { const [mx, my] = vpXY(e); brushAt = terrainUnder(mx, my); if (st.view.mode === "wire") drawViewport(); } return; }
     const rect = (() => { try { return img.getBoundingClientRect(); } catch (err) { return null; } })();
@@ -151,18 +215,27 @@ function wireViewportPointer(img) {
     const dx = (e.clientX - dragging.x) * k, dy = (e.clientY - dragging.y) * k;
     if (!dragging.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
     dragging.moved = true;
+    if (dragging.obj) {
+      const o = dragging.obj, s0 = dragging.start;
+      if (e.shiftKey) o.y = r2(s0.y - dy * st.scene.cam.dist / 260);
+      else { const p = CT.planeHit(rayAt(e), s0.y); if (p) CT.placeAt(st.scene, o, p.x + dragging.off[0], p.z + dragging.off[1], st.view.stick); }
+      moveHint(o); quick(); return;
+    }
     if (dragging.h && hasSel()) {
       WF.dragHandle(st.sel, dragging.start, dragging.h, dx, dy);
       const o = st.sel, h = dragging.h;
       vpHint(h.mode.toUpperCase() + "  " + (h.mode === "rotate" ? "spin " + o.ry + " deg" : h.mode === "move" ? h.ax.toUpperCase() + " = " + o[h.ax] : "size " + o.s + (o.type === "mesh" ? "  (x " + o.sx + "  y " + o.sy + "  z " + o.sz + ")" : "")));
-    } else if (dragging.shift) ED.pan(st.scene.cam, dragging.cam, dx, dy, aspect());
+    } else if (st.view.camLock) return;
+    else if (dragging.shift) ED.pan(st.scene.cam, dragging.cam, dx, dy, aspect());
     else ED.orbit(st.scene.cam, dragging.cam, dx, dy);
-    cui.refreshAll(); vui.refreshAll(); drawViewport();
+    quick();
   };
   const up = (e) => {
+    if (e.__wbVU) return; e.__wbVU = true;
     if (!dragging) return;
     const d = dragging; dragging = null;
     if (d.sculpt) { vpHint("Sculpted with " + st.view.brush + ". Undo stroke is in the Shape tab."); changed("sel"); return; }
+    if (d.obj) { if (d.moved) { moveHint(d.obj); setStatus("Moved " + ED.label(d.obj).toLowerCase() + "."); } else vpHint(HINT); changed("sel"); return; }
     if (!d.moved && !d.h) { const [mx, my] = vpXY(e); select(WF.pick(st.scene, st.scene.cam, lastWire ? lastWire.w : 1, lastWire ? lastWire.h : 1, mx, my)); return; }
     st.scene.cam.yaw = ((st.scene.cam.yaw % 360) + 360) % 360;
     vpHint(HINT);
@@ -261,7 +334,7 @@ async function textureFromFile() {
 let saved = [];
 async function loadSaved() { const d = await PS.loadData("scenes.json"); saved = d && Array.isArray(d.list) ? d.list : []; refreshSaved(); }
 async function storeSaved() { await PS.saveData("scenes.json", { list: saved }); refreshSaved(); }
-function loadScene(scene) { st.scene = scene; st.sel = NONE; changed("scene"); }
+function loadScene(scene) { st.scene = scene; st.sel = NONE; homeCam = CT.camCopy(scene.cam); changed("scene"); }
 function refreshSaved() {
   const sel = refs.savedSel; if (!sel) return;
   clear(sel);
@@ -320,6 +393,125 @@ async function renderNow() {
   finally { working = false; loop.setBusy(false); refs.go.textContent = "Render to layer"; setStatus(refs.status ? refs.status.textContent : "", refs.status && /err/.test(refs.status.className)); drawViewport(); }
 }
 
+// ---- 0.5 control deck helpers
+const holdStops = [];
+// small white arrow pictures for the pads (UXP fonts lack reliable arrow glyphs)
+const arrowCache = {};
+function arrowSrc(dir) {
+  if (arrowCache[dir]) return arrowCache[dir];
+  const N = 14, px = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let u = (x + 0.5) / N * 2 - 1, v = (y + 0.5) / N * 2 - 1;   // -1..1, up arrow = point at top
+    if (dir === "down") v = -v; else if (dir === "left") { const t = u; u = v; v = t; } else if (dir === "right") { const t = u; u = v; v = -t; }
+    const inside = v > -0.75 && v < 0.6 && Math.abs(u) < (v + 0.75) * 0.62;
+    const i = (y * N + x) * 4; px[i] = px[i + 1] = px[i + 2] = 255; px[i + 3] = inside ? 255 : 0;
+  }
+  return (arrowCache[dir] = PNG.dataURL(px, N, N, 4));
+}
+const arrow = (dir) => el("img", { class: "wbarrow", src: arrowSrc(dir), draggable: "false" });
+// a button that repeats while held (mouse down), and still works as a plain click
+function holdBtn(kids, fn, title, cls) {
+  const b = el("button", { class: "btn small wbpadbtn " + (cls || ""), title: title || "" }, kids);
+  let t1 = null, t2 = null, held = false;
+  const step = () => { try { fn(); } catch (e) { setStatus(e.message, true); } quick(); };
+  const stop = () => { if (!held) return; held = false; clearTimeout(t1); clearInterval(t2); t1 = t2 = null; changed("val"); };
+  holdStops.push(stop);
+  b.addEventListener("mousedown", () => { held = true; b.__down = true; step(); t1 = setTimeout(() => { t2 = setInterval(step, 70); }, 380); });
+  b.addEventListener("mouseup", stop);
+  b.addEventListener("mouseleave", stop);
+  b.addEventListener("click", () => { if (b.__down) { b.__down = false; return; } step(); changed("val"); });
+  return b;
+}
+const gap = () => el("div", { class: "wbgap" });
+const cap = (t) => el("div", { class: "wbcap", text: t });
+// a + shaped pad: [up, left, right, down] buttons, optional centre
+function cross(title, up, left, right, down, centre) {
+  return el("div", { class: "wbcross" }, [
+    el("div", { class: "wbprow" }, [gap(), up, gap()]),
+    el("div", { class: "wbprow" }, [left, centre || gap(), right]),
+    el("div", { class: "wbprow" }, [gap(), down, gap()]),
+    cap(title)
+  ]);
+}
+const pair = (title, a, b) => el("div", { class: "wbcross" }, [a, b, cap(title)]);
+const withSel = (fn) => () => { if (hasSel()) fn(st.sel); else setStatus("Select an object first: click it in the view or in the Objects list."); };
+
+function objectPad(ui) {
+  const sk = () => st.view.step, stick = () => st.view.stick, sc = () => st.scene;
+  const mv = (dir, t) => holdBtn([arrow({ fwd: "up", back: "down", left: "left", right: "right", up: "up", down: "down" }[dir])], withSel((o) => CT.nudge(sc(), o, dir, sk(), stick())), t);
+  const name = el("div", { class: "wbselname" });
+  ui.bind(() => { name.textContent = hasSel() ? ED.label(st.sel) : "NOTHING SELECTED"; });
+  const pick = (d) => { const b = el("button", { class: "btn small", text: d > 0 ? "Next" : "Prev", title: d > 0 ? "Select the next object (Tab)" : "Select the previous object" }); b.addEventListener("click", () => select(CT.cycle(st.scene, hasSel() ? st.sel : null, d))); return b; };
+  const act = (l, fn, t) => { const b = el("button", { class: "btn small", text: l, title: t || "" }); b.addEventListener("click", fn); return b; };
+  return el("div", { class: "wbpad" }, [
+    el("div", { class: "wbpadtitle", text: "OBJECT" }),
+    el("div", { class: "row wbselrow" }, [pick(-1), name, pick(1), act("None", () => select(null), "Deselect (Esc)")]),
+    el("div", { class: "wbprow wbpads" }, [
+      cross("MOVE", mv("fwd", "Move away from the camera (Up arrow)"), mv("left", "Move left (Left arrow)"), mv("right", "Move right (Right arrow)"), mv("back", "Move towards the camera (Down arrow)")),
+      pair("HEIGHT", mv("up", "Raise (Page Up)"), mv("down", "Lower (Page Down)")),
+      pair("SPIN", holdBtn([el("span", { text: "+" })], withSel((o) => CT.spin(o, 1, sk())), "Turn (])"), holdBtn([el("span", { text: "-" })], withSel((o) => CT.spin(o, -1, sk())), "Turn back ([)")),
+      pair("SIZE", holdBtn([el("span", { text: "+" })], withSel((o) => CT.grow(sc(), o, 1, sk(), stick())), "Bigger (=)"), holdBtn([el("span", { text: "-" })], withSel((o) => CT.grow(sc(), o, -1, sk(), stick())), "Smaller (-)"))
+    ]),
+    el("div", { class: "row wrap" }, [ui.segGroup("view.step", [{ v: "fine", l: "Fine", t: "Small steps" }, { v: "med", l: "Medium" }, { v: "big", l: "Big", t: "Big steps (Shift + arrow keys)" }])]),
+    el("div", { class: "row wrap" }, [ui.checkRow("Stick to ground", "view.stick")]),
+    el("div", { class: "row wrap" }, [
+      act("Drop to ground", withSel((o) => { CT.rest(st.scene, o); changed("sel"); }), "Set it down on the terrain or ground under it"),
+      act("Duplicate", withSel((o) => select(ED.duplicate(st.scene, o))), "Copy it beside itself"),
+      act("Delete", withSel((o) => { ED.remove(st.scene, o); select(null); }), "Delete (Delete key)"),
+      act("Look at it", withSel((o) => { CT.frame(st.scene, o); changed("view"); }), "Frame the camera on it (F)")
+    ])
+  ]);
+}
+
+let homeCam = null;
+const camSlots = [null, null, null];
+function cameraPad(ui) {
+  const cam = () => st.scene.cam, sk = () => CT.STEP[st.view.step] || CT.STEP.med;
+  const mvStep = () => sk().move * Math.max(1, cam().dist / 10);
+  const hb = (dir, fn, t) => holdBtn([arrow(dir)], fn, t);
+  const tb = (txt, fn, t) => holdBtn([el("span", { text: txt })], fn, t);
+  const act = (l, fn, t) => { const b = el("button", { class: "btn small", text: l, title: t || "" }); b.addEventListener("click", () => { fn(); changed("view"); }); return b; };
+  const views = CT.VIEWS.map(([v, l]) => act(l, () => CT.camView(cam(), v), l + " view"));
+  const slots = camSlots.map((_, i) => {
+    const go = act("View " + (i + 1), () => { if (camSlots[i]) CT.camSet(cam(), camSlots[i]); else { camSlots[i] = CT.camCopy(cam()); setStatus("Saved this angle as View " + (i + 1) + "."); } }, "Go to saved view " + (i + 1) + " (empty: saves the current angle)");
+    const set = act("Save", () => { camSlots[i] = CT.camCopy(cam()); setStatus("Saved this angle as View " + (i + 1) + "."); }, "Save the current angle as View " + (i + 1));
+    ui.bind(() => { if (camSlots[i]) go.classList.add("on"); else go.classList.remove("on"); });
+    return el("div", { class: "wbslot" }, [go, set]);
+  });
+  return el("div", { class: "wbpad" }, [
+    el("div", { class: "wbpadtitle", text: "CAMERA" }),
+    el("div", { class: "wbprow wbpads" }, [
+      cross("ORBIT", hb("up", () => CT.camOrbit(cam(), 0, sk().orbit), "Look from higher"), hb("left", () => CT.camOrbit(cam(), sk().orbit, 0), "Circle left"), hb("right", () => CT.camOrbit(cam(), -sk().orbit, 0), "Circle right"), hb("down", () => CT.camOrbit(cam(), 0, -sk().orbit), "Look from lower")),
+      cross("SLIDE", hb("up", () => CT.camPan(cam(), 0, mvStep(), 0), "Slide forward"), hb("left", () => CT.camPan(cam(), -mvStep(), 0, 0), "Slide left"), hb("right", () => CT.camPan(cam(), mvStep(), 0, 0), "Slide right"), hb("down", () => CT.camPan(cam(), 0, -mvStep(), 0), "Slide back")),
+      pair("RAISE", hb("up", () => CT.camPan(cam(), 0, 0, mvStep()), "Raise the camera and its aim"), hb("down", () => CT.camPan(cam(), 0, 0, -mvStep()), "Lower the camera and its aim")),
+      pair("ZOOM", tb("+", () => CT.camZoom(cam(), sk().zoom), "Move in (wheel)"), tb("-", () => CT.camZoom(cam(), 1 / sk().zoom), "Move out (wheel)"))
+    ]),
+    el("div", { class: "row wrap wbviews" }, views),
+    el("div", { class: "row wrap" }, [
+      act("Frame all", () => CT.frame(st.scene), "Fit every object in view (A)"),
+      act("Frame selected", () => { if (hasSel()) CT.frame(st.scene, st.sel); }, "Fit the selected object (F)"),
+      act("Home", () => { if (homeCam) CT.camSet(cam(), homeCam); }, "Back to the scene's starting angle (H)")
+    ]),
+    el("div", { class: "row wrap" }, [ui.sliderRow("Lens", "scene.cam.fov", 15, 100, 1, " deg"), ui.sliderRow("Tilt", "scene.cam.pitch", -10, 89, 1, " deg"), ui.sliderRow("Turn", "scene.cam.yaw", 0, 359, 1, " deg")]),
+    el("div", { class: "row wrap" }, [ui.checkRow("Lock camera", "view.camLock")]),
+    el("div", { class: "row wrap" }, slots)
+  ]);
+}
+
+// the Objects list: one chip per object, the selected one lit
+function refreshObjList() {
+  const box = refs.objList; if (!box) return;
+  const key = st.scene.objs.map((o) => o.id + ":" + o.type).join(",") + "|" + (hasSel() ? st.sel.id : "");
+  if (box.__key === key) return; box.__key = key;
+  clear(box);
+  if (!st.scene.objs.length) { box.appendChild(el("div", { class: "hint", text: "No objects yet. Drag something in from Add." })); return; }
+  st.scene.objs.forEach((o) => {
+    const b = el("button", { class: "pill" + (o === st.sel ? " on" : ""), title: "Select " + ED.label(o).toLowerCase() }, [el("span", { text: ED.label(o).replace(/\s+#\d+$/, "") + " " + o.id })]);
+    b.addEventListener("click", () => select(o));
+    box.appendChild(b);
+  });
+}
+
 // ---- Viewport panel
 function buildViewport(root) {
   clear(root);
@@ -329,37 +521,28 @@ function buildViewport(root) {
   refs.vpLed = h; lay.pinned.appendChild(h.node);
   refs.createBtns = ED.CREATE.concat([["import", "Import"]]).map(([type, l]) => {
     const img = el("img", { class: "wbico" });
-    const b = el("button", { class: "btn wbcreate", title: type === "import" ? "Import a 3D model (.obj, .stl, .glb, .gltf)" : (type === "water" || type === "ground" ? "Switch the " + l.toLowerCase() + " plane on or off" : "Add a " + l.toLowerCase()) }, [img, el("span", { class: "wbl", text: l.toUpperCase() })]);
+    const drag = type !== "import" && type !== "water" && type !== "ground";
+    const b = el("button", { class: "btn wbcreate", title: type === "import" ? "Import a 3D model (.obj, .stl, .glb, .gltf)" : (drag ? "Drag into the view to place a " + l.toLowerCase() + ", or click to add one in front of the camera" : "Switch the " + l.toLowerCase() + " plane on or off") }, [img, el("span", { class: "wbl", text: l.toUpperCase() })]);
     b.__type = type; b.__img = img;
     if (type === "import") img.src = plusIcon();
-    b.addEventListener("click", () => {
-      if (type === "import") { importModel(); return; }
-      const o = ED.addObject(st.scene, type);
-      if (o) select(o); else changed("scene");
-    });
+    if (drag) dragTile(b, { type });
+    else b.addEventListener("click", () => { if (type === "import") { importModel(); return; } ED.addObject(st.scene, type); changed("scene"); });
+    vui.showIf(b, () => st.view.addPack === "Shapes");
     return b;
   });
-  refs.vpImg = el("img", { class: "preview wbview" });
+  refs.vpImg = el("img", { class: "preview wbview", draggable: "false" });
   refs.vpBox = el("div", { class: "previewbox wbbox" }, [refs.vpImg]);
   wireViewportPointer(refs.vpImg);
   refs.vpHint = el("div", { class: "hint", text: HINT });
   refs.vpStatus = el("div", { class: "status", text: "" });
-  const viewBtn = (v, l) => { const b = el("button", { class: "btn small", text: l }); b.addEventListener("click", () => { ED.view(st.scene, v, hasSel() ? st.sel : null); changed("view"); }); return b; };
-  const act = (l, fn, t) => { const b = el("button", { class: "btn small", text: l, title: t || "" }); b.addEventListener("click", fn); return b; };
-  lay.pinned.appendChild(vui.card("Create", [el("div", { class: "row wrap wbstrip" }, refs.createBtns)], { fold: false }));
   refs.assetBtns = [];
   PK.PACKS.forEach((pk) => PK.assets(pk).forEach((a) => {
-    const img = el("img", { class: "wbico" }), b = el("button", { class: "btn wbcreate", title: "Add " + a.name.toLowerCase() + "  -  " + a.credit }, [img, el("span", { class: "wbl", text: a.name.toUpperCase() })]);
+    const img = el("img", { class: "wbico" }), b = el("button", { class: "btn wbcreate", title: a.name + "  -  drag into the view, or click to add  -  " + a.credit }, [img, el("span", { class: "wbl", text: a.name.toUpperCase() })]);
     b.__asset = a; b.__img = img; b.__pack = pk;
-    b.addEventListener("click", () => { select(addAsset(a)); setStatus("Added " + a.name + "  -  " + a.credit); });
-    vui.showIf(b, () => st.view.assetPack === pk);
+    dragTile(b, { asset: a });
+    vui.showIf(b, () => st.view.addPack === pk);
     refs.assetBtns.push(b);
   }));
-  lay.scroller.appendChild(vui.card("Assets", [
-    el("div", { class: "row" }, [vui.segGroup("view.assetPack", PK.PACKS.map((p) => ({ v: p, l: p })))]),
-    el("div", { class: "row wrap wbstrip" }, refs.assetBtns),
-    el("div", { class: "hint", text: "Fantasy models: Kenney (kenney.nl), free CC0 public domain. Alien models: original, made for Worlds Brew. Click one to drop it in front of the camera." })
-  ]));
   lay.pinned.appendChild(vui.card("Viewport", [
     refs.vpBox,
     el("div", { class: "row wrap" }, [
@@ -367,16 +550,19 @@ function buildViewport(root) {
       vui.segGroup("view.gizmo", [{ v: "move", l: "Move", t: "Move handles (W)" }, { v: "rotate", l: "Rotate", t: "Rotate handle (E)" }, { v: "scale", l: "Scale", t: "Scale handles (R)" }, { v: "sculpt", l: "Sculpt", t: "Paint the selected terrain with the brush (B)" }])
     ]),
     sculptRow(vui),
-    el("div", { class: "row wrap" }, [viewBtn("persp", "Perspective"), viewBtn("top", "Top"), viewBtn("front", "Front"), viewBtn("eye", "Eye level"), viewBtn("frame", "Frame selection")]),
-    el("div", { class: "row wrap" }, [
-      act("Drop to ground", () => { if (hasSel()) { ED.dropToGround(st.scene, st.sel); changed("sel"); } }),
-      act("Duplicate", () => { if (hasSel()) select(ED.duplicate(st.scene, st.sel)); }),
-      act("Delete", () => { if (hasSel()) { ED.remove(st.scene, st.sel); select(null); } }, "Delete the selected object (Delete key)")
-    ]),
     refs.vpHint, refs.vpStatus
   ], { fold: false }));
+  lay.scroller.appendChild(vui.card("Controls", [el("div", { class: "wbdeck" }, [objectPad(vui), cameraPad(vui)])], { fold: false }));
+  lay.scroller.appendChild(vui.card("Add", [
+    el("div", { class: "row" }, [vui.segGroup("view.addPack", [{ v: "Shapes", l: "Shapes" }].concat(PK.PACKS.map((p) => ({ v: p, l: p }))))]),
+    el("div", { class: "row wrap wbstrip" }, refs.createBtns.concat(refs.assetBtns)),
+    el("div", { class: "hint", text: "Drag a tile into the view and let go where you want it (it sits on the terrain or ground). Click a tile to add it in front of the camera. Fantasy models: Kenney (kenney.nl), CC0. Alien models: original." })
+  ], { fold: false }));
+  refs.objList = el("div", { class: "row wrap wbobjs" });
+  lay.scroller.appendChild(vui.card("Objects", [refs.objList, el("div", { class: "hint", text: "Click a name to select it. Tab / Shift-Tab step through, Esc deselects." })]));
   lay.scroller.appendChild(el("div", { class: "foot", text: "Frank's Worlds Brew " + VERSION + "  -  Viewport  -  Frank's Brew suite" }));
-  vui.refreshAll();
+  try { document.addEventListener("mousemove", docMove, true); document.addEventListener("mouseup", docUp, true); } catch (e) { /* no document */ }
+  vui.refreshAll(); refreshObjList();
 }
 
 // the brush controls (shown in both panels while a terrain is selected)
@@ -445,7 +631,7 @@ function buildConsole(root) {
     only(el("div", { class: "row wrap" }, [sliderRow("Peak", "sel.h", 0.5, 12, 0.1, ""), sliderRow("Shape", "sel.seed", 0, 99, 1, "")]), is("terrain")),
     only(selectRow("Material", "sel.mat", matOpts, () => { st.sel.refl = null; }), () => hasSel() && st.sel.type !== "light"),
     only(el("div", { class: "row wrap" }, [
-      btn("Drop to ground", () => { ED.dropToGround(st.scene, st.sel); changed("sel"); }),
+      btn("Drop to ground", () => { CT.rest(st.scene, st.sel); changed("sel"); }),
       btn("Frame", () => { ED.view(st.scene, "frame", st.sel); changed("view"); }),
       btn("Duplicate", () => select(ED.duplicate(st.scene, st.sel))),
       btn("Delete", () => { ED.remove(st.scene, st.sel); select(null); })
@@ -473,7 +659,7 @@ function buildConsole(root) {
     only(checkRow("Model colours", "sel.vc"), () => is("mesh")() && !!st.sel.mesh.tc),
     only(el("div", { class: "row wrap" }, [sliderRow("Size", "sel.s", 0.1, 15, 0.05, ""), sliderRow("Displace", "sel.disp", 0, 0.4, 0.01, "")]), is("mesh")),
     only(el("div", { class: "row wrap" }, [
-      btn("Drop to ground", () => { ED.dropToGround(st.scene, st.sel); changed("sel"); }),
+      btn("Drop to ground", () => { CT.rest(st.scene, st.sel); changed("sel"); }),
       btn("Stand upright", () => { const M = require("./js/models.js"); st.sel.mesh = M.upright(st.sel.mesh); st.sel._mk = null; ED.dropToGround(st.scene, st.sel); changed("sel"); }, "For Z-up files (3D-print exports)"),
       btn("Import model...", () => importModel())
     ]), () => true)
@@ -575,13 +761,29 @@ async function drawThumbs() {
   }
 }
 
-// keys: W / E / R pick the handle, Delete removes the selection (not while typing)
+// keys: W / E / R / B pick the tool; arrows move the selection (or orbit the camera when nothing is selected);
+// Page Up / Down height, [ ] spin, - = size, Tab next object, F frame, A frame all, H home, Esc cancel / deselect, Delete removes
 function onKey(e) {
   const t = e.target && e.target.tagName;
   if (/INPUT|SELECT|TEXTAREA/.test(t || "")) return;
-  const g = { w: "move", e: "rotate", r: "scale", b: "sculpt" }[String(e.key || "").toLowerCase()];
-  if (g) { st.view.gizmo = g; changed("view"); return; }
-  if ((e.key === "Delete" || e.key === "Backspace") && hasSel()) { ED.remove(st.scene, st.sel); select(null); }
+  const key = String(e.key || ""), k = key.toLowerCase(), big = e.shiftKey ? "big" : st.view.step, sc = st.scene;
+  const done = () => { if (e.preventDefault) e.preventDefault(); changed("val"); };
+  if (key === "Escape") { if (carry) cancelCarry(); else select(null); return; }
+  const g = { w: "move", e: "rotate", r: "scale", b: "sculpt" }[k];
+  if (g && !e.metaKey && !e.ctrlKey) { st.view.gizmo = g; changed("view"); return; }
+  if ((key === "Delete" || key === "Backspace") && hasSel()) { ED.remove(sc, st.sel); select(null); return; }
+  if (key === "Tab") { if (e.preventDefault) e.preventDefault(); select(CT.cycle(sc, hasSel() ? st.sel : null, e.shiftKey ? -1 : 1)); return; }
+  if (k === "f") { if (hasSel()) CT.frame(sc, st.sel); else CT.frame(sc); return done(); }
+  if (k === "a" && !e.metaKey && !e.ctrlKey) { CT.frame(sc); return done(); }
+  if (k === "h" && homeCam) { CT.camSet(sc.cam, homeCam); return done(); }
+  const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "fwd", ArrowDown: "back", PageUp: "up", PageDown: "down" }[key];
+  if (dir) {
+    if (hasSel()) CT.nudge(sc, st.sel, dir, big, st.view.stick);
+    else { const o = (CT.STEP[big] || CT.STEP.med).orbit; ({ left: () => CT.camOrbit(sc.cam, o, 0), right: () => CT.camOrbit(sc.cam, -o, 0), fwd: () => CT.camOrbit(sc.cam, 0, o), back: () => CT.camOrbit(sc.cam, 0, -o), up: () => CT.camZoom(sc.cam, 0.9), down: () => CT.camZoom(sc.cam, 1.1) })[dir](); }
+    return done();
+  }
+  if (hasSel() && (key === "[" || key === "]")) { CT.spin(st.sel, key === "]" ? 1 : -1, big); return done(); }
+  if (hasSel() && (key === "-" || key === "=" || key === "+")) { CT.grow(sc, st.sel, key === "-" ? -1 : 1, big, st.view.stick); return done(); }
 }
 
 // ---- start-up: both panels share this one script; each mounts into its own panel root
@@ -590,6 +792,7 @@ function mount(id, rootNode) { let n = document.getElementById(id); if (!n) { n 
 function initConsole(rootNode) { const n = mount("app", rootNode); if (!builtC && n) { builtC = true; buildConsole(n); pressGlow(n); } kick(); }
 function initViewport(rootNode) { const n = mount("vp", rootNode); if (!builtV && n) { builtV = true; buildViewport(n); pressGlow(n); } kick(); }
 function kick() {
+  if (!homeCam) homeCam = CT.camCopy(st.scene.cam);
   drawViewport(); loop.schedule(100);
   if (started) return;
   started = true;
@@ -604,4 +807,4 @@ try {
 } catch (e) { /* older hosts: fall through to direct init */ }
 setTimeout(() => { initConsole(null); initViewport(null); }, 0);
 
-module.exports = { _test: { st, refs, changed, select, renderNow, drawViewport, miniRender, NONE, get lastWire() { return lastWire; }, onKey, loadScene, saveCurrent, get saved() { return saved; } } };
+module.exports = { _test: { st, refs, changed, select, renderNow, drawViewport, miniRender, NONE, get lastWire() { return lastWire; }, get carry() { return carry; }, docMove, docUp, onKey, loadScene, saveCurrent, get saved() { return saved; } } };
