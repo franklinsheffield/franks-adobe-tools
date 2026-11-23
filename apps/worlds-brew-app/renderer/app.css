@@ -1,0 +1,64 @@
+/* Frank's Worlds Brew app layout, on top of the suite's panel.css (Hardware Console brand). */
+:root { --glow: #5effc8; --glowbg: #0b2e24; }
+html, body { height: 100%; overflow: hidden; user-select: none; }
+#app { height: 100vh; padding: 0; overflow: hidden; display: grid; grid-template-columns: 290px minmax(400px, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "top top top" "lib centre insp" "bar bar bar"; }
+#top { grid-area: top; display: flex; align-items: stretch; border-bottom: 1px solid var(--soft); }
+#top .rack { flex: 1 1 auto; margin: 6px; }
+#top .menu { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 10px 6px 0; }
+#top .menu .btn { min-width: 64px; }
+#top .docname { color: var(--glow); font-size: 11px; letter-spacing: 1px; padding: 0 10px; white-space: nowrap; }
+.side { overflow-y: auto; overflow-x: hidden; padding: 8px; min-height: 0; }
+#lib { grid-area: lib; border-right: 1px solid var(--soft); }
+#insp { grid-area: insp; border-left: 1px solid var(--soft); }
+#centre { grid-area: centre; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--soft); }
+#toolbar .lbl3 { margin: 0 2px 0 6px; }
+#vpwrap { position: relative; flex: 1 1 auto; min-height: 200px; background: #000; overflow: hidden; }
+#vp { display: block; width: 100%; height: 100%; outline: none; }
+#vpwrap.drop { outline: 2px solid var(--glow); outline-offset: -2px; }
+#vphint { position: absolute; left: 10px; bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.75); pointer-events: none; text-shadow: 0 1px 2px #000; }
+#dropmark { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid var(--glow); border-radius: 50%; pointer-events: none; display: none; }
+#pad { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 8px; border-top: 1px solid var(--soft); max-height: 40vh; overflow-y: auto; }
+#bar { grid-area: bar; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--soft); }
+#bar .status { flex: 1 1 200px; margin: 0; }
+#bar input.num { width: 64px; }
+#bar .apply { padding: 6px 16px; min-width: 150px; width: auto; flex: none; }
+#bar select { width: auto; flex: none; }
+#app #bar .meter { flex: none; width: 210px; margin: 0; }
+/* pads under the viewport */
+.wbpad { border: 1px solid rgba(255,255,255,0.35); padding: 5px 8px 4px; }
+.wbpadtitle { color: var(--glow); font-size: 10px; letter-spacing: 1px; margin-bottom: 4px; font-family: var(--arcade); }
+.wbprow { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 2px; }
+.wbcross { display: grid; grid-template-columns: repeat(3, 30px); grid-gap: 2px; margin: 0 10px 4px 0; }
+.wbpadbtn { width: 30px; height: 26px; min-width: 30px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.wbcap { font-size: 8px; letter-spacing: 1px; margin-top: 2px; opacity: 0.8; text-align: center; grid-column: 1 / 4; }
+.wbcol { display: flex; flex-direction: column; align-items: center; margin-right: 8px; }
+.btn.on { border-color: var(--glow); color: var(--glow); }
+/* library */
+.wbgrid { display: flex; flex-wrap: wrap; gap: 5px; }
+.wbcell { width: calc(50% - 3px); border: 1px solid rgba(255,255,255,0.35); padding: 1px; cursor: pointer; }
+.wbcell.on { border-color: var(--glow); }
+.wbcell img { width: 100%; aspect-ratio: 16 / 9; height: auto; display: block; background: #111; }
+.wbname { font-size: 9px; padding: 2px 2px 1px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wbtiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.wbtile { border: 1px solid rgba(255,255,255,0.3); padding: 2px; cursor: grab; text-align: center; background: #050505; }
+.wbtile:hover { border-color: var(--glow); }
+.wbtile img { width: 56px; height: 56px; display: block; margin: 0 auto; pointer-events: none; }
+.wbtile div { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.wbobjs { max-height: 220px; overflow-y: auto; }
+.wbobj { display: flex; align-items: center; padding: 3px 4px; cursor: pointer; border: 1px solid transparent; font-size: 10px; }
+.wbobj:hover { border-color: var(--soft); }
+.wbobj.on { border-color: var(--glow); color: var(--glow); }
+.wbobj .k { opacity: 0.6; margin-left: auto; font-size: 9px; }
+/* inspector */
+.wbsize { font-size: 11px; color: var(--glow); padding: 4px 0 6px; }
+.wbsw { display: inline-flex; align-items: center; }
+.wbdot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.6); margin-right: 5px; }
+.tabrow, .seg { flex-wrap: wrap; }
+input.num.wide { width: 70px; }
+/* render result */
+#shot { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; z-index: 50; }
+#shot[hidden] { display: none; }
+.shotbox { border: 1px solid var(--glow); background: #000; padding: 10px; max-width: 92vw; max-height: 92vh; display: flex; flex-direction: column; gap: 8px; }
+.shotbox img { max-width: 88vw; max-height: 78vh; object-fit: contain; }
+.shotrow { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }

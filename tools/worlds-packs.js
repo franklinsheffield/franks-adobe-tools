@@ -31,7 +31,26 @@ const FANTASY = [
   ["house2", "Town house", "Starter-Kit-City-Builder/models/building-small-c.glb", "Matte", 1.8, "City Builder"],
   ["fountain", "Fountain", "Starter-Kit-City-Builder/models/pavement-fountain.glb", "Matte", 1.6, "City Builder"],
   ["tents", "Camp tents", "Starter-Kit-Racing/models/decoration-tents.glb", "Matte", 3, "Racing"],
-  ["flag", "Flag", "Starter-Kit-3D-Platformer/models/flag.glb", "Matte", 1, "3D Platformer"]
+  ["flag", "Flag", "Starter-Kit-3D-Platformer/models/flag.glb", "Matte", 1, "3D Platformer"],
+  // 0.6: eighteen more (Frank, 2026-11-23: double the starter assets)
+  ["house3", "Stone house", "Starter-Kit-City-Builder/models/building-small-b.glb", "Matte", 1.8, "City Builder"],
+  ["house4", "Tall house", "Starter-Kit-City-Builder/models/building-small-d.glb", "Matte", 1.9, "City Builder"],
+  ["barn", "Barn", "Starter-Kit-City-Builder/models/building-garage.glb", "Matte", 1.9, "City Builder"],
+  ["trees", "Tree pair", "Starter-Kit-City-Builder/models/grass-trees.glb", "Matte", 1.8, "City Builder"],
+  ["lamps", "Lamp road", "Starter-Kit-City-Builder/models/road-straight-lightposts.glb", "Matte", 2, "City Builder"],
+  ["knight", "Knight", ARENA + "character-soldier.glb", "Matte", 0.9, "Mini Arena"],
+  ["trophy", "Trophy", ARENA + "trophy.glb", "Matte", 0.6, "Mini Arena"],
+  ["rack", "Weapon rack", ARENA + "weapon-rack.glb", "Matte", 1, "Mini Arena"],
+  ["sword", "Sword", ARENA + "weapon-sword.glb", "Matte", 0.7, "Mini Arena"],
+  ["spear", "Spear", ARENA + "weapon-spear.glb", "Matte", 1, "Mini Arena"],
+  ["block", "Stone block", ARENA + "block.glb", "Matte", 0.8, "Mini Arena"],
+  ["bricks", "Brick pile", ARENA + "bricks.glb", "Matte", 0.8, "Mini Arena"],
+  ["stairs2", "Corner stairs", ARENA + "stairs-corner.glb", "Matte", 1, "Mini Arena"],
+  ["floor", "Tiled floor", ARENA + "floor-detail.glb", "Matte", 1.2, "Mini Arena"],
+  ["platform", "Stone platform", "Starter-Kit-3D-Platformer/models/platform-large.glb", "Matte", 2, "3D Platformer"],
+  ["coin", "Gold coin", "Starter-Kit-3D-Platformer/models/coin.glb", "Matte", 0.4, "3D Platformer"],
+  ["hwall", "High wall", "Starter-Kit-FPS/models/wall-high.glb", "Matte", 2, "FPS"],
+  ["grassplat", "Grass platform", "Starter-Kit-FPS/models/platform-large-grass.glb", "Matte", 2.4, "FPS"]
 ];
 
 const out = FANTASY.map(([id, name, file, mat, size, kit]) => {

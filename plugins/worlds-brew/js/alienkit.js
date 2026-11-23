@@ -129,14 +129,81 @@ function tentacles() {
   return k.mesh("Tentacle plant");
 }
 
-const BUILD = { crystals, sporeTree, glowPods, spire, dome, antenna, arch, tentacles };
+
+// ---- 0.6: eight more originals (Frank, 2026-11-23: double the starter assets)
+function rocket() {
+  const k = new Kit(), body = lathe([[0.55, 0], [0.62, 0.5], [0.62, 2.6], [0.5, 3.3], [0.25, 3.9], [0, 4.2]], 14); k.add(body.P, body.I, C.white);
+  const band = lathe([[0.64, 0], [0.64, 0.25], [0.63, 0.3]], 14); k.add(band.P, band.I, C.magenta, xf({ y: 2.2 }));
+  const nose = lathe([[0.26, 0], [0.12, 0.3], [0, 0.45]], 10); k.add(nose.P, nose.I, C.magenta, xf({ y: 3.85 }));
+  [0, 120, 240].forEach((a) => { const r = a * Math.PI / 180, f = tube([[Math.cos(r) * 0.5, 1.2, Math.sin(r) * 0.5, 0.06], [Math.cos(r) * 1.1, 0.1, Math.sin(r) * 1.1, 0.1]], 5); k.add(f.P, f.I, C.slate); });
+  const win = lathe([[0.2, 0], [0.2, 0.02], [0, 0.03]], 10); k.add(win.P, win.I, C.cyan, xf({ y: 2.9, z: 0.55, rx: 80 }));
+  const flame = lathe([[0.45, 0], [0.3, -0.3], [0, -0.6]], 10); k.add(flame.P, flame.I, C.orange);
+  return k.mesh("Rocket");
+}
+function pylon() {
+  const k = new Kit(), shaft = lathe([[0.5, 0], [0.42, 0.4], [0.22, 3.6], [0.3, 3.8], [0.15, 4]], 6); k.add(shaft.P, shaft.I, C.slate);
+  for (let i = 0; i < 4; i++) { const r = lathe([[0.48 - i * 0.07, 0], [0.56 - i * 0.07, 0.06], [0.48 - i * 0.07, 0.12]], 12); k.add(r.P, r.I, C.lime, xf({ y: 0.7 + i * 0.8 })); }
+  const orb = lathe([[0, -0.4], [0.3, -0.3], [0.4, 0], [0.3, 0.3], [0, 0.4]], 12); k.add(orb.P, orb.I, C.cyan, xf({ y: 4.5 }));
+  const base = lathe([[1, 0], [0.9, 0.25], [0, 0.3]], 6); k.add(base.P, base.I, C.deep);
+  return k.mesh("Energy pylon");
+}
+function eggs() {
+  const k = new Kit();
+  for (let i = 0; i < 6; i++) { const s = 0.5 + rnd(i, 11) * 0.5, e = lathe([[0, 0], [0.45, 0.25], [0.5, 0.6], [0.38, 1.0], [0, 1.2]], 10);
+    k.add(e.P, e.I, i % 2 ? C.lime : C.teal, xf({ s, x: (rnd(i, 12) - 0.5) * 1.8, z: (rnd(i, 13) - 0.5) * 1.8, rx: (rnd(i, 14) - 0.5) * 30, rz: (rnd(i, 15) - 0.5) * 30 })); }
+  const goo = lathe([[1.3, 0], [1.1, 0.08], [0, 0.1]], 12); k.add(goo.P, goo.I, C.purple);
+  return k.mesh("Egg cluster");
+}
+function jelly() {
+  const k = new Kit(), bell = lathe([[0.2, 0], [1.1, 0.05], [1.2, 0.35], [1.0, 0.8], [0.6, 1.1], [0, 1.2]], 16); k.add(bell.P, bell.I, C.magenta, xf({ y: 2.6 }));
+  const rim = lathe([[1.12, 0], [1.22, 0.04], [1.12, 0.08]], 16); k.add(rim.P, rim.I, C.cyan, xf({ y: 2.6 }));
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, path = []; for (let j = 0; j <= 8; j++) { const t = j / 8; path.push([Math.cos(a) * (0.8 - t * 0.3) + Math.sin(t * 5 + i) * 0.12, 2.6 - t * 2.4, Math.sin(a) * (0.8 - t * 0.3), 0.06 * (1 - t) + 0.015]); }
+    const s = tube(path, 5); k.add(s.P, s.I, i % 2 ? C.violet : C.cyan); }
+  return k.mesh("Sky jelly");
+}
+function obelisk() {
+  const k = new Kit(), g = lathe([[0.7, 0], [0.6, 0.4], [0.42, 4.2], [0, 5]], 4); k.add(g.P, g.I, C.deep, xf({ ry: 45 }));
+  for (let i = 0; i < 5; i++) { const w = 0.6 - i * 0.04, r = lathe([[w, 0], [w + 0.03, 0.05], [w, 0.1]], 4); k.add(r.P, r.I, C.magenta, xf({ y: 0.8 + i * 0.7, ry: 45 })); }
+  const base = lathe([[1.3, 0], [1.3, 0.25], [0, 0.3]], 4); k.add(base.P, base.I, C.slate, xf({ ry: 45 }));
+  return k.mesh("Rune obelisk");
+}
+function coral() {
+  const k = new Kit();
+  const branch = (x, y, z, a, len, r, d) => { const ex = x + Math.cos(a) * len * 0.45, ey = y + len, ez = z + Math.sin(a) * len * 0.2;
+    const t = tube([[x, y, z, r], [ex, ey, ez, r * 0.7]], 6); k.add(t.P, t.I, d % 2 ? C.orange : C.magenta);
+    if (d < 3) { branch(ex, ey, ez, a - 0.6, len * 0.7, r * 0.7, d + 1); branch(ex, ey, ez, a + 0.6, len * 0.7, r * 0.7, d + 1); }
+    else { const b = lathe([[0, -0.08], [0.1, 0], [0, 0.1]], 6); k.add(b.P, b.I, C.cyan, xf({ x: ex, y: ey, z: ez })); } };
+  branch(0, 0, 0, Math.PI / 2, 1.2, 0.14, 0);
+  const rock = lathe([[0.6, 0], [0.5, 0.2], [0, 0.28]], 8); k.add(rock.P, rock.I, C.slate);
+  return k.mesh("Coral fan");
+}
+function fungus() {
+  const k = new Kit();
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rr = 1.2 + (rnd(i, 21) - 0.5) * 0.3, h = 0.4 + rnd(i, 22) * 0.6, s = 0.7 + rnd(i, 23) * 0.5;
+    const st = lathe([[0.08, 0], [0.06, h]], 6); k.add(st.P, st.I, C.bone, xf({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, s }));
+    const cap = lathe([[0.05, 0], [0.35, 0.02], [0.3, 0.15], [0, 0.22]], 10); k.add(cap.P, cap.I, i % 3 ? C.violet : C.lime, xf({ x: Math.cos(a) * rr, y: h * s, z: Math.sin(a) * rr, s })); }
+  const ring = lathe([[1.6, 0], [1.5, 0.04], [0.9, 0.05], [0.8, 0]], 18); k.add(ring.P, ring.I, C.purple);
+  return k.mesh("Fungus ring");
+}
+function hoverpad() {
+  const k = new Kit(), disc = lathe([[0, 0.6], [1.8, 0.62], [2, 0.8], [1.8, 0.95], [0, 0.97]], 16); k.add(disc.P, disc.I, C.slate);
+  const rim = lathe([[2.01, 0], [2.03, 0.06], [2.01, 0.12]], 16); k.add(rim.P, rim.I, C.cyan, xf({ y: 0.72 }));
+  [45, 135, 225, 315].forEach((a) => { const r = a * Math.PI / 180, l = tube([[Math.cos(r) * 1.2, 0.65, Math.sin(r) * 1.2, 0.08], [Math.cos(r) * 1.7, 0, Math.sin(r) * 1.7, 0.1]], 5); k.add(l.P, l.I, C.rust);
+    const lamp = lathe([[0, -0.1], [0.14, 0], [0, 0.1]], 8); k.add(lamp.P, lamp.I, C.orange, xf({ x: Math.cos(r) * 1.5, y: 1.0, z: Math.sin(r) * 1.5 })); });
+  const mark = lathe([[0.7, 0], [0.75, 0.01], [0.6, 0.02]], 16); k.add(mark.P, mark.I, C.magenta, xf({ y: 0.97 }));
+  return k.mesh("Hover pad");
+}
+
+const BUILD = { crystals, sporeTree, glowPods, spire, dome, antenna, arch, tentacles, rocket, pylon, eggs, jelly, obelisk, coral, fungus, hoverpad };
 let cache = null;
 // [{ id, name, mesh, mat, size }] built once
 function alienAssets() {
   if (cache) return cache;
   cache = [
     ["crystals", "Crystal cluster", "Glossy", 1.4], ["sporeTree", "Spore tree", "Matte", 2.2], ["glowPods", "Glow pods", "Matte", 1.2], ["spire", "Bone spire", "Matte", 3.2],
-    ["dome", "Habitat dome", "Glossy", 2.4], ["antenna", "Antenna", "Matte", 2.4], ["arch", "Rock arch", "Matte", 3], ["tentacles", "Tentacle plant", "Matte", 1.5]
+    ["dome", "Habitat dome", "Glossy", 2.4], ["antenna", "Antenna", "Matte", 2.4], ["arch", "Rock arch", "Matte", 3], ["tentacles", "Tentacle plant", "Matte", 1.5],
+    ["rocket", "Rocket", "Glossy", 2.6], ["pylon", "Energy pylon", "Glossy", 2.4], ["eggs", "Egg cluster", "Glossy", 0.9], ["jelly", "Sky jelly", "Glossy", 1.6],
+    ["obelisk", "Rune obelisk", "Glossy", 2.6], ["coral", "Coral fan", "Matte", 1.4], ["fungus", "Fungus ring", "Matte", 1.1], ["hoverpad", "Hover pad", "Glossy", 1.8]
   ].map(([id, name, mat, size]) => ({ id: "alien/" + id, name, mesh: BUILD[id](), mat, size, credit: "Original (Frank's Worlds Brew)" }));
   return cache;
 }

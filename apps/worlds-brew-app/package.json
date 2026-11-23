@@ -1,0 +1,55 @@
+{
+  "name": "franks-worlds-brew",
+  "productName": "Frank's Worlds Brew",
+  "version": "0.6.0",
+  "description": "Frank's Worlds Brew (WB-10): standalone 3D scene builder",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "sync": "node tools/sync-engine.js",
+    "start": "npm run sync && electron .",
+    "test": "node tests/app-tests.js",
+    "dist:mac": "npm run sync && electron-builder --mac --publish never",
+    "dist:win": "npm run sync && electron-builder --win zip --x64 --publish never"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "electron": "38.2.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.franks.worldsbrew.app",
+    "productName": "Frank's Worlds Brew",
+    "files": [
+      "main.js",
+      "renderer/**",
+      "engine/**",
+      "node_modules/three/build/**",
+      "node_modules/three/package.json",
+      "node_modules/three/LICENSE"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "icon": "build/icon.png",
+      "identity": null,
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "publish": []
+  }
+}

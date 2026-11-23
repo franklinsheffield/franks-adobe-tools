@@ -92,7 +92,7 @@ module.exports = async function (t) {
     const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
     assert.ok(P.document.getElementById("app") && P.document.getElementById("vp"), "two panel roots");
     assert.ok(/^data:image\/png/.test(R.vpImg.src) && /^data:image\/png/.test(R.preview.src), "viewport and mini render drawn");
-    assert.strictEqual(R.thumbs.length, 20, "12 classic scenes + 4 Fantasy + 4 Alien maps");
+    assert.strictEqual(R.thumbs.length, 22, "12 classic scenes + 5 Fantasy + 5 Alien maps");
     const n0 = T.st.scene.objs.length, btn = (ty) => R.createBtns.find((b) => b.__type === ty);
     btn("sphere").click(); assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.type, "sphere");
     assert.ok(!shown("Mesh"), "Mesh tab only for models");
@@ -126,10 +126,10 @@ module.exports = async function (t) {
     const j = M.meshFromJSON(M.meshToJSON(m)); assert.deepStrictEqual(Array.from(j.tc), [255, 0, 0], "colours survive save / load");
   });
 
-  await t("Worlds Brew: Fantasy (Kenney CC0) and Alien packs: coloured assets and 8 maps that render", async () => {
+  await t("Worlds Brew: Fantasy (Kenney CC0) and Alien packs: 52 coloured assets and 10 maps that render", async () => {
     const PK = require(J + "/packs.js");
     assert.deepStrictEqual(PK.PACKS, ["Fantasy", "Alien"]);
-    assert.ok(PK.assets("Fantasy").length >= 15 && PK.assets("Alien").length === 8);
+    assert.ok(PK.assets("Fantasy").length === 36 && PK.assets("Alien").length === 16, "52 starter models (doubled in 0.6)");
     for (const pk of PK.PACKS) for (const a of PK.assets(pk)) { assert.ok(a.mesh.tc && a.mesh.tc.length === a.mesh.f.length, a.name + " has colours"); assert.ok(a.credit, a.name + " credited"); }
     let n = 0;
     for (const pk of PK.PACKS) for (const name of Object.keys(PK.MAPS[pk])) {
@@ -138,7 +138,7 @@ module.exports = async function (t) {
       assert.ok(hi - lo > 20, name + " is not flat");
       const back = S.fromJSON(S.toJSON(s)); assert.strictEqual(hash((await E.render(back, back.cam, 32, 18)).rgba), hash((await E.render(s, s.cam, 32, 18)).rgba), name + " saves and loads");
     }
-    assert.strictEqual(n, 8);
+    assert.strictEqual(n, 10);
     const red = S.loadPreset("Model Showcase"); red.objs = [PK.put("fantasy/house", 0, 0, 1)]; const on = await E.render(red, red.cam, 40, 24); red.objs[0].vc = false;
     assert.notStrictEqual(hash(on.rgba), hash((await E.render(red, red.cam, 40, 24)).rgba), "Model colours switch changes the render");
   });
@@ -149,7 +149,7 @@ module.exports = async function (t) {
     await P.settle(800);
     const T = P.mod._test, R = T.refs, vis = (n) => n.style.display !== "none";
     assert.strictEqual(R.thumbs.filter(vis).length, 12, "Classic scenes first");
-    T.st.view.scenePack = "Alien"; T.changed("view"); assert.strictEqual(R.thumbs.filter(vis).length, 4);
+    T.st.view.scenePack = "Alien"; T.changed("view"); assert.strictEqual(R.thumbs.filter(vis).length, 5);
     R.thumbs.find((c) => c.__name === "Outpost Zeta").click(); assert.strictEqual(T.st.scene.name, "Outpost Zeta");
     assert.ok(R.assetBtns.filter(vis).every((b) => b.__pack === "Fantasy"));
     const n0 = T.st.scene.objs.length; R.assetBtns.find((b) => b.__asset.id === "fantasy/pine").click();

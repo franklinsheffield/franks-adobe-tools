@@ -17,7 +17,7 @@ function dropToGround(scene, o) {
   if (o.type === "light") { o.y = +(groundY(scene) + 1.5).toFixed(3); return o; }
   if (o.type === "mesh") { const v = M.meshVerts(o).v; let mn = 1e9; for (let i = 1; i < v.length; i += 3) mn = Math.min(mn, v[i]); o.y = +(groundY(scene) - mn * o.s * o.sy).toFixed(3); }
   else if (o.type === "terrain") o.y = 0;
-  else o.y = +(groundY(scene) + (o.type === "torus" ? o.s * 0.28 : o.s)).toFixed(3);
+  else o.y = +(groundY(scene) + (o.type === "torus" ? o.s * 0.28 : o.s) * (o.sy || 1)).toFixed(3);
   return o;
 }
 

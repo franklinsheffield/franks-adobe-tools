@@ -1,6 +1,6 @@
 "use strict";
 // Frank's Worlds Brew map packs: Fantasy (Kenney CC0 models) and Alien (original models built in code).
-// Each pack has ready-made assets (added from the Viewport's Assets card) and 4 maps (Console > Scenes).
+// Each pack has ready-made assets (added from the Viewport's Assets card) and 5 maps (Console > Scenes).
 const S = require("./scene.js");
 const M = require("./models.js");
 const { alienAssets } = require("./alienkit.js");
@@ -50,7 +50,15 @@ const MAPS = {
       cam: { yaw: 10, pitch: 6, dist: 20, fov: 52, tx: 0, ty: 2.5, tz: 0 },
       objs: [put("fantasy/island", 0, 0, 1.4, {}, 0), put("fantasy/house", 0.3, -0.3, 0.9, { ry: 25 }, 0.7), put("fantasy/pine", -2.1, 0.4, 0.9, {}, 0.7), put("fantasy/flag", 2, 0.8, 0.9, {}, 0.7),
         put("fantasy/island", -7, -5, 1.1, {}, 3), put("fantasy/grove", -7, -5, 0.8, {}, 3.6), put("fantasy/island", 7.5, -4, 1, {}, 5), put("fantasy/statue", 7.5, -4, 0.8, { ry: 220 }, 5.55),
-        put("fantasy/island", 3.5, -12, 1.2, {}, 1.5), put("fantasy/column", 2.6, -12, 0.9, {}, 2.1), put("fantasy/ruin", 4.6, -12.4, 0.8, {}, 2.1)]  })
+        put("fantasy/island", 3.5, -12, 1.2, {}, 1.5), put("fantasy/column", 2.6, -12, 0.9, {}, 2.1), put("fantasy/ruin", 4.6, -12.4, 0.8, {}, 2.1)]  }),
+    "Knight's Arena": () => sc({ sky: "Noon", sunAz: 220, sunAlt: 38, haze: 14, clouds: 35, ground: true,
+      cam: { yaw: 30, pitch: 14, dist: 18, fov: 48, tx: 0, ty: 1, tz: 0 },
+      objs: [put("fantasy/floor", 0, 0, 3), put("fantasy/knight", -0.9, 0.3, 1.2, { ry: 70 }), put("fantasy/knight", 1.1, -0.2, 1.2, { ry: 250 }), put("fantasy/trophy", 0, -3.6, 1.1),
+        put("fantasy/rack", -3.6, -2.6, 1.1, { ry: 35 }), put("fantasy/sword", 3.2, 2.2, 1, { ry: 20 }), put("fantasy/spear", -3.4, 2.4, 1),
+        put("fantasy/hwall", -4.2, -6, 0.9), put("fantasy/hwall", 0, -6.8, 0.9), put("fantasy/hwall", 4.2, -6, 0.9), put("fantasy/stairs2", 3.8, -3.2, 1.1, { ry: 200 }),
+        put("fantasy/bricks", 4.6, 0.8, 1), put("fantasy/block", -4.8, -0.2, 1), put("fantasy/lamps", -6, 3, 0.55, { ry: 90 }), put("fantasy/lamps", 6, 3, 0.55, { ry: 90 }),
+        put("fantasy/barn", -9, -9, 1.3, { ry: 30 }), put("fantasy/house3", 9.5, -9, 1.3, { ry: -25 }), put("fantasy/house4", 0, -13, 1.3), put("fantasy/trees", -11, -2, 1.3), put("fantasy/trees", 11.5, -1.5, 1.2, { ry: 90 }),
+        put("fantasy/grassplat", -10, -5, 0.9, {}, 0), put("fantasy/platform", 9, -3, 0.8, {}, 1.2), put("fantasy/coin", 9, -3, 1.3, {}, 2.1)] })
   },
   Alien: {
     "Crystal Plains": () => sc({ sky: "Alien", sunAz: 210, sunAlt: 28, haze: 10, fog: 2, fogH: 1, clouds: 35, ground: true,
@@ -74,7 +82,15 @@ const MAPS = {
       cam: { yaw: 0, pitch: 4, dist: 24, fov: 50, tx: 0, ty: 3, tz: -2 },
       objs: [S.obj("terrain", -4, 0, -6, 4, "Stone", { h: 2.2, seed: 88 }), S.obj("terrain", 4.5, 0, -7, 4, "Stone", { h: 2.6, seed: 91 }),
         put("alien/spire", -4, -6, 1.6, {}, 1.4), put("alien/spire", 4.5, -7, 1.8, { ry: 100 }, 1.7), put("alien/arch", 0.3, -6.5, 1.2, {}, 0),
-        put("alien/crystals", -1.5, 1, 0.8, {}, -0.2), put("alien/tentacles", 2, 2.5, 0.9, {}, -0.3)] })
+        put("alien/crystals", -1.5, 1, 0.8, {}, -0.2), put("alien/tentacles", 2, 2.5, 0.9, {}, -0.3)]}),
+    "Launch Site": () => sc({ sky: "Dusk", sunAz: 200, sunAlt: 12, haze: 14, fog: 3, clouds: 15, ground: true,
+      cam: { yaw: 22, pitch: 10, dist: 22, fov: 50, tx: 0, ty: 2.2, tz: -1 },
+      objs: [put("alien/hoverpad", 0, -1, 1.4), put("alien/rocket", 0, -1, 1.5, {}, 0.35), put("alien/pylon", -4, -2.5, 1.1), put("alien/pylon", 4.2, -2.8, 1.1, { ry: 45 }),
+        put("alien/obelisk", -6.5, 1.5, 1, { ry: 20 }), put("alien/eggs", 3.5, 2.2, 1.1), put("alien/eggs", -2.8, 3, 0.9, { ry: 120 }), put("alien/coral", 5.8, 0.5, 1.2),
+        put("alien/fungus", -4.6, 4.2, 1.2), put("alien/fungus", 1.2, 4.6, 0.9, { ry: 60 }), put("alien/dome", -8, -7, 0.9, { ry: 30 }), put("alien/antenna", 8, -6.5, 1.1),
+        put("alien/jelly", -3, -6, 1.2, {}, 5.5), put("alien/jelly", 5, -9, 1, { ry: 90 }, 7),
+        S.obj("terrain", -14, 0, -24, 12, "Stone", { h: 7, seed: 102, rough: 0.6 }), S.obj("terrain", 14, 0, -25, 12, "Stone", { h: 8, seed: 109, terrace: 6 }),
+        S.obj("sphere", 12, 16, -45, 5, "Matte")] })
   }
 };
 const PACKS = Object.keys(MAPS);

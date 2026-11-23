@@ -37,8 +37,10 @@ function compile(scene) {
     if (o.hue) { const h = o.hue / 360 * 6, s = 0.7, v = Math.max(...m.col); const c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), mm = v - c;
       const r = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h) % 6]; col = [r[0] + mm, r[1] + mm, r[2] + mm]; }
     return { o, type: o.type, x: o.x, y: o.y, z: o.z, s: o.s, c: Math.cos(ry), sn: Math.sin(ry), col, refl: o.refl != null ? o.refl : m.refl, spec: m.spec, emit: m.emit || 0, tex: m.tex || 0,
-      hm: o.type === "terrain" ? heightmap(o) : null, sc: !!o.sculpt, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null };
+      hm: o.type === "terrain" ? heightmap(o) : null, sc: !!o.sculpt, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null,
+      ax: o.sx || 1, ay: o.sy || 1, az: o.sz || 1, nu: o.type !== "terrain" && o.type !== "mesh" && ((o.sx || 1) !== 1 || (o.sy || 1) !== 1 || (o.sz || 1) !== 1) };
   });
+  O.forEach((b) => { if (b.nu) b.u = Object.assign({}, b, { nu: false, x: 0, y: 0, z: 0, c: 1, sn: 0 }); });
   // ---- imported models: world-space triangles + a bounding volume tree for fast ray hits
   const MT = [], MN = [], MOWN = [], MC = [];
   O.forEach((b, k) => { if (b.type !== "mesh") return; const o = b.o, m = meshVerts(o), f = o.mesh.f, sx = o.s * o.sx, sy = o.s * o.sy, sz = o.s * o.sz, tc = o.vc !== false ? o.mesh.tc : null;
@@ -89,6 +91,7 @@ function compile(scene) {
   function sdo(b, x, y, z) {
     let px = x - b.x, py = y - b.y, pz = z - b.z;
     const lx = b.c * px - b.sn * pz; pz = b.sn * px + b.c * pz; px = lx;
+    if (b.nu) { const k = Math.min(b.ax, b.ay, b.az); return sdo(b.u, px / b.ax, py / b.ay, pz / b.az) * k; }   // width / height / depth stretch
     const s = b.s;
     switch (b.type) {
       case "sphere": return Math.sqrt(px * px + py * py + pz * pz) - s;
