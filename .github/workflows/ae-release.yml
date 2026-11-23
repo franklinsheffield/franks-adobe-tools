@@ -55,11 +55,13 @@ jobs:
         with: { name: win-zip, path: FranksBrew-AE-Windows.zip }
   release:
     needs: [mac, windows]
+    # macOS runners may be unavailable on this account: publish whatever built (Windows is required).
+    if: ${{ always() && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     env: { GH_TOKEN: "${{ github.token }}" }
     steps:
       - uses: actions/download-artifact@v4
-        with: { merge-multiple: true }
+        with: { pattern: "*-zip", merge-multiple: true }
       - name: Publish to the release
         run: |
           ls -la *.zip
@@ -68,4 +70,4 @@ jobs:
               --title "Frank's Brew for After Effects 1.0" \
               --notes "7 After Effects effects with Motion controls, plus the Brew Console panel. Install steps: README-After-Effects.md. Private: do not share."
           fi
-          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber FranksBrew-AE-Mac.zip FranksBrew-AE-Windows.zip
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber *.zip
