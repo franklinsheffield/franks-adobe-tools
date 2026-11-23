@@ -7,6 +7,8 @@ const fs = require("fs");
 
 const SCENE_FILTER = [{ name: "Worlds Brew scene", extensions: ["wbscene", "json"] }];
 let win = null;
+let quitting = false;   // Quit (Cmd+Q) was chosen: once the renderer says it may close, the app ends too (macOS would keep it running)
+app.on("before-quit", () => { quitting = true; });
 
 function createWindow() {
   win = new BrowserWindow({
@@ -50,7 +52,7 @@ ipcMain.handle("fs:write", async (e, file, data) => { fs.writeFileSync(file, typ
 ipcMain.handle("fs:read", async (e, file) => fs.readFileSync(file));
 ipcMain.handle("app:info", () => ({ version: app.getVersion(), docs: app.getPath("documents"), userData: app.getPath("userData") }));
 ipcMain.handle("app:reveal", (e, file) => { shell.showItemInFolder(file); return true; });
-ipcMain.on("app:close-ok", () => { if (win) { win.__closeOk = true; win.close(); } });
+ipcMain.on("app:close-ok", () => { if (win) { win.__closeOk = true; win.close(); } if (quitting) app.quit(); });
 ipcMain.on("app:title", (e, t) => { if (win) win.setTitle(t); });
 
 function menu() {

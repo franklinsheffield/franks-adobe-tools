@@ -181,5 +181,11 @@ async function uiTests() {
     await win.screenshot({ path: path.join(OUT, "app-axes-hints.png") });
   });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
-  await app.close();
+  await t("app: Quit with unsaved changes asks first; Don't Save ends the app (macOS used to keep it running)", async () => {
+    await W(() => { window.__wb.dirty = true; });
+    const proc = app.process(), exited = new Promise((r) => proc.once("exit", () => r(true)));
+    await app.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 1 }); });   // answer "Don't Save"
+    await app.evaluate(({ app: a }) => { setTimeout(() => a.quit(), 10); });
+    assert.ok(await Promise.race([exited, new Promise((r) => setTimeout(() => r(false), 10000))]), "the app process ended");
+  });
 }
