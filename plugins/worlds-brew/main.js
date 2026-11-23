@@ -19,7 +19,7 @@ const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.5.0";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.5.1";
 PS.configure({ appName: APP, presetFile: "scenes.json", exportName: "worlds-scene.json" });
 let uxp = null; try { uxp = require("uxp"); } catch (e) { uxp = null; }
 const psHost = require("photoshop");   // loaded once at start-up (the test harness only serves it then)
@@ -76,8 +76,8 @@ async function miniRender() {
 }
 function showImg(img, r, box) {
   img.src = PNG.dataURL(r.rgba, r.w, r.h, 4);
-  const avail = Math.max(120, ((box && box.clientWidth) || 320) - 12), dw = Math.min(avail, r.w * 2), dh = Math.round(r.h * dw / r.w);
-  img.style.width = dw + "px"; img.style.height = dh + "px";
+  const avail = Math.max(120, ((box && box.clientWidth) || 320) - 12), f = fitBox(Math.min(avail, r.w * 2), panelMaxH(refs.cLay, 0.32, 360), r.w / r.h);
+  img.style.width = f.w + "px"; img.style.height = f.h + "px";
 }
 function renderSize() {
   const d = PS.activeDoc();
@@ -92,9 +92,20 @@ function estimate() {
 
 // ---- viewport drawing: wireframe (instant) or a progressive render
 let lastWire = null, dragging = null, vpGen = 0;
+// the view keeps the document's shape but never grows taller than about half the panel,
+// so a portrait document cannot push the controls out of reach (0.5.1 fix)
+function fitBox(availW, maxH, A) {
+  let w = Math.round(availW), h = Math.round(w / A);
+  if (h > maxH) { h = Math.round(maxH); w = Math.round(h * A); }
+  return { w: Math.max(80, w), h: Math.max(60, h) };
+}
+function panelMaxH(lay, frac, fallback) {
+  let ph = 0; try { ph = lay && lay.root ? lay.root.clientHeight : 0; } catch (e) { ph = 0; }
+  return Math.max(140, Math.min(fallback, (ph || 900) * frac));
+}
 function vpSize() {
   const box = refs.vpBox, avail = Math.max(240, Math.min(1400, ((box && box.clientWidth) || 640) - 12));
-  return { w: Math.round(avail), h: Math.max(120, Math.round(avail / aspect())) };
+  return fitBox(avail, panelMaxH(refs.vpLay, 0.48, 620), aspect());
 }
 function drawViewport() {
   if (!refs.vpImg) return;
@@ -516,7 +527,7 @@ function refreshObjList() {
 function buildViewport(root) {
   clear(root);
   root.classList.add("brand-console");
-  const lay = splitLayout(root, el);
+  const lay = splitLayout(root, el); lay.root = root; refs.vpLay = lay;
   const h = vui.brand.header({ title: "Frank's Worlds Brew", code: CODE + "  VIEWPORT" });
   refs.vpLed = h; lay.pinned.appendChild(h.node);
   refs.createBtns = ED.CREATE.concat([["import", "Import"]]).map(([type, l]) => {
@@ -587,7 +598,7 @@ const WATER_LOOKS = {
 function buildConsole(root) {
   clear(root);
   root.classList.add("brand-console");
-  const lay = splitLayout(root, el), ui = cui, { card, sliderRow, segGroup, selectRow, checkRow, showIf, bind, row } = ui;
+  const lay = splitLayout(root, el); lay.root = root; refs.cLay = lay; const ui = cui, { card, sliderRow, segGroup, selectRow, checkRow, showIf, bind, row } = ui;
   const h = ui.brand.header({ title: "Frank's Worlds Brew", code: CODE });
   refs.led = h; lay.pinned.appendChild(h.node);
   refs.preview = el("img", { class: "preview" });

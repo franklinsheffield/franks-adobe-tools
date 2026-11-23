@@ -271,4 +271,13 @@ module.exports = async function (t) {
     // lock camera: an empty-space drag no longer orbits
     st.view.camLock = true; const y1 = st.scene.cam.yaw; ev(img, "mousedown", 3, 3); ev(img, "mousemove", 60, 3); ev(img, "mouseup", 60, 3); assert.strictEqual(st.scene.cam.yaw, y1);
   });
+  await t("Worlds Brew 0.5.1: a portrait document keeps the view and preview short so the controls stay reachable", async () => {
+    const { loadPanel } = require("./harness.js");
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 3856, docH: 7200 });
+    await P.settle(800);
+    const T = P.mod._test, R = T.refs; T.drawViewport(); await T.miniRender();
+    const vh = parseInt(R.vpImg.style.height, 10), vw = parseInt(R.vpImg.style.width, 10);
+    assert.ok(vh <= 440, "view height " + vh); assert.ok(Math.abs(vw / vh - 3856 / 7200) < 0.05, "keeps the document shape " + vw + "x" + vh);
+    assert.ok(parseInt(R.preview.style.height, 10) <= 360, "preview height " + R.preview.style.height);
+  });
 };
