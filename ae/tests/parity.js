@@ -31,7 +31,7 @@ let worst = 0, fails = 0;
       const P = merge(DEFAULTS, pr.p); P.scale = c.scale; if (P.out) P.out.layers = "merged"; if (c.fullH) { P.fullH = c.fullH; P.fullW = c.fullW; }
       if (tool === "dithers-brew") P.ppi = c.ppi || 300;
       const res = await Engine.render(src, P);
-      const js = tool === "dithers-brew" ? Engine.composite(res, { type: "white" }) : tool === "decompressor" || tool === "chrometone" ? res.layers[0].rgba : M.composite(res, { type: "black" }, src);
+      const js = tool === "paint-brew" ? Engine.composite(res, { type: "white" }, src) : tool === "dithers-brew" ? Engine.composite(res, { type: "white" }) : tool === "decompressor" || tool === "chrometone" ? res.layers[0].rgba : M.composite(res, { type: "black" }, src);
       fs.writeFileSync(path.join(tmp, "p.txt"), toText(P));
       execFileSync(cli, [tool, path.join(tmp, "in.rgba"), c.w, c.h, path.join(tmp, "p.txt"), path.join(tmp, "out.bin")].map(String));
       const cc = fs.readFileSync(path.join(tmp, "out.bin"));

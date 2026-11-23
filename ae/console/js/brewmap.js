@@ -2852,14 +2852,693 @@ window.BREW = {
      "name": "Blue-noise stipple"
     }
    ]
-  }
- ],
- "coming": [
+  },
   {
    "id": "paint-brew",
+   "pre": "pb",
    "code": "PB-09",
    "glow": "#4d7cff",
-   "title": "Frank's Paint Brew"
+   "title": "Frank's Paint Brew",
+   "match": "com.franks.paint.ae",
+   "look": 2,
+   "lookB": 3,
+   "morph": 4,
+   "motion": {
+    "topic": 95,
+    "animate": 96,
+    "speed": 97,
+    "loop": 98,
+    "seed": 99,
+    "boil": 100,
+    "driftx": 101,
+    "drifty": 102,
+    "spin": 103,
+    "pulse": 104,
+    "pulser": 105,
+    "flick": 106,
+    "flickr": 107,
+    "jit": 108,
+    "jitr": 109,
+    "reveal": 110,
+    "revmode": 111,
+    "revang": 112,
+    "end": 113
+   },
+   "keys": {
+    "seed": {
+     "id": 8,
+     "kind": "num"
+    },
+    "brush.size": {
+     "id": 11,
+     "kind": "num"
+    },
+    "brush.length": {
+     "id": 12,
+     "kind": "num"
+    },
+    "brush.detail": {
+     "id": 13,
+     "kind": "num"
+    },
+    "brush.randomness": {
+     "id": 14,
+     "kind": "num"
+    },
+    "brush.follow": {
+     "id": 15,
+     "kind": "num"
+    },
+    "brush.mix": {
+     "id": 17,
+     "kind": "num"
+    },
+    "colour.simplify": {
+     "id": 20,
+     "kind": "num"
+    },
+    "colour.saturation": {
+     "id": 21,
+     "kind": "num"
+    },
+    "colour.warmth": {
+     "id": 22,
+     "kind": "num"
+    },
+    "colour.jitter": {
+     "id": 23,
+     "kind": "num"
+    },
+    "colour.palette": {
+     "id": 24,
+     "kind": "num"
+    },
+    "texture.impasto": {
+     "id": 27,
+     "kind": "num"
+    },
+    "texture.light": {
+     "id": 29,
+     "kind": "num"
+    },
+    "texture.bristle": {
+     "id": 30,
+     "kind": "num"
+    },
+    "texture.canvas": {
+     "id": 31,
+     "kind": "num"
+    },
+    "texture.canvasScale": {
+     "id": 32,
+     "kind": "num"
+    },
+    "texture.lift": {
+     "id": 33,
+     "kind": "num"
+    },
+    "texture.thickLights": {
+     "id": 28,
+     "kind": "num"
+    },
+    "water.density": {
+     "id": 37,
+     "kind": "num"
+    },
+    "water.wetEdge": {
+     "id": 38,
+     "kind": "num"
+    },
+    "water.granulation": {
+     "id": 39,
+     "kind": "num"
+    },
+    "water.bleed": {
+     "id": 40,
+     "kind": "num"
+    },
+    "water.paperTexture": {
+     "id": 41,
+     "kind": "num"
+    },
+    "water.pencil": {
+     "id": 42,
+     "kind": "num"
+    },
+    "water.splashes": {
+     "id": 43,
+     "kind": "num"
+    },
+    "water.splashSize": {
+     "id": 44,
+     "kind": "num"
+    },
+    "water.fade": {
+     "id": 45,
+     "kind": "num"
+    },
+    "ink.flow": {
+     "id": 48,
+     "kind": "num"
+    },
+    "ink.rim": {
+     "id": 49,
+     "kind": "num"
+    },
+    "ink.cells": {
+     "id": 50,
+     "kind": "num"
+    },
+    "ink.blend": {
+     "id": 51,
+     "kind": "num"
+    },
+    "ink.veins": {
+     "id": 52,
+     "kind": "num"
+    },
+    "spray.cans": {
+     "id": 56,
+     "kind": "num"
+    },
+    "spray.soft": {
+     "id": 57,
+     "kind": "num"
+    },
+    "spray.overspray": {
+     "id": 58,
+     "kind": "num"
+    },
+    "spray.speckle": {
+     "id": 59,
+     "kind": "num"
+    },
+    "spray.halftone": {
+     "id": 60,
+     "kind": "num"
+    },
+    "spray.drips": {
+     "id": 61,
+     "kind": "num"
+    },
+    "spray.dripLength": {
+     "id": 62,
+     "kind": "num"
+    },
+    "spray.outline": {
+     "id": 63,
+     "kind": "num"
+    },
+    "spray.highlight": {
+     "id": 64,
+     "kind": "num"
+    },
+    "spray.relief": {
+     "id": 71,
+     "kind": "num"
+    },
+    "spray.bare": {
+     "id": 72,
+     "kind": "num"
+    },
+    "spray.paintOpacity": {
+     "id": 70,
+     "kind": "num"
+    },
+    "spray.grime": {
+     "id": 73,
+     "kind": "num"
+    },
+    "spray.cracks": {
+     "id": 74,
+     "kind": "num"
+    },
+    "spray.brickSize": {
+     "id": 76,
+     "kind": "num"
+    },
+    "spray.mortar": {
+     "id": 77,
+     "kind": "num"
+    },
+    "spray.brickVariation": {
+     "id": 78,
+     "kind": "num"
+    },
+    "spray.plankWidth": {
+     "id": 82,
+     "kind": "num"
+    },
+    "spray.grain": {
+     "id": 83,
+     "kind": "num"
+    },
+    "spray.knots": {
+     "id": 84,
+     "kind": "num"
+    },
+    "pastel.tooth": {
+     "id": 88,
+     "kind": "num"
+    },
+    "pastel.smudge": {
+     "id": 89,
+     "kind": "num"
+    },
+    "pastel.pressure": {
+     "id": 90,
+     "kind": "num"
+    },
+    "pastel.angle": {
+     "id": 92,
+     "kind": "num"
+    },
+    "water.paperColour": {
+     "id": 36,
+     "kind": "color"
+    },
+    "spray.wallColour": {
+     "id": 68,
+     "kind": "color"
+    },
+    "spray.mortarColour": {
+     "id": 79,
+     "kind": "color"
+    },
+    "pastel.paper": {
+     "id": 87,
+     "kind": "color"
+    },
+    "pastel.oil": {
+     "id": 93,
+     "kind": "bool"
+    },
+    "style": {
+     "values": [
+      "oil",
+      "watercolour",
+      "impressionism",
+      "ink",
+      "spray",
+      "pastel"
+     ],
+     "kind": "popup",
+     "id": 7
+    },
+    "brush.tool": {
+     "values": [
+      "brush",
+      "knife"
+     ],
+     "kind": "popup",
+     "id": 16
+    },
+    "ink.metal": {
+     "values": [
+      "gold",
+      "silver",
+      "copper"
+     ],
+     "kind": "popup",
+     "id": 53
+    },
+    "spray.wall": {
+     "values": [
+      "plain",
+      "concrete",
+      "stucco",
+      "brick",
+      "block",
+      "metal",
+      "wood"
+     ],
+     "kind": "popup",
+     "id": 67
+    },
+    "spray.blend": {
+     "values": [
+      "normal",
+      "multiply",
+      "linearburn",
+      "overlay",
+      "softlight",
+      "hardlight"
+     ],
+     "kind": "popup",
+     "id": 69
+    },
+    "spray.brickPattern": {
+     "values": [
+      "running",
+      "stack",
+      "flemish",
+      "basket"
+     ],
+     "kind": "popup",
+     "id": 75
+    },
+    "spray.woodDir": {
+     "values": [
+      "vertical",
+      "horizontal"
+     ],
+     "kind": "popup",
+     "id": 80
+    },
+    "spray.woodFinish": {
+     "values": [
+      "raw",
+      "weathered",
+      "painted"
+     ],
+     "kind": "popup",
+     "id": 81
+    },
+    "pastel.hatch": {
+     "values": [
+      "follow",
+      "fixed"
+     ],
+     "kind": "popup",
+     "id": 91
+    },
+    "focus.falloff": {
+     "kind": "skip"
+    },
+    "focus.outside": {
+     "kind": "skip"
+    }
+   },
+   "params": {
+    "2": "Look",
+    "3": "P_LOOKB",
+    "4": "Morph to Look B",
+    "7": "P_STYLE",
+    "8": "Variation",
+    "11": "Stroke size (px)",
+    "12": "Stroke length (x)",
+    "13": "Detail passes",
+    "14": "Randomness (%)",
+    "15": "Follow edges (%)",
+    "16": "P_TOOL",
+    "17": "Paint mixing (%)",
+    "20": "Simplify (%)",
+    "21": "Saturation (%)",
+    "22": "Warmth",
+    "23": "Broken colour (%)",
+    "24": "Palette limit (colours)",
+    "27": "Impasto depth (%)",
+    "28": "Thick lights (%)",
+    "29": "Light angle",
+    "30": "Bristle streaks (%)",
+    "31": "Canvas weave (%)",
+    "32": "Weave size (px)",
+    "33": "Light and colour lift (%)",
+    "36": "P_W_PAPER",
+    "37": "Pigment (%)",
+    "38": "Wet edges (%)",
+    "39": "Granulation (%)",
+    "40": "Bleed (px)",
+    "41": "Paper texture (%)",
+    "42": "Pencil (%)",
+    "43": "Splashes",
+    "44": "Splash size (px)",
+    "45": "Fade to paper (%)",
+    "48": "Flow (%)",
+    "49": "Rim strength (%)",
+    "50": "Cells (%)",
+    "51": "Blend (%)",
+    "52": "Veins (%)",
+    "53": "P_I_METAL",
+    "56": "Cans (colours)",
+    "57": "Soft edges (%)",
+    "58": "Overspray (%)",
+    "59": "Speckle and splats (%)",
+    "60": "Halftone (%)",
+    "61": "Drips (%)",
+    "62": "Drip length (%)",
+    "63": "Outline (%)",
+    "64": "Highlight edge (%)",
+    "67": "Wall",
+    "68": "P_S_WALLC",
+    "69": "P_S_BLEND",
+    "70": "Paint opacity (%)",
+    "71": "Wall relief (%)",
+    "72": "Bare wall (%)",
+    "73": "Grime (%)",
+    "74": "Cracks (%)",
+    "75": "P_S_BOND",
+    "76": "Brick size (%)",
+    "77": "Mortar width (%)",
+    "78": "Brick colour mix (%)",
+    "79": "P_S_MORTARC",
+    "80": "P_S_WDIR",
+    "81": "P_S_WFIN",
+    "82": "Plank width (%)",
+    "83": "Grain (%)",
+    "84": "Knots (%)",
+    "87": "P_P_PAPER",
+    "88": "Tooth (%)",
+    "89": "Smudge (%)",
+    "90": "Pressure (%)",
+    "91": "P_P_HATCH",
+    "92": "Hatch angle",
+    "93": "P_P_OIL",
+    "96": "P_MO_ANIMATE",
+    "97": "P_MO_SPEED",
+    "98": "P_MO_LOOP",
+    "99": "P_MO_SEED",
+    "100": "P_MO_BOIL",
+    "101": "P_MO_DRIFTX",
+    "102": "P_MO_DRIFTY",
+    "103": "P_MO_SPIN",
+    "104": "P_MO_PULSE",
+    "105": "P_MO_PULSER",
+    "106": "P_MO_FLICK",
+    "107": "P_MO_FLICKR",
+    "108": "P_MO_JIT",
+    "109": "P_MO_JITR",
+    "110": "P_MO_REVEAL",
+    "111": "P_MO_REVMODE",
+    "112": "P_MO_REVANG",
+    "115": "Paint on over (s)",
+    "116": "Brush breathe (%)",
+    "117": "Breathe rate (Hz)"
+   },
+   "defaults": {
+    "style": "oil",
+    "seed": 1,
+    "brush": {
+     "size": 40,
+     "length": 1,
+     "detail": 3,
+     "randomness": 30,
+     "follow": 70,
+     "tool": "brush",
+     "mix": 30
+    },
+    "colour": {
+     "simplify": 50,
+     "saturation": 15,
+     "warmth": 0,
+     "jitter": 20,
+     "palette": 0
+    },
+    "texture": {
+     "impasto": 55,
+     "light": 135,
+     "bristle": 50,
+     "canvas": 30,
+     "canvasScale": 7,
+     "lift": 0,
+     "thickLights": 45
+    },
+    "water": {
+     "paperColour": "#F7F2E6",
+     "density": 85,
+     "wetEdge": 60,
+     "granulation": 45,
+     "bleed": 14,
+     "paperTexture": 45,
+     "pencil": 40,
+     "splashes": 0,
+     "splashSize": 70,
+     "fade": 45
+    },
+    "ink": {
+     "flow": 55,
+     "rim": 60,
+     "cells": 45,
+     "blend": 40,
+     "veins": 35,
+     "metal": "gold"
+    },
+    "spray": {
+     "cans": 5,
+     "soft": 40,
+     "overspray": 50,
+     "speckle": 40,
+     "halftone": 0,
+     "drips": 30,
+     "dripLength": 50,
+     "outline": 30,
+     "highlight": 0,
+     "wall": "concrete",
+     "wallColour": "#A8A49C",
+     "relief": 50,
+     "bare": 0,
+     "blend": "normal",
+     "paintOpacity": 100,
+     "grime": 20,
+     "cracks": 0,
+     "brickPattern": "running",
+     "brickSize": 100,
+     "mortar": 45,
+     "mortarColour": "#CFC8BA",
+     "brickVariation": 50,
+     "woodDir": "vertical",
+     "woodFinish": "raw",
+     "plankWidth": 100,
+     "grain": 60,
+     "knots": 30
+    },
+    "pastel": {
+     "paper": "#8E8D88",
+     "tooth": 60,
+     "smudge": 35,
+     "pressure": 65,
+     "hatch": "follow",
+     "angle": 45,
+     "oil": false
+    },
+    "focus": {
+     "falloff": 120,
+     "outside": 40
+    }
+   },
+   "looks": [
+    {
+     "i": 1,
+     "cat": "Oil",
+     "name": "Studio Oil"
+    },
+    {
+     "i": 2,
+     "cat": "Oil",
+     "name": "Palette Knife"
+    },
+    {
+     "i": 3,
+     "cat": "Oil",
+     "name": "Glaze"
+    },
+    {
+     "i": 4,
+     "cat": "Oil",
+     "name": "Coastal Knife"
+    },
+    {
+     "i": 5,
+     "cat": "Oil",
+     "name": "Golden Hour"
+    },
+    {
+     "i": 6,
+     "cat": "Watercolour",
+     "name": "Loose Wash"
+    },
+    {
+     "i": 7,
+     "cat": "Watercolour",
+     "name": "Ink and Wash"
+    },
+    {
+     "i": 8,
+     "cat": "Watercolour",
+     "name": "Splash Pop"
+    },
+    {
+     "i": 9,
+     "cat": "Impressionism",
+     "name": "Garden Light"
+    },
+    {
+     "i": 10,
+     "cat": "Impressionism",
+     "name": "Harbour Morning"
+    },
+    {
+     "i": 11,
+     "cat": "Impressionism",
+     "name": "Broken Colour"
+    },
+    {
+     "i": 12,
+     "cat": "Alcohol Ink",
+     "name": "Gold Vein"
+    },
+    {
+     "i": 13,
+     "cat": "Alcohol Ink",
+     "name": "Ocean Bloom"
+    },
+    {
+     "i": 14,
+     "cat": "Alcohol Ink",
+     "name": "Neon Pour"
+    },
+    {
+     "i": 15,
+     "cat": "Spray Paint",
+     "name": "Street Stencil"
+    },
+    {
+     "i": 16,
+     "cat": "Spray Paint",
+     "name": "Soft Fade Mural"
+    },
+    {
+     "i": 17,
+     "cat": "Spray Paint",
+     "name": "Drip Pop"
+    },
+    {
+     "i": 18,
+     "cat": "Spray Paint",
+     "name": "Night Burst"
+    },
+    {
+     "i": 19,
+     "cat": "Spray Paint",
+     "name": "Rough Wall"
+    },
+    {
+     "i": 20,
+     "cat": "Spray Paint",
+     "name": "Barn Siding"
+    },
+    {
+     "i": 21,
+     "cat": "Spray Paint",
+     "name": "Old Fence"
+    },
+    {
+     "i": 22,
+     "cat": "Pastel",
+     "name": "Chalk on Grey"
+    },
+    {
+     "i": 23,
+     "cat": "Pastel",
+     "name": "Warm Sketch"
+    },
+    {
+     "i": 24,
+     "cat": "Pastel",
+     "name": "Oil Pastel"
+    }
+   ]
   }
- ]
+ ],
+ "coming": []
 };

@@ -7,6 +7,7 @@
 #include "../effects/decompressor/dc_params_io.h"
 #include "../effects/chrometone/ct_params_io.h"
 #include "../effects/dithers-brew/di_params_io.h"
+#include "../effects/paint-brew/pb_params_io.h"
 #include <fstream>
 #include <iterator>
 #include <cstring>
@@ -30,6 +31,8 @@ int main(int argc, char** argv) {
     b.resize(L.rgba.size()); for (size_t i = 0; i < b.size(); i++) b[i] = (unsigned char)(int)clamp(L.rgba[i], 0, 255);
   } else if (tool == "dithers-brew") {
     di::Params P; di::parseParams(P, txt); di::Result R; di::render(im, P, R); di::compositeWhite(R, b);
+  } else if (tool == "paint-brew") {
+    pb::Params P; pb::parseParams(P, txt); pb::Result R; pb::render(im, P, R); pb::compositeWhite(R, b);
   } else return 3;
   std::ofstream fo(argv[6], std::ios::binary); fo.write((char*)b.data(), b.size());
   return 0;

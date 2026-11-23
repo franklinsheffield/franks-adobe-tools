@@ -13,12 +13,11 @@ const TOOLS = [
   { id: "depthtone", pre: "dt", code: "DT-03", glow: "#f5ff3b", title: "Frank's Depthtone Brew", match: "com.franks.depthtone.ae" },
   { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Frank's Decompressor Brew", match: "com.franks.decompressor.ae" },
   { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew", match: "com.franks.chrometone.ae" },
-  { id: "dithers-brew", pre: "di", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew", match: "com.franks.dithers.ae" }
+  { id: "dithers-brew", pre: "di", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew", match: "com.franks.dithers.ae" },
+  { id: "paint-brew", pre: "pb", code: "PB-09", glow: "#4d7cff", title: "Frank's Paint Brew", match: "com.franks.paint.ae" }
 ];
-// Batch B tools, shown in the rack as "coming soon" until their AE effects exist.
-const COMING = [
-  { id: "paint-brew", code: "PB-09", glow: "#4d7cff", title: "Frank's Paint Brew" }
-];
+// Tools shown in the rack as "coming soon" until their AE effects exist (none now).
+const COMING = [];
 // Keys that need a value conversion the generic reader can't see.
 //   popup: PS value -> AE popup index (1-based)   stops: gradient [{p,c}] -> count popup + colour/position pairs
 const DI = require(path.join(root, "plugins/dithers-brew/js/engine.js"));
@@ -49,6 +48,18 @@ const SPECIAL = {
     "phase.ramp": { stops: "P_PH_STOPS", c: "P_RC1", p: "P_RP1", max: 7, min: 2 }
   },
   "mobglow": {},
+  "paint-brew": {
+    "style": { popup: "P_STYLE", values: ["oil", "watercolour", "impressionism", "ink", "spray", "pastel"] },
+    "brush.tool": { popup: "P_TOOL", values: ["brush", "knife"] },
+    "ink.metal": { popup: "P_I_METAL", values: ["gold", "silver", "copper"] },
+    "spray.wall": { popup: "P_S_WALL", values: ["plain", "concrete", "stucco", "brick", "block", "metal", "wood"] },
+    "spray.blend": { popup: "P_S_BLEND", values: ["normal", "multiply", "linearburn", "overlay", "softlight", "hardlight"] },
+    "spray.brickPattern": { popup: "P_S_BOND", values: ["running", "stack", "flemish", "basket"] },
+    "spray.woodDir": { popup: "P_S_WDIR", values: ["vertical", "horizontal"] },
+    "spray.woodFinish": { popup: "P_S_WFIN", values: ["raw", "weathered", "painted"] },
+    "pastel.hatch": { popup: "P_P_HATCH", values: ["follow", "fixed"] },
+    "focus.falloff": { kind: "skip" }, "focus.outside": { kind: "skip" }
+  },
   "depthtone": {
     "style": { popup: "P_STYLE", map: { contours: 1, terraces: 2, relief: 3 }, other: 2 },
     "look.stops": { stops: "P_STOPS", c: "P_SC1", p: "P_SP1", max: 5, min: 2 },

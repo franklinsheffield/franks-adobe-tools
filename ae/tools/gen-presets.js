@@ -5,7 +5,7 @@
 const fs = require("fs"), path = require("path");
 const root = path.join(__dirname, "..", "..");
 const toText = require("../tests/params-text.js");
-const TOOLS = { mobglow: "mob", depthtone: "dt", decompressor: "dc", chrometone: "ct", "dithers-brew": "di" };
+const TOOLS = { mobglow: "mob", depthtone: "dt", decompressor: "dc", chrometone: "ct", "dithers-brew": "di", "paint-brew": "pb" };
 const esc = (s) => JSON.stringify(s);
 for (const [tool, ns] of Object.entries(TOOLS)) {
   const { DEFAULTS, PRESETS, merge } = require(path.join(root, `plugins/${tool}/js/state.js`));

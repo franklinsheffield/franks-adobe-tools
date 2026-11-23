@@ -136,7 +136,8 @@
     "depthtone": ["light.strength", "look.fog", "lines.width"],
     "decompressor": ["mosh.amount", "glitch.offset", "glitch.slices", "finish.mix"],
     "chrometone": ["relief.depth", "finish.bloom", "shine.sweep.strength", "bands.phase"],
-    "dithers-brew": ["tune.threshold", "lpi", "angle", "fx.pre.contrast"]
+    "dithers-brew": ["tune.threshold", "lpi", "angle", "fx.pre.contrast"],
+    "paint-brew": ["brush.size", "colour.saturation", "texture.light", "texture.impasto"]
   };
   function audioIds() { return (AUDIO[tool.id] || []).map((k) => tool.keys[k].id).concat([tool.motion.pulse, tool.morph]); }
   function buildAudio() {

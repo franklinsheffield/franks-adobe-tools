@@ -16,7 +16,8 @@ case "$TOOL" in
   decompressor) NAME="Franks Decompressor Brew"; SRC="effects/decompressor"; MAIN="ae/dc_ae.cpp"; PIPL="ae/dc_pipl.r"; ENG="dc_engine.cpp";;
   chrometone) NAME="Franks Chrometone Brew"; SRC="effects/chrometone"; MAIN="ae/ct_ae.cpp"; PIPL="ae/ct_pipl.r"; ENG="ct_engine.cpp";;
   dithers-brew) NAME="Franks Dithers Brew"; SRC="effects/dithers-brew"; MAIN="ae/di_ae.cpp"; PIPL="ae/di_pipl.r"; ENG="di_engine.cpp";;
-  all) for T in crt-phaser mobglow depthtone decompressor chrometone dithers-brew; do "$0" "$SDK" "$T"; done; exit 0;;
+  paint-brew) NAME="Franks Paint Brew"; SRC="effects/paint-brew"; MAIN="ae/pb_ae.cpp"; PIPL="ae/pb_pipl.r"; ENG="pb_engine.cpp";;
+  all) for T in crt-phaser mobglow depthtone decompressor chrometone dithers-brew paint-brew; do "$0" "$SDK" "$T"; done; exit 0;;
   *) echo "unknown tool $TOOL"; exit 1;;
 esac
 OUT="$HERE/dist/mac"; B="$OUT/$NAME.plugin"; TMP="$(mktemp -d)"
