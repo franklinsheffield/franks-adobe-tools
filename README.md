@@ -1,5 +1,7 @@
 # Frank's Brew Suite for Photoshop
 
+**Using After Effects?** See the [After Effects readme](README-After-Effects.md).
+
 > **⚠️ Please do not share.**
 > These tools are private to Frank and his team. Do not post, forward, upload or resell the plugins, the files in this repo or the looks made with the presets. Do not add anyone to this repo or pass the download links on without Frank's OK.
 
