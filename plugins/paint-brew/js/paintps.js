@@ -3,6 +3,7 @@
 //   makePrintCopy : duplicate + upscale + 300 ppi + 8-bit RGB, original untouched
 //   readFocus     : the subject mask from the selection or the source layer's mask
 const PS = require("../core/ps-io.js");
+const { runModal } = require("../core/modal.js");
 const photoshop = require("photoshop");
 function ps() { return photoshop; }
 
@@ -15,7 +16,7 @@ async function makePrintCopy(doc, minLong, ppi) {
   const s = minLong / longSide(info);
   const W = Math.round(info.w * s), H = Math.round(info.h * s);
   const name = String(info.name).replace(/\.[^.]+$/, "") + " - Paint Brew print";
-  return core.executeAsModal(async () => {
+  return runModal("Frank's Paint Brew: print-ready copy", async () => {
     const dup = await doc.duplicate(name);
     try { if (constants.BitsPerChannelType && dup.bitsPerChannel !== constants.BitsPerChannelType.EIGHT) dup.bitsPerChannel = constants.BitsPerChannelType.EIGHT; } catch (e) { /* already 8-bit */ }
     try { if (constants.DocumentMode && dup.mode !== constants.DocumentMode.RGB) await dup.changeMode(constants.ChangeMode.RGB); } catch (e) { /* already RGB */ }
@@ -23,7 +24,7 @@ async function makePrintCopy(doc, minLong, ppi) {
     const method = RM.PRESERVEDETAILS || RM.BICUBICSMOOTHER || RM.AUTOMATIC;
     await dup.resizeImage(W, H, ppi, method);
     return dup;
-  }, { commandName: "Frank's Paint Brew: print-ready copy" });
+  }, { docId: doc.id, timeoutMs: 5 * 60000 });
 }
 
 // bounds and size that readSource used for r (so the mask lines up with the pixels)
@@ -65,7 +66,7 @@ async function readFocus(doc, mode, layer, r) {
   const box = readBox(r);
   const opts = { documentID: doc.id, sourceBounds: box };
   if ((r.scale || 1) < 1) opts.targetSize = { width: r.src.w, height: r.src.h };
-  return core.executeAsModal(async () => {
+  return runModal("Frank's Paint Brew: reading focus", async () => {
     let res;
     if (mode === "selection") res = await imaging.getSelection(opts);
     else {
@@ -77,7 +78,7 @@ async function readFocus(doc, mode, layer, r) {
     if (!res || !res.imageData) return null;
     const got = await grey(res.imageData);
     return place(r, box, got, boundsOf(res.sourceBounds));
-  }, { commandName: "Frank's Paint Brew: reading focus" });
+  }, { docId: doc.id, timeoutMs: 60000 });
 }
 // resample a full-size mask (from the original) onto a scaled copy's pixels
 function scaleMask(m, w, h, W, H) {

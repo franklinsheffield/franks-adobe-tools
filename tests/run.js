@@ -290,7 +290,7 @@ async function t(name, fn) {
     assert.ok(/--arcade:\s*"Night Machine"/.test(css) && /\.sym \{ font-family: var\(--ui\)/.test(css));
   });
 
-  const NEW_TOOLS = { depthtone: ["Depth fill", "Contours"], mobglow: ["Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
+  const NEW_TOOLS = { mobglow: ["Glow"], decompressor: ["Decompressed"], "crt-phaser": ["Screen"] };
   for (const tool of Object.keys(NEW_TOOLS)) {
     await t(tool + " engine: deterministic, every preset renders full-size layers, first preset gives the expected layers", async () => {
       const E = require("../plugins/" + tool + "/js/engine.js"), S = require("../plugins/" + tool + "/js/state.js");
@@ -312,6 +312,8 @@ async function t(name, fn) {
     });
   }
 
+  await require("./depthtone.js")(t);
+  await require("./blending.js")(t);
   await require("./batch-mock-brew.js")(t);
   await require("./paint-brew.js")(t);
   await require("./crt-phaser.js")(t);
@@ -320,6 +322,7 @@ async function t(name, fn) {
   await require("./quick-wins.js")(t);
   await require("./brew3.js")(t);
   await require("./colour3.js")(t);
+  await require("./modal-guard.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);

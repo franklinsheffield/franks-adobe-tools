@@ -1,100 +1,178 @@
 "use strict";
-// Depthtone engine: brightness becomes depth, redrawn as contour lines,
-// stacked terraces or a lit relief, coloured near -> far with optional fog.
+// Depthtone 2.0 engine: build a depth field (smart / depth layer / brightness, see depth.js),
+// then redraw it in one of 7 styles. The photo can show through every style (Photo mix).
+//   contours  anti-aliased isolines (+ heavier index line every 5th), optional band fill
+//   terraces  quantised bands with soft paper-cut shadows
+//   relief    lit sculpture from smooth depth + photo micro-detail (diffuse, shine, occlusion)
+//   ridges    horizontal lines lifted by depth, nearer rows hide farther ones
+//   heat      false-colour depth through the gradient, modulated by photo detail
+//   anaglyph  red / cyan 3D from depth parallax
+//   haze      the photo with depth fog, far blur and near warmth
 const M = require("../core/imgmath.js");
-const { clamp } = M;
+const Depth = require("./depth.js");
+const { clamp, boxBlur, hexToRgb } = M;
+
+function grad(F, w, h) {
+  const gx = new Float32Array(w * h), gy = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    gx[i] = (F[y * w + Math.min(x + 1, w - 1)] - F[y * w + Math.max(x - 1, 0)]) / 2;
+    gy[i] = (F[Math.min(y + 1, h - 1) * w + x] - F[Math.max(y - 1, 0) * w + x]) / 2;
+  }
+  return { gx, gy };
+}
 
 async function render(src, P, hooks) {
   const yieldFn = (hooks && hooks.yield) || (async () => {});
   const w = src.w, h = src.h, n = w * h, sc = P.scale == null ? 1 : P.scale;
-  const { L, A } = M.luminance(src);
-  if (P.depth.invert) for (let i = 0; i < n; i++) L[i] = 1 - L[i];
-  if (P.depth.smooth > 0) M.boxBlur(L, w, h, P.depth.smooth * sc, 3);
+  const { D, L, A, used } = Depth.build(src, P);
   await yieldFn();
-  // near / far range -> 0..1 depth (1 = near), quantised to `levels`
-  const lo = P.depth.far / 100, hi = Math.max(lo + 0.01, P.depth.near / 100), lv = Math.max(2, Math.round(P.depth.levels));
-  const Q = new Uint8Array(n), D = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const d = clamp((L[i] - lo) / (hi - lo), 0, 1);
-    const q = Math.min(lv - 1, Math.floor(d * lv));
-    Q[i] = q; D[i] = q / (lv - 1);
-  }
+  const c = src.c || 4, S = src.data;
   const lut = M.gradientLUT(P.look.stops);
-  const fog = M.hexToRgb(P.look.fogColor), fogAmt = P.look.fog / 100;
-  const colourOf = (t, out, k) => {
-    const q = Math.round(t * 255) * 3, f = fogAmt * (1 - t) * (1 - t);   // far = more fog
-    out[k] = lut[q] + (fog[0] - lut[q]) * f; out[k + 1] = lut[q + 1] + (fog[1] - lut[q + 1]) * f; out[k + 2] = lut[q + 2] + (fog[2] - lut[q + 2]) * f;
-  };
-  const layers = [];
-  const az = P.light.angle * Math.PI / 180, ldx = Math.cos(az), ldy = -Math.sin(az);
-
-  if (P.style === "contours") {
-    // edge where the level changes between neighbours, thickened to line width
-    const E = new Uint8Array(n);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x, q = Q[i];
-      if ((x + 1 < w && Q[i + 1] !== q) || (y + 1 < h && Q[i + w] !== q)) E[i] = 1;
-    }
-    const r = Math.max(0, Math.round((P.lines.width * sc - 1) / 2));
-    const LN = new Float32Array(n);
-    for (let i = 0; i < n; i++) LN[i] = E[i];
-    if (r > 0) { M.boxBlur(LN, w, h, r, 1); for (let i = 0; i < n; i++) LN[i] = LN[i] > 0.5 / (2 * r + 1) ? 1 : 0; }
-    // every Nth level only (spacing)
-    const every = Math.max(1, Math.round(P.lines.every));
-    const lineCol = M.hexToRgb(P.lines.color), useGrad = P.lines.colorBy === "depth";
-    const out = new Uint8Array(n * 4), tmp = new Float32Array(3);
-    for (let i = 0; i < n; i++) {
-      if (!LN[i] || (Q[i] % every) !== 0 && every > 1) continue;
-      if (useGrad) { colourOf(D[i], tmp, 0); out[i * 4] = tmp[0]; out[i * 4 + 1] = tmp[1]; out[i * 4 + 2] = tmp[2]; }
-      else { out[i * 4] = lineCol[0]; out[i * 4 + 1] = lineCol[1]; out[i * 4 + 2] = lineCol[2]; }
-      out[i * 4 + 3] = A[i];
-    }
-    if (P.lines.fill) {
-      const fill = new Uint8Array(n * 4);
-      for (let i = 0; i < n; i++) { colourOf(D[i], tmp, 0); fill[i * 4] = tmp[0]; fill[i * 4 + 1] = tmp[1]; fill[i * 4 + 2] = tmp[2]; fill[i * 4 + 3] = A[i]; }
-      layers.push({ name: "Depth fill", rgba: fill, blend: "NORMAL" });
-    }
-    layers.push({ name: "Contours", rgba: out, blend: "NORMAL" });
-    return { w, h, layers, notes: [] };
-  }
-
+  const col = (t, k) => lut[Math.round(clamp(t, 0, 1) * 255) * 3 + k];
+  const fog = hexToRgb(P.look.fogColor), fogAmt = (P.look.fog || 0) / 100;
+  const photo = clamp((P.photo == null ? 0 : P.photo) / 100, 0, 1);
   const C = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) colourOf(D[i], C, i * 3);
-  if (P.style === "terraces") {
-    // drop shadow: darken where a nearer level sits up-light within `dist`
-    const dist = Math.max(1, Math.round(P.light.shadow * sc)), amt = P.light.strength / 100;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = y * w + x; let s = 0;
-        for (let k = 1; k <= dist; k++) {
-          const sx = Math.round(x + ldx * k), sy = Math.round(y + ldy * k);
-          if (sx < 0 || sy < 0 || sx >= w || sy >= h) break;
-          if (Q[sy * w + sx] > Q[i]) { s = 1 - (k - 1) / dist; break; }
-        }
-        const m = 1 - amt * 0.6 * s;
-        C[i * 3] *= m; C[i * 3 + 1] *= m; C[i * 3 + 2] *= m;
-      }
-      if ((y & 63) === 0) await yieldFn();
+  // far = more fog
+  const tint = (i, t) => { const f = fogAmt * (1 - t) * (1 - t); for (let k = 0; k < 3; k++) C[i * 3 + k] += (fog[k] - C[i * 3 + k]) * f; };
+  // photo tone: darkens / lightens the colour with the picture's own brightness
+  const tone = (i) => (1 - photo) + photo * (0.3 + 1.4 * L[i]);
+  const Ds = Float32Array.from(D); boxBlur(Ds, w, h, Math.max(1, sc), 2);
+  const Lb = Float32Array.from(L); boxBlur(Lb, w, h, Math.max(2, 4 * sc), 3);
+  const HP = new Float32Array(n); for (let i = 0; i < n; i++) HP[i] = L[i] - Lb[i];
+  const az = P.light.angle * Math.PI / 180, ldx = Math.cos(az), ldy = -Math.sin(az);
+  const layers = [];
+  const st = P.style;
+
+  if (st === "contours") {
+    const lv = Math.max(2, Math.round(P.depth.levels)), every = Math.max(1, Math.round(P.lines.every));
+    const lineCol = hexToRgb(P.lines.color), byDepth = P.lines.colorBy === "depth";
+    const { gx, gy } = grad(Ds, w, h);
+    const width = Math.max(0.6, P.lines.width * Math.max(0.5, sc));
+    for (let i = 0; i < n; i++) {
+      if (P.lines.fill) { const q = Math.min(lv - 1, Math.floor(Ds[i] * lv)) / (lv - 1); for (let k = 0; k < 3; k++) C[i * 3 + k] = col(q, k); tint(i, q); const m = tone(i); for (let k = 0; k < 3; k++) C[i * 3 + k] *= m; }
+      else { const g = photo * L[i] * 255 * 0.6; C[i * 3] = C[i * 3 + 1] = C[i * 3 + 2] = g; }
     }
-  } else {
-    // relief: lit height field from the stepped depth
-    const H = Float32Array.from(D);
-    M.boxBlur(H, w, h, Math.max(1, 1.5 * sc), 1);
-    const el = 45 * Math.PI / 180, lx = ldx * Math.cos(el), ly = ldy * Math.cos(el), lz = Math.sin(el);
-    const k = 8 * (P.light.strength / 100) / Math.max(0.25, sc);
+    const LN = new Uint8Array(n * 4);
+    for (let i = 0; i < n; i++) {
+      const v = Ds[i] * lv, k = Math.round(v), gm = Math.hypot(gx[i], gy[i]) * lv;
+      if (k % every !== 0 || gm < 0.012 || Ds[i] <= 0.002 || Ds[i] >= 0.998) continue;
+      const index = P.lines.index && k % (5 * every) === 0, wd = index ? width * 2 : width;
+      const a = clamp(wd / 2 + 0.5 - Math.abs(v - k) / gm, 0, 1);
+      if (a <= 0) continue;
+      const rgb = byDepth ? [col(D[i], 0), col(D[i], 1), col(D[i], 2)] : lineCol;
+      LN[i * 4] = rgb[0]; LN[i * 4 + 1] = rgb[1]; LN[i * 4 + 2] = rgb[2]; LN[i * 4 + 3] = Math.round(a * (A[i] || 255));
+    }
+    const base = new Uint8Array(n * 4);
+    const showBase = P.lines.fill || photo > 0;
+    // no fill and no photo: lines sit on a dark version of the far colour, not on nothing
+    const dark = [0, 1, 2].map((k) => col(0, k) * 0.14);
+    for (let i = 0; i < n; i++) { for (let k = 0; k < 3; k++) base[i * 4 + k] = clamp(showBase ? C[i * 3 + k] : dark[k], 0, 255); base[i * 4 + 3] = A[i]; }
+    layers.push({ name: P.lines.fill ? "Depth fill" : showBase ? "Photo" : "Background", rgba: base, blend: "NORMAL" });
+    layers.push({ name: "Contours", rgba: LN, blend: "NORMAL" });
+  } else if (st === "terraces") {
+    const lv = Math.max(2, Math.round(P.depth.levels)), Q = new Float32Array(n);
+    for (let i = 0; i < n; i++) Q[i] = Math.min(lv - 1, Math.floor(Ds[i] * lv));
+    const off = Math.max(1, Math.round(P.light.shadow * sc)), amt = P.light.strength / 100;
+    const Sh = new Float32Array(n);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      const dx = (H[y * w + Math.min(x + 1, w - 1)] - H[y * w + Math.max(x - 1, 0)]) * k;
-      const dy = (H[Math.min(y + 1, h - 1) * w + x] - H[Math.max(y - 1, 0) * w + x]) * k;
-      const nl = Math.hypot(dx, dy, 1), diff = Math.max(0, (-dx * lx - dy * ly + lz) / nl);
-      const m = clamp(0.35 + 0.65 * diff / lz, 0, 1.5);
-      C[i * 3] *= m; C[i * 3 + 1] *= m; C[i * 3 + 2] *= m;
+      const sx = clamp(Math.round(x - ldx * off), 0, w - 1), sy = clamp(Math.round(y - ldy * off), 0, h - 1);
+      Sh[y * w + x] = Q[sy * w + sx] > Q[y * w + x] ? 1 : 0;
     }
+    boxBlur(Sh, w, h, Math.max(1, off * 0.5), 2);
+    await yieldFn();
+    for (let i = 0; i < n; i++) {
+      const t = Q[i] / (lv - 1); for (let k = 0; k < 3; k++) C[i * 3 + k] = col(t, k); tint(i, t);
+      const m = (1 - 0.6 * amt * Sh[i]) * tone(i); for (let k = 0; k < 3; k++) C[i * 3 + k] *= m;
+    }
+    layers.push({ name: "Terraces", rgba: null, blend: "NORMAL" });
+  } else if (st === "relief") {
+    const H = new Float32Array(n), dk = 60 * Math.max(0.25, sc) / Math.max(0.25, sc);
+    const detail = 6 * (P.light.detail == null ? 1 : P.light.detail / 100);
+    for (let i = 0; i < n; i++) H[i] = Ds[i] * dk * (w / 480) + (HP[i] + 0.3 * L[i]) * detail;
+    const { gx, gy } = grad(H, w, h), AO = Float32Array.from(H); boxBlur(AO, w, h, Math.max(2, w / 48), 2);
+    const el = 40 * Math.PI / 180, lx = ldx * Math.cos(el), ly = ldy * Math.cos(el), lz = Math.sin(el);
+    const hx = lx, hy = ly, hz = lz + 1, hn = Math.hypot(hx, hy, hz);
+    const k = P.light.strength / 100, spec = (P.light.shine == null ? 30 : P.light.shine) / 100, shin = 8 + 40 * spec;
+    for (let i = 0; i < n; i++) {
+      const nx = -gx[i] * k, ny = -gy[i] * k, nl = Math.hypot(nx, ny, 1);
+      const dif = Math.max(0, (nx * lx + ny * ly + lz) / nl);
+      const sp = Math.pow(Math.max(0, (nx * hx + ny * hy + hz) / (nl * hn)), shin) * spec * 255;
+      const ao = clamp(1 - (AO[i] - H[i]) * 0.04, 0.45, 1), m = (0.25 + 0.95 * dif) * ao;
+      for (let q = 0; q < 3; q++) C[i * 3 + q] = col(Ds[i], q); tint(i, Ds[i]);
+      const t = tone(i); for (let q = 0; q < 3; q++) C[i * 3 + q] = C[i * 3 + q] * m * t + sp;
+    }
+    layers.push({ name: "Relief", rgba: null, blend: "NORMAL" });
+  } else if (st === "ridges") {
+    const step = Math.max(2, Math.round(P.ridges.spacing * Math.max(0.5, sc))), amp = P.ridges.lift / 100 * h * 0.2;
+    const bg = hexToRgb(P.ridges.bg || "#000000"), byPhoto = P.ridges.colorBy === "photo";
+    const Hh = Float32Array.from(D); boxBlur(Hh, w, h, Math.max(1, 2 * sc), 2);
+    for (let i = 0; i < n; i++) { C[i * 3] = bg[0]; C[i * 3 + 1] = bg[1]; C[i * 3 + 2] = bg[2]; }
+    const lw = Math.max(0.8, P.lines.width * 0.6 * Math.max(0.5, sc));
+    for (let y0 = 0; y0 < h + amp; y0 += step) {
+      let prev = null;
+      const row = Math.min(h - 1, y0);
+      for (let x = 0; x < w; x++) {
+        const i = row * w + x, d = Hh[i], yl = y0 - amp * d;
+        for (let y = Math.max(0, Math.ceil(yl)); y < Math.min(h, y0 + step); y++) { const j = y * w + x; C[j * 3] = bg[0]; C[j * 3 + 1] = bg[1]; C[j * 3 + 2] = bg[2]; }
+        const lum = 0.45 + 1.1 * Math.pow(L[i], 0.8) * (photo > 0 ? 1 : 0.6) + (photo > 0 ? 0 : 0.25);
+        const r = (byPhoto ? S[i * c] : col(d, 0)) * lum, g = (byPhoto ? S[i * c + 1] : col(d, 1)) * lum, b = (byPhoto ? S[i * c + 2] : col(d, 2)) * lum;
+        const y1 = prev == null ? yl : Math.min(prev, yl), y2 = prev == null ? yl : Math.max(prev, yl);
+        for (let y = Math.floor(y1 - lw); y <= Math.ceil(y2 + lw); y++) {
+          if (y < 0 || y >= h) continue;
+          const dist = y < y1 ? y1 - y : y > y2 ? y - y2 : 0, a = clamp(lw / 2 + 0.5 - dist, 0, 1);
+          if (a <= 0) continue;
+          const j = y * w + x; C[j * 3] += (r - C[j * 3]) * a; C[j * 3 + 1] += (g - C[j * 3 + 1]) * a; C[j * 3 + 2] += (b - C[j * 3 + 2]) * a;
+        }
+        prev = yl;
+      }
+      if (((y0 / step) & 15) === 0) await yieldFn();
+    }
+    layers.push({ name: "Ridges", rgba: null, blend: "NORMAL" });
+  } else if (st === "heat") {
+    for (let i = 0; i < n; i++) { const m = 0.55 + 0.9 * L[i] * (0.4 + photo) + HP[i] * 1.5 * (0.3 + photo); for (let k = 0; k < 3; k++) C[i * 3 + k] = col(Ds[i], k) * m; }
+    layers.push({ name: "Heat", rgba: null, blend: "NORMAL" });
+  } else if (st === "anaglyph") {
+    const k = P.anaglyph.strength / 100 * 0.025 * w, grey = P.anaglyph.grey;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, dsp = (Ds[i] - 0.5) * k;
+      const a = (y * w + clamp(Math.round(x + dsp), 0, w - 1)) * c, b = (y * w + clamp(Math.round(x - dsp), 0, w - 1)) * c;
+      C[i * 3] = grey ? 0.3 * S[a] + 0.59 * S[a + 1] + 0.11 * S[a + 2] : S[a];
+      C[i * 3 + 1] = S[b + 1]; C[i * 3 + 2] = S[b + 2];
+    }
+    layers.push({ name: "Anaglyph", rgba: null, blend: "NORMAL" });
+  } else { // haze
+    const r = Math.max(1, P.haze.blur * sc), near = hexToRgb(P.haze.nearTint);
+    const B = [0, 1, 2].map((k) => { const p = new Float32Array(n); for (let i = 0; i < n; i++) p[i] = S[i * c + k]; boxBlur(p, w, h, r, 2); return p; });
+    for (let i = 0; i < n; i++) {
+      const d = Ds[i], f = Math.pow(1 - d, 1.6) * fogAmt, bl = clamp((0.55 - d) * 2.2, 0, 1);
+      for (let k = 0; k < 3; k++) {
+        let v = S[i * c + k] + (B[k][i] - S[i * c + k]) * bl;
+        v += (fog[k] - v) * f;
+        C[i * 3 + k] = v * (1 + 0.25 * d) + (near[k] - 128) * 0.18 * d * (P.haze.warm / 100);
+      }
+    }
+    layers.push({ name: "Haze", rgba: null, blend: "NORMAL" });
   }
-  const out = new Uint8Array(n * 4);
-  for (let i = 0; i < n; i++) { out[i * 4] = clamp(C[i * 3], 0, 255); out[i * 4 + 1] = clamp(C[i * 3 + 1], 0, 255); out[i * 4 + 2] = clamp(C[i * 3 + 2], 0, 255); out[i * 4 + 3] = A[i]; }
-  layers.push({ name: P.style === "terraces" ? "Terraces" : "Relief", rgba: out, blend: "NORMAL" });
-  return { w, h, layers, notes: [] };
+
+  // finish the full-colour layer
+  const last = layers[layers.length - 1];
+  if (!last.rgba) {
+    const out = new Uint8Array(n * 4);
+    for (let i = 0; i < n; i++) { out[i * 4] = clamp(C[i * 3], 0, 255); out[i * 4 + 1] = clamp(C[i * 3 + 1], 0, 255); out[i * 4 + 2] = clamp(C[i * 3 + 2], 0, 255); out[i * 4 + 3] = A[i]; }
+    last.rgba = out;
+  }
+  if (P.out && P.out.depthLayer) {
+    const dm = new Uint8Array(n * 4);
+    for (let i = 0; i < n; i++) { const v = Math.round(D[i] * 255); dm[i * 4] = dm[i * 4 + 1] = dm[i * 4 + 2] = v; dm[i * 4 + 3] = A[i]; }
+    layers.unshift({ name: "Depth map", rgba: dm, blend: "NORMAL", hidden: true });
+  }
+  if (P.view && P.view.depth) {   // preview toggle: show the depth field itself
+    const dm = new Uint8Array(n * 4);
+    for (let i = 0; i < n; i++) { const v = Math.round(D[i] * 255); dm[i * 4] = dm[i * 4 + 1] = dm[i * 4 + 2] = v; dm[i * 4 + 3] = 255; }
+    return { w, h, layers: [{ name: "Depth map", rgba: dm, blend: "NORMAL" }], notes: ["Depth: " + used] };
+  }
+  return { w, h, layers, notes: ["Depth: " + used] };
 }
 
 module.exports = { render, composite: M.composite, demoImage: M.demoImage };

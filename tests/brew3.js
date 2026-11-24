@@ -95,6 +95,8 @@ module.exports = async function (t) {
     for (const f of fs.readdirSync(path.join(ROOT, "shared"))) {
       const src = fs.readFileSync(path.join(ROOT, "shared", f), "utf8");
       assert.ok(!/addEventListener\(\s*["']wheel/.test(src) && !/onwheel/i.test(src), "shared/" + f + " listens to the wheel");
+      // and no hint or tooltip tells people to use it (the Depthtone Mac test still saw "wheel" in a knob hint)
+      assert.ok(!/drag[^"'\n]*\bwheel\b|\bwheel (turns|or|steps)|use the (mouse )?wheel/i.test(src), "shared/" + f + " still mentions the wheel in a hint");
     }
     const P = await loadPanel(path.join(ROOT, "plugins", "crt-phaser"), { withDoc: false });
     await ready(P);

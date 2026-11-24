@@ -58,7 +58,9 @@ module.exports = async function (t) {
       const d = P.document, T = P.mod._test, img = d.querySelector("img.preview");
       for (let i = 0; i < 200 && !img.src; i++) await P.settle(50);
       // 2.x: "Colour Deck" card with segment buttons; 3.0: "Colour" card with a mode tile grid
-      const deckCard = [...d.querySelectorAll(".card")].find((c) => /^Colour( Deck)?$/.test(c.querySelector(".ctitle").textContent.trim()));
+      // a tool may have its own "Colour" card (inks), so take the one that holds the deck's mode buttons
+      const deckCard = [...d.querySelectorAll(".card")].find((c) => /^Colour( Deck)?$/.test(c.querySelector(".ctitle").textContent.trim())
+        && [...c.querySelectorAll(".segbtn, .tile")].some((b) => /^(Tone|Tone Map)$/.test(b.textContent.trim())));
       const modeBtn = (v) => [...deckCard.querySelectorAll(".segbtn, .tile")].find((b) => b.textContent.trim() === v || (v === "Tone Map" && b.textContent.trim() === "Tone"));
       assert.ok(deckCard, "card present");
       const wait = async () => { await P.settle(300); for (let i = 0; i < 200 && /^Rendering/.test(d.querySelector(".status").textContent); i++) await P.settle(50); };

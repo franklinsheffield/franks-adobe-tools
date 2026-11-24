@@ -7,9 +7,10 @@
   "Glow",
   "Finish",
   "Colour Deck",
+  "Blend",
   "Output"
  ],
- "controls": "input:33 select:5 button:44 textarea:0",
+ "controls": "input:34 select:6 button:44 textarea:0",
  "previewDefault": "06f226288451",
  "presets": [
   "Dreamy - Dreamy = 06f226288451",

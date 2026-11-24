@@ -14,9 +14,10 @@
   "Finish",
   "Look",
   "Colour Deck",
+  "Blend",
   "Output"
  ],
- "controls": "input:139 select:11 button:87 textarea:0",
+ "controls": "input:140 select:12 button:87 textarea:0",
  "previewDefault": "df52dd25b629",
  "presets": [
   "Chrome - Liquid Silver = df52dd25b629",
