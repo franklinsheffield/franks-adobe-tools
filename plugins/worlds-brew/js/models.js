@@ -5,7 +5,7 @@ const { hash2, fbm } = require("./noise.js");
 const atobSafe = typeof atob === "function" ? atob : (b) => Buffer.from(b, "base64").toString("binary");
 function utf8(buf) { if (typeof TextDecoder !== "undefined") return new TextDecoder().decode(buf); const u = new Uint8Array(buf); let s = ""; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); try { return decodeURIComponent(escape(s)); } catch (e) { return s; } }
 let MESHID = 1;
-function finishMesh(name, P, I, tc) {
+function finishMesh(name, P, I, tc, uv) {
   const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
   for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { const q = P[i + k]; if (q < mn[k]) mn[k] = q; if (q > mx[k]) mx[k] = q; }
   const c = [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2], half = Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) / 2 || 1;
@@ -13,6 +13,7 @@ function finishMesh(name, P, I, tc) {
   const f = new Uint32Array(I), nv = P.length / 3; for (let i = 0; i < f.length; i++) if (!(f[i] < nv)) throw new Error("a face points at a missing vertex");
   const m = { id: MESHID++, name, v, f, tris: f.length / 3, hy: (mx[1] - mn[1]) / 2 / half };
   if (tc && tc.length === f.length) m.tc = tc instanceof Uint8Array ? tc : Uint8Array.from(tc);   // model colours: r, g, b per triangle
+  if (uv && uv.length === f.length * 2) m.uv = uv instanceof Float32Array ? uv : Float32Array.from(uv);   // the model's own texture coordinates, u, v per triangle corner
   return m;
 }
 function vertexNormals(v, f) {
@@ -24,13 +25,15 @@ function vertexNormals(v, f) {
   return n;
 }
 function parseOBJ(text, name) {
-  const P = [], I = [];
+  const P = [], I = [], VT = [], UV = []; let hasUV = true;
   for (const line of text.split(/\r?\n/)) { const s = line.trim();
     if (s.startsWith("v ")) { const a = s.split(/\s+/); P.push(+a[1], +a[2], +a[3]); }
-    else if (s.startsWith("f ")) { const a = s.split(/\s+/).slice(1).filter(Boolean).map((t) => { const k = parseInt(t.split("/")[0], 10); return k < 0 ? P.length / 3 + k : k - 1; });
-      for (let i = 1; i < a.length - 1; i++) I.push(a[0], a[i], a[i + 1]); } }
+    else if (s.startsWith("vt ")) { const a = s.split(/\s+/); VT.push(+a[1], +(a[2] || 0)); }
+    else if (s.startsWith("f ")) { const c = s.split(/\s+/).slice(1).filter(Boolean).map((t) => { const q = t.split("/"), k = parseInt(q[0], 10), w = q[1] ? parseInt(q[1], 10) : NaN;
+        return [k < 0 ? P.length / 3 + k : k - 1, isNaN(w) ? -1 : w < 0 ? VT.length / 2 + w : w - 1]; });
+      for (let i = 1; i < c.length - 1; i++) for (const e of [c[0], c[i], c[i + 1]]) { I.push(e[0]); if (e[1] < 0 || e[1] * 2 + 1 >= VT.length) hasUV = false; else UV.push(VT[e[1] * 2], VT[e[1] * 2 + 1]); } } }
   if (!I.length) throw new Error("no faces found");
-  return finishMesh(name, P, I);
+  return finishMesh(name, P, I, null, hasUV && VT.length ? UV : null);
 }
 function parseSTL(buf, name) { // binary or ASCII; STL files are Z-up, so turn them Y-up
   const dv = new DataView(buf), n = buf.byteLength >= 84 ? dv.getUint32(80, true) : 0, P = [], I = [];
@@ -56,8 +59,8 @@ function parseGLTF(text, name, opt) {
 // opt.image(uri) -> bytes: resolves textures kept in separate files (used by the asset-pack builder)
 function gltfToMesh(json, bufs, name, opt) {
   opt = opt || {};
-  const P = [], I = [], TC = [];
-  let coloured = false;
+  const P = [], I = [], TC = [], UVC = [];
+  let coloured = false, hasUV = true;
   const imgCache = {};
   const image = (ti) => { // texture index -> decoded RGBA, or null
     const tx = (json.textures || [])[ti]; if (!tx || tx.source == null) return null;
@@ -86,6 +89,7 @@ function gltfToMesh(json, bufs, name, opt) {
       const pos = acc(pr.attributes.POSITION), base = P.length / 3;
       for (let i = 0; i < pos.length; i += 3) { const x = pos[i], y = pos[i + 1], z = pos[i + 2]; P.push(M[0] * x + M[4] * y + M[8] * z + M[12], M[1] * x + M[5] * y + M[9] * z + M[13], M[2] * x + M[6] * y + M[10] * z + M[14]); }
       const ind = pr.indices != null ? acc(pr.indices) : Array.from({ length: pos.length / 3 }, (_, k) => k); for (const k of ind) I.push(base + k);
+      const uv0 = pr.attributes.TEXCOORD_0 != null ? acc(pr.attributes.TEXCOORD_0) : null; if (!uv0) hasUV = false; else for (const k of ind) UVC.push(uv0[k * 2], 1 - uv0[k * 2 + 1]);   // glTF v runs downwards
       // colour per triangle: material colour x texture at the triangle's centre x vertex colours
       const mat = pr.material != null && json.materials ? json.materials[pr.material] : null, pbr = (mat && mat.pbrMetallicRoughness) || {};
       const fac = pbr.baseColorFactor || [1, 1, 1, 1], ti = pbr.baseColorTexture ? pbr.baseColorTexture.index : null, img = ti != null ? image(ti) : null;
@@ -105,9 +109,9 @@ function gltfToMesh(json, bufs, name, opt) {
   const ID = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], sc = json.scenes ? json.scenes[json.scene || 0] : null;
   (sc ? sc.nodes : (json.nodes || []).map((_, i) => i)).forEach((ni) => visit(ni, ID));
   if (!I.length) throw new Error("no triangle meshes found");
-  return finishMesh(name, P, I, coloured ? TC : null);
+  return finishMesh(name, P, I, coloured ? TC : null, hasUV ? UVC : null);
 }
-function upright(m) { const P = []; for (let i = 0; i < m.v.length; i += 3) P.push(m.v[i], m.v[i + 2], -m.v[i + 1]); return finishMesh(m.name, P, Array.from(m.f), m.tc); }
+function upright(m) { const P = []; for (let i = 0; i < m.v.length; i += 3) P.push(m.v[i], m.v[i + 2], -m.v[i + 1]); return finishMesh(m.name, P, Array.from(m.f), m.tc, m.uv); }
 function meshVerts(o) {
   const m = o.mesh, key = m.id + "|" + o.disp;
   if (o._mk === key) return o._mv;
@@ -132,8 +136,8 @@ const SAMPLES = {
 /* scene files store models as base64 typed arrays */
 function b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return typeof btoa === "function" ? btoa(s) : Buffer.from(s, "binary").toString("base64"); }
 function unb64(str) { const s = atobSafe(str), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; }
-function meshToJSON(m) { return { name: m.name, hy: m.hy, v: b64(new Uint8Array(m.v.buffer, m.v.byteOffset, m.v.byteLength)), f: b64(new Uint8Array(m.f.buffer, m.f.byteOffset, m.f.byteLength)), tc: m.tc ? b64(m.tc) : undefined }; }
-function meshFromJSON(j) { const v = new Float32Array(unb64(j.v)), f = new Uint32Array(unb64(j.f)); const m = { id: MESHID++, name: j.name, v, f, tris: f.length / 3, hy: j.hy }; if (j.tc) m.tc = new Uint8Array(unb64(j.tc)); return m; }
+function meshToJSON(m) { return { name: m.name, hy: m.hy, v: b64(new Uint8Array(m.v.buffer, m.v.byteOffset, m.v.byteLength)), f: b64(new Uint8Array(m.f.buffer, m.f.byteOffset, m.f.byteLength)), tc: m.tc ? b64(m.tc) : undefined, uv: m.uv ? b64(new Uint8Array(m.uv.buffer, m.uv.byteOffset, m.uv.byteLength)) : undefined }; }
+function meshFromJSON(j) { const v = new Float32Array(unb64(j.v)), f = new Uint32Array(unb64(j.f)); const m = { id: MESHID++, name: j.name, v, f, tris: f.length / 3, hy: j.hy }; if (j.tc) m.tc = new Uint8Array(unb64(j.tc)); if (j.uv) m.uv = new Float32Array(unb64(j.uv)); return m; }
 /* .obj export of a model as placed in the scene (Pro: Export OBJ) */
 function exportOBJ(o) { const m = meshVerts(o), f = o.mesh.f, c = Math.cos(o.ry * Math.PI / 180), s = Math.sin(o.ry * Math.PI / 180), out = ["# Frank's Worlds Brew export: " + o.mesh.name];
   for (let i = 0; i < m.v.length; i += 3) { const lx = m.v[i] * o.s * o.sx, ly = m.v[i + 1] * o.s * o.sy, lz = m.v[i + 2] * o.s * o.sz; out.push("v " + (o.x + c * lx + s * lz).toFixed(5) + " " + (o.y + ly).toFixed(5) + " " + (o.z - s * lx + c * lz).toFixed(5)); }

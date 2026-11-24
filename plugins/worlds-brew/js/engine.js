@@ -6,6 +6,7 @@
 const { clamp, vnoise, fbm } = require("./noise.js");
 const { MATS, SKIES, heightmap, hmAt, camBasis, withDefaults } = require("./scene.js");
 const { meshVerts } = require("./models.js");
+const SF = require("./surface.js");
 
 // "#RRGGBB" -> linear-ish 0..1 floats
 function hexRGB(h, fb) { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || "")); if (!m) return fb; const n = parseInt(m[1], 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map((v) => Math.pow(v, 2.2)); }
@@ -38,15 +39,37 @@ function compile(scene) {
       const r = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h) % 6]; col = [r[0] + mm, r[1] + mm, r[2] + mm]; }
     return { o, type: o.type, x: o.x, y: o.y, z: o.z, s: o.s, c: Math.cos(ry), sn: Math.sin(ry), col, refl: o.refl != null ? o.refl : m.refl, spec: m.spec, emit: m.emit || 0, tex: m.tex || 0,
       hm: o.type === "terrain" ? heightmap(o) : null, sc: !!o.sculpt, H: o.h, pat: o.pat || "None", ts: o.ts || 1, bump: o.bump || 0, img: o.img || null,
+      lay: SF.active(o) ? SF.frame(o) : null,
       ax: o.sx || 1, ay: o.sy || 1, az: o.sz || 1, nu: o.type !== "terrain" && o.type !== "mesh" && ((o.sx || 1) !== 1 || (o.sy || 1) !== 1 || (o.sz || 1) !== 1) };
   });
-  O.forEach((b) => { if (b.nu) b.u = Object.assign({}, b, { nu: false, x: 0, y: 0, z: 0, c: 1, sn: 0 }); });
+  O.forEach((b) => { if (b.nu) b.u = Object.assign({}, b, { nu: false, x: 0, y: 0, z: 0, c: 1, sn: 0 });
+    if (b.lay) { const E = Math.max(...b.lay.e), tl = Math.max(1, ...b.o.layers.map((L) => (L.on && L.img && L.bump ? L.tile || 1 : 1)));   // surface relief
+      b.bumpy = b.o.layers.some((L) => L.on && L.img && L.bump); b.reliefA = 0.015 * E; b.reliefE = 2 * E / (tl * 256); } });
   // ---- imported models: world-space triangles + a bounding volume tree for fast ray hits
-  const MT = [], MN = [], MOWN = [], MC = [];
+  const MT = [], MN = [], MOWN = [], MC = [], MUV = [];
   O.forEach((b, k) => { if (b.type !== "mesh") return; const o = b.o, m = meshVerts(o), f = o.mesh.f, sx = o.s * o.sx, sy = o.s * o.sy, sz = o.s * o.sz, tc = o.vc !== false ? o.mesh.tc : null;
     for (let t = 0; t < f.length; t += 3) { if (tc) MC.push(tc[t] / 255 * 0.92, tc[t + 1] / 255 * 0.92, tc[t + 2] / 255 * 0.92); else MC.push(-1, -1, -1); for (let j = 0; j < 3; j++) { const i = f[t + j] * 3, lx = m.v[i] * sx, ly = m.v[i + 1] * sy, lz = m.v[i + 2] * sz;
-      MT.push(o.x + b.c * lx + b.sn * lz, o.y + ly, o.z - b.sn * lx + b.c * lz); const nx = m.n[i] / o.sx, ny = m.n[i + 1] / o.sy, nz = m.n[i + 2] / o.sz; MN.push(b.c * nx + b.sn * nz, ny, -b.sn * nx + b.c * nz); } MOWN.push(k); } });
-  const TA = new Float32Array(MT), NA = new Float32Array(MN);
+      MT.push(o.x + b.c * lx + b.sn * lz, o.y + ly, o.z - b.sn * lx + b.c * lz); if (o.mesh.uv) MUV.push(o.mesh.uv[(t + j) * 2], o.mesh.uv[(t + j) * 2 + 1]); else MUV.push(-1e9, 0); const nx = m.n[i] / o.sx, ny = m.n[i + 1] / o.sy, nz = m.n[i + 2] / o.sz; MN.push(b.c * nx + b.sn * nz, ny, -b.sn * nx + b.c * nz); } MOWN.push(k); } });
+  const TA = new Float32Array(MT), NA = new Float32Array(MN), UVA = new Float32Array(MUV);
+  // surface layers on an object: colour, shine, glow and relief (see surface.js)
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  function applyLayers(b, px, py, pz, nx, ny, nz, tri, mu, mv, cr, cg, cb, spec, refl) {
+    const F = b.lay, wx = px - b.x, wy = py - b.y, wz = pz - b.z;
+    const lp = [b.c * wx - b.sn * wz, wy, b.sn * wx + b.c * wz], ln = [b.c * nx - b.sn * nz, ny, b.sn * nx + b.c * nz];
+    let uv = null; if (tri >= 0 && UVA[tri * 6] > -1e8) { const w = 1 - mu - mv, p = tri * 6; uv = [UVA[p] * w + UVA[p + 2] * mu + UVA[p + 4] * mv, UVA[p + 1] * w + UVA[p + 3] * mu + UVA[p + 5] * mv]; }
+    const base = { r: cr, g: cg, b: cb, rough: 1 - Math.min(1, spec), metal: refl }, r0 = base.rough, m0 = base.metal;
+    const res = SF.shade(b.o, F, lp, ln, ny, uv, base);
+    const out = { r: base.r, g: base.g, b: base.b, spec: base.rough !== r0 ? 1 - base.rough : spec, refl: base.metal !== m0 ? base.metal : refl, nx, ny, nz, glow: res.glow[0] + res.glow[1] + res.glow[2] > 0 ? res.glow : null };
+    if (b.bumpy) {   // relief: how fast the layers' height changes along two directions on the surface
+      const e = b.reliefE, A = b.reliefA, t1 = cross(ln, Math.abs(ln[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]), l1 = Math.hypot(t1[0], t1[1], t1[2]) || 1; t1[0] /= l1; t1[1] /= l1; t1[2] /= l1;
+      const t2 = cross(ln, t1), junk = { r: 0, g: 0, b: 0, rough: 0, metal: 0 };
+      const hAt = (d) => SF.shade(b.o, F, [lp[0] + d[0] * e, lp[1] + d[1] * e, lp[2] + d[2] * e], ln, ny, uv, junk).h;
+      const g1 = (hAt(t1) - res.h) * A / e, g2 = (hAt(t2) - res.h) * A / e;
+      let qx = ln[0] - g1 * t1[0] - g2 * t2[0], qy = ln[1] - g1 * t1[1] - g2 * t2[1], qz = ln[2] - g1 * t1[2] - g2 * t2[2]; const l = Math.hypot(qx, qy, qz) || 1; qx /= l; qy /= l; qz /= l;
+      out.nx = b.c * qx + b.sn * qz; out.ny = qy; out.nz = -b.sn * qx + b.c * qz;
+    }
+    return out;
+  }
   let ROOT = null;
   if (MOWN.length) {
     const cen = (i, a) => TA[i * 9 + a] + TA[i * 9 + 3 + a] + TA[i * 9 + 6 + a];
@@ -219,6 +242,8 @@ function compile(scene) {
           const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l; }
       }
     }
+    let LG = null;
+    if (id >= 0 && O[id].lay) { const q = applyLayers(O[id], px, py, pz, nx, ny, nz, tri, mu, mv, cr, cg, cb, spec, refl); cr = q.r; cg = q.g; cb = q.b; spec = q.spec; refl = q.refl; nx = q.nx; ny = q.ny; nz = q.nz; LG = q.glow; }
     const sx = px + nx * 0.01, sy = py + ny * 0.01, sz = pz + nz * 0.01;
     const seen = id === -3 ? 1 - emit : 1;   // water: the see-through part is already lit
     if (foamK > 0) { cr += (0.9 - cr) * foamK; cg += (0.93 - cg) * foamK; cb += (0.95 - cb) * foamK; refl *= 1 - foamK; spec *= 1 - foamK * 0.8; }
@@ -240,6 +265,7 @@ function compile(scene) {
       const kd = nl * att * lsh * fk, ks = Math.pow(Math.max(rdx * lx + rdy * ly + rdz * lz, 0), 60) * spec * att * lsh;
       r += (cr * kd + ks) * P.r; g += (cg * kd + ks) * P.g; bb += (cb * kd + ks) * P.b; }
     if (emit && id !== -3) { r = cr * 1.1 + r * 0.2; g = cg * 1.1 + g * 0.2; bb = cb * 1.1 + bb * 0.2; }
+    if (LG) { r += LG[0] * 1.4; g += LG[1] * 1.4; bb += LG[2] * 1.4; }   // layer glow
     if (refl > 0.01 && depth < 2) {
       trace(sx, sy, sz, rdx, rdy, rdz, depth + 1, rc, null);
       const tint = id === -3 ? 1 : 0.6;

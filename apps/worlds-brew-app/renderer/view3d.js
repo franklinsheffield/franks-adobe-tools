@@ -4,10 +4,12 @@
 // The final render still comes from the CPU ray tracer (engine/engine.js), so the look here is a close preview.
 import * as THREE from "three";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
+import { attachLayers, layersKey } from "./surfaces.js";
 
 const req = window.require;
 const S = req("../engine/scene.js");
 const M = req("../engine/models.js");
+const SF = req("../engine/surface.js");
 const { vnoise, fbm } = req("../engine/noise.js");
 
 const SRGB = THREE.SRGBColorSpace;
@@ -79,6 +81,7 @@ function meshGeo(o) {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(P, 3)); g.setAttribute("normal", new THREE.BufferAttribute(N, 3)); g.setAttribute("uv", new THREE.BufferAttribute(UV, 2));
+  if (o.mesh.uv && o.mesh.uv.length === n * 2) g.setAttribute("wbuv", new THREE.BufferAttribute(o.mesh.uv, 2));
   if (C) { const lin = new Float32Array(C.length); const tmp = new THREE.Color(); for (let i = 0; i < C.length; i += 3) { tmp.setRGB(C[i], C[i + 1], C[i + 2], SRGB); lin[i] = tmp.r; lin[i + 1] = tmp.g; lin[i + 2] = tmp.b; } g.setAttribute("color", new THREE.BufferAttribute(lin, 3)); }
   g.computeBoundingSphere(); g.computeBoundingBox();
   per.set(key, g); return g;
@@ -127,13 +130,14 @@ function material(o) {
   if (map) { map = map.clone(); map.needsUpdate = true; const k = o.img ? (o.ts || 1) * o.s : m.tex === 2 && (!o.pat || o.pat === "None") ? 2 * o.s : (o.ts || 1) * 2 * o.s; map.repeat.set(k, k); mat.map = map; if (o.img) mat.color.setRGB(0.9, 0.9, 0.9); }
   mat.envMapIntensity = mat.metalness > 0.5 ? 1.1 : o.mat === "Glossy" ? 0.6 : 0.3;
   if (o.bump > 0) { mat.bumpMap = PATTERNS.Noise(); mat.bumpScale = o.bump * 3; }
+  if (SF.active(o)) attachLayers(mat, o);   // surface layers (bitmaps over the base material)
   return mat;
 }
 function disposeMat(m) { if (!m) return; if (m.map) m.map.dispose(); m.dispose(); }
 
 // what has to change for an object's geometry / material to be rebuilt (anything else is just a transform)
 function texKey(o) { return o.img ? (o.img.name + o.img.w + "x" + o.img.h + "#" + (o.img.__k || (o.img.__k = Math.random().toString(36).slice(2)))) : ""; }
-function lookKey(o) { const textured = o.img || (o.pat && o.pat !== "None"); return [o.mat, o.hue, o.refl, o.pat, texKey(o), o.ts, o.bump, o.vc, textured || (S.MATS[o.mat] || {}).tex ? o.s : ""].join("|"); }
+function lookKey(o) { const textured = o.img || (o.pat && o.pat !== "None"); return [o.mat, o.hue, o.refl, o.pat, texKey(o), o.ts, o.bump, o.vc, textured || (S.MATS[o.mat] || {}).tex ? o.s : "", layersKey(o)].join("|"); }
 function geoKey(o, scene) {
   if (o.type === "terrain") return S.heightmap(o).key + "|" + (o.sculptV || 0) + "|" + o.s + "|" + o.h + "|" + o.y + "|" + o.mat + "|" + (scene.water ? scene.waterLvl : "-");
   if (o.type === "mesh") return o.mesh.id + "|" + o.disp + "|" + o.smooth + "|" + (o.vc !== false);
@@ -229,11 +233,13 @@ export class World {
         if (gk !== rec.gk) { if (n.userData.ownGeo) n.userData.ownGeo.dispose(); const g = o.type === "terrain" ? terrainGeo(o, sc) : o.type === "mesh" ? meshGeo(o) : unitGeo(o.type); n.geometry = g; n.userData.ownGeo = o.type === "terrain" ? g : null; rec.gk = gk; }
         if (lk !== rec.lk || rec.gk0 !== gk) { disposeMat(n.material); n.material = material(o); rec.lk = lk; rec.gk0 = gk; }
       }
+      const lu = n.material && n.material.userData.wbUpdate;
       n.position.set(o.x, o.y, o.z); n.rotation.set(0, (o.ry || 0) * Math.PI / 180, 0);
       if (o.type === "terrain") n.scale.set(1, 1, 1);
       else if (o.type === "light") { const pl = n.userData.pl, c = hexCol(o.col, new THREE.Color(1, 0.9, 0.7)), R = Math.max(0.3, o.range || 6); pl.color.copy(c); pl.intensity = (o.pow == null ? 100 : o.pow) / 100 * 1.6 * R * R * 0.9; pl.distance = R * 3.2; pl.castShadow = o.shadow !== false && lights < 4; lights++;
         n.userData.bulb.scale.setScalar(Math.max(0.05, o.s || 0.25)); n.userData.bulb.material.color.copy(c); n.userData.bulb.visible = o.glow !== false; }
       else n.scale.set(o.s * (o.sx || 1), o.s * (o.sy || 1), o.s * (o.sz || 1));
+      if (lu) lu(o, n);   // layer dials are uniforms: refresh every sync
     }
     for (const [o, rec] of this.nodes) if (!seen.has(o)) { this.drop(rec); this.nodes.delete(o); }
   }

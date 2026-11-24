@@ -35,12 +35,12 @@ const camSlots = [null, null, null];
 
 // ---- undo: a stack of light snapshots (objects are shallow copies; meshes, images and sculpt grids are shared, never mutated)
 const hist = { list: [], i: -1 };
-function snap() { const sc = st.scene; return { scene: Object.assign({}, sc, { cam: Object.assign({}, sc.cam), objs: sc.objs.map((o) => Object.assign({}, o)) }), sel: hasSel() ? st.sel.id : null }; }
+function snap() { const sc = st.scene; return { scene: Object.assign({}, sc, { cam: Object.assign({}, sc.cam), objs: sc.objs.map((o) => Object.assign({}, o, o.layers ? { layers: o.layers.map((L) => Object.assign({}, L)) } : null)) }), sel: hasSel() ? st.sel.id : null }; }
 function commit() { hist.list = hist.list.slice(0, hist.i + 1); hist.list.push(snap()); if (hist.list.length > 80) hist.list.shift(); hist.i = hist.list.length - 1; markDirty(); }
 function resetHistory() { hist.list = [snap()]; hist.i = 0; }
 function restore(sn) {
   const byId = new Map(st.scene.objs.map((o) => [o.id, o])), cam = st.scene.cam;
-  const objs = sn.scene.objs.map((c) => { const o = byId.get(c.id) || {}; Object.keys(o).forEach((k) => { if (!(k in c) && k[0] !== "_") delete o[k]; }); return Object.assign(o, c); });
+  const objs = sn.scene.objs.map((c) => { const o = byId.get(c.id) || {}; Object.keys(o).forEach((k) => { if (!(k in c) && k[0] !== "_") delete o[k]; }); return Object.assign(o, c, c.layers ? { layers: c.layers.map((L) => Object.assign({}, L)) } : null); });
   Object.assign(st.scene, sn.scene, { objs, cam }); st.sel = objs.find((o) => o.id === sn.sel) || NONE; changed("sel");
 }
 function undo() { if (hist.i > 0) { hist.i--; restore(hist.list[hist.i]); markDirty(); setStatus("Undo"); } }

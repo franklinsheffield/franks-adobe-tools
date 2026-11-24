@@ -144,13 +144,17 @@ function toJSON(scene) {
     if (o.sculpt) c.sculpt = b64u8(new Uint8Array(o.sculpt.buffer, o.sculpt.byteOffset, o.sculpt.byteLength));
     if (o.mesh) c.mesh = MOD.meshToJSON(o.mesh);
     if (o.img) c.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: b64u8(o.img.d) };
+    if (o.layers) c.layers = o.layers.map((L) => Object.assign({}, L, { img: pic(L.img), mimg: pic(L.mimg) }));
     return c; }) }));
 }
+const pic = (p) => (p ? { w: p.w, h: p.h, name: p.name, d: b64u8(p.d) } : null);
+const unpic = (p) => { if (!p) return null; const raw = typeof atob === "function" ? atob(p.d) : Buffer.from(p.d, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); return { w: p.w, h: p.h, name: p.name, d: u }; };
 function b64u8(d) { let s = ""; for (let i = 0; i < d.length; i += 0x8000) s += String.fromCharCode.apply(null, d.subarray(i, i + 0x8000)); return typeof btoa === "function" ? btoa(s) : Buffer.from(s, "binary").toString("base64"); }
 function fromJSON(text) {
   const s = JSON.parse(text);
   s.objs = s.objs.map((o) => { o.id = UID++; if (o.mesh) o.mesh = MOD.meshFromJSON(o.mesh);
     if (o.img) { const raw = typeof atob === "function" ? atob(o.img.d) : Buffer.from(o.img.d, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: u }; }
+    if (o.layers) o.layers = o.layers.map((L) => Object.assign({}, L, { img: unpic(L.img), mimg: unpic(L.mimg) }));
     if (typeof o.sculpt === "string") { const raw = typeof atob === "function" ? atob(o.sculpt) : Buffer.from(o.sculpt, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.sculpt = new Float32Array(u.buffer); }
     return o; });
   return withDefaults(s);
