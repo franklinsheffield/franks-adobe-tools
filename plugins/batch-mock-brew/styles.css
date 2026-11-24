@@ -7,4 +7,4 @@
 .info.counts { margin-bottom: 4px; opacity: 0.9; }
 .info.example { margin-top: 4px; opacity: 0.9; }
 /* Plugin neon (signal red): title text and every glow use this colour. */
-:root { --glow: #ff3b30; --glowbg: #2e0b09; }
+:root { --glow: #fe5e4f; --glowbg: #2e0b09; }

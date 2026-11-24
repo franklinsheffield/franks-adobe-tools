@@ -88,7 +88,7 @@ function makeHost(opts) {
   let saved = null;
   const file = (content) => ({ async read() { return content; }, async write(t) { saved = t; calls.push(["fileWrite", t.length]); } });
   const uxp = {
-    entrypoints: { setup() { calls.push(["entrypoints.setup"]); } },
+    entrypoints: { setup(arg) { calls.push(["entrypoints.setup"]); uxp.entrypoints.last = arg; } },
     storage: { localFileSystem: {
       async getDataFolder() { return { async getEntry() { if (saved == null) throw new Error("none"); return file(saved); }, async createFile() { return file(saved); } }; },
       async getFileForSaving() { return file(""); },

@@ -1,13 +1,17 @@
 "use strict";
 // ======================================================================
 // "Hardware Console" panel brand (Frank picked concept C, 2026-11-22).
-// Opt-in per tool with createToolPanel({ brand: "console", code: "PB-09", glow: "#4d7cff" }).
+// Opt-in per tool with createToolPanel({ brand: "console", code: "PB-09", glow: "#6c96ff" }).
 //   header(): rack unit with screw corners, FRANK'S · <code>, the wordmark
 //             in the tool's neon and a status LED (READY / BUSY / ERROR)
 //   dial():   rotary knob for a number setting with a value box beside it.
 //             Click the knob or its box to select it (white glow, one per panel);
 //             Up/Down arrows step it (Shift = 10 steps), the mouse wheel turns it,
 //             drag up/down (Shift = fine), or type a value (Frank, 2026-11-22).
+//             Research quick wins (2026-11-23): drag the label too (Adobe "scrubby"
+//             labels), double-click the knob or label to reset it to the look's
+//             value, the unit shows beside the box, and env.onSelect(info) lets the
+//             panel show live key hints for the selected knob.
 //   toggle(): on/off switch for a boolean setting
 //   miniToggle(): inline switch for panel options outside state (Auto-update, Pin on top)
 //   meter():  12-segment LED render meter for Apply
@@ -137,11 +141,14 @@ function createConsoleKit(env) {
       v = min + Math.round((v - min) / step) * step;
       return parseFloat(v.toFixed(6));
     };
-    const tip = label + (unit ? " (" + String(unit).trim() + ")" : "") + ": click to select, then Up/Down arrows (Shift = x10), mouse wheel, drag, or type a value";
+    const u = String(unit || "").trim();
+    const tip = label + (u ? " (" + u + ")" : "") + ": drag, wheel or Up/Down to change. Shift = fine drag, x10 arrows. Double-click resets.";
     const img = el("img", { class: "knob", title: tip });
     const val = el("input", { type: "text", class: "dialval", title: tip });
-    const lab = el("div", { class: "dlabel", text: label });
-    const node = el("div", { class: "dial" }, [el("div", { class: "dialrow" }, [img, val]), lab]);
+    const lab = el("div", { class: "dlabel scrub", text: label, title: "Drag left/right or up/down to change. Double-click resets." });
+    const node = el("div", { class: "dial" }, [el("div", { class: "dialrow" }, [img, val, u ? el("span", { class: "dunit", text: u }) : null]), lab]);
+    const startV = env.getPath(S(), path);
+    const baseline = () => { let v; try { v = env.getDefault ? env.getDefault(path) : undefined; } catch (e) { v = undefined; } return typeof v === "number" && isFinite(v) ? v : startV; };
     const me = {
       node,
       redraw() {
@@ -160,32 +167,50 @@ function createConsoleKit(env) {
       draw(v);
       if (commit) env.onChange();
     };
-    const pick = () => { select(me); try { if (document.activeElement !== val) val.focus(); } catch (e) { /* host without focus() */ } };
+    const pick = () => {
+      select(me);
+      if (env.onSelect) env.onSelect({ label, unit: u, min, max, step });
+      try { if (document.activeElement !== val) val.focus(); } catch (e) { /* host without focus() */ }
+    };
+    // UXP does not reliably send dblclick, so a second press within 350 ms on the same spot counts
+    let lastPress = 0;
+    const doublePress = () => { const t = Date.now(), d = t - lastPress < 350; lastPress = d ? 0 : t; return d; };
+    me.reset = () => { set(baseline(), true); };
     let drag = null;
     const move = (e) => {
       if (!drag) return;
       const k = (e.shiftKey ? 0.2 : 1) * (max - min) / 160;
-      set(drag.v + (drag.y - e.clientY) * k, false);
+      const dpx = drag.label ? (e.clientX - drag.x) + (drag.y - e.clientY) : (drag.y - e.clientY);   // a label scrubs sideways too
+      set(drag.v + dpx * k, false);
       if (env.onLive) env.onLive(path);   // optional: tools that render live frames while a knob turns
     };
-    const up = () => {
+    // a press-release that didn't move is a tap; two taps within 400 ms reset too
+    // (UXP on the Mac can swallow the second mousedown on a text label, 2026-11-24)
+    let lastTap = 0;
+    const up = (e) => {
       if (!drag) return;
+      const still = !e || e.clientX == null || (Math.abs(e.clientX - drag.x) < 3 && Math.abs(e.clientY - drag.y) < 3);
       drag = null;
+      if (still) { const t = Date.now(); if (t - lastTap < 400) { lastTap = 0; me.reset(); } else lastTap = t; }
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", up);
       node.classList.remove("turning");
       env.onChange();
     };
-    img.addEventListener("mousedown", (e) => {
+    const press = (isLabel) => (e) => {
       pick();
-      drag = { y: e.clientY, v: env.getPath(S(), path) };
+      if (doublePress()) { me.reset(); if (e.preventDefault) e.preventDefault(); return; }
+      drag = { x: e.clientX, y: e.clientY, v: env.getPath(S(), path), label: isLabel };
       node.classList.add("turning");
       document.addEventListener("mousemove", move);
       document.addEventListener("mouseup", up);
       if (e.preventDefault) e.preventDefault();
-    });
-    img.addEventListener("mousemove", move);
-    img.addEventListener("mouseup", up);
+    };
+    img.addEventListener("mousedown", press(false));
+    lab.addEventListener("mousedown", press(true));
+    [img, lab].forEach((n) => { n.addEventListener("mousemove", move); n.addEventListener("mouseup", up); });
+    // text labels in UXP get a real dblclick instead of a second mousedown (Mac test 2026-11-24)
+    [img, lab].forEach((n) => n.addEventListener("dblclick", (e) => { me.reset(); if (e.preventDefault) e.preventDefault(); }));
     me.wheelStep = (dir) => {
       pick();
       set(env.getPath(S(), path) + dir * Math.max(step, (max - min) / 50), true);
@@ -228,7 +253,7 @@ function createConsoleKit(env) {
     val.addEventListener("change", commitTyped);
     val.addEventListener("blur", () => { if (val.__typing) commitTyped(); });
     bind(() => draw(env.getPath(S(), path)));
-    node.__dial = { set: (v) => set(v, true), select: () => pick(), get selected() { return selected === me; } };
+    node.__dial = { set: (v) => set(v, true), select: () => pick(), reset: () => me.reset(), get selected() { return selected === me; } };
     return node;
   }
 
@@ -243,7 +268,10 @@ function createConsoleKit(env) {
       env.onChange();
     });
     bind(() => { if (env.getPath(S(), path)) sw.classList.add("on"); else sw.classList.remove("on"); });
-    return el("div", { class: "row chk swrow" }, [el("span", { class: "lbl2 swlbl", text: label }), sw]);
+    // the whole row is the click target, not just the small switch (WCAG 2.5.8 target size)
+    const lab = el("span", { class: "lbl2 swlbl", text: label });
+    lab.addEventListener("click", () => sw.click());
+    return el("div", { class: "row chk swrow" }, [lab, sw]);
   }
 
   // small inline switch for panel-level options (Auto-update, Pin on top) that are not in state

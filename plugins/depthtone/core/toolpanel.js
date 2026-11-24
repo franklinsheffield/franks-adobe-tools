@@ -43,6 +43,10 @@ const { splitLayout } = require("./layout.js");
 const { createLibrary } = require("./library.js");
 const Colour = require("./colour.js");
 const { createColourDeck, applyDeckPreview, addDeckLayer } = require("./colourdeck.js");
+const IM = require("./imgmath.js");
+
+const QW = require("./quickwins.js");
+const plainError = QW.plainError;
 
 function createToolPanel(cfg) {
   const { Engine, DEFAULTS, PRESETS, merge, clone } = cfg;
@@ -52,6 +56,7 @@ function createToolPanel(cfg) {
 
   let state = PRESETS[0] ? merge(DEFAULTS, PRESETS[0].p) : clone(DEFAULTS);   // start on the first preset so its name matches
   const hasDeck = cfg.colour !== false && !cfg.previewRender && !cfg.outputCard;
+  if (cfg.split == null) cfg.split = !cfg.previewRender;   // Before/After on every pixel tool (research quick win ID-09)
   if (hasDeck) state.deck = Colour.normalize(PRESETS[0] && PRESETS[0].p.deck);
   let lastSrc = null, lastScale = 1, deck = null, lookBrowser = null;
   const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));   // states set from outside may lack it
@@ -69,12 +74,22 @@ function createToolPanel(cfg) {
     titles.forEach((t) => { const m = offFx[t]; Object.keys(m).forEach((p) => { try { ui.setPath(s, p, m[p]); } catch (e) { /* path not in this state */ } }); });
     return s;
   }
-  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title });
+  // the values of the look that was loaded last: double-clicking a knob goes back to them
+  let lookBase = clone(state);
+  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title,
+    getDefault: (path) => getPath(lookBase, path), onSelect: (i) => showKeys(i) });
+  // live key hints for the selected knob (Blender-style status line, research quick win ID-13)
+  const KEYS_IDLE = QW.keysIdle(cfg.cancellable ? "a running Apply" : "");
+  function showKeys(i) {
+    if (!refs.keys) return;
+    refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE;
+  }
   const { el, clear, bind, showIf, refreshAll, segGroup, selectRow, checkRow, hexField, card } = ui;
 
   function touch() { refreshAll(); if (auto) schedulePreview(150); }
   function setStatus(msg, isErr) {
     if (!refs.status) return;
+    if (isErr) msg = plainError(msg);
     refs.status.textContent = msg;
     refs.status.className = "status" + (isErr ? " err" : "");
     if (refs.led) refs.led.set(isErr ? "err" : (working ? "busy" : "ready"));
@@ -151,12 +166,13 @@ function createToolPanel(cfg) {
       docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
     }
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
+    markApplyReady(!docCache.demo);
     const res = await Engine.render(src, engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     const rgb = Engine.composite(res, { type: state.view.bg }, src);
     lastSrc = src; lastScale = scale;
     if (lookBrowser) lookBrowser.sourceChanged();
     if (hasDeck) { applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
-    lastShown = { rgb, w: res.w, h: res.h, before: cfg.split ? Engine.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null };
+    lastShown = { rgb, w: res.w, h: res.h, before: cfg.split ? IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null };
     paintPreview();
     sizePreview(res.w, res.h);
     if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
@@ -170,14 +186,7 @@ function createToolPanel(cfg) {
     const L = lastShown;
     if (!L) return;
     const pos = cfg.split ? (state.view.split || 0) : 0;
-    if (!pos || !L.before) { refs.preview.src = PNG.dataURL(L.rgb, L.w, L.h, 3); return; }
-    const out = Uint8Array.from(L.rgb), cut = Math.round(L.w * pos / 100);
-    for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
-      const j = (y * L.w + x) * 3;
-      if (x === cut || x === cut - 1) { out[j] = out[j + 1] = out[j + 2] = 255; }
-      else if (x < cut) { out[j] = L.before[j]; out[j + 1] = L.before[j + 1]; out[j + 2] = L.before[j + 2]; }
-    }
-    refs.preview.src = PNG.dataURL(out, L.w, L.h, 3);
+    refs.preview.src = PNG.dataURL(QW.splitRGB(L.rgb, L.before, L.w, L.h, pos), L.w, L.h, 3);
   }
   // where a pointer event lands on the preview, as 0..1 of the picture
   function previewXY(e) {
@@ -230,6 +239,20 @@ function createToolPanel(cfg) {
 
   // ---- apply
   let working = false, cancelReq = false;
+  // error prevention (UX-06): with no document the Apply key looks blocked and says why
+  function markApplyReady(ok) {
+    const b = refs.apply;
+    if (!b) return;
+    if (ok) { b.classList.remove("blocked"); b.setAttribute("title", "Apply to the document as a new layer group (one undo step)"); }
+    else { b.classList.add("blocked"); b.setAttribute("title", "Open a document first. The preview is using the demo image."); }
+  }
+  // Esc cancels a running Apply (UX-04)
+  try {
+    document.addEventListener("keydown", (e) => {
+      const k = e.key || e.code;
+      if ((k === "Escape" || e.keyCode === 27) && working && cfg.cancellable) { cancelReq = true; setStatus("Cancelling..."); }
+    });
+  } catch (e) { /* no document events */ }
   // Right after Edit > Undo (or while another plugin works) Photoshop can say
   // "host is in a modal state" for a moment. Wait and try again instead of failing.
   async function whenNotModal(fn) {
@@ -480,6 +503,7 @@ function createToolPanel(cfg) {
     if (hasDeck) state.deck = p && p.deck ? Colour.normalize(p.deck) : keepColour;   // looks without colour keep the current deck
     setOffList(p && p._off);
     presetName = name || "Custom";
+    lookBase = clone(state);
     touch();
   }
   function stateForSave() { const s = clone(state); delete s.view; delete s.out; const off = Object.keys(offFx); if (off.length) s._off = off; return s; }
@@ -548,12 +572,13 @@ function createToolPanel(cfg) {
         segGroup("view.bg", [{ v: "checker", l: "Checker" }, { v: "white", l: "White" }, { v: "black", l: "Black" }])
       ])
     ]).concat([
-      cfg.split && ui.brand ? el("div", { class: "row" }, [ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")]) : null,
+      cfg.split && ui.brand ? el("div", { class: "row" }, [refs.splitSw = ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")]) : null,
       el("div", { class: "row" }, ui.brand ? [refresh,
         ui.brand.miniToggle("Auto-update", true, setAuto),
         ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
       ] : [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
-      refs.status
+      refs.status,
+      ui.brand ? (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })) : null
     ]), { fold: false }));
     root = layout.scroller;
 
@@ -623,6 +648,16 @@ function createToolPanel(cfg) {
     if (lookBrowser) lookBrowser.start();
   }
 
+  function menuAction(id) {
+    if (id === "resetLook") {
+      const keepOut = clone(state.out), keepView = clone(state.view);
+      state = clone(lookBase); state.out = keepOut; state.view = keepView;
+      touch(); setStatus("Knobs reset to " + presetName + ".");
+    }
+    else if (id === "split") { if (refs.splitSw) refs.splitSw.__sw.set(!state.view.split); else { state.view.split = state.view.split ? 0 : 50; paintPreview(); } }
+    else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
+    else if (id === "about") setStatus(cfg.title + " " + (cfg.version || "") + "  |  " + (cfg.code || "") + "  |  Frank's Brew suite. Hover any control for help.");
+  }
   async function init() {
     if (built) return;
     built = true;
@@ -635,12 +670,23 @@ function createToolPanel(cfg) {
   try {
     const { entrypoints } = require("uxp");
     const panels = {};
-    panels[cfg.panelId] = { create() { init(); }, show() { if (!built) init(); else schedulePreview(200); } };
+    panels[cfg.panelId] = {
+      create() { init(); }, show() { if (!built) init(); else schedulePreview(200); },
+      // panel flyout menu (research quick win AD-05)
+      menuItems: [
+        { id: "resetLook", label: "Reset knobs to this look" },
+        cfg.split ? { id: "split", label: "Before / After split" } : null,
+        { id: "foldAll", label: "Fold or open all cards" },
+        "-",
+        { id: "about", label: "About " + cfg.title }
+      ].filter(Boolean),
+      invokeMenu(id) { menuAction(id); }
+    };
     entrypoints.setup({ panels });
   } catch (e) { /* older hosts: fall through to direct init */ }
   setTimeout(() => { init(); }, 0);
 
-  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, get lookBrowser() { return lookBrowser; } } };
+  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, menuAction, plainError, get lookBase() { return lookBase; }, get lookBrowser() { return lookBrowser; } } };
 }
 
 module.exports = { createToolPanel };

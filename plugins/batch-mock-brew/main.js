@@ -11,7 +11,8 @@ const Plan = require("./js/plan.js");
 const PSM = require("./js/ps-mockup.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const PS = require("./core/ps-io.js");
-const { createUI } = require("./core/ui.js");
+const { createUI, getPath } = require("./core/ui.js");
+const QW = require("./core/quickwins.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 const { createBatch, formatLog } = require("./core/batch.js");
@@ -27,13 +28,18 @@ const entries = { mockups: null, artwork: null, export: null };
 const lists = { mockups: [], artwork: [] };
 const refs = {};
 let built = false, saveT = null, lib = null;
+// settings of the setup loaded last: double-click and the menu reset to them (quick win ID-02)
+let lookBase = clone(state);
+const KEYS_IDLE = QW.keysIdle("the batch after the current job");
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff3b30", storeKey: "Frank's Batch Mock Brew" });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: "Frank's Batch Mock Brew",
+  getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
 function busyNow() { try { return !!batch.running; } catch (e) { return false; } }
 function setStatus(msg, isErr) {
   if (!refs.status) return;
+  if (isErr) msg = QW.plainError(msg);
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
   if (refs.led) refs.led.set(isErr ? "err" : (busyNow() ? "busy" : "ready"));
@@ -192,14 +198,14 @@ function build(root) {
   refs.status = el("div", { class: "status", text: "Choose your folders to start." });
   refs.summary = el("div", { class: "info" });
   refs.counts = el("div", { class: "info counts" });
-  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, refs.summary], { fold: false }));
+  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })), refs.summary], { fold: false }));
 
   const s = lay.scroller;
   // organized panel (Frank, 2026-11-22): A Look / B Setup / D Output (no colour section in this tool)
   const secs = [];
   const sec = (letter, name, id) => { const n = ui.section(letter, name, id); s.appendChild(n); secs.push({ letter, name, id, node: n }); };
   sec("A", "LOOK", "look");
-  lib = createLibrary(ui, { builtins: PRESETS, applyPatch: (p) => { const keep = clone(state.folders); state = merge(DEFAULTS, p); state.folders = keep; touch(); }, getSaveable: () => { const c = clone(state); delete c.folders; return c; }, io: PS, setStatus });
+  lib = createLibrary(ui, { builtins: PRESETS, applyPatch: (p) => { const keep = clone(state.folders); state = merge(DEFAULTS, p); state.folders = keep; lookBase = clone(state); touch(); }, getSaveable: () => { const c = clone(state); delete c.folders; return c; }, io: PS, setStatus });
   s.appendChild(lib.card);
 
   sec("B", "SETUP", "setup");
@@ -255,6 +261,7 @@ async function init() {
   if (built) return;
   built = true;
   try { await loadSaved(); } catch (e) { console.error(e); }
+  lookBase = clone(state);
   build(document.getElementById("app"));
   await lib.load();
   try { await rescan(); } catch (e) { console.error(e); }
@@ -263,10 +270,28 @@ async function init() {
 
 try {
   const { entrypoints } = require("uxp");
-  entrypoints.setup({ panels: { batchMockPanel: { create() { init(); }, show() { if (!built) init(); } } } });
+  entrypoints.setup({ panels: { batchMockPanel: { create() { init(); }, show() { if (!built) init(); },
+    // panel flyout menu (quick win AD-05)
+    menuItems: [
+      { id: "resetLook", label: "Reset settings to this setup" },
+      { id: "test", label: "Test first job" },
+      { id: "foldAll", label: "Fold or open all cards" },
+      "-",
+      { id: "about", label: "About " + TITLE }
+    ],
+    invokeMenu(id) { menuAction(id); } } } });
 } catch (e) { /* older hosts */ }
+// Esc stops the batch after the current job (UX-04)
+QW.onEscape(() => { if (busyNow()) { batch.cancel(); setStatus("Cancelling after this job..."); } });
+
+function menuAction(id) {
+  if (id === "resetLook") { const keep = clone(state.folders); state = clone(lookBase); state.folders = keep; touch(); setStatus("Settings reset to the last loaded setup."); }
+  else if (id === "test") { if (!busyNow()) brew(true); }
+  else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
+  else if (id === "about") setStatus(TITLE + "  |  BM-07  |  Frank's Brew suite. Hover any control for help.");
+}
 setTimeout(() => { init(); }, 0);
 
-const _api = { _test: { get state() { return state; }, folders, entries, lists, refs, brew, rescan, jobs, batch, init } };
+const _api = { _test: { get state() { return state; }, folders, entries, lists, refs, brew, rescan, jobs, batch, init, menuAction, get lookBase() { return lookBase; } } };
 try { window.__batchMock = _api; } catch (e) { /* console access for smoke tests */ }
 if (typeof module !== "undefined" && module && module.exports) module.exports = _api;

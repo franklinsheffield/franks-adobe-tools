@@ -22,7 +22,7 @@ const panel = createToolPanel({
   presetFile: "presets.json", exportName: "paint-looks.json",
   Engine, DEFAULTS, PRESETS, merge, clone,
   cancellable: true,
-  code: "PB-09", glow: "#4d7cff",
+  code: "PB-09", glow: "#6c96ff",
   // the group says which style was painted, even after the style was changed by hand
   groupLabel: (s, name) => {
     const pr = PRESETS.find((p) => p.name === name);
