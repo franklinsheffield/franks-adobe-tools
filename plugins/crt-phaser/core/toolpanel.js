@@ -380,7 +380,18 @@ function createToolPanel(cfg) {
       const q = (T[b.charCodeAt(i)] << 18) | (T[b.charCodeAt(i + 1)] << 12) | (T[b.charCodeAt(i + 2)] << 6) | T[b.charCodeAt(i + 3)];
       put((q >> 16) & 255); if (b[i + 2] !== "=" && px < n) put((q >> 8) & 255); if (b[i + 3] !== "=" && px < n) put(q & 255);
     }
-    return { w: smp.w, h: smp.h, c: 4, data };
+    const out = { w: smp.w, h: smp.h, c: 4, data };
+    // optional extra input for the sample (Depthtone: its Select Subject mask, 1 byte per pixel, base64)
+    if (smp.subject) {
+      const m = smp.subject, f = new Float32Array(n); let k = 0;
+      const put1 = (v) => { if (k < n) f[k++] = v / 255; };
+      for (let i = 0; i + 3 < m.length; i += 4) {
+        const q = (T[m.charCodeAt(i)] << 18) | (T[m.charCodeAt(i + 1)] << 12) | (T[m.charCodeAt(i + 2)] << 6) | T[m.charCodeAt(i + 3)];
+        put1((q >> 16) & 255); if (m[i + 2] !== "=") put1((q >> 8) & 255); if (m[i + 3] !== "=") put1(q & 255);
+      }
+      out.subject = f;
+    }
+    return out;
   }
   function createLookBrowser() {
     const KEY = "brew.looks." + (cfg.appName || cfg.title);
@@ -498,8 +509,16 @@ function createToolPanel(cfg) {
   // ---- presets
   function applyPatch(p, name) {
     const keepOut = clone(state.out), keepView = clone(state.view), keepColour = state.deck;
+    // settings a tool asks to keep across looks (e.g. Depthtone's depth source and layer)
+    const path = (o, k) => k.split(".").reduce((a, b) => (a == null ? a : a[b]), o);
+    const kept = (cfg.keepOnLook || []).map((k) => [k, clone({ v: path(state, k) }).v]);
     state = merge(DEFAULTS, p);
     state.out = keepOut; state.view = keepView;
+    for (const [k, v] of kept) {
+      if (v === undefined || path(p, k) !== undefined) continue;
+      const ks = k.split("."), last = ks.pop(), host = ks.reduce((a, b) => (a[b] = a[b] || {}), state);
+      host[last] = v;
+    }
     if (hasDeck) state.deck = p && p.deck ? Colour.normalize(p.deck) : keepColour;   // looks without colour keep the current deck
     setOffList(p && p._off);
     presetName = name || "Custom";

@@ -1,11 +1,20 @@
-# Frank's Depthtone Brew
+# Frank's Depthtone Brew 2.0
 
-Brightness becomes depth: topographic contours, stacked terraces and lit relief. (UXP panel, Photoshop 24.4+.)
+Real depth, redrawn: contours, terraces, relief, ridge lines, depth heat, anaglyph 3D and depth haze. (UXP panel, Photoshop 24.4+.)
 
-Install: double-click `dist/depthtone-1.0.0.ccx`, then open Plugins > Frank's Depthtone Brew.
+Install: double-click `dist/depthtone-2.0.0.ccx`, then open Plugins > Frank's Depthtone Brew.
 
-1. Pick a preset in Library (Topo Map, Terrace Stack, Night Contours, Clay Relief, Blueprint Lines, Sunset Strata, Fog Layers, Neon Isolines).
-2. Choose a Style (Contours, Terraces or Relief), then set Depth (near/far, levels), Colour (far-to-near gradient, fog), and Lines or Light. The pinned preview updates as you go.
-3. Apply to document. A new group "Frank's Depthtone Brew - <preset>" holds the result (contours add Depth fill + Contours layers). One Cmd+Z undoes it.
+## Depth source (first card)
+- **Smart** (default): runs Photoshop's Select Subject, stands the subject on a floor plane and adds fine relief from the photo. Automatic. Your selection and history are left as they were. "Find subject again" re-runs it.
+- **Depth layer**: best quality. Make a depth map with Filter > Neural Filters > Depth Blur > "Output depth map only", select that layer, press "Use active layer as depth map", then hide it.
+- **Brightness**: the 1.0 behaviour (bright comes forward).
 
-Save your own looks under Library and use Export all / Import to share them with the team.
+Tick "Show the depth map in the preview" to check the depth before styling.
+
+## Looks
+18 looks: Holo Contours, Topo over Photo, Ridge Lines, Neon Ridges, Paper Strata, Clay Relief 2, Chrome Relief, Depth Heat, Anaglyph 3D, Depth Haze, plus the 8 from 1.0.
+
+## Styles
+Contours, Terraces, Relief, Ridges, Heat, Anaglyph, Haze. Photo mix lets the picture show through.
+
+Apply makes a group "Frank's Depthtone Brew - <look>". Output can also add the depth map as a hidden layer. One Cmd+Z undoes it.
