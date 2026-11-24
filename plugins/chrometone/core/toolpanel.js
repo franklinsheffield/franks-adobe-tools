@@ -45,17 +45,8 @@ const Colour = require("./colour.js");
 const { createColourDeck, applyDeckPreview, addDeckLayer } = require("./colourdeck.js");
 const IM = require("./imgmath.js");
 
-// Plain-English versions of raw host errors (research quick win UX-16, 2026-11-23):
-// say what happened and what to do next.
-function plainError(msg) {
-  const m = String(msg || "");
-  if (/modal state/i.test(m)) return "Photoshop is busy (a dialog or another plugin is working). Finish that, then try again.";
-  if (/out of memory|memory/i.test(m)) return "Not enough memory for this size. Try Detail view, a smaller document, or close other documents.";
-  if (/(no|invalid) (active )?document|document is closed/i.test(m)) return "The document was closed. Open or select a document, then try again.";
-  if (/locked/i.test(m)) return "That layer is locked. Unlock it in the Layers panel, then try again.";
-  if (/timed? ?out/i.test(m)) return "Photoshop took too long to answer. Try again; if it repeats, restart Photoshop.";
-  return m;
-}
+const QW = require("./quickwins.js");
+const plainError = QW.plainError;
 
 function createToolPanel(cfg) {
   const { Engine, DEFAULTS, PRESETS, merge, clone } = cfg;
@@ -88,12 +79,10 @@ function createToolPanel(cfg) {
   const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title,
     getDefault: (path) => getPath(lookBase, path), onSelect: (i) => showKeys(i) });
   // live key hints for the selected knob (Blender-style status line, research quick win ID-13)
-  const KEYS_IDLE = "Drag a knob or its name to turn it  |  double-click resets  |  Esc cancels a running Apply";
+  const KEYS_IDLE = QW.keysIdle(cfg.cancellable ? "a running Apply" : "");
   function showKeys(i) {
     if (!refs.keys) return;
-    if (!i) { refs.keys.textContent = KEYS_IDLE; return; }
-    const range = i.min + "-" + i.max + (i.unit ? " " + i.unit : "");
-    refs.keys.textContent = String(i.label).toUpperCase() + " " + range + "  |  drag / wheel turns, Shift = fine  |  Up/Down steps, Shift = x10  |  double-click resets";
+    refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE;
   }
   const { el, clear, bind, showIf, refreshAll, segGroup, selectRow, checkRow, hexField, card } = ui;
 
@@ -197,14 +186,7 @@ function createToolPanel(cfg) {
     const L = lastShown;
     if (!L) return;
     const pos = cfg.split ? (state.view.split || 0) : 0;
-    if (!pos || !L.before) { refs.preview.src = PNG.dataURL(L.rgb, L.w, L.h, 3); return; }
-    const out = Uint8Array.from(L.rgb), cut = Math.round(L.w * pos / 100);
-    for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
-      const j = (y * L.w + x) * 3;
-      if (x === cut || x === cut - 1) { out[j] = out[j + 1] = out[j + 2] = 255; }
-      else if (x < cut) { out[j] = L.before[j]; out[j + 1] = L.before[j + 1]; out[j + 2] = L.before[j + 2]; }
-    }
-    refs.preview.src = PNG.dataURL(out, L.w, L.h, 3);
+    refs.preview.src = PNG.dataURL(QW.splitRGB(L.rgb, L.before, L.w, L.h, pos), L.w, L.h, 3);
   }
   // where a pointer event lands on the preview, as 0..1 of the picture
   function previewXY(e) {

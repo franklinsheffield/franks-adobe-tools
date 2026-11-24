@@ -65,6 +65,43 @@ module.exports = async function (t) {
     assert.notStrictEqual(sw.classList.contains("on"), was, "label click flips the switch");
   });
 
+  await t("Quick wins: Dithers and Batch Mock get key hints, the flyout menu, reset to the look, Before/After (Dithers) and blocked Apply", async () => {
+    const P = await loadPanel(path.join(ROOT, "plugins", "dithers-brew"), { withDoc: false });
+    for (let i = 0; i < 200 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50);
+    const D = P.document, T = P.mod._test;
+    assert.ok(D.querySelector(".keys"), "dithers has the key-hint line");
+    assert.ok(T.refs.apply.classList.contains("blocked"), "dithers Apply looks blocked with no document");
+    const panel = P.host.uxp.entrypoints.last.panels.franksBrewPanel;
+    assert.deepStrictEqual(panel.menuItems.filter((m) => m.id).map((m) => m.id), ["resetLook", "split", "foldAll", "about"]);
+    const dial = D.querySelector(".dial"), box = dial.querySelector(".dialval"), lab = dial.querySelector(".dlabel");
+    const before = box.value;
+    md(P, lab, 100, 100); mm(P, 160, 40); mu(P);
+    assert.notStrictEqual(box.value, before, "dithers label drag changes the knob");
+    assert.ok(D.querySelector(".keys").textContent.includes(lab.textContent.toUpperCase()), "dithers key hints name the knob");
+    panel.invokeMenu("resetLook");
+    await P.settle(50);
+    assert.strictEqual(dial.querySelector(".dialval").value, before, "dithers menu reset returns the knob to the look");
+    const src0 = T.refs.preview.src;
+    panel.invokeMenu("split");
+    assert.strictEqual(T.state.view.split, 50, "dithers split on");
+    assert.notStrictEqual(T.refs.preview.src, src0, "dithers preview repainted with the split");
+    panel.invokeMenu("split");
+    assert.strictEqual(T.state.view.split, 0, "dithers split off");
+
+    const B = await loadPanel(path.join(ROOT, "plugins", "batch-mock-brew"), { withDoc: false });
+    await B.settle(200);
+    const bp = B.host.uxp.entrypoints.last.panels.batchMockPanel;
+    assert.deepStrictEqual(bp.menuItems.filter((m) => m.id).map((m) => m.id), ["resetLook", "test", "foldAll", "about"]);
+    assert.ok(B.document.querySelector(".keys"), "batch mock has the key-hint line");
+    const BT = B.mod._test;
+    const q0 = BT.state.export.quality;
+    BT.state.export.quality = q0 === 12 ? 1 : 12;
+    bp.invokeMenu("resetLook");
+    assert.strictEqual(BT.state.export.quality, q0, "batch mock menu reset returns settings to the setup");
+    bp.invokeMenu("about");
+    assert.ok(/Batch Mock Brew/.test(B.document.querySelector(".status").textContent), "about shows in the status line");
+  });
+
   await t("Design tokens: brew-tokens.json is DTCG, every plugin's --glow matches it, and every glow reads on black (>= 4.5:1)", async () => {
     const T = JSON.parse(fs.readFileSync(path.join(ROOT, "tokens", "brew-tokens.json"), "utf8"));
     const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };

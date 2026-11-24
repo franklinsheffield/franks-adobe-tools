@@ -26,7 +26,7 @@ const DEFAULTS = {
     distress: { on: false, amount: 30 }
   },
   out: { source: "flat", hide: true, paper: false, dpi: 0 },
-  view: { kind: "detail", size: 360, bg: "white" }
+  view: { kind: "detail", size: 360, bg: "white", split: 0 }
 };
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
