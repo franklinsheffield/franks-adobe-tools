@@ -20,7 +20,7 @@ const HELP = req("./help-app.js");   // hover help text for the app's own contro
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 
-const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.8.0";
+const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.9.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
