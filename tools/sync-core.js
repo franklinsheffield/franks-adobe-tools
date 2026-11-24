@@ -28,12 +28,6 @@ function sync(check) {
       if (!same) { stale.push(path.join(p, "core", f)); if (!check) fs.writeFileSync(tgt, src); }
     }
   }
-  // Worlds Brew has a second panel (the Viewport) rooted at #vp: it gets a copy of every #app rule
-  const vp = path.join(PLUGINS, "worlds-brew", "vp.css");
-  if (fs.existsSync(path.join(PLUGINS, "worlds-brew", "manifest.json"))) {
-    const want = vpCSS(fs.readFileSync(path.join(SHARED, "panel.css"), "utf8"));
-    if (!fs.existsSync(vp) || fs.readFileSync(vp, "utf8") !== want) { stale.push("worlds-brew/vp.css"); if (!check) fs.writeFileSync(vp, want); }
-  }
   return stale;
 }
 // the shared panel rules that name #app, re-aimed at #vp (generated: do not edit vp.css by hand)

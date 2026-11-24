@@ -1,18 +1,18 @@
 "use strict";
-// Frank's Worlds Brew (WB-10) desktop app: Electron main process.
+// Worlds Lab (WB-10) desktop app: Electron main process.
 // One window; file dialogs and file reads / writes for the renderer go over IPC.
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
-const SCENE_FILTER = [{ name: "Worlds Brew scene", extensions: ["wbscene", "json"] }];
+const SCENE_FILTER = [{ name: "Worlds Lab scene", extensions: ["wbscene", "json"] }];
 let win = null;
 let quitting = false;   // Quit (Cmd+Q) was chosen: once the renderer says it may close, the app ends too (macOS would keep it running)
 app.on("before-quit", () => { quitting = true; });
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1500, height: 940, minWidth: 1100, minHeight: 700, backgroundColor: "#000000", title: "Frank's Worlds Brew",
+    width: 1500, height: 940, minWidth: 1100, minHeight: 700, backgroundColor: "#000000", title: "Worlds Lab",
     show: false,
     webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false, backgroundThrottling: false }
   });

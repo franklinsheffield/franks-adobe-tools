@@ -1,4 +1,4 @@
-// Frank's Worlds Brew app: UI helpers from the UI research quick wins (2026-11-23).
+// Worlds Lab app: UI helpers from the UI research quick wins (2026-11-23).
 //  - axisGizmo: a ViewHelper-style axis cube in the viewport corner; click an axis end to snap the camera to it.
 //  - palette:   a Cmd/Ctrl+K command palette over every action, with fuzzy search and keyboard control.
 const SVGNS = "http://www.w3.org/2000/svg";

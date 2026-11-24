@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 "use strict";
-// Frank's Worlds Brew app tests:  npm test   (Linux CI: runs under xvfb-run when there is no display)
+// Worlds Lab app tests:  npm test   (Linux CI: runs under xvfb-run when there is no display)
 //   1. host-free: engine copy is current, scaling tools, width / height / depth stretch in the ray tracer
 //   2. the real app in Electron: drag-and-drop from the Library, click-select and drag-move, Scale card,
 //      camera pad, undo / redo, save and open a .wbscene, render to PNG; screenshots go to tests/out/
@@ -223,6 +223,26 @@ async function uiTests() {
     }
     await win.screenshot({ path: path.join(OUT, "app-gpu-render.png") });
     await win.keyboard.press("Escape"); await W(() => { document.getElementById("shot").hidden = true; });
+  });
+  await t("app: Photoshop bridge: Send to Photoshop writes the render + passes; Match document size and Send layer from the panel reach the app", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "wbl-"));
+    try {
+      await W((r) => { const w = window.__wb; w.refs.bridgeWatch && w.refs.bridgeWatch.stop(); w.BR.setRoot(r); w.refs.bridgeWatch = w.BR.watch({ every: 200, docSize: (j) => { w.st.out.w = j.w; w.st.out.h = j.h; }, picture: (p) => { w.refs.psPic = p; } }); }, root);
+      await W(() => { const w = window.__wb; w.refs.lastPics = null; Object.assign(w.st.out, { engine: "gpu", quality: "draft", w: 160, h: 90 }); return w.sendToPhotoshop(); });
+      const base = path.join(root, "Worlds Lab"), latest = JSON.parse(fs.readFileSync(path.join(base, "Renders/latest.json"), "utf8")), dir = path.join(base, "Renders", latest.folder);
+      assert.deepStrictEqual(["depth.png", "info.json", "mask.png", "render.png", "sky.png"], fs.readdirSync(dir).sort());
+      const info = JSON.parse(fs.readFileSync(path.join(dir, "info.json"), "utf8")); assert.deepStrictEqual([info.w, info.h, info.engine], [160, 90, "gpu"]);
+      await W(() => { document.getElementById("shot").hidden = true; });
+      await new Promise((r) => setTimeout(r, 400));
+      fs.mkdirSync(path.join(base, "Bridge/Pictures"), { recursive: true });
+      fs.writeFileSync(path.join(base, "Bridge/doc-size.json"), JSON.stringify({ worldsBrewBridge: 1, w: 3000, h: 2000, doc: "poster.psd", time: Date.now() }));
+      const PNG = require("../engine/png.js"); fs.writeFileSync(path.join(base, "Bridge/Pictures/brick.png"), PNG.encodePNG(new Uint8Array(8 * 8 * 4).fill(180), 8, 8, 4));
+      fs.writeFileSync(path.join(base, "Bridge/picture.json"), JSON.stringify({ worldsBrewBridge: 1, file: "brick.png", name: "Brick wall", w: 8, h: 8, time: Date.now() }));
+      await win.waitForFunction(() => window.__wb.st.out.w === 3000 && !!window.__wb.refs.psPic, null, { timeout: 5000 });
+      assert.strictEqual(await W(() => window.__wb.st.out.h), 2000);
+      const n = await W(async () => { const w = window.__wb, S = w.S, c = S.obj("cube", 0, 1, 0, 1, "Matte"); w.st.scene.objs.push(c); w.select(c); await w.commands().find((x) => x.label === "Add the picture from Photoshop").run(); await new Promise((r) => setTimeout(r, 100)); return [c.layers.length, c.layers[0].img.name, c.layers[0].img.w]; });
+      assert.deepStrictEqual(n, [1, "Brick wall", 8]);
+    } finally { await W(() => { const w = window.__wb; w.refs.bridgeWatch && w.refs.bridgeWatch.stop(); }); fs.rmSync(root, { recursive: true, force: true }); }
   });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
   await t("app: Quit with unsaved changes asks first; Don't Save ends the app (macOS used to keep it running)", async () => {

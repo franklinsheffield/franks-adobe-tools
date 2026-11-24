@@ -1,4 +1,4 @@
-/* Frank's Worlds Brew app layout, on top of the suite's panel.css (Hardware Console brand). */
+/* Worlds Lab app layout, on top of the suite's panel.css (Hardware Console brand). */
 /* Colours in OKLCH (UI research quick win): the mint and its hover / press / background shades keep the same hue
    and step evenly in perceived brightness. Hex fallbacks first for anything that can't read oklch().
    The mint itself (--mint-l/c/h) is the suite token color.glow.worlds-brew, from tokens.css. */

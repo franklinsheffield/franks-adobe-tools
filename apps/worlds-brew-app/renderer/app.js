@@ -1,9 +1,10 @@
-// Frank's Worlds Brew (WB-10) desktop app: the window's UI.
+// Worlds Lab (WB-10) desktop app: the window's UI.
 // Library (scenes, drag-and-drop assets, object list) | live GPU viewport + control pads | Inspector tabs,
 // with a render bar along the bottom. The scene is the same plain data the Photoshop plugin uses.
 import { Viewport, snapshot } from "./view3d.js";
 import { axisGizmo, palette } from "./ux.js";
 import { renderGPU, passPictures } from "./gpurender.js";
+import * as BR from "./bridge-app.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -18,7 +19,7 @@ const { pressGlow } = req("../engine/layout.js");
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.7.0";
+const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.7.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -27,7 +28,7 @@ const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
 const st = {
   scene: S.loadPreset("Chrome Garden"), sel: NONE,
   view: { gizmo: "move", step: "med", stick: true, camLock: false, libPack: "Classic", addPack: "Shapes", brush: "raise", bsize: 0.12, bpow: 0.5, lockScale: true, realH: 1.8, matchId: 0 },
-  out: { quality: "final", engine: "gpu", w: 1920, h: 1080 }
+  out: { quality: "final", engine: "gpu", w: 1920, h: 1080, autoSend: false }
 };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
 // the selected surface layer (a stand-in when there is none, so the Surfaces dials always have something to read)
@@ -306,16 +307,38 @@ async function renderNow() {
       : await E.render(st.scene, st.scene.cam, W, H, { aa: q === "final" ? 2 : 1, passes: true, slice: 400 }, { yield: (p) => { refs.status.textContent = "Rendering " + what + "...  " + Math.round(p * 100) + "%"; return yieldNow(); }, cancelled: () => cancelReq });
     if (!r) { refs.meter.idle(); setStatus("Render cancelled"); return; }
     const secs = (performance.now() - t0) / 1000; refs.lastRender = r; refs.lastSecs = secs; refs.meter.done(secs);
+    refs.lastMeta = { scene: st.scene.name || "Scene", w: W, h: H, engine: gpu ? "gpu" : "ray", quality: q, app: VERSION };
     showShot(r, W, H, what); setStatus("Rendered " + what + " in " + secs.toFixed(1) + " s");
+    if (st.out.autoSend) await sendToPhotoshop();
   } catch (err) { refs.meter.idle(); setStatus("Render failed: " + (err.message || err), true); }
   finally { rendering = false; vp.paused = false; vp.dirty = true; refs.go.textContent = "Render PNG"; refs.led.set("ready"); }
 }
+// ---- Photoshop bridge: renders go to Documents/Worlds Lab; the Bridge panel in Photoshop places them
+async function sendToPhotoshop() {
+  if (!refs.lastPics) { await renderNow(); if (!refs.lastPics || st.out.autoSend) return; }
+  try {
+    const r = await BR.sendRender(refs.lastPics, refs.lastMeta); refs.lastSent = r;
+    setStatus("Sent to Photoshop: " + r.info.scene + " (" + r.info.w + " x " + r.info.h + "). In Photoshop, press Place as layer in the Worlds Lab Bridge panel.");
+  } catch (err) { setStatus("Couldn't send to Photoshop: " + (err.message || err), true); }
+}
+function applyDocSize(j) {
+  st.out.w = j.w; st.out.h = j.h; uis.forEach((u) => u.refreshAll()); placeFrameGuide();
+  setStatus("Output matched to the Photoshop document" + (j.doc ? " " + j.doc : "") + ": " + j.w + " x " + j.h);
+}
+async function usePhotoshopPicture(asNew) {
+  const p = refs.psPic; if (!p || !hasSel() || st.sel.type === "light") return;
+  try { const img = await BR.loadPicture(p);
+    if (asNew || !hasLay()) refs.layOps.add([SF.layer({ name: img.name.slice(0, 30), img, wrap: st.sel.type === "mesh" && st.sel.mesh.uv ? "UV" : "Box" })]); else { st.lay.img = img; edited(); }
+    setStatus("Surface picture from Photoshop: " + img.name);
+  } catch (err) { setStatus("Couldn't read the Photoshop picture: " + (err.message || err), true); }
+}
+
 // the finished render with its passes: view each one, save the one shown or all of them
 function showShot(res, W, H, what) {
   const box = document.getElementById("shot"), img = document.getElementById("shotimg"), row = box.querySelector(".shotrow"); clear(row);
   const pics = passPictures(res, { depth: true, mask: true, sky: true }), pngs = new Map();
   const png = (p) => { if (!pngs.has(p)) pngs.set(p, PNG.encodePNG(p.rgba, W, H, 4)); return pngs.get(p); };
-  let cur = pics[0]; refs.lastPng = png(pics[0]);
+  let cur = pics[0]; refs.lastPng = png(pics[0]); refs.lastPics = pics.map((p) => ({ name: p.name, rgba: p.rgba, get png() { return png(p); } }));
   const b = (l, fn, cls) => { const x = el("button", { class: cls || "btn", text: l }); x.addEventListener("click", fn); return x; };
   const tabs = pics.map((p) => { const x = b(p.name, () => show(p), "btn small"); x.__p = p; return x; });
   function show(p) { cur = p; img.src = PNG.dataURL(p.rgba, W, H, 4); tabs.forEach((t) => t.classList.toggle("on", t.__p === p)); }
@@ -325,6 +348,7 @@ function showShot(res, W, H, what) {
   row.appendChild(b("Save PNG...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save " + cur.name.toLowerCase(), name: base + suffix(cur) + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return; await ipcRenderer.invoke("fs:write", p, png(cur)); setStatus("Saved " + req("path").basename(p)); }));
   row.appendChild(b("Save all passes...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save the render and its passes", name: base + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return;
     const stem = p.replace(/\.png$/i, ""); for (const q of pics) await ipcRenderer.invoke("fs:write", stem + suffix(q) + ".png", png(q)); setStatus("Saved " + pics.length + " PNGs: " + req("path").basename(stem) + "*.png"); }));
+  row.appendChild(b("Send to Photoshop", () => sendToPhotoshop()));
   row.appendChild(b("Close", () => { box.hidden = true; }));
   show(pics[0]); box.hidden = false;
 }
@@ -349,7 +373,8 @@ function buildTop(ui) {
   top.appendChild(h.node);
   top.appendChild(el("div", { class: "menu" }, [refs.docName, btn("New", () => newScene()), btn("Open...", () => openScene()), btn("Save", () => save(false)), btn("Save as...", () => save(true)),
     btn("Import model...", () => importModel(), "Add a .glb, .gltf, .obj or .stl model"), btn("Undo", () => undo()), btn("Redo", () => redo()),
-    (() => { const b = btn("Send to Photoshop", () => {}, "Coming in phase 3: places the render as a layer in the open Photoshop document"); b.setAttribute("disabled", ""); b.style.opacity = "0.45"; return b; })()]));
+    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Worlds Lab Bridge panel in Photoshop places it as a layer group"),
+    ui.brand.toggle("Auto-send", "out.autoSend")]));
 }
 
 // ---- library: scenes, add (drag and drop), objects
@@ -575,10 +600,13 @@ function buildInspector(ui) {
   const maskName = el("span", { class: "lbl2" }); bind(() => { maskName.textContent = hasLay() && st.lay.mask === "Bitmap" ? "MASK  " + String(st.lay.mimg ? st.lay.mimg.name : "none - load one").slice(0, 20).toUpperCase() : ""; });
   const nameIn = el("input", { type: "text", class: "num wide", title: "Layer name" }); bind(() => { if (document.activeElement !== nameIn) nameIn.value = hasLay() ? st.lay.name : ""; });
   nameIn.addEventListener("change", () => { if (hasLay()) { st.lay.name = nameIn.value.slice(0, 40) || "Layer"; edited(); } });
+  const psPicName = el("span", { class: "lbl2" }); bind(() => { psPicName.textContent = refs.psPic ? "FROM PHOTOSHOP  " + String(refs.psPic.name).slice(0, 18).toUpperCase() : ""; });
   const surfCard = card("Surfaces", [
     only(el("div", { class: "hint", text: "Select an object to give it surface layers." }), () => !canLayer()),
     only(layList, canLayer),
     only(el("div", { class: "row wrap" }, [presetSel, btn("Picture layer...", () => loadLayerPicture(true), "Add a layer with a PNG / JPG of your own")]), canLayer),
+    only(el("div", { class: "row wrap" }, [psPicName, btn("New layer", () => usePhotoshopPicture(true), "Add a layer with the picture Photoshop sent"), only(btn("Use on this layer", () => usePhotoshopPicture(false)), hasLay)]), () => canLayer() && !!refs.psPic),
+    only(el("div", { class: "hint", text: "Tip: in Photoshop, the Worlds Lab Bridge panel's Send layer button sends the active layer here as a picture." }), () => canLayer() && !refs.psPic),
     only(el("div", { class: "row wrap" }, [btn("Up", () => layOps.move(1), "Move the layer up the stack"), btn("Down", () => layOps.move(-1)), btn("Duplicate", () => layOps.dup()), btn("Delete", () => layOps.remove())]), () => canLayer() && hasLay()),
     lay(row("Name", nameIn)),
     lay(el("div", { class: "row wrap" }, [picName, btn("Change picture...", () => loadLayerPicture(false))])),
@@ -624,6 +652,7 @@ function commands() {
   add("File", "New scene", () => newScene(), M + "N", true); add("File", "Open scene...", () => openScene(), M + "O", true);
   add("File", "Save", () => save(false), M + "S", true); add("File", "Save as...", () => save(true), M + "Shift+S");
   add("File", "Import model...", () => importModel(), M + "I", true); add("Render", "Render PNG", () => renderNow(), M + "R", true);
+  add("Photoshop", "Send to Photoshop", () => sendToPhotoshop(), "", true); add("Photoshop", (st.out.autoSend ? "Turn off" : "Turn on") + " Auto-send", () => { st.out.autoSend = !st.out.autoSend; changed("val"); });
   add("Render", "Draft quality", () => { st.out.quality = "draft"; changed("val"); }); add("Render", "Render on the GPU", () => { st.out.engine = "gpu"; changed("val"); }); add("Render", "Render with the ray tracer", () => { st.out.engine = "ray"; changed("val"); }); add("Render", "Final quality", () => { st.out.quality = "final"; changed("val"); });
   [["HD 1920 x 1080", 1920, 1080], ["4K 3840 x 2160", 3840, 2160], ["Square 1080", 1080, 1080], ["Story 1080 x 1920", 1080, 1920], ["Print 3:2", 2400, 1600]].forEach(([l, w, h]) => add("Render size", l, () => { st.out.w = w; st.out.h = h; uis.forEach((u) => u.refreshAll()); placeFrameGuide(); }));
   add("Edit", "Undo", () => undo(), M + "Z", true); add("Edit", "Redo", () => redo(), M + "Shift+Z");
@@ -640,6 +669,7 @@ function commands() {
       if (st.sel.type !== "terrain") add("Material", "Load surface image...", () => loadTexture());
       SF.presetNames().forEach((n) => add("Surfaces", "Add preset: " + n, () => addPreset(n, false)));
       add("Surfaces", "Add picture layer...", () => loadLayerPicture(true));
+      if (refs.psPic) add("Surfaces", "Add the picture from Photoshop", () => usePhotoshopPicture(true));
       if (hasLay()) { add("Surfaces", "Delete layer", () => refs.layOps.remove()); add("Surfaces", "Duplicate layer", () => refs.layOps.dup()); add("Surfaces", (st.lay.on ? "Hide" : "Show") + " layer", () => { st.lay.on = !st.lay.on; edited(); }); }
     }
   }
@@ -705,6 +735,10 @@ pressGlow(root);
 homeCam = CT.camCopy(st.scene.cam); resetHistory(); uis.forEach((u) => u.refreshAll()); changed("scene"); title();
 setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.");
 setTimeout(() => drawLibrary().catch((err) => console.error(err)), 50);
+ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder + watching for the panel's requests
+  BR.setRoot(window.__wbBridgeRoot || info.docs);
+  refs.bridgeWatch = BR.watch({ docSize: applyDocSize, picture: (p) => { refs.psPic = p; uis.forEach((u) => u.refreshAll()); setStatus("Photoshop sent a picture: " + p.name + " (Surfaces tab)"); } });
+}).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

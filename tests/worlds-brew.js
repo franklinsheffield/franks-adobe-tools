@@ -1,5 +1,5 @@
 "use strict";
-// Worlds Brew (phase 1) tests: model importers, scene save/load, determinism, render layers, wireframe and handles.
+// Worlds Lab (phase 1) tests: model importers, scene save/load, determinism, render layers, wireframe and handles.
 const path = require("path");
 const assert = require("assert");
 const ROOT = path.resolve(__dirname, "..");
@@ -9,7 +9,7 @@ module.exports = async function (t) {
   const M = require(J + "/models.js"), S = require(J + "/scene.js"), E = require(J + "/engine.js"), W = require(J + "/wire.js");
   const hash = (u8) => { let h = 2166136261; for (let i = 0; i < u8.length; i++) h = Math.imul(h ^ u8[i], 16777619); return (h >>> 0).toString(16); };
 
-  await t("Worlds Brew: .obj import (quads, negative indices, v/vt/vn faces) normalises to a -1..1 box", () => {
+  await t("Worlds Lab: .obj import (quads, negative indices, v/vt/vn faces) normalises to a -1..1 box", () => {
     const m = M.parseOBJ("v 0 0 0\nv 4 0 0\nv 4 2 0\nv 0 2 0\nvn 0 0 1\nf 1//1 2//1 3//1 4//1\nf -4 -2 -1\n", "quad.obj");
     assert.strictEqual(m.tris, 3); assert.strictEqual(Math.max(...m.v), 1); assert.strictEqual(Math.min(...m.v), -1);
     assert.ok(Math.abs(m.hy - 0.5) < 1e-6, "half-height in normalised units");
@@ -17,7 +17,7 @@ module.exports = async function (t) {
     assert.throws(() => M.parseOBJ("v 0 0 0\nf 1 2 3\n", "bad.obj"), /missing vertex/);
   });
 
-  await t("Worlds Brew: .stl import (binary and ASCII) turns Z-up into Y-up", () => {
+  await t("Worlds Lab: .stl import (binary and ASCII) turns Z-up into Y-up", () => {
     const tri = [[0, 0, 0], [1, 0, 0], [0, 0, 2]], buf = new ArrayBuffer(84 + 50), dv = new DataView(buf);
     dv.setUint32(80, 1, true); tri.forEach((v, k) => v.forEach((c, j) => dv.setFloat32(84 + 12 + k * 12 + j * 4, c, true)));
     const b = M.parseSTL(buf, "t.stl"); assert.strictEqual(b.tris, 1); assert.strictEqual(b.hy, 1, "STL z (height 2) becomes y");
@@ -25,7 +25,7 @@ module.exports = async function (t) {
     const a = M.parseSTL(new TextEncoder().encode(asc).buffer, "a.stl"); assert.deepStrictEqual(Array.from(a.v), Array.from(b.v));
   });
 
-  await t("Worlds Brew: .glb import applies node transforms and reads uint16 indices", () => {
+  await t("Worlds Lab: .glb import applies node transforms and reads uint16 indices", () => {
     const P = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), I = new Uint16Array([0, 1, 2, 0]);
     const bin = new Uint8Array(36 + 8); bin.set(new Uint8Array(P.buffer), 0); bin.set(new Uint8Array(I.buffer), 36);
     const json = { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ children: [1], scale: [4, 1, 1] }, { mesh: 0, translation: [0, 5, 0] }],
@@ -42,7 +42,7 @@ module.exports = async function (t) {
     assert.throws(() => M.parseGLB(new ArrayBuffer(24), "x.glb"), /binary glTF/);
   });
 
-  await t("Worlds Brew: 12 built-in scenes, all render, deterministically", async () => {
+  await t("Worlds Lab: 12 built-in scenes, all render, deterministically", async () => {
     const names = Object.keys(S.PRESETS); assert.strictEqual(names.length, 12);
     for (const n of names) {
       const s = S.loadPreset(n), r1 = await E.render(s, s.cam, 48, 27), r2 = await E.render(S.loadPreset(n), s.cam, 48, 27);
@@ -52,7 +52,7 @@ module.exports = async function (t) {
     }
   });
 
-  await t("Worlds Brew: render layers (Render + Depth, Object mask, Sky mask) and draft/cancel", async () => {
+  await t("Worlds Lab: render layers (Render + Depth, Object mask, Sky mask) and draft/cancel", async () => {
     const s = S.loadPreset("Chrome Garden"), r = await E.render(s, s.cam, 64, 36, { passes: true });
     const L = E.layers(r, { depth: true, mask: true, sky: true });
     assert.deepStrictEqual(L.map((l) => l.name), ["Render", "Depth", "Object mask", "Sky mask"]);
@@ -63,7 +63,7 @@ module.exports = async function (t) {
     assert.ok(c === null || calls >= 1, "cancel stops the render");
   });
 
-  await t("Worlds Brew: scene save/load keeps models and renders identically", async () => {
+  await t("Worlds Lab: scene save/load keeps models and renders identically", async () => {
     const s = S.loadPreset("Model Showcase"), back = S.fromJSON(S.toJSON(s));
     assert.strictEqual(back.objs.filter((o) => o.type === "mesh").length, 4);
     const a = await E.render(s, s.cam, 40, 24), b = await E.render(back, back.cam, 40, 24);
@@ -71,7 +71,7 @@ module.exports = async function (t) {
     const obj = M.exportOBJ(s.objs[0]); assert.ok(/^v /m.test(obj) && /^f /m.test(obj));
   });
 
-  await t("Worlds Brew: wireframe, picking and move / scale / rotate handles", () => {
+  await t("Worlds Lab: wireframe, picking and move / scale / rotate handles", () => {
     const s = S.loadPreset("Chrome Garden"), pawn = s.objs[1], w = W.wireframe(s, s.cam, 320, 180, { sel: pawn, gizmo: "move" });
     assert.strictEqual(w.rgba.length, 320 * 180 * 4); assert.ok(w.gizmo && w.gizmo.axes.length === 3);
     const x = w.gizmo.axes.find((a) => a.ax === "x"), h = W.pickHandle(w.gizmo, (w.gizmo.s0[0] + x.s1[0]) / 2, (w.gizmo.s0[1] + x.s1[1]) / 2);
@@ -85,35 +85,7 @@ module.exports = async function (t) {
     assert.ok(B.tan > 0);
   });
 
-  await t("Worlds Brew panels: Viewport + Console, Create strip, tabs follow the selection, keys, save, Render to layer", async () => {
-    const { loadPanel } = require("./harness.js");
-    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
-    await P.settle(1500);
-    const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
-    assert.ok(P.document.getElementById("app") && P.document.getElementById("vp"), "two panel roots");
-    assert.ok(/^data:image\/png/.test(R.vpImg.src) && /^data:image\/png/.test(R.preview.src), "viewport and mini render drawn");
-    assert.strictEqual(R.thumbs.length, 22, "12 classic scenes + 5 Fantasy + 5 Alien maps");
-    const n0 = T.st.scene.objs.length, btn = (ty) => R.createBtns.find((b) => b.__type === ty);
-    btn("sphere").click(); assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.type, "sphere");
-    assert.ok(!shown("Mesh"), "Mesh tab only for models");
-    btn("pawn").click(); assert.strictEqual(T.st.sel.type, "mesh"); assert.ok(shown("Mesh"));
-    assert.ok(Math.abs(T.st.sel.y - T.st.sel.mesh.hy * T.st.sel.s) < 0.05, "new model stands on the ground");
-    T.onKey({ key: "r", target: P.document.body }); assert.strictEqual(T.st.view.gizmo, "scale");
-    T.drawViewport(); assert.ok(T.lastWire.gizmo && T.lastWire.gizmo.mode === "scale", "handles drawn for the selection");
-    T.onKey({ key: "Delete", target: P.document.body }); assert.strictEqual(T.st.scene.objs.length, n0 + 1, "Delete removes the selection");
-    R.saveName.value = "My test scene"; await T.saveCurrent(); assert.strictEqual(T.saved.length, 1);
-    assert.ok(P.host.calls.some((c) => c[0] === "fileWrite"), "saved to the plugin data folder");
-    R.thumbs.find((c) => c.__name === "Neon Grid").click(); assert.strictEqual(T.st.scene.name, "Neon Grid");
-    T.st.out.quality = "draft"; await T.renderNow();
-    const calls = P.host.calls;
-    assert.ok(calls.some((c) => c[0] === "createPixelLayer" && c[1] === "Render"));
-    assert.ok(calls.some((c) => c[0] === "createLayerGroup" && c[1] === "Frank's Worlds Brew - Neon Grid"));
-    assert.ok(calls.some((c) => c[0] === "putPixels" && c[3] === 96 * 54 * 4), "document-size RGBA layer");
-    assert.ok(calls.some((c) => c[0] === "suspendHistory"), "one History step");
-    assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
-  });
-
-  await t("Worlds Brew: PNG reader (zlib inflate) and model colours from glTF materials", () => {
+  await t("Worlds Lab: PNG reader (zlib inflate) and model colours from glTF materials", () => {
     const zlib = require("zlib"), D = require(J + "/pngdec.js");
     const raw = Buffer.alloc(50000); for (let i = 0; i < raw.length; i++) raw[i] = (i * 7 + (i >> 8)) & 255;
     for (const level of [0, 1, 9]) assert.strictEqual(Buffer.compare(Buffer.from(D.inflate(zlib.deflateSync(raw, { level }).subarray(2))), raw), 0, "inflate level " + level);
@@ -126,7 +98,7 @@ module.exports = async function (t) {
     const j = M.meshFromJSON(M.meshToJSON(m)); assert.deepStrictEqual(Array.from(j.tc), [255, 0, 0], "colours survive save / load");
   });
 
-  await t("Worlds Brew: Fantasy (Kenney CC0) and Alien packs: 52 coloured assets and 10 maps that render", async () => {
+  await t("Worlds Lab: Fantasy (Kenney CC0) and Alien packs: 52 coloured assets and 10 maps that render", async () => {
     const PK = require(J + "/packs.js");
     assert.deepStrictEqual(PK.PACKS, ["Fantasy", "Alien"]);
     assert.ok(PK.assets("Fantasy").length === 36 && PK.assets("Alien").length === 16, "52 starter models (doubled in 0.6)");
@@ -143,21 +115,7 @@ module.exports = async function (t) {
     assert.notStrictEqual(hash(on.rgba), hash((await E.render(red, red.cam, 40, 24)).rgba), "Model colours switch changes the render");
   });
 
-  await t("Worlds Brew panels: pack scenes and the Assets card", async () => {
-    const { loadPanel } = require("./harness.js");
-    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
-    await P.settle(800);
-    const T = P.mod._test, R = T.refs, vis = (n) => n.style.display !== "none";
-    assert.strictEqual(R.thumbs.filter(vis).length, 12, "Classic scenes first");
-    T.st.view.scenePack = "Alien"; T.changed("view"); assert.strictEqual(R.thumbs.filter(vis).length, 5);
-    R.thumbs.find((c) => c.__name === "Outpost Zeta").click(); assert.strictEqual(T.st.scene.name, "Outpost Zeta");
-    assert.ok(R.assetBtns.filter(vis).every((b) => b.__pack === "Fantasy"));
-    const n0 = T.st.scene.objs.length; R.assetBtns.find((b) => b.__asset.id === "fantasy/pine").click();
-    assert.strictEqual(T.st.scene.objs.length, n0 + 1); assert.strictEqual(T.st.sel.asset, "fantasy/pine"); assert.strictEqual(T.st.sel.vc, true);
-    assert.ok(Math.abs(T.st.sel.y - T.st.sel.mesh.hy * T.st.sel.s) < 0.05, "stands on the ground");
-  });
-
-  await t("Worlds Brew 0.4: sun colour / brightness, point lights, water waves / clarity / foam all change the render", async () => {
+  await t("Worlds Lab 0.4: sun colour / brightness, point lights, water waves / clarity / foam all change the render", async () => {
     const r = async (s) => hash((await E.render(s, s.cam, 40, 24)).rgba);
     const base = S.loadPreset("Ocean Rock"), h0 = await r(base);
     assert.strictEqual(await r(Object.assign(S.loadPreset("Ocean Rock"), S.DEFAULTS)), h0, "defaults reproduce the 0.3 look");
@@ -174,7 +132,7 @@ module.exports = async function (t) {
     const back = S.fromJSON(S.toJSON(n)); assert.strictEqual(hash((await E.render(back, back.cam, 40, 24)).rgba), hash(lit.rgba), "lights save and load");
   });
 
-  await t("Worlds Brew 0.4: surface shaping dials and sculpt brushes (raise, lower, smooth, flatten, roughen, restore), saved with the scene", async () => {
+  await t("Worlds Lab 0.4: surface shaping dials and sculpt brushes (raise, lower, smooth, flatten, roughen, restore), saved with the scene", async () => {
     const ED = require(J + "/editor.js");
     const s = S.loadPreset("Snow Peaks"), o = s.objs[0], h0 = hash((await E.render(s, s.cam, 40, 24)).rgba);
     for (const [k, v] of [["plateau", 0.4], ["sharp", 2], ["crater", true], ["terrace", 5], ["rough", 0.7], ["erosion", 4]]) {
@@ -196,88 +154,55 @@ module.exports = async function (t) {
     assert.strictEqual(ED.terrainHit(o, ED.screenRay(s.cam, 320, 180, 160, 2)), null, "sky misses");
   });
 
-  await t("Worlds Brew 0.4 panels: Shape, Light and Water tabs, Light in the Create strip, sculpting in the Viewport", async () => {
-    const { loadPanel } = require("./harness.js");
-    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
-    await P.settle(800);
-    const T = P.mod._test, R = T.refs, tabs = R.tabs.__tabs.items, shown = (n) => tabs.find((x) => x.title === n).btn.style.display !== "none";
-    ["Shape", "Light", "Water", "Sky", "Camera"].forEach((n) => assert.ok(tabs.find((x) => x.title === n), n + " tab"));
-    R.createBtns.find((b) => b.__type === "light").click(); assert.strictEqual(T.st.sel.type, "light");
-    assert.ok(!shown("Shape") && shown("Light") && shown("Water"));
-    R.createBtns.find((b) => b.__type === "terrain").click(); assert.ok(shown("Shape"), "Shape tab for terrains");
-    const o = T.st.sel; T.onKey({ key: "b", target: P.document.body }); assert.strictEqual(T.st.view.gizmo, "sculpt");
-    T.st.scene.cam = { yaw: 0, pitch: 40, dist: 14, fov: 50, tx: o.x, ty: 0, tz: o.z }; T.drawViewport();
-    const img = R.vpImg, W = T.lastWire.w, H = T.lastWire.h, ev = (x, y) => ({ clientX: x, clientY: y, offsetX: x, offsetY: y, shiftKey: false, preventDefault() {}, currentTarget: img });
-    img.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H });
-    const m0 = require(J + "/editor.js").heightAt(o, 0.5, 0.5);
-    const fire = (type, x, y) => { const e = new P.window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true }); img.dispatchEvent(e); };
-    fire("mousedown", W / 2, H / 2); fire("mousemove", W / 2 + 2, H / 2); fire("mouseup", W / 2 + 2, H / 2);
-    assert.ok(o.sculpt && require(J + "/editor.js").heightAt(o, 0.5, 0.5) !== m0, "a drag in sculpt mode reshapes the terrain");
-    assert.ok(o._undo !== undefined, "stroke can be undone");
-    T.st.scene.waveH = 0.4; T.st.scene.foam = 50; T.changed("val");
-    T.st.out.quality = "draft"; await T.renderNow(); assert.ok(/Rendered 96 x 54/.test(R.status.textContent), R.status.textContent);
+  await t("Worlds Lab Bridge: shared folder format (render + passes + info, latest written last, document size, pictures, cover resize)", async () => {
+    const B = require(J + "/bridge.js"), os = require("os"), fs = require("fs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "wbb-")), fsp = fs.promises;
+    const io = { read: async (p) => new Uint8Array(await fsp.readFile(p)), readText: (p) => fsp.readFile(p, "utf8"), write: (p, d) => fsp.writeFile(p, typeof d === "string" ? d : Buffer.from(d)), mkdir: (p) => fsp.mkdir(p, { recursive: true }), list: (p) => fsp.readdir(p), stat: async () => null };
+    assert.strictEqual(await B.readLatest(io, root), null, "nothing yet");
+    const r = await B.writeRender(io, root, { scene: "Snow Peaks / test!", w: 4, h: 2, engine: "gpu", quality: "draft", date: new Date(2026, 10, 24, 9, 5, 7) }, [{ key: "render", png: new Uint8Array([1, 2, 3]) }, { key: "depth", png: new Uint8Array([4]) }]);
+    assert.strictEqual(r.folder, "20261124-090507-Snow Peaks test");
+    assert.ok(fs.existsSync(path.join(r.dir, "render.png")) && fs.existsSync(path.join(r.dir, "depth.png")) && !fs.existsSync(path.join(r.dir, "sky.png")));
+    const L = await B.readLatest(io, root); assert.deepStrictEqual(L.info.passes, ["render", "depth"]); assert.strictEqual(L.info.w, 4);
+    assert.strictEqual(B.groupName("Snow Peaks"), "Worlds Lab - Snow Peaks");
+    await B.writeDocSize(io, root, { w: 3000, h: 2000, ppi: 300, doc: "poster.psd" }); assert.deepStrictEqual([(await B.readDocSize(io, root)).w, (await B.readDocSize(io, root)).doc], [3000, "poster.psd"]);
+    const pic = await B.writePicture(io, root, { name: "Brick wall", w: 1, h: 1 }, new Uint8Array([9])); assert.ok(fs.existsSync((await B.readPicture(io, root)).path) && pic.name === "Brick wall");
+    // cover resize: same size is untouched, a 2:1 picture into a square keeps the middle
+    const src = new Uint8Array([10, 0, 0, 255, 20, 0, 0, 255, 30, 0, 0, 255, 40, 0, 0, 255]);
+    assert.strictEqual(B.coverResize(src, 2, 2, 2, 2), src);
+    const wide = new Uint8Array(4 * 1 * 4); [0, 100, 200, 250].forEach((v, i) => { wide[i * 4] = v; wide[i * 4 + 3] = 255; });
+    const sq = B.coverResize(wide, 4, 1, 2, 2); assert.ok(sq[0] >= 100 && sq[4] <= 200, "middle kept: " + sq[0] + "," + sq[4]);
+    fs.rmSync(root, { recursive: true, force: true });
   });
-  await t("Worlds Brew 0.5 controls: drag-and-drop placing, drag to move, object and camera pads, keys, Objects list", async () => {
-    const CT = require(J + "/controls.js"), ED = require(J + "/editor.js");
-    // host-free: surfaces, nudges, camera moves
-    const s = S.loadPreset("Snow Peaks"), ter = s.objs.find((o) => o.type === "terrain"), ball = S.obj("sphere", ter.x, 0, ter.z, 0.5, "Chrome"); s.objs.push(ball);
-    CT.rest(s, ball); assert.ok(ball.y > ED.groundY(s) + 0.6, "rests on the terrain, not under it");
-    const x0 = ball.x; s.cam.yaw = 0; CT.nudge(s, ball, "right", "big", true); assert.ok(Math.abs(ball.x - x0 - 2) < 1e-6, "camera-relative right");
-    const y0 = ball.y; CT.nudge(s, ball, "up", "med", true); assert.ok(Math.abs(ball.y - y0 - 0.5) < 1e-6);
-    CT.spin(ball, 1, "big"); assert.strictEqual(ball.ry % 45, 0); const s0 = ball.s; CT.grow(s, ball, 1, "med", false); assert.ok(ball.s > s0);
-    const c = s.cam; CT.camOrbit(c, 10, 5); CT.camPan(c, 1, 1, 1); CT.camZoom(c, 0.5); CT.camView(c, "top"); assert.strictEqual(c.pitch, 89);
-    CT.frame(s); assert.ok(c.dist > 2 && Number.isFinite(c.tx)); CT.frame(s, ball); assert.strictEqual(c.tx, +ball.x.toFixed(3));
-    assert.strictEqual(CT.cycle(s, s.objs[s.objs.length - 1], 1), s.objs[0], "Next wraps round");
-    // panel
+
+  await t("Worlds Lab Bridge panel: sees a new render, Place as layer (group, hidden passes, document size, one undo), Match document size, Send layer", async () => {
+    const B = require(J + "/bridge.js"), PNG = require(path.join(ROOT, "shared/png.js")), os = require("os"), fs = require("fs");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "wbb-")), fsp = fs.promises;
+    const io = { read: async (p) => new Uint8Array(await fsp.readFile(p)), readText: (p) => fsp.readFile(p, "utf8"), write: (p, d) => fsp.writeFile(p, typeof d === "string" ? d : Buffer.from(d)), mkdir: (p) => fsp.mkdir(p, { recursive: true }) };
     const { loadPanel } = require("./harness.js");
-    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 });
-    await P.settle(800);
-    const T = P.mod._test, R = T.refs, st = T.st;
-    T.loadScene(S.loadPreset("Chrome Garden")); st.scene.cam = { yaw: 0, pitch: 35, dist: 14, fov: 50, tx: 0, ty: 0, tz: 0 }; T.drawViewport();
-    const img = R.vpImg, W = T.lastWire.w, H = T.lastWire.h;
-    img.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H });
-    const ev = (target, type, x, y, shift) => { const e = new P.window.MouseEvent(type, { clientX: x, clientY: y, bubbles: true, shiftKey: !!shift }); target.dispatchEvent(e); };
-    // drag the Cube tile into the view: it lands under the pointer, on the ground
-    const n0 = st.scene.objs.length, tile = R.createBtns.find((b) => b.__type === "cube");
-    ev(tile, "mousedown", -50, -50); ev(img, "mousemove", W * 0.7, H * 0.6); ev(img, "mousemove", W * 0.72, H * 0.62); ev(img, "mouseup", W * 0.72, H * 0.62);
-    assert.strictEqual(st.scene.objs.length, n0 + 1, "one cube dropped " + n0 + " " + JSON.stringify(st.scene.objs.map((o) => o.type)) + " carry " + !!T.carry); const cube = st.scene.objs[n0];
-    assert.strictEqual(T.carry, null); assert.strictEqual(st.sel, cube); assert.ok(cube.x > 0.3, "landed right of centre, under the pointer (x " + cube.x + ")");
-    assert.ok(Math.abs(cube.y - cube.s - CT.surfaceY(st.scene, cube.x, cube.z, cube)) < 0.01, "sitting on the surface");
-    // a drag that ends outside the view cancels
-    const asset = R.assetBtns[0]; ev(asset, "mousedown", -50, -50); ev(img, "mousemove", W / 2, H / 2); ev(asset, "mouseup", -40, -40); await new Promise((r) => setTimeout(r, 600));
-    assert.strictEqual(st.scene.objs.length, n0 + 1, "drop outside the view = cancelled");
-    // clicking a tile still adds in front of the camera
-    asset.click(); assert.strictEqual(st.scene.objs.length, n0 + 2); assert.strictEqual(st.sel.asset, asset.__asset.id);
-    // grab the cube and drag it: it follows the pointer
-    T.select(cube); T.drawViewport(); const B = S.camBasis(st.scene.cam, W / H), f = (H / 2) / B.tan, px = cube.x - B.ex, py = cube.y - B.ey, pz = cube.z - B.ez, cz = px * B.fx + py * B.fy + pz * B.fz;
-    const sx = W / 2 + (px * B.rx + pz * B.rz) / cz * f, sy = H / 2 - (px * B.ux + py * B.uy + pz * B.uz) / cz * f, cx0 = cube.x;
-    st.view.gizmo = "rotate";   // so the move handles are not in the way
-    ev(img, "mousedown", sx + 1, sy + 1); ev(img, "mousemove", sx - 30, sy + 1); ev(img, "mouseup", sx - 30, sy + 1);
-    assert.ok(cube.x < cx0 - 0.3, "dragging the object moves it left (" + cx0 + " -> " + cube.x + ")"); assert.strictEqual(st.sel, cube);
-    // object pad buttons (hold-repeat buttons also work as clicks)
-    const btnByTitle = (re) => Array.from(P.document.querySelectorAll("#vp .wbpadbtn")).find((b) => re.test(b.getAttribute("title") || ""));
-    const z0 = cube.y; btnByTitle(/^Raise/).click(); assert.ok(cube.y > z0, "Height up");
-    const s1 = cube.s; btnByTitle(/^Bigger/).click(); assert.ok(cube.s > s1, "Size +");
-    const cam0 = Object.assign({}, st.scene.cam); btnByTitle(/^Circle left/).click(); assert.notStrictEqual(st.scene.cam.yaw, cam0.yaw, "Orbit");
-    btnByTitle(/^Move in/).click(); assert.ok(st.scene.cam.dist < cam0.dist, "Zoom in");
-    // keys
-    const kx = cube.x; T.onKey({ key: "ArrowRight", target: P.document.body }); assert.ok(cube.x > kx, "arrow key nudges");
-    T.onKey({ key: "Tab", target: P.document.body }); assert.notStrictEqual(st.sel, cube, "Tab selects the next object");
-    T.onKey({ key: "Escape", target: P.document.body }); assert.ok(!st.scene.objs.includes(st.sel), "Esc deselects");
-    T.onKey({ key: "h", target: P.document.body });
-    // the Objects list mirrors the scene and selects
-    const chips = R.objList.querySelectorAll(".pill"); assert.strictEqual(chips.length, st.scene.objs.length);
-    chips[0].click(); assert.strictEqual(st.sel, st.scene.objs[0]); assert.ok(R.objList.querySelector(".pill.on"));
-    // lock camera: an empty-space drag no longer orbits
-    st.view.camLock = true; const y1 = st.scene.cam.yaw; ev(img, "mousedown", 3, 3); ev(img, "mousemove", 60, 3); ev(img, "mouseup", 60, 3); assert.strictEqual(st.scene.cam.yaw, y1);
+    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 96, docH: 54 }), T = P.mod._test;
+    try {
+      T.setRoot(root); await T.poll();
+      assert.ok(P.document.querySelector(".apply").hasAttribute("disabled"), "nothing to place yet");
+      const px = (w, h, v) => PNG.encodePNG(new Uint8Array(w * h * 4).fill(v), w, h, 4);
+      await B.writeRender(io, root, { scene: "Chrome Garden", w: 48, h: 27, engine: "gpu", quality: "final" }, [{ key: "render", png: px(48, 27, 200) }, { key: "depth", png: px(48, 27, 90) }, { key: "mask", png: px(48, 27, 30) }, { key: "sky", png: px(48, 27, 255) }]);
+      await T.poll();
+      assert.ok(T.latest && /Chrome Garden/.test(T.refs.info.textContent) && /48 x 27/.test(T.refs.info.textContent), T.refs.info.textContent);
+      assert.ok(!P.document.querySelector(".apply").hasAttribute("disabled") && /^data:image\/png/.test(T.refs.thumb.src));
+      const calls = P.host.calls; calls.length = 0;
+      await T.place();
+      assert.deepStrictEqual(calls.filter((c) => c[0] === "createPixelLayer").map((c) => c[1]), ["Render", "Depth", "Object mask", "Sky mask"]);
+      assert.deepStrictEqual(calls.find((c) => c[0] === "createLayerGroup"), ["createLayerGroup", "Worlds Lab - Chrome Garden", 4]);
+      assert.ok(calls.filter((c) => c[0] === "putPixels").every((c) => c[3] === 96 * 54 * 4), "scaled to the 96 x 54 document");
+      assert.strictEqual(calls.filter((c) => c[0] === "suspendHistory").length, 1, "one undo step");
+      assert.ok(/scaled from 48 x 27/.test(T.refs.status.textContent), T.refs.status.textContent);
+      assert.deepStrictEqual(P.host.doc.layers.filter((L) => L.name !== "Render").map((L) => L.visible), [false, false, false], "passes hidden");
+      T.st.place.passes = false; calls.length = 0; await T.place();
+      assert.deepStrictEqual(calls.filter((c) => c[0] === "createPixelLayer").map((c) => c[1]), ["Render"], "passes can be left out");
+      await T.matchSize(); const ds = JSON.parse(fs.readFileSync(path.join(root, "Bridge/doc-size.json"), "utf8")); assert.deepStrictEqual([ds.w, ds.h, ds.doc], [96, 54, "test.psd"]);
+      P.host.doc.activeLayers.push({ id: 5, name: "Brick wall", bounds: { left: 0, top: 0, right: 20, bottom: 10 } });
+      await T.sendLayer(); const pj = JSON.parse(fs.readFileSync(path.join(root, "Bridge/picture.json"), "utf8"));
+      assert.strictEqual(pj.name, "Brick wall"); const dec = require(J + "/pngdec.js").decodePNG(new Uint8Array(fs.readFileSync(path.join(root, "Bridge/Pictures", pj.file)))); assert.ok(dec.w > 0 && dec.h > 0, "a real PNG");
+    } finally { T.stop(); fs.rmSync(root, { recursive: true, force: true }); }
   });
-  await t("Worlds Brew 0.5.1: a portrait document keeps the view and preview short so the controls stay reachable", async () => {
-    const { loadPanel } = require("./harness.js");
-    const P = await loadPanel(path.join(ROOT, "plugins/worlds-brew"), { withDoc: true, docW: 3856, docH: 7200 });
-    await P.settle(800);
-    const T = P.mod._test, R = T.refs; T.drawViewport(); await T.miniRender();
-    const vh = parseInt(R.vpImg.style.height, 10), vw = parseInt(R.vpImg.style.width, 10);
-    assert.ok(vh <= 440, "view height " + vh); assert.ok(Math.abs(vw / vh - 3856 / 7200) < 0.05, "keeps the document shape " + vw + "x" + vh);
-    assert.ok(parseInt(R.preview.style.height, 10) <= 360, "preview height " + R.preview.style.height);
-  });
+
 };

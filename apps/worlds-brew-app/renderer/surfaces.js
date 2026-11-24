@@ -1,4 +1,4 @@
-// Frank's Worlds Brew app: surface layers on the GPU.
+// Worlds Lab app: surface layers on the GPU.
 // The same steps as engine/surface.js (the ray tracer's reference maths), as GLSL injected into a Three.js
 // MeshPhysicalMaterial: wrap (box / cylinder / sphere / top / model UVs), tile, offset, rotation, opacity,
 // blend mode, mask (height / slope / bitmap), relief (bump), shine and glow. Changing a dial only updates uniforms;

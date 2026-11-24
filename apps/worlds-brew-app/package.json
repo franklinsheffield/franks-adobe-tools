@@ -1,8 +1,8 @@
 {
   "name": "franks-worlds-brew",
-  "productName": "Frank's Worlds Brew",
+  "productName": "Worlds Lab",
   "version": "0.7.0",
-  "description": "Frank's Worlds Brew (WB-10): standalone 3D scene builder",
+  "description": "Worlds Lab (WB-10): standalone 3D scene builder",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.franks.worldsbrew.app",
-    "productName": "Frank's Worlds Brew",
+    "productName": "Worlds Lab",
     "files": [
       "main.js",
       "renderer/**",
