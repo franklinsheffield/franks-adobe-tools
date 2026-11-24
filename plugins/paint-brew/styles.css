@@ -1,3 +1,3 @@
 /* Paint Brew overrides on top of core/panel.css. */
 /* Plugin neon (ultramarine): title text and every glow use this colour. */
-:root { --glow: #4d7cff; --glowbg: #0c1430; }
+:root { --glow: #6c96ff; --glowbg: #0c1430; }

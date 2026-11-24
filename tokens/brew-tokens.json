@@ -1,0 +1,363 @@
+{
+  "$description": "Frank's Brew suite design tokens (W3C DTCG format 2025.10). One source for the Photoshop panels (shared/panel.css + plugins/*/styles.css), the After Effects effects and the Worlds Brew app. tests/tokens.js checks the panels match.",
+  "color": {
+    "ink": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hex": "#000000"
+      },
+      "$description": "Panel background (Hardware Console)"
+    },
+    "stroke": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "alpha": 0.85,
+        "hex": "#ffffff"
+      },
+      "$description": "Thin white strokes around boxes and buttons"
+    },
+    "soft": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "alpha": 0.35,
+        "hex": "#ffffff"
+      },
+      "$description": "Dividers and secondary borders"
+    },
+    "select": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.5608,
+          0.8471,
+          1.0
+        ],
+        "hex": "#8fd8ff"
+      },
+      "$description": "Default light-blue press/select glow"
+    },
+    "selectKnob": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "hex": "#ffffff"
+      },
+      "$description": "Selected knob glows white"
+    },
+    "led": {
+      "ready": {
+        "$value": "{color.glow}",
+        "$type": "color",
+        "$description": "READY uses the tool glow"
+      },
+      "busy": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.6902,
+            0.1255
+          ],
+          "hex": "#ffb020"
+        }
+      },
+      "error": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.2941,
+            0.2431
+          ],
+          "hex": "#ff4b3e"
+        }
+      }
+    },
+    "errorText": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1.0,
+          0.4784,
+          0.4196
+        ],
+        "hex": "#ff7a6b"
+      }
+    },
+    "glow": {
+      "dithers-brew": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.6235,
+            0.1098
+          ],
+          "hex": "#ff9f1c"
+        },
+        "$description": "Frank's Dithers Brew neon (DB-01)",
+        "$extensions": {
+          "brew": {
+            "code": "DB-01",
+            "glowbg": "#2e1a03"
+          }
+        }
+      },
+      "chrometone": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.0,
+            0.898,
+            1.0
+          ],
+          "hex": "#00e5ff"
+        },
+        "$description": "Frank's Chrometone Brew neon (CT-02)",
+        "$extensions": {
+          "brew": {
+            "code": "CT-02",
+            "glowbg": "#00262b"
+          }
+        }
+      },
+      "depthtone": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.9608,
+            1.0,
+            0.2314
+          ],
+          "hex": "#f5ff3b"
+        },
+        "$description": "Frank's Depthtone Brew neon (DT-03)",
+        "$extensions": {
+          "brew": {
+            "code": "DT-03",
+            "glowbg": "#282a06"
+          }
+        }
+      },
+      "mobglow": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.1843,
+            0.8392
+          ],
+          "hex": "#ff2fd6"
+        },
+        "$description": "Frank's Mobglow Brew neon (MG-04)",
+        "$extensions": {
+          "brew": {
+            "code": "MG-04",
+            "glowbg": "#2e0826"
+          }
+        }
+      },
+      "decompressor": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.2235,
+            1.0,
+            0.0784
+          ],
+          "hex": "#39ff14"
+        },
+        "$description": "Frank's Decompressor Brew neon (DC-05)",
+        "$extensions": {
+          "brew": {
+            "code": "DC-05",
+            "glowbg": "#082b04"
+          }
+        }
+      },
+      "crt-phaser": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.7373,
+            0.4431,
+            0.9961
+          ],
+          "hex": "#bc71fe"
+        },
+        "$description": "Frank's CRT Phaser Brew neon (CRT-06)",
+        "$extensions": {
+          "brew": {
+            "code": "CRT-06",
+            "glowbg": "#1e0c2b"
+          }
+        }
+      },
+      "batch-mock-brew": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.9961,
+            0.3686,
+            0.3098
+          ],
+          "hex": "#fe5e4f"
+        },
+        "$description": "Frank's Batch Mock Brew neon (BM-07)",
+        "$extensions": {
+          "brew": {
+            "code": "BM-07",
+            "glowbg": "#2e0b09"
+          }
+        }
+      },
+      "paint-brew": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.4235,
+            0.5882,
+            1.0
+          ],
+          "hex": "#6c96ff"
+        },
+        "$description": "Frank's Paint Brew neon (PB-09)",
+        "$extensions": {
+          "brew": {
+            "code": "PB-09",
+            "glowbg": "#0c1430"
+          }
+        }
+      },
+      "worlds-brew": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.3686,
+            1.0,
+            0.7843
+          ],
+          "hex": "#5effc8"
+        },
+        "$description": "Frank's Worlds Brew neon (WB-10)",
+        "$extensions": {
+          "brew": {
+            "code": "WB-10",
+            "glowbg": "#0a2b22"
+          }
+        }
+      }
+    }
+  },
+  "font": {
+    "display": {
+      "$type": "fontFamily",
+      "$value": [
+        "Night Machine",
+        "-apple-system",
+        "Helvetica Neue",
+        "sans-serif"
+      ]
+    },
+    "ui": {
+      "$type": "fontFamily",
+      "$value": [
+        "-apple-system",
+        "Helvetica Neue",
+        "Segoe UI",
+        "sans-serif"
+      ]
+    }
+  },
+  "size": {
+    "targetMin": {
+      "$type": "dimension",
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      },
+      "$description": "WCAG 2.2 SC 2.5.8 minimum pointer target"
+    },
+    "knob": {
+      "$type": "dimension",
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      }
+    },
+    "valueBox": {
+      "$type": "dimension",
+      "$value": {
+        "value": 46,
+        "unit": "px"
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      }
+    },
+    "panelMinWidth": {
+      "$type": "dimension",
+      "$value": {
+        "value": 300,
+        "unit": "px"
+      }
+    }
+  },
+  "duration": {
+    "micro": {
+      "$type": "duration",
+      "$value": {
+        "value": 150,
+        "unit": "ms"
+      },
+      "$description": "Press glow / fold; keep feedback under 200 ms"
+    },
+    "previewDebounce": {
+      "$type": "duration",
+      "$value": {
+        "value": 150,
+        "unit": "ms"
+      }
+    }
+  }
+}

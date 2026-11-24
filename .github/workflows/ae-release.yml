@@ -1,0 +1,73 @@
+# Builds Frank's Brew for After Effects on GitHub's free Mac + Windows runners and attaches
+# the two install zips to the release "ae-v1.0.0" (private, like the repo).
+# Runs when After Effects code lands on main, or by hand (Actions > AE release > Run workflow).
+name: AE release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ae/**", ".github/workflows/ae-release.yml"]
+permissions:
+  contents: write
+env:
+  TAG: ae-v1.0.0
+  TOOLS: crt-phaser mobglow depthtone decompressor chrometone dithers-brew paint-brew
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all effects (universal, ad-hoc signed)
+        run: |
+          set -e
+          for T in $TOOLS; do bash ae/tools/build-mac.sh "$PWD/ae/sdk/win/AfterEffectsSDK" "$T"; done
+          N=$(ls -d ae/dist/mac/*.plugin | wc -l); echo "built $N plug-ins"; [ "$N" -eq 7 ]
+          for P in ae/dist/mac/*.plugin; do codesign --verify --deep "$P"; done
+      - name: Package
+        run: |
+          D=FranksBrew-AE-Mac; mkdir "$D"
+          cp -R ae/dist/mac/*.plugin "$D/"
+          cp ae/tools/install-mac.command ae/tools/install-console-mac.command "$D/"
+          chmod +x "$D"/*.command
+          cp -R ae/console "$D/console"
+          ditto -c -k --keepParent "$D" "$D.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: mac-zip, path: FranksBrew-AE-Mac.zip }
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - name: Build all effects
+        shell: cmd
+        run: call ae\tools\build-win.bat "%GITHUB_WORKSPACE%\ae\sdk\win\AfterEffectsSDK" all
+      - name: Package
+        shell: pwsh
+        run: |
+          $n = (Get-ChildItem ae\dist\win\*.aex).Count; "built $n plug-ins"; if ($n -ne 7) { exit 1 }
+          $d = "FranksBrew-AE-Windows"; New-Item -ItemType Directory $d | Out-Null
+          Copy-Item ae\dist\win\*.aex $d\
+          Copy-Item ae\tools\install-win.bat, ae\tools\install-console-win.bat $d\
+          Copy-Item -Recurse ae\console $d\console
+          Compress-Archive -Path $d -DestinationPath "$d.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: win-zip, path: FranksBrew-AE-Windows.zip }
+  release:
+    needs: [mac, windows]
+    # macOS runners may be unavailable on this account: publish whatever built (Windows is required).
+    if: ${{ always() && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    env: { GH_TOKEN: "${{ github.token }}" }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "*-zip", merge-multiple: true }
+      - name: Publish to the release
+        run: |
+          ls -la *.zip
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Frank's Brew for After Effects 1.0" \
+              --notes "7 After Effects effects with Motion controls, plus the Brew Console panel. Install steps: README-After-Effects.md. Private: do not share."
+          fi
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber *.zip

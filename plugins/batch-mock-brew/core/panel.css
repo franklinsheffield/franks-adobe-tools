@@ -334,3 +334,22 @@ input.cdnum { width: 30px; margin-left: 2px; text-align: center; }
 .lookimg { width: 100%; display: block; min-height: 30px; background: #111; }
 .lookname { font-size: 9px; padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn.lsrc.on { border-color: var(--glow); color: var(--glow); }
+
+/* ======================================================================
+   Research quick wins (2026-11-23, Brew Interface Research Database):
+   scrubby knob labels, unit beside the value box, live key-hint line,
+   blocked Apply, larger hit areas (WCAG 2.2 target size, 24 px).
+   ====================================================================== */
+#app.brand-console .dlabel.scrub { cursor: ew-resize; }
+#app.brand-console .dunit { font-size: 9px; margin-left: 3px; opacity: 0.75; }
+#app.brand-console .keys { font-size: 9px; line-height: 1.35; opacity: 0.7; margin: 0 0 4px 0; }
+#app.brand-console .apply.blocked { opacity: 0.55; border-style: dashed; }
+#app.brand-console .jumpbtn { padding: 7px 0; }
+#app.brand-console .tabbtn { padding: 6px 7px; }
+#app.brand-console .tabdot { width: 12px; height: 12px; border-radius: 7px; }
+#app.brand-console .swlbl { cursor: pointer; }
+#app.brand-console .swrow { min-height: 24px; }
+#app.brand-console .switch { width: 36px; height: 20px; border-radius: 10px; }
+#app.brand-console .switch .swknob { width: 14px; height: 14px; border-radius: 7px; }
+#app.brand-console .switch.on .swknob { left: 18px; }
+#app.brand-console .ub.mini { padding: 4px 8px; }

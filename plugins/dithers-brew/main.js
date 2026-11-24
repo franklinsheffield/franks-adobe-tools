@@ -9,7 +9,9 @@ const ASCII = require("./js/ascii.js");
 // shared suite core (synced from /shared by tools/sync-core.js)
 const PNG = require("./core/png.js");
 const PS = require("./core/ps-io.js");
-const { createUI } = require("./core/ui.js");
+const { createUI, getPath } = require("./core/ui.js");
+const QW = require("./core/quickwins.js");
+const IM = require("./core/imgmath.js");
 const { createPreviewLoop, tick } = require("./core/preview.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
@@ -19,6 +21,8 @@ const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = requi
 PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
 let state = clone(DEFAULTS);
+// values of the look loaded last: double-clicking a knob goes back to them (quick win ID-02)
+let lookBase = clone(state);
 let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
 let lastSrc = null;
 let auto = true;
@@ -38,7 +42,9 @@ function withDeck(res) {
 }
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: "Frank's Dithers Brew" });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: "Frank's Dithers Brew",
+  getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
+const KEYS_IDLE = QW.keysIdle("");
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
 
 // ---------------------------------------------------------------- helpers
@@ -78,6 +84,7 @@ function halfSrc(src) {
 
 function setStatus(msg, isErr) {
   if (!refs.status) return;
+  if (isErr) msg = QW.plainError(msg);
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
   if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Brewing)/.test(msg) ? "busy" : "ready"));
@@ -363,6 +370,7 @@ async function previewOnce() {
     docCache = { ppi: 300, name: "Demo image", w: src.w, h: src.h, demo: true };
   }
   lastSrc = src; lastScale = scale; lastPpi = ppi;
+  markApplyReady(!docCache.demo);
   if (refs.lookList && refs.lookList.style.display !== "none") lookGrid(refs.lookList);   // re-render looks when the image changes
   refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px @ " + Math.round(docCache.ppi) + " PPI");
   return previewFrame(src, scale, ppi, false);
@@ -378,7 +386,8 @@ async function previewFrame(src, scale, ppi, quick) {
   let rgb;
   if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
   else { rgb = Engine.composite(res, bg); applyDeckPreview(rgb, res, D(), Engine, null, bgType, "white"); }
-  refs.preview.src = PNG.dataURL(rgb, res.w, res.h, 3);
+  lastShown = { rgb, w: res.w, h: res.h, before: IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: bgType }, src) };
+  paintPreview();
   const avail = (refs.previewBox.clientWidth || 320) - 4;
   const maxH = layout ? layout.previewMaxHeight() : Infinity;   // pinned preview leaves room for controls
   const fw = quick ? res.w * 2 : res.w, fh = quick ? res.h * 2 : res.h;
@@ -393,6 +402,35 @@ async function previewFrame(src, scale, ppi, quick) {
     refs.scrR.textContent = res.w + " x " + res.h + " PX" + (quick ? "  LIVE" : "");
   }
   setStatus((quick ? "Live " : "Preview ") + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s") + notes);
+}
+
+// Before/After split (quick win ID-09): left of the line is the untouched picture.
+// Dragging on the preview moves the line without a re-render.
+let lastShown = null;
+function paintPreview() {
+  const L = lastShown;
+  if (!L) return;
+  refs.preview.src = PNG.dataURL(QW.splitRGB(L.rgb, L.before, L.w, L.h, state.view.split || 0), L.w, L.h, 3);
+}
+function wireSplitDrag() {
+  const img = refs.preview;
+  let drag = false;
+  const move = (e) => {
+    let r = null; try { r = img.getBoundingClientRect(); } catch (err) { /* no layout */ }
+    const W = (r && r.width) || img.clientWidth || 1, x = r ? e.clientX - r.left : (e.offsetX || 0);
+    state.view.split = Math.max(1, Math.min(99, Math.round(100 * x / W))); paintPreview();
+  };
+  img.addEventListener("mousedown", (e) => { if (state.view.split) { drag = true; move(e); } });
+  img.addEventListener("mousemove", (e) => { if (drag) move(e); });
+  const end = () => { drag = false; };
+  img.addEventListener("mouseup", end); img.addEventListener("mouseleave", end);
+}
+// error prevention (UX-06): with no document the Apply key looks blocked and says why
+function markApplyReady(ok) {
+  const b = refs.apply;
+  if (!b) return;
+  if (ok) { b.classList.remove("blocked"); b.setAttribute("title", "Apply to the document as new layer groups (one undo step)"); }
+  else { b.classList.add("blocked"); b.setAttribute("title", "Open a document first. The preview is using the demo image."); }
 }
 
 function tryLayerTarget(doc) {
@@ -468,6 +506,7 @@ function applyPatch(p) {
   // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
   if (typeof state.fx.pre.invert !== "number") state.fx.pre.invert = state.fx.pre.invert ? 100 : 0;
   preSig = preKey();
+  lookBase = clone(state);
   touch();
 }
 function stateForSave() {
@@ -515,11 +554,14 @@ function build(root) {
     ]),
     el("div", { class: "row" }, ui.brand ? [refresh,
       ui.brand.miniToggle("Auto-update", true, setAuto),
-      ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
+      ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title),
+      refs.splitSw = ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")
     ] : [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
     refs.status,
+    (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })),
     refs.info
   ]));
+  wireSplitDrag();
 
   root = layout.scroller;   // everything below scrolls under the pinned preview
   // organized panel (Frank, 2026-11-22): Look (look browser first) / Controls (tabs) / Colour / Output
@@ -789,6 +831,20 @@ function build(root) {
   updateInfo();
 }
 
+function menuAction(id) {
+  if (id === "resetLook") {
+    const keepOut = clone(state.out), keepView = clone(state.view), keepDeck = state.deck;
+    state = clone(lookBase); state.out = keepOut; state.view = keepView; state.deck = keepDeck;
+    preSig = preKey(); touch(); setStatus("Knobs reset to the last loaded look.");
+  }
+  else if (id === "split") { if (refs.splitSw) refs.splitSw.__sw.set(!state.view.split); else { state.view.split = state.view.split ? 0 : 50; paintPreview(); } }
+  else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
+  else if (id === "about") {
+    let v = ""; try { v = require("./manifest.json").version; } catch (e) { /* no manifest in tests */ }
+    setStatus("Frank's Dithers Brew " + v + "  |  DB-01  |  Frank's Brew suite. Hover any control for help.");
+  }
+}
+
 async function init() {
   if (built) return;
   built = true;
@@ -804,7 +860,16 @@ try {
     panels: {
       franksBrewPanel: {
         create() { init(); },
-        show() { if (!built) init(); else schedulePreview(200); }
+        show() { if (!built) init(); else schedulePreview(200); },
+        // panel flyout menu (quick win AD-05)
+        menuItems: [
+          { id: "resetLook", label: "Reset knobs to this look" },
+          { id: "split", label: "Before / After split" },
+          { id: "foldAll", label: "Fold or open all cards" },
+          "-",
+          { id: "about", label: "About Frank's Dithers Brew" }
+        ],
+        invokeMenu(id) { menuAction(id); }
       }
     }
   });
@@ -813,5 +878,5 @@ setTimeout(() => { init(); }, 0);
 
 // test hook only; <script> contexts in UXP may not define `module`
 if (typeof module !== "undefined" && module && module.exports) {
-  module.exports = { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, runPreview, init, refs, touch } };
+  module.exports = { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, runPreview, init, refs, touch, menuAction, get lookBase() { return lookBase; } } };
 }
