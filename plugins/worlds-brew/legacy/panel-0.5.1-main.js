@@ -14,6 +14,7 @@ const ED = require("./js/editor.js");
 const PK = require("./js/packs.js");
 const CT = require("./js/controls.js");
 const PS = require("./core/ps-io.js");
+const { runModal } = require("./core/modal.js");
 const PNG = require("./core/png.js");
 const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
@@ -330,12 +331,12 @@ async function textureFromFile() {
     const ps = psHost;
     let tmp = null, tex = null;
     try {
-      await ps.core.executeAsModal(async () => { tmp = await ps.app.open(f); }, { commandName: APP + ": open texture" });
+      await runModal(APP + ": open texture", async () => { tmp = await ps.app.open(f); }, { timeoutMs: 30000 });
       const r = await PS.readSource(tmp, { kind: "flat" }, { kind: "whole", size: 256 });
       tex = toTexture(r.src, f.name);
     } finally {
       // close the texture document we opened, never save it (Mac hygiene rule)
-      if (tmp) await ps.core.executeAsModal(async () => { await tmp.close(ps.constants.SaveOptions.DONOTSAVECHANGES); }, { commandName: APP + ": close texture" });
+      if (tmp) await runModal(APP + ": close texture", async () => { await tmp.close(ps.constants.SaveOptions.DONOTSAVECHANGES); }, { timeoutMs: 15000 });
     }
     st.sel.img = tex; changed("sel"); setStatus("Texture loaded: " + f.name);
   } catch (e) { setStatus("Could not load that image: " + e.message, true); }
@@ -387,7 +388,7 @@ async function renderNow() {
     let doc = PS.activeDoc();
     const ps = psHost;
     if (!doc) {
-      await ps.core.executeAsModal(async () => { doc = await ps.app.documents.add({ width: 1920, height: 1080, resolution: 72, mode: "RGBColorMode", fill: "black", name: st.scene.name || "Worlds" }); }, { commandName: APP + ": new document" });
+      await runModal(APP + ": new document", async () => { doc = await ps.app.documents.add({ width: 1920, height: 1080, resolution: 72, mode: "RGBColorMode", fill: "black", name: st.scene.name || "Worlds" }); }, { timeoutMs: 30000 });
     }
     const info = PS.docInfo(doc), aa = st.out.quality === "final" ? 2 : 1;
     const res = await E.render(st.scene, st.scene.cam, info.w, info.h, { aa }, {
