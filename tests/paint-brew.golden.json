@@ -15,9 +15,10 @@
   "Focus",
   "Colour",
   "Colour Deck",
+  "Blend",
   "Output"
  ],
- "controls": "input:90 select:7 button:94 textarea:0",
+ "controls": "input:91 select:8 button:94 textarea:0",
  "previewDefault": "8f601f31ae42",
  "presets": [
   "Oil - Studio Oil = 8f601f31ae42",

@@ -9,6 +9,7 @@
 const { core } = require("photoshop");
 const Plan = require("./js/plan.js");
 const PSM = require("./js/ps-mockup.js");
+const { runModal } = require("./core/modal.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const PS = require("./core/ps-io.js");
 const { createUI, getPath } = require("./core/ui.js");
@@ -122,7 +123,8 @@ async function brew(testOnly) {
   const dirCache = {};
   setRunning(true);
   setStatus(testOnly ? "Test: first job only, the result stays open in Photoshop." : "Brewing " + list.length + " mockups...");
-  const modal = (fn, name) => core.executeAsModal(fn, { commandName: TITLE + ": " + name });
+  // one mockup job per modal; the watchdog ends a job that never finishes instead of leaving a stuck Progress window
+  const modal = (fn, name) => runModal(TITLE + ": " + name, fn, { timeoutMs: 10 * 60000 });
   const closeCur = async () => { if (cur) { const d = cur.doc; cur = null; await modal(() => PSM.closeDoc(d), "close mockup"); } };
 
   const summary = await batch.start(list, async (job) => modal(async () => {

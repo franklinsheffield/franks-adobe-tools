@@ -20,7 +20,7 @@ function keysIdle(esc) {
 }
 function keysFor(i) {
   const range = i.min + "-" + i.max + (i.unit ? " " + i.unit : "");
-  return String(i.label).toUpperCase() + " " + range + "  |  drag / wheel turns, Shift = fine  |  Up/Down steps, Shift = x10  |  double-click resets";
+  return String(i.label).toUpperCase() + " " + range + "  |  drag turns, Shift = fine  |  Up/Down steps, Shift = x10  |  double-click resets";
 }
 
 // ID-09: left of `pos` % shows `before`, right shows `rgb`, with a 2 px white line. RGB, 3 channels.

@@ -2,12 +2,15 @@
 // ----------------------------------------------------------------------
 // Shared Photoshop / UXP I/O for every tool in the suite. Everything that
 // touches the host lives here so each tool's engine stays pure and testable.
+//   every modal call goes through modal.js runModal (watchdog + Cancel)
 //   reading : executeAsModal + imaging.getPixels (PS 28 needs the modal scope)
 //   writing : executeAsModal + createPixelLayer + imaging.putPixels
 // ----------------------------------------------------------------------
 const photoshop = require("photoshop");
 const { app, core, imaging, constants, action } = photoshop;
 const { storage } = require("uxp");
+const Blend = require("./blend.js");
+const { runModal } = require("./modal.js");
 const fsys = storage.localFileSystem;
 
 // Per-tool names: call configure() once from the tool's main.js.
@@ -80,6 +83,7 @@ function collectTargets(doc, source) {
 }
 
 const READ_TIMEOUT_MS = 60000;
+const WRITE_TIMEOUT_MS = 5 * 60000;   // big documents; the watchdog only has to end a modal that never settles
 function withTimeout(p, ms) {
   let t = null;
   const stop = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("Photoshop did not answer the pixel read in " + Math.round(ms / 1000) + " s. Try again.")), ms); });
@@ -99,7 +103,7 @@ async function getPixels(doc, layerId, bounds, targetSize) {
   if (targetSize) opts.targetSize = targetSize;
   // Photoshop 2027 (28.x) refuses imaging.getPixels outside a modal scope,
   // so reads go through executeAsModal too (found in the first real test).
-  return core.executeAsModal(async () => {
+  return runModal(CFG.appName + ": reading pixels", async () => {
     // a read that never answers must not hold Photoshop's modal state forever
     const r = await withTimeout(imaging.getPixels(opts), READ_TIMEOUT_MS);
     const img = r.imageData;
@@ -110,7 +114,7 @@ async function getPixels(doc, layerId, bounds, targetSize) {
     if (!c) c = Math.round(data.length / (w * h));
     try { img.dispose(); } catch (e) { /* ignore */ }
     return { w, h, c, data };
-  }, { commandName: CFG.appName + ": reading pixels" });
+  }, { docId: doc.id, timeoutMs: READ_TIMEOUT_MS * 2 + 5000 });
 }
 
 // view = { kind:"detail"|"whole"|"full", size }
@@ -191,12 +195,13 @@ async function putLayerPixels(doc, layer, buf, w, h, components, origin) {
   }
 }
 
-// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds }
+// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds, blend }
+// blend (optional) = { mode, opacity }: set on the result group (shared/blend.js)
 // hiddenIds (optional array) receives the ids of the source layers this call hid
 async function writeResult(doc, res, opts) {
   const n = res.w * res.h;
   const warnings = [];
-  await core.executeAsModal(async (ctl) => {
+  await runModal(CFG.appName, async (ctl) => {
     let hid = null;
     try { hid = await ctl.hostControl.suspendHistory({ documentID: doc.id, name: CFG.appName }); } catch (e) { hid = null; }
     try {
@@ -241,12 +246,13 @@ async function writeResult(doc, res, opts) {
         try { await group.move(opts.placeAbove, constants.ElementPlacement.PLACEBEFORE); }
         catch (e) { warnings.push("Could not move the new group above the previous result: " + e.message); }
       }
+      if (opts.blend && group) Blend.applyToGroup(group, opts.blend, constants);
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }
     }
-  }, { commandName: CFG.appName });
+  }, { docId: doc.id, timeoutMs: WRITE_TIMEOUT_MS });
   return warnings;
 }
 
@@ -255,11 +261,11 @@ async function writeResult(doc, res, opts) {
 async function pickColor(hex, title) {
   const h = String(hex || "#FFFFFF").replace("#", "");
   const start = { red: parseInt(h.slice(0, 2), 16) || 0, grain: parseInt(h.slice(2, 4), 16) || 0, blue: parseInt(h.slice(4, 6), 16) || 0 };
-  const res = await core.executeAsModal(async () => action.batchPlay([{
+  const res = await runModal(CFG.appName + ": pick colour", async () => action.batchPlay([{
     _obj: "showColorPicker",
     context: title || CFG.appName,
     color: { _obj: "RGBColor", red: start.red, grain: start.grain, blue: start.blue }
-  }], {}), { commandName: CFG.appName + ": pick colour" });
+  }], {}), { timeoutMs: 10 * 60000 });   // the user may sit in the picker
   const r = res && res[0];
   if (!r || r.value === false) return null;
   const c = r.RGBFloatColor || r.color || r;
@@ -310,16 +316,16 @@ async function saveData(name, obj) {
 function activeLayer(doc) { try { const a = Array.from(doc.activeLayers || []); return a[0] || null; } catch (e) { return null; } }
 // hide one layer or group in its own modal step
 async function hideLayer(layer) {
-  await core.executeAsModal(async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { commandName: CFG.appName + ": hide old version" });
+  await runModal(CFG.appName + ": hide old version", async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { timeoutMs: 15000 });
 }
 // re-edit swap in one History step: hide the old group, show the source layers it hid (by id)
 async function swapToSource(doc, group, ids) {
-  await core.executeAsModal(async () => {
+  await runModal(CFG.appName + ": re-edit", async () => {
     const want = new Set(ids || []);
     const walk = (list) => { for (const L of Array.from(list || [])) { if (want.has(L.id)) { try { L.visible = true; } catch (e) { /* locked */ } } if (L.layers) walk(L.layers); } };
     walk(doc.layers);
     try { group.visible = false; } catch (e) { /* locked */ }
-  }, { commandName: CFG.appName + ": re-edit" });
+  }, { timeoutMs: 15000 });
 }
 
 // ---- Colour 3.0: swatch sync + palette files ------------------------------
@@ -334,7 +340,7 @@ async function addSwatches(colors, name) {
     const c = String(h).replace("#", "");
     return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Brew") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
   });
-  await core.executeAsModal(async () => action.batchPlay(list, {}), { commandName: CFG.appName + ": add swatches" });
+  await runModal(CFG.appName + ": add swatches", async () => action.batchPlay(list, {}), { timeoutMs: 30000 });
   return list.length;
 }
 // open a palette file (.ase .aco .gpl .txt .hex): resolves { name, data } or null
@@ -356,6 +362,6 @@ async function savePaletteFile(name, data) {
 }
 module.exports = {
   getFgBg, addSwatches, openPaletteFile, savePaletteFile,
-  findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult, getPixels,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

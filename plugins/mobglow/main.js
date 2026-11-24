@@ -7,6 +7,7 @@ const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 const PNG = require("./core/png.js");
+const { runModal } = require("./core/modal.js");
 
 const GROUP = "Frank's Mobglow Brew";
 
@@ -47,7 +48,7 @@ async function maskGlowAndBrush() {
   const group = Array.from(doc.layers || []).find((L) => String(L.name).indexOf(GROUP) === 0 && L.layers);
   const glow = group && Array.from(group.layers).find((L) => L.name === "Glow");
   if (!glow) throw new Error("Render first: no Mobglow group in this document.");
-  await ps.core.executeAsModal(async () => {
+  await runModal(GROUP + " - mask", async () => {
     const bp = ps.action.batchPlay;
     await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: glow.id }], makeVisible: false }], {});
     const info = await bp([{ _obj: "get", _target: [{ _ref: "layer", _id: glow.id }] }], {});
@@ -56,7 +57,7 @@ async function maskGlowAndBrush() {
     }
     await bp([{ _obj: "set", _target: [{ _ref: "color", _property: "foregroundColor" }], to: { _obj: "RGBColor", red: 0, grain: 0, blue: 0 } }], {});
     await bp([{ _obj: "select", _target: [{ _ref: "paintbrushTool" }] }], {});
-  }, { commandName: GROUP + " - mask" });
+  }, { docId: doc.id, timeoutMs: 30000 });
 }
 
 const panel = createToolPanel({

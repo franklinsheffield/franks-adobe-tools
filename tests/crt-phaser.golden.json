@@ -16,9 +16,10 @@
   "Advanced",
   "Look browser",
   "Library",
+  "Blend",
   "Output"
  ],
- "controls": "input:156 select:11 button:158 textarea:0",
+ "controls": "input:157 select:12 button:158 textarea:0",
  "previewDefault": "ba98f44d8e73",
  "presets": [
   "Arcade - Arcade Cabinet = ba98f44d8e73",
@@ -60,7 +61,7 @@
   "putPixels|100|4|480000",
   "createLayerGroup|Frank's CRT Phaser Brew - Arcade Cabinet #TAG|1",
   "resumeHistory",
-  "fileWrite|1684"
+  "fileWrite|1724"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
 }

@@ -16,10 +16,12 @@ const { createPreviewLoop, tick } = require("./core/preview.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 const Colour = require("./core/colour.js");
+const Blend = require("./core/blend.js");
 const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = require("./core/colourdeck.js");
 
 PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
+if (!DEFAULTS.blend) DEFAULTS.blend = clone(Blend.DEFAULT);   // Blending (all plugins), saved with the look
 let state = clone(DEFAULTS);
 // values of the look loaded last: double-clicking a knob goes back to them (quick win ID-02)
 let lookBase = clone(state);
@@ -52,6 +54,7 @@ const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow
 let preSig = "";
 const preKey = () => { const p = Object.assign({}, state.fx.pre); delete p.on; return JSON.stringify(p); };
 function touch() {
+  if (!state.blend) state.blend = clone(Blend.DEFAULT);   // older saved looks have no blend
   quickNext = false;
   const k = preKey();
   if (k !== preSig) { if (preSig && !state.fx.pre.on) state.fx.pre.on = true; preSig = k; }
@@ -386,6 +389,7 @@ async function previewFrame(src, scale, ppi, quick) {
   let rgb;
   if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
   else { rgb = Engine.composite(res, bg); applyDeckPreview(rgb, res, D(), Engine, null, bgType, "white"); }
+  if (Blend.active(state.blend)) rgb = Blend.preview(Engine, withDeck(res), src, state.blend);   // as the group will look over the picture
   lastShown = { rgb, w: res.w, h: res.h, before: IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: bgType }, src) };
   paintPreview();
   const avail = (refs.previewBox.clientWidth || 320) - 4;
@@ -477,9 +481,10 @@ async function applyNow() {
       const warnings = await PS.writeResult(doc, res, {
         origin: r.origin,
         groupName: base + "Brew - " + label + (state.engine === "halftone" ? " " + state.lpi + " LPI" : ""),
-        hideSource: state.out.hide,
+        hideSource: state.out.hide && !Blend.active(state.blend),   // a blended group needs its source visible
         hideLayers: t.kind === "layer" ? [t.layer] : null,
-        paperLayer: state.out.paper
+        paperLayer: state.out.paper,
+        blend: state.blend
       });
       done++;
       if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
@@ -813,6 +818,7 @@ function build(root) {
   refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
+  root.appendChild(Blend.card(ui, () => state));
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),

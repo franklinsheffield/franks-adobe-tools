@@ -46,10 +46,14 @@ const { createColourDeck, applyDeckPreview, addDeckLayer } = require("./colourde
 const IM = require("./imgmath.js");
 
 const QW = require("./quickwins.js");
+const Blend = require("./blend.js");
 const plainError = QW.plainError;
 
 function createToolPanel(cfg) {
-  const { Engine, DEFAULTS, PRESETS, merge, clone } = cfg;
+  const { Engine, PRESETS, merge, clone } = cfg;
+  // Blending (all plugins): every look carries blend { mode, opacity }; cfg.blend === false opts out
+  const hasBlend = cfg.blend !== false;
+  const DEFAULTS = hasBlend ? Object.assign({ blend: clone(Blend.DEFAULT) }, cfg.DEFAULTS) : cfg.DEFAULTS;
   cfg = Object.assign({ brand: "console" }, cfg);
   if (cfg.brand === "none") cfg.brand = undefined;
   PS.configure({ appName: cfg.appName, presetFile: cfg.presetFile || "presets.json", exportName: cfg.exportName || "looks.json" });
@@ -89,7 +93,7 @@ function createToolPanel(cfg) {
   }
   const { el, clear, bind, showIf, refreshAll, segGroup, selectRow, checkRow, hexField, card } = ui;
 
-  function touch() { refreshAll(); if (auto) schedulePreview(150); }
+  function touch() { if (hasBlend && !state.blend) state.blend = clone(Blend.DEFAULT); refreshAll(); if (auto) schedulePreview(150); }   // older saved looks have no blend
   function setStatus(msg, isErr) {
     if (!refs.status) return;
     if (isErr) msg = plainError(msg);
@@ -172,10 +176,14 @@ function createToolPanel(cfg) {
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
     markApplyReady(!docCache.demo);
     const res = await Engine.render(src, engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
-    const rgb = Engine.composite(res, { type: state.view.bg }, src);
+    let rgb = Engine.composite(res, { type: state.view.bg }, src);
     lastSrc = src; lastScale = scale;
     if (lookBrowser) lookBrowser.sourceChanged();
-    if (hasDeck) { applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
+    if (hasBlend && Blend.active(state.blend)) {
+      // blended over the source, as the group will look in Photoshop
+      const withDeck = hasDeck && Colour.active(D()) ? addDeckLayer(res, D(), Engine, src, cfg.colourBase) : res;
+      rgb = Blend.preview(Engine, withDeck, src, state.blend);
+    } else if (hasDeck) { applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase); }
     lastShown = { rgb, w: res.w, h: res.h, before: cfg.split ? IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null };
     paintPreview();
     sizePreview(res.w, res.h);
@@ -526,7 +534,8 @@ function createToolPanel(cfg) {
           hiddenIds,
           origin: r.origin,
           groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName) + tag,
-          hideSource: state.out.hide,
+          hideSource: state.out.hide && !(hasBlend && Blend.active(state.blend)),   // a blended group needs its source visible
+          blend: hasBlend ? state.blend : null,
           hideLayers: t.kind === "layer" ? [t.layer] : null,
           placeAbove: t.prev ? t.layer : null
         });
@@ -598,7 +607,18 @@ function createToolPanel(cfg) {
       const q = (T[b.charCodeAt(i)] << 18) | (T[b.charCodeAt(i + 1)] << 12) | (T[b.charCodeAt(i + 2)] << 6) | T[b.charCodeAt(i + 3)];
       put((q >> 16) & 255); if (b[i + 2] !== "=" && px < n) put((q >> 8) & 255); if (b[i + 3] !== "=" && px < n) put(q & 255);
     }
-    return { w: smp.w, h: smp.h, c: 4, data };
+    const out = { w: smp.w, h: smp.h, c: 4, data };
+    // optional extra input for the sample (Depthtone: its Select Subject mask, 1 byte per pixel, base64)
+    if (smp.subject) {
+      const m = smp.subject, f = new Float32Array(n); let k = 0;
+      const put1 = (v) => { if (k < n) f[k++] = v / 255; };
+      for (let i = 0; i + 3 < m.length; i += 4) {
+        const q = (T[m.charCodeAt(i)] << 18) | (T[m.charCodeAt(i + 1)] << 12) | (T[m.charCodeAt(i + 2)] << 6) | T[m.charCodeAt(i + 3)];
+        put1((q >> 16) & 255); if (m[i + 2] !== "=") put1((q >> 8) & 255); if (m[i + 3] !== "=") put1(q & 255);
+      }
+      out.subject = f;
+    }
+    return out;
   }
   function createLookBrowser() {
     const KEY = "brew.looks." + (cfg.appName || cfg.title);
@@ -717,8 +737,16 @@ function createToolPanel(cfg) {
   // ---- presets
   function applyPatch(p, name) {
     const keepOut = clone(state.out), keepView = clone(state.view), keepColour = state.deck;
+    // settings a tool asks to keep across looks (e.g. Depthtone's depth source and layer)
+    const path = (o, k) => k.split(".").reduce((a, b) => (a == null ? a : a[b]), o);
+    const kept = (cfg.keepOnLook || []).map((k) => [k, clone({ v: path(state, k) }).v]);
     state = merge(DEFAULTS, p);
     state.out = keepOut; state.view = keepView;
+    for (const [k, v] of kept) {
+      if (v === undefined || path(p, k) !== undefined) continue;
+      const ks = k.split("."), last = ks.pop(), host = ks.reduce((a, b) => (a[b] = a[b] || {}), state);
+      host[last] = v;
+    }
     if (hasDeck) state.deck = p && p.deck ? Colour.normalize(p.deck) : keepColour;   // looks without colour keep the current deck
     setOffList(p && p._off);
     presetName = name || "Custom";
@@ -853,7 +881,7 @@ function createToolPanel(cfg) {
     });
     refs.apply.addEventListener("click", () => { applyDown = false; if (skipClick) { skipClick = false; return; } applyNow(); });
     if (ui.brand) refs.meter = ui.brand.meter(12);
-    addSection("D", "OUTPUT", "output", by.output.concat([card("Output", [
+    addSection("D", "OUTPUT", "output", by.output.concat(hasBlend ? [Blend.card(ui, () => state)] : []).concat([card("Output", [
       selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; })
     ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
       checkRow("Hide source artwork afterwards", "out.hide"),
@@ -984,6 +1012,7 @@ function createToolPanel(cfg) {
     by.look.forEach((c) => sc.appendChild(c));
     sc.appendChild(secBar("OUTPUT", "output"));
     by.output.forEach((c) => sc.appendChild(c));
+    if (hasBlend) sc.appendChild(Blend.card(ui, () => state));   // spec zone 6: Blend card above Output
     sc.appendChild(card("Output", [
       selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }, { v: "prev", l: "Previous Brew result (chain)" }], () => { confirmArmed = false; })
     ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
