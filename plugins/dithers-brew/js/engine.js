@@ -10,6 +10,7 @@
 // Every layer = { name, color:[r,g,b], mask:Uint8Array(0..255 ink), blend }
 // ======================================================================
 const ASCII = require("./ascii.js");
+const ASCII3 = require("./ascii3.js");
 const LA = require("./lineart.js");
 
 const PI = Math.PI;
@@ -329,7 +330,7 @@ function inkFromPlane(demand, w, h, E, angle, phase, asc) {
     demand = d2;
   }
   if (E.engine === "halftone") return screenInk(demand, w, h, E.algo, E.cellPx, angle, E.aa, phase);
-  if (E.engine === "ascii") return ASCII.asciiInk(demand, w, h, asc);
+  if (E.engine === "ascii") return ASCII3.render(demand, w, h, asc);
   const D = DITHER_BY_ID[E.algo] || DITHERS[0];
   if (E.ps > 1.01) {
     const w2 = Math.max(2, Math.round(w / E.ps)), h2 = Math.max(2, Math.round(h / E.ps));
@@ -683,7 +684,7 @@ function gradeThreshold(rgb, w, h, pal, thr, spread) {
 function gradeAscii(rgb, w, h, pal, asc) {
   const near = nearestFn(pal);
   const masks = pal.map(() => new Uint8Array(w * h));
-  const k = Math.max(1, Math.round(asc.k)), cw = 6 * k, ch = 8 * k;
+  const G = ASCII3.geom(asc), cw = G.cw, ch = G.ch;
   const cols = Math.ceil(w / cw), rows = Math.ceil(h / ch);
   const idx = new Int16Array(cols * rows);
   for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
@@ -696,7 +697,7 @@ function gradeAscii(rgb, w, h, pal, asc) {
   const demand = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) demand[i] = 255 - asc.lum[i];
   const asc2 = Object.assign({}, asc, { cellMask: (cx, cy) => masks[idx[cy * cols + cx]] });
-  ASCII.asciiInk(demand, w, h, asc2);
+  ASCII3.render(demand, w, h, asc2);
   return masks;
 }
 
@@ -768,9 +769,16 @@ async function render(src, P, hooks) {
   };
   E.lsc = ((P.pixel || 1) * s) / (E.ps > 1.01 ? E.ps : 1);
   if (E.engine === "halftone" && E.cellPx < 3) notes.push("Cells are under 3 px; raise the document PPI or lower the LPI.");
+  // ASCII 3.0: algorithm, font, cell height in px (2.x looks keep Scale x 8 px), spacing, invert, seed
+  const cellPx = P.ascii.cell || (P.ascii.size || 4) * 8;
   const asc = {
-    k: Math.max(1, Math.round((P.ascii.size || 4) * s)),
-    ramp: ASCII.buildRamp(P.algo.ascii, P.ascii.custom, P.ascii.keepOrder),
+    algo: P.ascii.algo || (P.ascii.textMode ? "text" : "luma"),
+    font: P.ascii.font || "classic",
+    cell: cellPx * s,
+    spacing: (P.ascii.spacing || 0) * s,
+    invert: !!P.ascii.invert,
+    seed: P.ascii.seed | 0,
+    set: P.algo.ascii, custom: P.ascii.custom, keepOrder: P.ascii.keepOrder,
     lum: lum,
     edgeAmt: (P.ascii.edge || 0) / 100,
     textMode: !!P.ascii.textMode,
@@ -923,6 +931,27 @@ async function render(src, P, hooks) {
     notes.push(pal.length + " colours" + (skip >= 0 ? " (lightest left as paper)" : ""));
   }
 
+  // ASCII 3.0 Glyph colour "Cell colour": every glyph takes its cell's average picture colour
+  if (E.engine === "ascii" && P.ascii.glyph === "cell" && layers.length && layers.every((L) => L.mask)) {
+    const G = ASCII3.geom(asc), cols = Math.ceil(w / G.cw), rows = Math.ceil(h / G.ch);
+    const cc = new Float32Array(cols * rows * 3), cn = new Float32Array(cols * rows);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw), p = (y * w + x) * 3;
+      cc[j * 3] += rgb[p]; cc[j * 3 + 1] += rgb[p + 1]; cc[j * 3 + 2] += rgb[p + 2]; cn[j]++;
+    }
+    const rgba = new Uint8Array(n * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; let a = 0;
+      for (const L of layers) if (L.mask[i] > a) a = L.mask[i];
+      if (!a) continue;
+      const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw), c = cn[j] || 1;
+      rgba[i * 4] = cc[j * 3] / c; rgba[i * 4 + 1] = cc[j * 3 + 1] / c; rgba[i * 4 + 2] = cc[j * 3 + 2] / c; rgba[i * 4 + 3] = a;
+    }
+    layers.length = 0;
+    layers.push({ name: "ASCII cell colour", rgba, blend: "NORMAL" });
+    if (!paper) paper = [0, 0, 0];
+  }
+
   progress(1, 1, "done");
   return { w, h, layers, paper, notes, E };
 }
@@ -946,6 +975,11 @@ function composite(result, bg) {
     }
   }
   for (const L of result.layers) {
+    if (L.rgba) {   // full-colour layer (ASCII cell colour)
+      const q = L.rgba;
+      for (let i = 0, p = 0; i < n; i++, p += 3) { const t = q[i * 4 + 3] / 255; if (!t) continue; out[p] = out[p] * (1 - t) + q[i * 4] * t; out[p + 1] = out[p + 1] * (1 - t) + q[i * 4 + 1] * t; out[p + 2] = out[p + 2] * (1 - t) + q[i * 4 + 2] * t; }
+      continue;
+    }
     const m = L.mask, c = L.color;
     for (let i = 0, p = 0; i < n; i++, p += 3) {
       const a = m[i];

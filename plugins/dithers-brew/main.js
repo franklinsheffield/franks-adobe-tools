@@ -3,7 +3,8 @@
 // Frank's Dithers Brew - panel UI
 // ======================================================================
 const Engine = require("./js/engine.js");
-const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
+const { DEFAULTS, PRESETS, merge, clone, normAscii } = require("./js/state.js");
+const ASCII3 = require("./js/ascii3.js");
 const { PALETTES, TONEMAPS } = require("./js/palettes.js");
 const ASCII = require("./js/ascii.js");
 // shared suite core (synced from /shared by tools/sync-core.js)
@@ -22,7 +23,7 @@ const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = requi
 PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
 if (!DEFAULTS.blend) DEFAULTS.blend = clone(Blend.DEFAULT);   // Blending (all plugins), saved with the look
-let state = clone(DEFAULTS);
+let state = normAscii(clone(DEFAULTS));
 // values of the look loaded last: double-clicking a knob goes back to them (quick win ID-02)
 let lookBase = clone(state);
 let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
@@ -40,7 +41,9 @@ const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (st
 function withDeck(res) {
   const C = D();
   if (!Colour.active(C)) return res;
-  return C.inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
+  // ASCII 3.0 Glyph colour "Colour Deck": the deck recolours the glyph ink layers
+  const inks = C.inks || (state.engine === "ascii" && state.ascii && state.ascii.glyph === "deck");
+  return inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
 }
 
 const refs = {};
@@ -169,6 +172,23 @@ function sphereSrc(n) {
   return { w: n, h: n, c: 4, data };
 }
 const thumbCache = {};
+// ASCII 3.0 algorithm tiles: each one a live sample of that algorithm on the sphere
+function asciiTile(id) {
+  return () => {
+    const key = "a3:" + id;
+    if (thumbCache[key] == null) {
+      try {
+        const N = 64, src = sphereSrc(N), n = N * N, lum = new Uint8Array(n), demand = new Uint8Array(n);
+        for (let i = 0; i < n; i++) { const p = i * 4; lum[i] = Math.round(0.299 * src.data[p] + 0.587 * src.data[p + 1] + 0.114 * src.data[p + 2]); demand[i] = 255 - lum[i]; }
+        const m = ASCII3.render(demand, N, N, { algo: id, font: "classic", cell: 8, set: "classic", text: id === "weight" ? "O" : "FRANK", seed: 1, lum, edgeAmt: id === "edge" ? 0.7 : 0 });
+        const rgb = new Uint8Array(n * 3);
+        for (let i = 0; i < n; i++) rgb[i * 3] = rgb[i * 3 + 1] = rgb[i * 3 + 2] = m[i] ? 10 : 245;
+        thumbCache[key] = PNG.dataURL(rgb, N, N, 3);
+      } catch (e) { thumbCache[key] = ""; }
+    }
+    return thumbCache[key];
+  };
+}
 function algoList(engine) {
   if (engine === "halftone") return Engine.SCREENS;
   if (engine === "ascii") return ASCII.ASCII_SETS;
@@ -505,7 +525,7 @@ async function applyNow() {
 // ---------------------------------------------------------------- presets
 function applyPatch(p) {
   const keepOut = clone(state.out), keepView = clone(state.view), keepDeck = state.deck;
-  state = merge(DEFAULTS, p);
+  state = normAscii(merge(DEFAULTS, p));
   state.out = keepOut; state.view = keepView;
   state.deck = p && p.deck ? Colour.normalize(p.deck) : keepDeck;   // looks without colour keep the current deck
   // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
@@ -634,15 +654,28 @@ function build(root) {
   const keepRow = checkRow("Keep my order (light to dark)", "ascii.keepOrder");
   showIf(keepRow, () => state.algo.ascii === "custom");
   const textRowEl = textRow("Text", "ascii.text", "text to tile");
-  showIf(textRowEl, () => state.ascii.textMode);
-  const asBox = el("div", {}, [
+  showIf(textRowEl, () => ["text", "weight"].indexOf(state.ascii.algo) >= 0);
+  // ASCII 3.0: 20 algorithms in 4 groups of 5 (live sample tiles), font, size, spacing, invert, glyph colour
+  const algoGrids = ASCII3.GROUPS.map((g) => {
+    const opts = ASCII3.ALGOS.filter((a) => a.g === g).map((a) => ({ v: a.id, l: a.n, img: asciiTile(a.id) }));
+    return el("div", { class: "agroup" }, [el("div", { class: "lbl3", text: g }),
+      ui.grid("ascii.algo", opts, { cls: "ascii20", after: (v) => { state.ascii.textMode = v === "text"; } })]);
+  });
+  const edgeRow = sliderRow("Edge glyphs", "ascii.edge", 0, 100, 1, "%");
+  showIf(edgeRow, () => ["luma", "equal", "ordered", "bluenoise", "glitch", "edge"].indexOf(state.ascii.algo) >= 0);
+  const seedRow = ui.stepper("Seed", "ascii.seed", 1, 9999, 1, "");
+  showIf(seedRow, () => ["bluenoise", "glitch", "rain"].indexOf(state.ascii.algo) >= 0);
+  const asBox = el("div", {}, algoGrids.concat([
+    selectRow("Font", "ascii.font", ASCII3.FONTS.map((f) => ({ v: f.id, l: f.name }))),
+    ui.stepper("Size", "ascii.cell", 4, 96, 1, "px"),
     selectRow("Character set", "algo.ascii", ASCII.ASCII_SETS.map((s) => ({ v: s.id, l: s.name }))),
     customRow, keepRow,
-    sliderRow("Scale", "ascii.size", 1, 16, 1, "x"),
-    sliderRow("Edge glyphs", "ascii.edge", 0, 100, 1, "%"),
-    checkRow("Text halftone (tile my own words)", "ascii.textMode"),
+    ui.stepper("Spacing", "ascii.spacing", 0, 8, 1, "px"),
+    edgeRow, seedRow,
+    checkRow("Invert (light glyphs on dark)", "ascii.invert"),
+    segGroup("ascii.glyph", [{ v: "ink", l: "Ink" }, { v: "cell", l: "Cell colour" }, { v: "deck", l: "Colour Deck" }]),
     textRowEl
-  ]);
+  ]));
   showIf(asBox, () => state.engine === "ascii");
   const printRow = el("div", { class: "row wrap" }, [
     el("span", { class: "lbl", text: "Print" }),

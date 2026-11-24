@@ -8,7 +8,9 @@ const DEFAULTS = {
   lpi: 35, angle: 45, pixel: 1, aa: false,
   // 1.1: per-algorithm controls (defaults reproduce 1.0 output exactly)
   tune: { threshold: 50, strength: 100, direction: "h", weight: 2, spacing: 6, jitter: 0 },
-  ascii: { size: 4, custom: "FRANK", keepOrder: false, edge: 0, textMode: false, text: "FRANK" },
+  ascii: { size: 4, custom: "FRANK", keepOrder: false, edge: 0, textMode: false, text: "FRANK",
+           // 3.0: algorithm (20), built-in font, cell height px (0 = Scale x 8, as 2.x), spacing px, invert, seed, glyph colour
+           algo: "luma", font: "classic", cell: 0, spacing: 0, invert: false, seed: 1, glyph: "ink" },
   mono:  { ink: "#000000", paper: "" },
   tonal: { tone: "duonavy", inks: ["#7FA6C9", "#1B2A49"], paper: "#F4EBD0", angles: [45, 15, 75, 0, 60] },
   grade: { palette: "pico8", colors: ["#000000", "#1D2B53", "#7E2553", "#008751", "#AB5236", "#5F574F", "#C2C3C7", "#FFF1E8", "#FF004D", "#FFA300", "#FFEC27", "#00E436", "#29ADFF", "#83769C", "#FF77A8", "#FFCCAA"],
@@ -95,4 +97,12 @@ const PRESETS = [
   { cat: "Line Art", name: "Blue-noise stipple",             p: Object.assign(D("stipple"), { pixel: 1, fx: { pre: { on: true, contrast: 10 } } }) }
 ];
 
-module.exports = { DEFAULTS, PRESETS, merge, clone };
+// 2.x looks: Scale x becomes the 3.0 cell height (x 8 px); text mode becomes the Text halftone algorithm
+function normAscii(st) {
+  const a = st && st.ascii; if (!a) return st;
+  if (!a.cell) a.cell = (a.size || 4) * 8;
+  if (a.textMode && (!a.algo || a.algo === "luma")) a.algo = "text";
+  return st;
+}
+
+module.exports = { normAscii, DEFAULTS, PRESETS, merge, clone };
