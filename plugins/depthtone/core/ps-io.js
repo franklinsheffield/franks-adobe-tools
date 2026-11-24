@@ -57,8 +57,20 @@ function isGroup(layer) {
 }
 
 // Which things should we process?  [{ kind:"flat" } | { kind:"layer", layer }]
+// Brew 3.0 chaining (Frank, 2026-11-24): "prev" = the topmost Brew result group in the document
+// (any plugin's "<layer> - Frank's <Tool> Brew - <look>" group), so one plugin runs on another's result.
+function findPrevBrew(doc) {
+  let top = [];
+  try { top = Array.from(doc.layers || []); } catch (e) { top = []; }
+  return top.find((l) => { try { return l.visible !== false && /Frank's .+ Brew - /.test(String(l.name || "")); } catch (e) { return false; } }) || null;
+}
 function collectTargets(doc, source) {
   if (source === "flat") return [{ kind: "flat" }];
+  if (source === "prev") {
+    const g = findPrevBrew(doc);
+    if (!g) throw new Error("No earlier Brew result in this document. Apply another Brew plugin first, or set Source to Flattened document.");
+    return [{ kind: "layer", layer: g, prev: true }];
+  }
   let layers = [];
   try { layers = Array.from(doc.activeLayers || []); } catch (e) { layers = []; }
   layers = layers.filter((l) => !isGroup(l));
@@ -107,7 +119,9 @@ async function readSource(doc, target, view) {
   let bounds = { left: 0, top: 0, right: info.w, bottom: info.h };
   let layerId = null;
   if (target.kind === "layer") {
-    layerId = target.layer.id;
+    // a Brew result group can't be read by layer id ("Unsupported layer type" in PS 28, found on the
+    // Mac 2026-11-24): chaining reads the visible composite inside the group's bounds instead
+    layerId = target.prev ? null : target.layer.id;
     bounds = layerBounds(target.layer, info.w, info.h);
   }
   const bw = bounds.right - bounds.left, bh = bounds.bottom - bounds.top;
@@ -118,6 +132,14 @@ async function readSource(doc, target, view) {
     const cw = Math.min(bw, size), ch = Math.min(bh, size);
     const l = bounds.left + Math.floor((bw - cw) / 2), t = bounds.top + Math.floor((bh - ch) / 2);
     src = await getPixels(doc, layerId, { left: l, top: t, right: l + cw, bottom: t + ch });
+    origin = { left: l, top: t };
+  } else if (view.kind === "region") {
+    // Brew 3.0 zoom: a rect of the source (relative to the layer bounds), read at view.scale (<= 1)
+    const r = view.rect, sc = Math.min(1, view.scale || 1);
+    const l = bounds.left + r.l, t = bounds.top + r.t;
+    const rb = { left: l, top: t, right: l + r.w, bottom: t + r.h };
+    src = sc < 1 ? await getPixels(doc, layerId, rb, { width: Math.max(1, Math.round(r.w * sc)), height: Math.max(1, Math.round(r.h * sc)) }) : await getPixels(doc, layerId, rb);
+    scale = src.w / r.w;
     origin = { left: l, top: t };
   } else if (view.kind === "whole") {
     const size = view.size || 360;
@@ -213,6 +235,12 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      // chaining: the active layer sits inside the previous Brew group, so Photoshop made the new
+      // group inside it; move it out, above that group, before the old one is hidden (Mac 2026-11-24)
+      if (opts.placeAbove && group) {
+        try { await group.move(opts.placeAbove, constants.ElementPlacement.PLACEBEFORE); }
+        catch (e) { warnings.push("Could not move the new group above the previous result: " + e.message); }
+      }
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
@@ -294,7 +322,40 @@ async function swapToSource(doc, group, ids) {
   }, { commandName: CFG.appName + ": re-edit" });
 }
 
+// ---- Colour 3.0: swatch sync + palette files ------------------------------
+// Photoshop's foreground / background colours as "#RRGGBB" (null when unreadable)
+function getFgBg() {
+  const hx = (c) => { try { const h = c && c.rgb && c.rgb.hexValue; return h ? "#" + String(h).toUpperCase() : null; } catch (e) { return null; } };
+  return { fg: hx(app.foregroundColor), bg: hx(app.backgroundColor) };
+}
+// adds each colour to the Swatches panel (named "<name> 1..n"); returns the count added
+async function addSwatches(colors, name) {
+  const list = colors.map((h, i) => {
+    const c = String(h).replace("#", "");
+    return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Brew") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
+  });
+  await core.executeAsModal(async () => action.batchPlay(list, {}), { commandName: CFG.appName + ": add swatches" });
+  return list.length;
+}
+// open a palette file (.ase .aco .gpl .txt .hex): resolves { name, data } or null
+async function openPaletteFile() {
+  const f = await fsys.getFileForOpening({ types: ["ase", "aco", "gpl", "txt", "hex"] });
+  if (!f) return null;
+  const ext = String(f.name || "").toLowerCase().split(".").pop(), bin = ext === "ase" || ext === "aco";
+  const data = bin ? await f.read({ format: storage.formats.binary }) : await f.read();
+  return { name: f.name, data };
+}
+// save text or bytes (Uint8Array) through the system Save dialog
+async function savePaletteFile(name, data) {
+  const ext = String(name).split(".").pop();
+  const f = await fsys.getFileForSaving(name, { types: [ext] });
+  if (!f) return false;
+  if (typeof data === "string") await f.write(data);
+  else await f.write(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), { format: storage.formats.binary });
+  return true;
+}
 module.exports = {
-  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  getFgBg, addSwatches, openPaletteFile, savePaletteFile,
+  findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

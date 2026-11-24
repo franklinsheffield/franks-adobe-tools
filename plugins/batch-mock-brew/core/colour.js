@@ -15,8 +15,15 @@
 //     tone: { n, bands: [{ c: "#RRGGBB", a: 0..100, b: 0..100 }] (6 slots),
 //             trans: "hard" | "smooth" | "dither", spread: 0..100,
 //             bg: "#RRGGBB", knockout: bool },
-//     pal:  { colors: ["#RRGGBB", ...], count: 2..16, match: "nearest" | "dither" } }
+//     pal:  { colors: ["#RRGGBB", ...], count: 2..16, match: "nearest" | "dither"
+//             | "none" | "bayer" | "floyd" | "atkinson" | "blue", metric: "oklab" | "rgb", locks: [bool] },
+//     3.0:  mode "gradient" | "inks" | "grade" as well;
+//           grad: { stops: [{ c, p: 0..100 }] (2..16) }, ink: { n: 1..3, paper, inks: [{ c, g, lo, hi }] },
+//           adj: { hue, sat, light, temp, tint, sh/mid/hi: { h, a }, replace: [{ from, to, tol, soft, on }] }
+//           (applied before every mode), blend: PS blend mode of the deck layer, proof (preview only),
+//           brandLock: bool (colours snap to the team brand palette) }
 // ======================================================================
+const K = require("./colour3.js");   // 3.0 colour tools (gradient, inks, grade, reduction, proof...)
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const isHex = (h) => /^#[0-9A-Fa-f]{6}$/.test(String(h));
 function hexToRgb(h) { h = String(h).replace("#", ""); return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0]; }
@@ -79,7 +86,10 @@ const PALETTES = [
 const DEFAULT_COLOUR = {
   mode: "off", mix: 100, contrast: 0, solo: false, inks: false,
   tone: { n: 5, bands: padBands(TONEMAPS[0].bands), trans: "dither", spread: 50, bg: TONEMAPS[0].bg, knockout: false },
-  pal: { colors: PALETTES[12].colors.slice(), count: 7, match: "nearest" }
+  pal: { colors: PALETTES[12].colors.slice(), count: 7, match: "nearest", metric: "oklab", locks: [] },
+  grad: { stops: K.GRADIENTS[0].stops.map((x) => Object.assign({}, x)) },
+  ink: { n: 2, paper: K.INKSETS[0].paper, inks: K.INKSETS[0].inks.map((x) => Object.assign({}, x)).concat([{ c: "#FFE800", g: 0.8, lo: 0, hi: 60 }]).slice(0, 3) },
+  adj: JSON.parse(JSON.stringify(K.DEFAULT_ADJ)), blend: "normal", proof: "off", brandLock: false
 };
 function padBands(b) {
   const out = b.map((x) => ({ c: x.c, a: x.a, b: x.b }));
@@ -98,6 +108,17 @@ function normalize(c) {
   out.pal = Object.assign(cloneColour(DEFAULT_COLOUR).pal, c.pal || {});
   out.pal.colors = (out.pal.colors || []).filter(isHex).slice(0, MAX_SWATCHES);
   if (out.pal.colors.length < 1) out.pal.colors = ["#000000", "#FFFFFF"];
+  if (!c.pal || !c.pal.metric) out.pal.metric = c.pal ? "rgb" : "oklab";   // saved 1.x/2.x decks keep their exact match
+  const D = cloneColour(DEFAULT_COLOUR);
+  out.grad = Object.assign(D.grad, c.grad || {});
+  out.grad.stops = (out.grad.stops || []).filter((x) => x && isHex(x.c)).slice(0, K.MAX_STOPS);
+  if (out.grad.stops.length < 2) out.grad.stops = D.grad.stops;
+  out.ink = Object.assign(D.ink, c.ink || {});
+  out.ink.inks = (out.ink.inks || []).filter((x) => x && isHex(x.c)).slice(0, 3);
+  while (out.ink.inks.length < 3) out.ink.inks.push({ c: "#000000", g: 1, lo: 0, hi: 100 });
+  out.ink.n = clamp(Math.round(out.ink.n) || 2, 1, 3);
+  out.adj = Object.assign(D.adj, c.adj || {});
+  out.adj.replace = (out.adj.replace || []).slice(0, 4);
   return out;
 }
 function applyToneMap(C, tm) {
@@ -158,8 +179,31 @@ function contrastLUT(c) {
 // Pixels with alpha 0 in the input stay transparent.
 function render(img, C) {
   C = normalize(C);
+  // 3.0: grade first (hue/sat/temp, tone wheels, colour replace) so every mode sees it
+  if (K.adjActive(C.adj) && C.mode !== "off") img = { w: img.w, h: img.h, c: img.c || 4, data: K.grade(img.data, img.c || 4, C.adj) };
   const w = img.w, h = img.h, ch = img.c || 4, d = img.data, n = w * h, out = new Uint8ClampedArray(n * 4);
   const cl = contrastLUT(C.contrast);
+  if (C.mode === "gradient" || C.mode === "inks") {
+    const lut = C.mode === "gradient" ? K.gradLUT(C.grad.stops) : K.inkLUT(C.ink);
+    for (let i = 0; i < n; i++) {
+      const s = i * ch, o = i * 4;
+      if (ch === 4 && d[s + 3] === 0) continue;
+      const v = cl[Math.round(0.299 * d[s] + 0.587 * d[s + 1] + 0.114 * d[s + 2])] * 3;
+      out[o] = lut[v]; out[o + 1] = lut[v + 1]; out[o + 2] = lut[v + 2]; out[o + 3] = 255;
+    }
+    return out;
+  }
+  if (C.mode === "grade") {
+    for (let i = 0; i < n; i++) { const s = i * ch, o = i * 4; if (ch === 4 && d[s + 3] === 0) continue; out[o] = cl[d[s]]; out[o + 1] = cl[d[s + 1]]; out[o + 2] = cl[d[s + 2]]; out[o + 3] = 255; }
+    return out;
+  }
+  if (C.mode === "palette" && (C.pal.metric === "oklab" || !/^(nearest|dither)$/.test(C.pal.match))) {
+    const cols = C.pal.colors.slice(0, clamp(C.pal.count | 0, 1, MAX_SWATCHES)).map(hexToRgb);
+    const dm = C.pal.match === "nearest" ? "none" : C.pal.match === "dither" ? "bayer" : C.pal.match;
+    let src = img;
+    if (C.contrast) { const dd = new Uint8ClampedArray(d.length); for (let i = 0; i < d.length; i++) dd[i] = ch === 4 && i % 4 === 3 ? d[i] : cl[d[i]]; src = { w, h, c: ch, data: dd }; }
+    return K.reduce(src, cols, dm, BAYER);
+  }
   if (C.mode === "tone") {
     const tb = toneTable(C.tone), bg = hexToRgb(C.tone.bg), ko = !!C.tone.knockout, mode = C.tone.trans || "dither";
     for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
@@ -254,7 +298,24 @@ function strip(C, width) {
   return { rgb: out, w, h: 8 };
 }
 
-const active = (C) => !!C && (C.mode === "tone" || C.mode === "palette");
-const label = (C) => !active(C) ? "" : C.mode === "tone" ? "Tone Map" : "Palette";
+const MODES = ["tone", "palette", "gradient", "inks", "grade"];
+const LABELS = { tone: "Tone Map", palette: "Palette", gradient: "Gradient Map", inks: "Inks", grade: "Grade" };
+const active = (C) => !!C && MODES.includes(C.mode);
+const label = (C) => !active(C) ? "" : C.mode === "inks" ? ["", "Monotone", "Duotone", "Tritone"][clamp((C.ink && C.ink.n) || 2, 1, 3)] : LABELS[C.mode];
+// colours the current mode uses (for Randomise, Spot layers, swatch export)
+function colours(C) {
+  C = normalize(C);
+  if (C.mode === "tone") return C.tone.bands.slice(0, C.tone.n).map((b) => b.c);
+  if (C.mode === "gradient") return C.grad.stops.map((x) => x.c);
+  if (C.mode === "inks") return [C.ink.paper].concat(C.ink.inks.slice(0, C.ink.n).map((k) => k.c));
+  return C.pal.colors.slice(0, C.pal.count);
+}
+function setColours(C, cols) {
+  if (C.mode === "tone") cols.forEach((h, i) => { if (C.tone.bands[i]) C.tone.bands[i].c = h; });
+  else if (C.mode === "gradient") cols.forEach((h, i) => { if (C.grad.stops[i]) C.grad.stops[i].c = h; });
+  else if (C.mode === "inks") { C.ink.paper = cols[0] || C.ink.paper; cols.slice(1).forEach((h, i) => { if (C.ink.inks[i]) C.ink.inks[i].c = h; }); }
+  else cols.forEach((h, i) => { C.pal.colors[i] = h; });
+  return C;
+}
 
-module.exports = { DEFAULT_COLOUR, TONEMAPS, PALETTES, MAX_BANDS, MAX_SWATCHES, normalize, cloneColour, applyToneMap, evenSpread, reverse, toneTable, render, overPreview, extract, strip, active, label, hexToRgb, rgbToHex };
+module.exports = { K, MODES, colours, setColours, DEFAULT_COLOUR, TONEMAPS, PALETTES, MAX_BANDS, MAX_SWATCHES, normalize, cloneColour, applyToneMap, evenSpread, reverse, toneTable, render, overPreview, extract, strip, active, label, hexToRgb, rgbToHex };

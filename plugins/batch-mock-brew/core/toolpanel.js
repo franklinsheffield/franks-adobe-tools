@@ -76,8 +76,11 @@ function createToolPanel(cfg) {
   }
   // the values of the look that was loaded last: double-clicking a knob goes back to them
   let lookBase = clone(state);
+  // Brew 3.0 (cfg.ui3, CRT Phaser pilot first): Night Arcade style, 7 fixed zones, hover help
+  if (cfg.ui3) cfg.brand = "console";
   const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title,
-    getDefault: (path) => getPath(lookBase, path), onSelect: (i) => showKeys(i) });
+    getDefault: (path) => getPath(lookBase, path), onSelect: (i) => showKeys(i),
+    arcade: !!cfg.ui3, helpText: cfg.ui3 ? (cfg.help || {}) : null });
   // live key hints for the selected knob (Blender-style status line, research quick win ID-13)
   const KEYS_IDLE = QW.keysIdle(cfg.cancellable ? "a running Apply" : "");
   function showKeys(i) {
@@ -130,7 +133,7 @@ function createToolPanel(cfg) {
   }
   // a colour row bound to a "#RRGGBB" string at `path`
   function colourRow(label, path) {
-    return ui.row(label, hexField(() => getPath(state, path), (v) => ui.setPath(state, path, v)));
+    return ui.helpAt(ui.row(label, hexField(() => getPath(state, path), (v) => ui.setPath(state, path, v))), { key: path, name: label, kind: "swatch" });
   }
 
   // ---- preview
@@ -139,7 +142,7 @@ function createToolPanel(cfg) {
     onError: (e) => { setStatus("Preview problem: " + (e && e.message ? e.message : e), true); console.error(e); }
   });
   const schedulePreview = (delay) => loop.schedule(delay);
-  function tryLayerTarget(doc) { try { return PS.collectTargets(doc, "layer")[0]; } catch (e) { return { kind: "flat" }; } }
+  function tryLayerTarget(doc) { try { return PS.collectTargets(doc, state.out.source === "prev" ? "prev" : "layer")[0]; } catch (e) { return { kind: "flat" }; } }
 
   async function previewOnce() {
     setStatus("Rendering preview...");
@@ -153,11 +156,12 @@ function createToolPanel(cfg) {
       setStatus(r.status != null ? r.status : ("Preview in " + (Date.now() - t0) + " ms"), !!r.err);
       return;
     }
+    if (cfg.ui3 && zoom !== null) return previewZoomed(t0);
     let src, scale = 1;
     const doc = PS.activeDoc();
     if (doc) {
       const target = (state.out.source !== "flat") ? tryLayerTarget(doc) : { kind: "flat" };
-      const r = await PS.readSource(doc, target, { kind: state.view.kind, size: state.view.size });
+      const r = await PS.readSource(doc, target, { kind: cfg.ui3 ? "whole" : state.view.kind, size: state.view.size });
       src = r.src; scale = r.scale;
       if (cfg.prepareSource) { try { await cfg.prepareSource(doc, r, "preview"); } catch (e) { console.error(e); } }
       docCache = { ppi: r.ppi, name: r.info.name, w: r.info.w, h: r.info.h, demo: false };
@@ -175,7 +179,14 @@ function createToolPanel(cfg) {
     lastShown = { rgb, w: res.w, h: res.h, before: cfg.split ? IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null };
     paintPreview();
     sizePreview(res.w, res.h);
-    if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
+    if (cfg.ui3) {
+      // remember the whole picture for the navigator and the zoom maths
+      fitDims = { W: Math.max(1, Math.round(src.w / scale)), H: Math.max(1, Math.round(src.h / scale)) };
+      navThumb = { rgb: lastShown.before || rgb, w: res.w, h: res.h };
+      showZoom();
+      paintLookBar();
+    }
+    else if (refs.scr) { refs.scrL.textContent = "CH1  " + String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase(); refs.scrR.textContent = res.w + " x " + res.h + " PX"; }
     setStatus("Preview " + res.w + " x " + res.h + " in " + (Date.now() - t0) + " ms  |  " + res.layers.length + " layer" + (res.layers.length === 1 ? "" : "s"));
   }
 
@@ -227,15 +238,218 @@ function createToolPanel(cfg) {
     previewWH = [w, h];
     const avail = boxInner();
     fitW = refs.previewBox.clientWidth || 0;
-    const maxH = layout ? layout.previewMaxHeight() : Infinity;
+    let maxH = layout ? layout.previewMaxHeight() : Infinity;
+    if (cfg.ui3 && layout) {
+      // rule 10: pinned zones (header, preview, effects bar, footer) take at most 50% of the panel
+      const H = (document.getElementById("app") || {}).clientHeight || 820;
+      const imgH = refs.preview.clientHeight || 0;
+      const fixed = (layout.pinned.clientHeight || 0) - imgH + (layout.footer ? layout.footer.clientHeight || 0 : 0);
+      maxH = Math.max(90, Math.min(Math.round(H * 0.38), Math.round(H * 0.5 - fixed)));
+      if (userPrevH) maxH = Math.max(90, Math.min(maxH, userPrevH));
+    }
     const dw = Math.max(1, Math.floor(Math.min(avail, w, maxH * w / h))), dh = Math.max(1, Math.round(h * dw / w));
     refs.preview.style.width = dw + "px";
     refs.preview.style.height = dh + "px";
     refs.preview.style.maxWidth = "none";
     refs.preview.style.flexShrink = "0";
   }
-  function refitPreview() { if (previewWH && refs.previewBox && (refs.previewBox.clientWidth || 0) !== fitW) sizePreview(previewWH[0], previewWH[1]); }
+  function refitPreview(force) { if (previewWH && refs.previewBox && (force === true || (refs.previewBox.clientWidth || 0) !== fitW)) { if (cfg.ui3 && zoom !== null) schedulePreview(60); else sizePreview(previewWH[0], previewWH[1]); } }
   try { window.addEventListener("resize", refitPreview); } catch (e) { /* host without resize events */ }
+
+
+  // ---- Brew 3.0 preview zoom and pan (shared/zoom.js; spec "Preview zoom and pan")
+  const Z = require("./zoom.js");
+  let zoom = null, zc = { x: 0.5, y: 0.5 }, gridOn = false, fitDims = null, navThumb = null, lastRect = null, demoFull = null, userPrevH = 0;
+  function boxSize() {
+    const bw = Math.max(60, boxInner());
+    let bh = 260;
+    if (layout) {
+      const H = (document.getElementById("app") || {}).clientHeight || 820;
+      const imgH = refs.preview.clientHeight || 0;
+      const fixed = (layout.pinned.clientHeight || 0) - imgH + (layout.footer ? layout.footer.clientHeight || 0 : 0);
+      bh = Math.max(90, Math.min(Math.round(H * 0.38), Math.round(H * 0.5 - fixed)));
+      if (userPrevH) bh = Math.max(90, Math.min(bh, userPrevH));
+    }
+    return { bw, bh };
+  }
+  function dims() {
+    if (fitDims) return fitDims;
+    const doc = PS.activeDoc();
+    if (doc) { const i = PS.docInfo(doc); return { W: i.w, H: i.h }; }
+    return { W: state.view.size, H: Math.round(state.view.size * 0.75) };
+  }
+  function zoomNow() {
+    const { W, H } = dims(), { bw, bh } = boxSize();
+    if (zoom === null) return Math.min(1, Z.fitZoom(W, H, bw, bh), state.view.size / Math.max(W, H));
+    if (zoom === "fill") return Z.fillZoom(W, H, bw, bh);
+    return zoom;
+  }
+  function setZoom(z, at) {
+    if (z === "fit" || z === null) { zoom = null; zc = { x: 0.5, y: 0.5 }; }
+    else {
+      if (z !== "fill") { z = Z.clampZ(z); const { W, H } = dims(), { bw, bh } = boxSize(); if (z <= Z.fitZoom(W, H, bw, bh) + 1e-6) { setZoom(null); return; } }
+      if (at) zc = at;
+      zoom = z;
+    }
+    showZoom();
+    schedulePreview(0);
+  }
+  function showZoom() {
+    if (!refs.zoomBox) return;
+    refs.zoomBox.draw(Z.pctText(zoomNow()), false);
+    if (refs.nav) refs.nav.style.display = zoom === null ? "none" : "";
+    if (refs.gridBtn) { if (gridOn) refs.gridBtn.classList.add("on"); else refs.gridBtn.classList.remove("on"); }
+    if (refs.fitBtn) { if (zoom === null) refs.fitBtn.classList.add("on"); else refs.fitBtn.classList.remove("on"); }
+    if (refs.oneBtn) { if (zoom === 1) refs.oneBtn.classList.add("on"); else refs.oneBtn.classList.remove("on"); }
+  }
+  function resizeNearest(src, w, h) {
+    const c = src.c || 4, out = new Uint8Array(w * h * c);
+    for (let y = 0; y < h; y++) { const sy = Math.min(src.h - 1, Math.floor(y * src.h / h)); for (let x = 0; x < w; x++) { const sx = Math.min(src.w - 1, Math.floor(x * src.w / w)); out.set(src.data.subarray((sy * src.w + sx) * c, (sy * src.w + sx) * c + c), (y * w + x) * c); } }
+    return { w, h, c, data: out };
+  }
+  async function previewZoomed(t0) {
+    const z = zoomNow(), { W, H } = dims(), { bw, bh } = boxSize();
+    const R = Z.region(W, H, z, bw, bh, zc.x, zc.y);
+    zc = { x: R.cx, y: R.cy }; lastRect = R;
+    const s = Math.min(1, z);
+    let src, scale;
+    const doc = PS.activeDoc();
+    if (doc) {
+      const target = (state.out.source !== "flat") ? tryLayerTarget(doc) : { kind: "flat" };
+      const r = await PS.readSource(doc, target, { kind: "region", rect: R, scale: s });
+      src = r.src; scale = r.scale;
+      if (cfg.prepareSource) { try { await cfg.prepareSource(doc, r, "preview"); } catch (e) { console.error(e); } }
+    } else {
+      if (!demoFull || demoFull.w !== W || demoFull.h !== H) demoFull = Engine.demoImage(W, H);
+      src = Z.crop(demoFull, R);
+      if (s < 1) src = resizeNearest(src, Math.max(1, Math.round(R.w * s)), Math.max(1, Math.round(R.h * s)));
+      scale = src.w / R.w;
+    }
+    const res = await Engine.render(src, engineState({ scale, fullH: H, fullW: W }), { yield: tick });
+    let rgb = Engine.composite(res, { type: state.view.bg }, src);
+    if (hasDeck) applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase);
+    let before = cfg.split ? IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null;
+    let ow = res.w, oh = res.h;
+    if (z > 1) {
+      ow = R.vw; oh = R.vh;
+      rgb = Z.enlarge(rgb, res.w, res.h, ow, oh);
+      if (before) before = Z.enlarge(before, res.w, res.h, ow, oh);
+      if (gridOn && z >= 8) { Z.drawGrid(rgb, ow, oh, res.w, res.h); if (before) Z.drawGrid(before, ow, oh, res.w, res.h); }
+    }
+    lastShown = { rgb, w: ow, h: oh, before };
+    paintPreview();
+    refs.preview.style.width = R.vw + "px"; refs.preview.style.height = R.vh + "px";
+    refs.preview.style.maxWidth = "none"; refs.preview.style.flexShrink = "0";
+    if (refs.nav && navThumb) {
+      const t = navThumb;
+      refs.nav.src = PNG.dataURL(Z.navigator(t.rgb, t.w, t.h, R, W, H), t.w, t.h, 3);
+      const nw = 84; refs.nav.style.width = nw + "px"; refs.nav.style.height = Math.round(nw * t.h / t.w) + "px";
+    }
+    showZoom();
+    paintLookBar();
+    setStatus("Preview " + Z.pctText(z) + "% (" + R.w + " x " + R.h + " px of " + W + " x " + H + ") in " + (Date.now() - t0) + " ms");
+  }
+  // where a press on the preview lands in document pixels (0..1)
+  function docPoint(e) {
+    const { u, v } = previewXY(e);
+    if (zoom === null || !lastRect) return { x: u, y: v };
+    const { W, H } = dims();
+    return { x: (lastRect.l + u * lastRect.w) / W, y: (lastRect.t + v * lastRect.h) / H };
+  }
+  function wireZoomPointer() {
+    const img = refs.preview;
+    let d = null, lastUp = 0;
+    const nearSplit = (e) => {
+      if (!cfg.split || !state.view.split) return false;
+      const { u } = previewXY(e); let w = 300;
+      try { w = img.getBoundingClientRect().width || 300; } catch (err) { /* no layout */ }
+      return Math.abs(u * 100 - state.view.split) * w / 100 < 10;
+    };
+    img.addEventListener("mousedown", (e) => {
+      const at = previewXY(e);
+      for (const f of previewClickers) { try { if (f(at, e)) return; } catch (err) { console.error(err); } }
+      d = { x: e.clientX, y: e.clientY, split: nearSplit(e), zc: Object.assign({}, zc), moved: false, alt: e.altKey };
+      if (e.preventDefault) e.preventDefault();
+    });
+    const move = (e) => {
+      if (!d) return;
+      if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 3) d.moved = true;
+      if (!d.moved) return;
+      if (d.split) { state.view.split = Math.max(1, Math.min(99, Math.round(previewXY(e).u * 100))); paintPreview(); return; }
+      if (zoom === null || !lastRect) return;
+      const { W, H } = dims(), z = zoomNow();
+      zc = { x: d.zc.x - (e.clientX - d.x) / (z * W), y: d.zc.y - (e.clientY - d.y) / (z * H) };
+      schedulePreview(40);
+    };
+    const up = (e) => {
+      if (!d) return;
+      const was = d; d = null;
+      if (was.moved) return;
+      const t = Date.now(), dbl = t - lastUp < 350; lastUp = dbl ? 0 : t;
+      if (dbl) { setZoom(null); return; }
+      const p = docPoint(e), z = zoomNow();
+      setZoom(was.alt || e.altKey ? Z.step(z, -1) : Z.step(z, 1), p);
+    };
+    img.addEventListener("mousemove", move);
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+    img.addEventListener("dblclick", () => setZoom(null));
+    // keys while the pointer is over the preview: + / - zoom, 0 = Fit, 1 = 100%
+    let over = false;
+    refs.previewBox.addEventListener("mouseover", () => { over = true; });
+    refs.previewBox.addEventListener("mouseout", (e) => { const to = e.relatedTarget; if (!to || !refs.previewBox.contains(to)) over = false; });
+    document.addEventListener("keydown", (e) => {
+      if (!over) return;
+      const a = document.activeElement;
+      if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;
+      const k = e.key;
+      if (k === "+" || k === "=") setZoom(Z.step(zoomNow(), 1));
+      else if (k === "-" || k === "_") setZoom(Z.step(zoomNow(), -1));
+      else if (k === "0") setZoom(null);
+      else if (k === "1") setZoom(1);
+    });
+  }
+  // zoom toolbar: Fit, 1:1, -, % box (LCD, type 5-3200, click for presets, drag the label), +, pixel grid
+  function zoomBar() {
+    const H = ui.helpAt;
+    const b = (txt, key, name, fn, cls) => { const n = el("button", { class: "tbtn" + (cls ? " " + cls : ""), text: txt }); n.addEventListener("click", fn); H(n, { key, name, kind: "button" }); return n; };
+    refs.fitBtn = b("Fit", "zoom.fit", "Fit", () => setZoom(null));
+    refs.oneBtn = b("1:1", "zoom.one", "100%", () => setZoom(1));
+    const minus = b("-", "zoom.out", "Zoom out", () => setZoom(Z.step(zoomNow(), -1)), "zstep");
+    const plus = b("+", "zoom.in", "Zoom in", () => setZoom(Z.step(zoomNow(), 1)), "zstep");
+    refs.gridBtn = b("Grid", "zoom.grid", "Pixel grid", () => { gridOn = !gridOn; showZoom(); if (zoomNow() >= 8) schedulePreview(0); });
+    const vb = ui.brand.valueBox({ cls: "zbox" });
+    refs.zoomBox = vb;
+    const lab = el("div", { class: "dlabel scrub zlab", text: "%" });
+    const commit = () => { vb.input.__typing = false; const v = require("./controls.js").evalBox(vb.input.value, zoomNow() * 100); if (v != null) setZoom(v / 100); else showZoom(); };
+    vb.input.addEventListener("keydown", (e) => { const k = e.key || e.code; if (k === "Enter" || e.keyCode === 13) commit(); else if (k !== "Tab") vb.input.__typing = true; });
+    vb.input.addEventListener("change", commit);
+    vb.input.addEventListener("blur", () => { if (vb.input.__typing) commit(); });
+    // click the box: preset list
+    const list = el("div", { class: "zlist" }, Z.PRESETS.map(([l, v]) => { const n = el("div", { class: "zitem", text: l }); n.addEventListener("mousedown", (e) => { setZoom(v); list.style.display = "none"; if (e.stopPropagation) e.stopPropagation(); }); return n; }));
+    list.style.display = "none";
+    vb.node.addEventListener("mousedown", () => { list.style.display = list.style.display === "none" ? "" : "none"; });
+    document.addEventListener("mousedown", (e) => { if (!vb.node.contains(e.target) && !list.contains(e.target)) list.style.display = "none"; });
+    // drag the % label to scrub the zoom
+    let sd = null;
+    const smove = (e) => { if (sd) setZoom(Z.clampZ(sd.z * Math.pow(2, (e.clientX - sd.x) / 60))); };
+    const sup = () => { sd = null; document.removeEventListener("mousemove", smove); document.removeEventListener("mouseup", sup); };
+    lab.addEventListener("mousedown", (e) => { sd = { x: e.clientX, z: zoomNow() }; document.addEventListener("mousemove", smove); document.addEventListener("mouseup", sup); if (e.preventDefault) e.preventDefault(); });
+    const wrap = el("div", { class: "zwrap" }, [vb.node, list]);
+    H(wrap, { key: "zoom.pct", name: "Zoom", kind: "info", min: 5, max: 3200, unit: "%" });
+    H(lab, { key: "zoom.pct", name: "Zoom", kind: "info" });
+    return el("div", { class: "ptools zbar" }, [refs.fitBtn, refs.oneBtn, minus, wrap, lab, plus, refs.gridBtn]);
+  }
+  // drag the bottom edge of the preview bezel to make it taller or shorter (still within rule 10)
+  function bezelHandle() {
+    const h = el("div", { class: "bezel" });
+    let d = null;
+    const mv = (e) => { if (!d) return; userPrevH = Math.max(90, d.h + (e.clientY - d.y)); refitPreview(true); };
+    const upf = () => { if (!d) return; d = null; document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", upf); schedulePreview(0); };
+    h.addEventListener("mousedown", (e) => { d = { y: e.clientY, h: boxSize().bh }; document.addEventListener("mousemove", mv); document.addEventListener("mouseup", upf); if (e.preventDefault) e.preventDefault(); });
+    ui.helpAt(h, { key: "zoom.bezel", name: "Preview height", kind: "info" });
+    return h;
+  }
 
   // ---- apply
   let working = false, cancelReq = false;
@@ -243,8 +457,11 @@ function createToolPanel(cfg) {
   function markApplyReady(ok) {
     const b = refs.apply;
     if (!b) return;
-    if (ok) { b.classList.remove("blocked"); b.setAttribute("title", "Apply to the document as a new layer group (one undo step)"); }
-    else { b.classList.add("blocked"); b.setAttribute("title", "Open a document first. The preview is using the demo image."); }
+    const why = ok ? "Apply to the document as a new layer group (one undo step)" : "Open a document first. The preview is using the demo image.";
+    if (ok) b.classList.remove("blocked"); else b.classList.add("blocked");
+    // 3.0: no native tooltip (it doubled up with the help pop-up on the Mac); the reason goes in the pop-up
+    if (cfg.ui3) { b.removeAttribute("title"); if (b.__help) b.__help.note = ok ? "" : why; }
+    else b.setAttribute("title", why);
   }
   // Esc cancels a running Apply (UX-04)
   try {
@@ -302,7 +519,7 @@ function createToolPanel(cfg) {
         let res = await Engine.render(r.src, engineState({ scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
         if (hasDeck && Colour.active(D())) { setStatus("Colour Deck..."); res = addDeckLayer(res, D(), Engine, r.src, cfg.colourBase); }
         setStatus("Writing layers...");
-        const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
+        const base = t.kind === "layer" && !t.prev ? (t.layer.name + " - ") : "";
         const tag = cfg.reEdit ? " #" + newTag() : "";
         const hiddenIds = [];
         const warnings = await PS.writeResult(doc, res, {
@@ -310,7 +527,8 @@ function createToolPanel(cfg) {
           origin: r.origin,
           groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName) + tag,
           hideSource: state.out.hide,
-          hideLayers: t.kind === "layer" ? [t.layer] : null
+          hideLayers: t.kind === "layer" ? [t.layer] : null,
+          placeAbove: t.prev ? t.layer : null
         });
         if (tag) await rememberLook(tag.slice(2), hiddenIds);
         done++;
@@ -406,6 +624,7 @@ function createToolPanel(cfg) {
         const img = el("img", { class: "lookimg" });
         const c = el("div", { class: "look", title: (pr.cat ? pr.cat + " - " : "") + pr.name + ": click to load" }, [img, el("div", { class: "lookname", text: pr.name })]);
         c.addEventListener("click", () => { applyPatch(pr.p, pr.name); mark(); });
+        if (ui.helpAt) ui.helpAt(c, { key: "look", name: pr.name, kind: "grid", note: pr.cat ? "Group: " + pr.cat : "" });
         grid.appendChild(c);
         return { pr, img, node: c };
       });
@@ -504,6 +723,7 @@ function createToolPanel(cfg) {
     setOffList(p && p._off);
     presetName = name || "Custom";
     lookBase = clone(state);
+    if (cfg.ui3) paintLookBar();
     touch();
   }
   function stateForSave() { const s = clone(state); delete s.view; delete s.out; const off = Object.keys(offFx); if (off.length) s._off = off; return s; }
@@ -648,6 +868,166 @@ function createToolPanel(cfg) {
     if (lookBrowser) lookBrowser.start();
   }
 
+
+  // ---- Brew 3.0 build (spec "Panel layout"): seven zones in a fixed order.
+  //   pinned: 1 rack header, 2 preview, 3 look bar (on the preview strip), 4 effects bar
+  //   scroll: 5 active effect controls (+ folded Advanced), 6 shared cards (Colour, Looks, Output)
+  //   pinned: 7 Apply footer (status, render meter, Apply / Cancel)
+  const PF = require("./pixfont.js");
+  function paintLookBar() {
+    if (!refs.lookName) return;
+    const n = String(cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName).toUpperCase();
+    PF.paint(refs.lookName, n.length > 22 ? n.slice(0, 21) + "." : n, { font: "label", color: cfg.glow || "#5cf2ff" });
+    if (lookBrowser) lookBrowser.sourceChanged();
+  }
+  function stepLook(dir) {
+    if (!PRESETS.length) return;
+    let i = PRESETS.findIndex((p) => p.name === presetName);
+    i = i < 0 ? (dir > 0 ? 0 : PRESETS.length - 1) : (i + dir + PRESETS.length) % PRESETS.length;
+    applyPatch(PRESETS[i].p, PRESETS[i].name);
+  }
+  function scrollToNode(n) {
+    const sc = layout.scroller;
+    try {
+      const top = n.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+      sc.scrollTop = Math.max(0, sc.scrollTop + top - 2);
+      setTimeout(() => { sc.scrollTop += 1; setTimeout(() => { sc.scrollTop -= 1; }, 40); }, 40);   // UXP hit-test re-sync
+    } catch (e) { /* no layout */ }
+  }
+  function build3(root) {
+    clear(root);
+    layout = splitLayout(root, el, { footer: true });
+    root.classList.add("brand-console", "arcade", "ui3");
+    const top = layout.pinned, H = ui.helpAt;
+    // 1. rack header (32 px) with the Assistance switch beside the status LED
+    const h = ui.brand.header(cfg);
+    h.node.classList.add("slim");
+    refs.led = h;
+    top.appendChild(h.node);
+    // 2 + 3. preview with the look bar on its strip
+    refs.docline = el("div", { class: "docline", text: "" });
+    refs.preview = el("img", { class: "preview" });
+    const prev = el("button", { class: "lookbtn", text: "◀" }), next = el("button", { class: "lookbtn", text: "▶" });
+    prev.addEventListener("click", () => stepLook(-1)); next.addEventListener("click", () => stepLook(1));
+    refs.lookName = el("span", { class: "lookname3" });
+    const browse = el("button", { class: "lookbtn browse", text: "BROWSE" });
+    browse.addEventListener("click", () => { if (refs.lookCard) { const i = refs.lookCard.__card; if (i && i.setOpen) i.setOpen(true, true); scrollToNode(refs.lookCard); } });
+    H(prev, { key: "look.prev", name: "Previous look", kind: "button" });
+    H(next, { key: "look.next", name: "Next look", kind: "button" });
+    H(refs.lookName, { key: "look.name", name: "Look", kind: "info" });
+    H(browse, { key: "look.browse", name: "Browse looks", kind: "button" });
+    refs.scr = el("div", { class: "scrstrip lookbar" }, [el("span", { class: "lbl2 ch", text: "CH1" }), prev, refs.lookName, next, el("span", { class: "grow" }), browse]);
+    refs.nav = el("img", { class: "navmap" });
+    refs.nav.style.display = "none";
+    H(refs.nav, { key: "zoom.nav", name: "Navigator", kind: "info" });
+    refs.nav.addEventListener("mousedown", (e) => {
+      const go = (ev) => { let r = null; try { r = refs.nav.getBoundingClientRect(); } catch (err) { r = null; } if (!r || !r.width) return; zc = { x: Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height)) }; schedulePreview(30); };
+      go(e);
+      const up = () => { document.removeEventListener("mousemove", go); document.removeEventListener("mouseup", up); };
+      document.addEventListener("mousemove", go); document.addEventListener("mouseup", up);
+      if (e.stopPropagation) e.stopPropagation(); if (e.preventDefault) e.preventDefault();
+    });
+    refs.previewBox = el("div", { class: "previewbox" }, [refs.scr, el("div", { class: "pstage" }, [refs.preview, refs.nav]), bezelHandle()]);
+    H(refs.previewBox, { key: "preview", name: "Preview", kind: "preview" });
+    refs.previewBox.addEventListener("mouseover", refitPreview);
+    wireZoomPointer();
+    const splitBtn = el("button", { class: "tbtn", text: "Before / After" });
+    const paintSplit = () => { if (state.view.split) splitBtn.classList.add("on"); else splitBtn.classList.remove("on"); };
+    splitBtn.addEventListener("click", () => { state.view.split = state.view.split ? 0 : 50; paintSplit(); paintPreview(); });
+    refs.splitSw = { __sw: { set: (v) => { state.view.split = v ? 50 : 0; paintSplit(); paintPreview(); }, get: () => !!state.view.split } };
+    H(splitBtn, { key: "view.split", name: "Before / After", kind: "switch" });
+    paintSplit();
+    const refresh = el("button", { class: "tbtn icon", text: "\u21bb" });
+    refresh.addEventListener("click", () => schedulePreview(0));
+    H(refresh, { key: "view.refresh", name: "Refresh", kind: "button" });
+    // background behind transparent parts: one button that cycles Checker / White / Black
+    const BG = [["checker", "Chk"], ["white", "Wht"], ["black", "Blk"]];
+    const bgBtn = el("button", { class: "tbtn bgbtn", text: "BG" });
+    const paintBg = () => { const b = BG.find((x) => x[0] === state.view.bg) || BG[2]; bgBtn.textContent = "BG " + b[1]; };
+    bgBtn.addEventListener("click", () => { const i = BG.findIndex((x) => x[0] === state.view.bg); state.view.bg = BG[(i + 1) % BG.length][0]; paintBg(); touch(); });
+    bind(paintBg);
+    H(bgBtn, { key: "view.bg", name: "Background", kind: "button" });
+    refs.docline.classList.add("inline");
+    refs.previewTools = el("div", { class: "ptools" }, [splitBtn, bgBtn, refresh, refs.docline]);
+    top.appendChild(el("div", { class: "pzone" }, [refs.previewBox, zoomBar(), refs.previewTools]));
+
+    // tool cards
+    const kit = { gradientEditor, colourRow, touch, setStatus, schedulePreview, loop, get state() { return state; },
+      applyNow: () => applyNow(), io: PS, onPreviewPress: (f) => previewClickers.push(f),
+      get source() { return lastSrc; }, get presetName() { return presetName; }, ui3: true };
+    const sc = layout.scroller;
+    lib = createLibrary(ui, {
+      builtins: PRESETS,
+      applyPatch: (p) => { const hit = PRESETS.find((x) => x.p === p); applyPatch(p, hit ? hit.name : "Custom"); },
+      getSaveable: stateForSave, io: PS, setStatus
+    });
+    const toolCards = cfg.cards(ui, kit).filter(Boolean);
+    toolCards.forEach((c) => { const i = c.__card; if (i && i.opts && i.opts.bypass) bypassMaps[i.title] = i.opts.bypass; });
+    const by = { look: [], controls: [], colour: [], output: [] };
+    toolCards.forEach((c) => (by[sectionOf(c)] || by.controls).push(c));
+    refs.sections = by;
+
+    // 4. effects bar (pinned): one tab per effect + the small section menu
+    const fx = ui.tabs(by.controls, { title: "Effects", isOn: fxOn, setOn: setFxOn, split: true });
+    refs.fxTabs = fx.api;
+    const secs = [];
+    const secBar = (name, id) => { const n = ui.section(name[0], name, id); secs.push({ letter: name[0], name, id, node: n }); return n; };
+    // 5. active effect controls
+    sc.appendChild(secBar("EFFECT", "controls"));
+    sc.appendChild(fx.panes);
+    // 6. shared cards
+    if (hasDeck) { deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, v3: true, inkTool: cfg.inkTool }); by.colour.push(deck.card); }
+    if (by.colour.length) { sc.appendChild(secBar("COLOUR", "colour")); by.colour.forEach((c) => sc.appendChild(c)); }
+    sc.appendChild(secBar("LOOKS", "look"));
+    if (PRESETS.length) { lookBrowser = createLookBrowser(); refs.lookCard = lookBrowser.card; sc.appendChild(lookBrowser.card); }
+    sc.appendChild(lib.card);
+    by.look.forEach((c) => sc.appendChild(c));
+    sc.appendChild(secBar("OUTPUT", "output"));
+    by.output.forEach((c) => sc.appendChild(c));
+    sc.appendChild(card("Output", [
+      selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }, { v: "prev", l: "Previous Brew result (chain)" }], () => { confirmArmed = false; })
+    ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
+      checkRow("Hide source artwork afterwards", "out.hide"),
+      cfg.reEdit ? (() => { const b = el("button", { class: "btn small reedit", text: "Re-edit selected group" }); b.addEventListener("click", () => { reEditNow().catch((e) => setStatus("Re-edit failed: " + e.message, true)); }); H(b, { key: "out.reedit", name: "Re-edit selected group", kind: "button" }); return b; })() : null,
+      el("div", { class: "hint", text: "Apply makes one new layer group; your artwork is never changed. One undo step." })
+    ])));
+    sc.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + "  -  Frank's Brew suite") }));
+    // the section menu sits at the end of the effects row: GO opens a short list of sections
+    const jump = ui.jumpStrip(secs, sc);
+    jump.classList.add("secmenu");
+    jump.style.display = "none";
+    const go = el("div", { class: "tabbtn gobtn", role: "button", text: "GO" });
+    go.addEventListener("click", (e) => { jump.style.display = jump.style.display === "none" ? "" : "none"; if (e.stopPropagation) e.stopPropagation(); });
+    jump.addEventListener("click", () => { jump.style.display = "none"; });
+    try { document.addEventListener("mousedown", (e) => { if (!go.contains(e.target) && !jump.contains(e.target)) jump.style.display = "none"; }); } catch (e) { /* no document */ }
+    H(go, { key: "secmenu", name: "Go to section", kind: "button" });
+    fx.bar.appendChild(go);
+    top.appendChild(el("div", { class: "fxzone" }, [fx.bar, jump]));
+
+    // 7. Apply footer (pinned)
+    refs.status = el("div", { class: "status", text: "Starting..." });
+    refs.apply = el("button", { class: "apply", text: cfg.applyLabel || "Apply to document" });
+    let applyDown = false, skipClick = false, skipT = null;
+    refs.apply.addEventListener("mousedown", () => { applyDown = true; });
+    refs.apply.addEventListener("mouseleave", () => { applyDown = false; });
+    refs.apply.addEventListener("mouseup", () => {
+      if (!applyDown || refs.apply.hasAttribute("disabled")) return;
+      applyDown = false;
+      skipClick = true; clearTimeout(skipT); skipT = setTimeout(() => { skipClick = false; }, 500);
+      applyNow();
+    });
+    refs.apply.addEventListener("click", () => { applyDown = false; if (skipClick) { skipClick = false; return; } applyNow(); });
+    H(refs.apply, { key: "apply", name: "Apply", kind: "button" });
+    H(refs.status, { key: "status", name: "Status line", kind: "info" });
+    refs.meter = ui.brand.meter(12);
+    layout.footer.appendChild(refs.status);
+    layout.footer.appendChild(el("div", { class: "applyrow" }, [refs.meter.node, refs.apply]));
+    ui.sweep(root);
+    refreshAll();
+    if (lookBrowser) lookBrowser.start();
+    paintLookBar();
+  }
+
   function menuAction(id) {
     if (id === "resetLook") {
       const keepOut = clone(state.out), keepView = clone(state.view);
@@ -656,15 +1036,28 @@ function createToolPanel(cfg) {
     }
     else if (id === "split") { if (refs.splitSw) refs.splitSw.__sw.set(!state.view.split); else { state.view.split = state.view.split ? 0 : 50; paintPreview(); } }
     else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
+    else if (id === "assist") { if (ui.help) ui.help.setOn(!ui.help.on); setStatus("Assistance (help bubbles) " + (ui.help && ui.help.on ? "on." : "off.")); }
+    else if (/^delay(\d+)$/.test(id)) { if (ui.help) ui.help.setDelay(+id.slice(5)); setStatus("Help pop-ups after " + id.slice(5) + " s."); }
+    else if (id === "auto") { auto = !auto; if (auto) schedulePreview(0); setStatus("Auto-update " + (auto ? "on." : "off: press Refresh.")); }
     else if (id === "about") setStatus(cfg.title + " " + (cfg.version || "") + "  |  " + (cfg.code || "") + "  |  Frank's Brew suite. Hover any control for help.");
   }
   async function init() {
     if (built) return;
     built = true;
-    build(document.getElementById("app"));
+    (cfg.ui3 ? build3 : build)(document.getElementById("app"));
     await lib.load();
     if (deck) await deck.load();
     schedulePreview(100);
+    // 3.0: re-preview when a document opens, closes or is switched (Mac test 2026-11-24: a panel
+    // opened before the document kept showing the demo image until Refresh)
+    if (cfg.ui3) {
+      try {
+        require("photoshop").action.addNotificationListener(["open", "close", "select", "newDocument"], (ev, d) => {
+          if (ev === "select" && !(d && d._target && JSON.stringify(d._target).includes("document"))) return;
+          schedulePreview(250);
+        });
+      } catch (e) { /* host without notifications (tests) */ }
+    }
   }
 
   try {
@@ -677,6 +1070,12 @@ function createToolPanel(cfg) {
         { id: "resetLook", label: "Reset knobs to this look" },
         cfg.split ? { id: "split", label: "Before / After split" } : null,
         { id: "foldAll", label: "Fold or open all cards" },
+        cfg.ui3 ? "-" : null,
+        cfg.ui3 ? { id: "assist", label: "Assistance (help bubbles) on / off" } : null,
+        cfg.ui3 ? { id: "delay2", label: "Help pop-up after 2 s" } : null,
+        cfg.ui3 ? { id: "delay5", label: "Help pop-up after 5 s" } : null,
+        cfg.ui3 ? { id: "delay10", label: "Help pop-up after 10 s" } : null,
+        cfg.ui3 ? { id: "auto", label: "Auto-update preview on / off" } : null,
         "-",
         { id: "about", label: "About " + cfg.title }
       ].filter(Boolean),
@@ -686,7 +1085,7 @@ function createToolPanel(cfg) {
   } catch (e) { /* older hosts: fall through to direct init */ }
   setTimeout(() => { init(); }, 0);
 
-  return { _test: { get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, menuAction, plainError, get lookBase() { return lookBase; }, get lookBrowser() { return lookBrowser; } } };
+  return { _test: { ui, setZoom, get zoom() { return zoom; }, zoomNow: () => zoomNow(), get zc() { return zc; }, get layout() { return layout; }, stepLook, get presetName() { return presetName; }, get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, menuAction, plainError, get lookBase() { return lookBase; }, get lookBrowser() { return lookBrowser; } } };
 }
 
 module.exports = { createToolPanel };

@@ -8,6 +8,8 @@ const path = require("path");
 const fs = require("fs");
 
 const TOOLS = ["chrometone", "crt-phaser", "decompressor", "depthtone", "mobglow", "paint-brew"];
+// tools on the 3.0 layout get the same checks in tests/brew3.js (Before/After button, LCD boxes)
+const LAYOUT2 = TOOLS.filter((x) => !require("./brew3.js").UI3.includes(x));
 const ROOT = path.join(__dirname, "..");
 
 module.exports = async function (t) {
@@ -18,7 +20,7 @@ module.exports = async function (t) {
   const mu = (P) => P.document.dispatchEvent(new P.window.MouseEvent("mouseup", { bubbles: true }));
 
   await t("Quick wins: knob label scrubs, double-click resets to the look, key hints follow the selected knob", async () => {
-    for (const tool of TOOLS) {
+    for (const tool of LAYOUT2) {
       const P = await loadPanel(path.join(ROOT, "plugins", tool), { withDoc: false });
       await ready(P);
       const D = P.document, T = P.mod._test;
@@ -37,7 +39,7 @@ module.exports = async function (t) {
   });
 
   await t("Quick wins: every pixel tool has Before/After, the flyout menu, and plain-English errors", async () => {
-    for (const tool of TOOLS) {
+    for (const tool of LAYOUT2) {
       const P = await loadPanel(path.join(ROOT, "plugins", tool), { withDoc: false });
       await ready(P);
       const D = P.document, T = P.mod._test;

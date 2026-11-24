@@ -30,7 +30,7 @@ function makeHost(opts) {
     id: 1, name: "test.psd", width: W, height: H, resolution: 300,
     layers, activeLayers: [],
     async createPixelLayer(o) { const L = { id: nextId++, name: o.name, opacity: o.opacity, visible: true, kind: "pixel", blendMode: null }; layers.push(L); calls.push(["createPixelLayer", o.name]); return L; },
-    async createLayerGroup(o) { calls.push(["createLayerGroup", o.name, (o.fromLayers || []).length]); const G = { id: nextId++, name: o.name, kind: "group" }; return G; },
+    async createLayerGroup(o) { calls.push(["createLayerGroup", o.name, (o.fromLayers || []).length]); const G = { id: nextId++, name: o.name, kind: "group", async move(t, p) { calls.push(["move", t && t.id, p]); } }; return G; },
     // Paint Brew's print-ready copy: a duplicate that can be resized (same fake pixels, stretched)
     async duplicate(name) {
       calls.push(["duplicate", name]);
@@ -41,8 +41,8 @@ function makeHost(opts) {
     }
   } : null;
   const photoshop = {
-    app: { get activeDocument() { return doc; } },
-    constants: { LayerKind: { GROUP: "group" }, BlendMode: { NORMAL: "normal", MULTIPLY: "multiply", LINEARDODGE: "linearDodge", SCREEN: "screen" }, ElementPlacement: { PLACEINSIDE: "inside" } },
+    app: { get activeDocument() { return doc; }, foregroundColor: { rgb: { hexValue: "FF3D6E" } }, backgroundColor: { rgb: { hexValue: "05040C" } } },
+    constants: { LayerKind: { GROUP: "group" }, BlendMode: { NORMAL: "normal", MULTIPLY: "multiply", LINEARDODGE: "linearDodge", SCREEN: "screen", COLOR: "color", OVERLAY: "overlay", SOFTLIGHT: "softLight", HUE: "hue", LUMINOSITY: "luminosity" }, ElementPlacement: { PLACEINSIDE: "inside", PLACEBEFORE: "before" } },
     core: {
       async executeAsModal(fn, o) {
         calls.push(["executeAsModal", o && o.commandName]);
@@ -57,6 +57,8 @@ function makeHost(opts) {
     },
     imaging: {
       async getPixels(o) {
+        // like Photoshop 28: a layer group can't be read by its id
+        if (o.layerID != null && (doc.layers || []).some((l) => l.id === o.layerID && l.kind === "group")) throw new Error("Unsupported layer type");
         calls.push(["getPixels", JSON.stringify(o.sourceBounds || null), JSON.stringify(o.targetSize || null)]);
         const b = o.sourceBounds || { left: 0, top: 0, right: W, bottom: H };
         let w = b.right - b.left, h = b.bottom - b.top;

@@ -319,6 +319,8 @@ async function t(name, fn) {
   await require("./panel-system.js")(t);
   await require("./worlds-brew.js")(t);
   await require("./quick-wins.js")(t);
+  await require("./brew3.js")(t);
+  await require("./colour3.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
