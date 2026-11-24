@@ -19,7 +19,7 @@ function sync(check) {
     const src = fs.readFileSync(a), same = fs.existsSync(b) && Buffer.compare(src, fs.readFileSync(b)) === 0;
     if (!same) { stale.push(path.basename(b)); if (!check) { fs.mkdirSync(path.dirname(b), { recursive: true }); fs.writeFileSync(b, src); } }
   }
-  return stale;
+  return stale.concat(require("./tokens-css.js").sync(check));   // + renderer/tokens.css from the suite's design tokens
 }
 if (require.main === module) {
   const check = process.argv.includes("--check"), s = sync(check);

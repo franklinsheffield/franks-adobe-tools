@@ -1,9 +1,9 @@
 /* Frank's Worlds Brew app layout, on top of the suite's panel.css (Hardware Console brand). */
 /* Colours in OKLCH (UI research quick win): the mint and its hover / press / background shades keep the same hue
-   and step evenly in perceived brightness. Hex fallbacks first for anything that can't read oklch(). */
-:root {
-  --glow: #5effc8; --glowbg: #0b2e24;
-  --mint-l: 0.901; --mint-c: 0.156; --mint-h: 166.7;   /* WB-10 mint #5effc8 */
+   and step evenly in perceived brightness. Hex fallbacks first for anything that can't read oklch().
+   The mint itself (--mint-l/c/h) is the suite token color.glow.worlds-brew, from tokens.css. */
+:root {   /* the shared tokens come from tokens.css (generated from tokens/brew-tokens.json) */
+  --glow: var(--tk-glow-hex, #5effc8); --glowbg: #0b2e24;
   --glow: oklch(var(--mint-l) var(--mint-c) var(--mint-h));
   --glow-hover: oklch(0.80 0.14 var(--mint-h));
   --glow-press: oklch(0.70 0.12 var(--mint-h));

@@ -53,6 +53,12 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
     const L0 = back.objs[0].layers[0]; assert.strictEqual(L0.bump, 1); assert.strictEqual(hash(L0.img.d), hash(lay.objs[0].layers[0].img.d), "the picture survives save and open");
     const d = await E.render(back, back.cam, 64, 36); assert.strictEqual(hash(b.rgba), hash(d.rgba));
   });
+  await t("design tokens: renderer/tokens.css comes from tokens/brew-tokens.json and the app's mint is the suite's worlds-brew glow", () => {
+    const tok = require("../../../tokens/brew-tokens.json"), hex = tok.color.glow["worlds-brew"].$value.hex.toLowerCase();
+    assert.ok(new RegExp('GLOW = "' + hex + '"', "i").test(fs.readFileSync(path.join(APP, "renderer/app.js"), "utf8")), "app.js GLOW matches the token");
+    const css = fs.readFileSync(path.join(APP, "renderer/tokens.css"), "utf8"); assert.ok(css.includes("--tk-glow-hex: " + hex) && /--mint-l: 0\.90\d; --mint-c: 0\.15\d; --mint-h: 16\d\.\d/.test(css));
+    assert.ok(/href="tokens.css"[\s\S]*href="app.css"/.test(fs.readFileSync(path.join(APP, "renderer/index.html"), "utf8")), "tokens load before app.css");
+  });
   await t("the starter pack doubled: 52 models and 10 maps", () => {
     assert.strictEqual(PK.assets("Fantasy").length + PK.assets("Alien").length, 52);
     assert.strictEqual(PK.PACKS.reduce((n, p) => n + Object.keys(PK.MAPS[p]).length, 0), 10);
