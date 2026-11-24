@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 "use strict";
-// Copies the shared Worlds Brew engine (plugins/worlds-brew/js) and the suite UI kit (shared/) into engine/,
+// Copies the shared Worlds Lab engine (plugins/worlds-brew/js) into engine/ and the suite UI kit (shared/) into engine/kit/,
 // so the app and the Photoshop plugin render the same scenes with the same code.
 //   node tools/sync-engine.js          copy
 //   node tools/sync-engine.js --check  list stale files, exit 1 if any
 const fs = require("fs"), path = require("path");
 const APP = path.resolve(__dirname, ".."), REPO = path.resolve(APP, "../.."), OUT = path.join(APP, "engine");
-const SRC = [[path.join(REPO, "plugins/worlds-brew/js"), null], [path.join(REPO, "shared"), ["ui.js", "console.js", "png.js", "layout.js", "panel.css"]]];
+// the suite UI kit goes in engine/kit/ (its controls.js is not the engine's camera controls.js)
+const KIT = ["ui.js", "console.js", "png.js", "layout.js", "panel.css", "controls.js", "help.js", "help-text.js", "pixfont.js"];
+const SRC = [[path.join(REPO, "plugins/worlds-brew/js"), null, OUT], [path.join(REPO, "shared"), KIT, path.join(OUT, "kit")]];
 function files() {
   const list = [[path.join(APP, "node_modules/three/examples/jsm/controls/TransformControls.js"), path.join(APP, "renderer/vendor/TransformControls.js")]];   // packaged apps leave out node_modules/*/examples
-  for (const [dir, only] of SRC) for (const f of fs.readdirSync(dir)) if ((!only || only.includes(f)) && /\.(js|css)$/.test(f)) list.push([path.join(dir, f), path.join(OUT, f)]);
+  for (const [dir, only, to] of SRC) for (const f of fs.readdirSync(dir)) if ((!only || only.includes(f)) && /\.(js|css)$/.test(f)) list.push([path.join(dir, f), path.join(to, f)]);
   return list;
 }
 function sync(check) {

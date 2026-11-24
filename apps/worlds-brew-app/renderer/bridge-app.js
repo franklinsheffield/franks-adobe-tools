@@ -4,7 +4,7 @@
 const req = window.require;
 const fs = req("fs"), fsp = fs.promises, path = req("path");
 const B = req("../engine/bridge.js");
-const PNG = req("../engine/png.js");
+const PNG = req("../engine/kit/png.js");
 
 export const io = {
   read: async (p) => new Uint8Array(await fsp.readFile(p)),

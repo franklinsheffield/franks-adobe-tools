@@ -112,3 +112,38 @@ input.num.wide { width: 70px; }
 .palk { font-size: 10px; color: rgba(255,255,255,0.5); }
 .palnone { padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.5); }
 .palfoot { font-size: 9px; color: rgba(255,255,255,0.45); padding: 5px 14px; border-top: 1px solid rgba(255,255,255,0.12); }
+
+/* ======================================================================
+   3.0 interface (Frank 2026-11-24: "match the plugins"): Night Arcade, as in shared panel.css (#app.arcade).
+   Void dot-grid background, square panel cards with a hard 2 px shadow, thin white strokes,
+   cyan press glow, pixel-sprite headings, LCD value boxes, HELP (Assistance) switch in the rack.
+   ====================================================================== */
+#app.arcade #top, #app.arcade #bar { background: var(--panel); border-color: var(--dim); }
+#app.arcade #top { border-bottom: 1px solid var(--line); box-shadow: 0 2px 0 #000; }
+#app.arcade #bar { border-top: 1px solid var(--line); }
+#app.arcade #lib, #app.arcade #insp { border-color: var(--dim); background: transparent; }
+#app.arcade #toolbar, #app.arcade #pad { border-color: var(--dim); background: var(--void); }
+#app.arcade #vpwrap { border: 1px solid var(--line); margin: 6px 6px 0 6px; box-shadow: 2px 2px 0 #000; }
+#app.arcade #top .rack.slim { height: 40px; flex: 0 1 420px; margin: 6px 4px 6px 6px; }
+#app.arcade #top .docname { color: var(--glow); }
+#app.arcade .btn { border-radius: 0; background: var(--void); }
+#app.arcade .btn.on { background: var(--glowbg); color: #fff; border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.55); }
+#app.arcade .btn:active:not([disabled]) { border-color: var(--press); color: var(--press); }
+#app.arcade .wbpad { background: var(--panel); border: 1px solid var(--line); box-shadow: 2px 2px 0 #000; }
+#app.arcade .wbpadtitle { margin-bottom: 6px; }
+#app.arcade .wbcap { opacity: 0.6; }
+#app.arcade .wbcell, #app.arcade .wbtile { border-color: var(--dim); background: #000; }
+#app.arcade .wbcell.on { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.6); }
+#app.arcade .wbtile:hover, #app.arcade .wbcell:hover { border-color: var(--press); }
+#app.arcade .wbobj.on { border-color: #fff; color: #fff; background: var(--glowbg); }
+#app.arcade .wbdot { border-radius: 0; }
+#app.arcade .kh kbd { border-radius: 0; }
+#app.arcade input.num, #app.arcade select, #app.arcade input[type="text"] { border-radius: 0; background: #000; color: #fff; }
+#app.arcade #bar .apply { background: var(--panel); color: var(--glow); border: 1px solid var(--glow); border-bottom-width: 4px; }
+#app.arcade .shotbox, #app.arcade .palbox { border-radius: 0; border-color: var(--line); background: var(--panel); box-shadow: 2px 2px 0 #000; }
+#app.arcade .palrow.on { box-shadow: inset 2px 0 0 var(--press); }
+/* the inspector knobs keep the dense size; LCD boxes sized for the app */
+#app.arcade #insp .vbox { width: 44px; height: 20px; }
+#app.arcade #insp .dlabel { font-size: 9px; margin-top: 2px; }
+/* help bubbles sit above the viewport and the render result */
+#app.arcade .helptip, #app.arcade .helppop { z-index: 80; }

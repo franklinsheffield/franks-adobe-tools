@@ -13,9 +13,10 @@ const E = req("../engine/engine.js");
 const ED = req("../engine/editor.js");
 const PK = req("../engine/packs.js");
 const CT = req("../engine/controls.js");
-const PNG = req("../engine/png.js");
-const { createUI, el, clear } = req("../engine/ui.js");
-const { pressGlow } = req("../engine/layout.js");
+const PNG = req("../engine/kit/png.js");
+const { createUI, el, clear } = req("../engine/kit/ui.js");
+const { pressGlow } = req("../engine/kit/layout.js");
+const HELP = req("./help-app.js");   // hover help text for the app's own controls (shared texts come from engine/kit/help-text.js)
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 
@@ -368,7 +369,7 @@ function cross(cap, l, r, u, d, extra) { return el("div", { class: "wbcross" }, 
 
 // ---- header
 function buildTop(ui) {
-  const top = document.getElementById("top"), h = ui.brand.header({ title: APP, code: CODE }); refs.led = h;
+  const top = document.getElementById("top"), h = ui.brand.header({ title: APP, code: CODE }); refs.led = h; h.node.classList.add("slim");
   refs.docName = el("span", { class: "docname" });
   top.appendChild(h.node);
   top.appendChild(el("div", { class: "menu" }, [refs.docName, btn("New", () => newScene()), btn("Open...", () => openScene()), btn("Save", () => save(false)), btn("Save as...", () => save(true)),
@@ -431,7 +432,7 @@ function buildPads(ui) {
   const onSel = (fn) => () => { const o = sel(); if (o) fn(o); };
   const nudge = (dir) => onSel((o) => CT.nudge(sc(), o, dir, st.view.step, st.view.stick));
   const objPad = el("div", { class: "wbpad" }, [
-    el("div", { class: "wbpadtitle", text: "OBJECT" }),
+    el("div", { class: "wbpadtitle ctitle", text: "OBJECT" }),
     el("div", { class: "wbprow" }, [
       cross("MOVE", holdBtn("<", nudge("left"), "Left (camera relative)"), holdBtn(">", nudge("right"), "Right"), holdBtn("^", nudge("fwd"), "Away from camera"), holdBtn("v", nudge("back"), "Towards camera")),
       el("div", { class: "wbcol" }, [holdBtn("UP", nudge("up"), "Raise (Page Up)"), holdBtn("DN", nudge("down"), "Lower (Page Down)"), el("div", { class: "wbcap", text: "HEIGHT" })]),
@@ -442,7 +443,7 @@ function buildPads(ui) {
   ]);
   const cam = (fn) => () => { if (st.view.camLock) return; fn(sc().cam); };
   const camPad = el("div", { class: "wbpad" }, [
-    el("div", { class: "wbpadtitle", text: "CAMERA" }),
+    el("div", { class: "wbpadtitle ctitle", text: "CAMERA" }),
     el("div", { class: "wbprow" }, [
       cross("ORBIT", holdBtn("<", cam((c) => CT.camOrbit(c, step().orbit, 0))), holdBtn(">", cam((c) => CT.camOrbit(c, -step().orbit, 0))), holdBtn("^", cam((c) => CT.camOrbit(c, 0, step().orbit))), holdBtn("v", cam((c) => CT.camOrbit(c, 0, -step().orbit)))),
       cross("PAN", holdBtn("<", cam((c) => CT.camPan(c, -step().move * 2, 0))), holdBtn(">", cam((c) => CT.camPan(c, step().move * 2, 0))), holdBtn("^", cam((c) => CT.camPan(c, 0, step().move * 2))), holdBtn("v", cam((c) => CT.camPan(c, 0, -step().move * 2)))),
@@ -483,9 +484,9 @@ function buildInspector(ui) {
   ]);
   // Scale: overall size, width / height / depth stretch with a proportion lock, real-world size, quick sizes, match
   const sizeLine = el("div", { class: "wbsize" }); bind(() => { sizeLine.textContent = notLight() ? SC.sizeText(st.sel) : ""; });
-  const realIn = el("input", { type: "text", class: "num wide", title: "Height in metres" }); bind(() => { if (document.activeElement !== realIn && notLight()) realIn.value = String(SC.dims(st.sel).h); });
+  const realIn = el("input", { type: "text", class: "num wide", title: "Height in metres", "data-key": "sel.realH" }); bind(() => { if (document.activeElement !== realIn && notLight()) realIn.value = String(SC.dims(st.sel).h); });
   realIn.addEventListener("change", () => { const v = parseFloat(realIn.value); if (v > 0 && notLight()) { SC.setHeight(st.scene, st.sel, v, st.view.stick); edited(); } });
-  const matchSel = el("select", {}); bind(() => { clear(matchSel); matchSel.appendChild(el("option", { value: "", text: "Match size of..." })); st.scene.objs.forEach((o) => { if (o !== st.sel && o.type !== "light") matchSel.appendChild(el("option", { value: String(o.id), text: (o.type === "mesh" ? o.mesh.name : o.type) + " #" + o.id })); }); });
+  const matchSel = el("select", { "data-key": "sel.match" }); bind(() => { clear(matchSel); matchSel.appendChild(el("option", { value: "", text: "Match size of..." })); st.scene.objs.forEach((o) => { if (o !== st.sel && o.type !== "light") matchSel.appendChild(el("option", { value: String(o.id), text: (o.type === "mesh" ? o.mesh.name : o.type) + " #" + o.id })); }); });
   matchSel.addEventListener("change", () => { const t = st.scene.objs.find((o) => String(o.id) === matchSel.value); if (t && notLight()) { SC.match(st.scene, st.sel, t, st.view.stick); edited(); setStatus("Matched the height of " + ED.label(t).toLowerCase()); } matchSel.value = ""; });
   const scaleCard = card("Scale", [
     none("Select an object to size it."),
@@ -589,16 +590,16 @@ function buildInspector(ui) {
     remove: () => { const Ls = st.sel.layers; if (!Ls || !Ls.length) return; Ls.splice(st.view.layI, 1); st.view.layI = Math.max(0, st.view.layI - 1); edited(); },
     dup: () => { if (!hasLay()) return; const L = Object.assign({}, st.lay, { id: SF.layer().id, name: st.lay.name + " copy" }); st.sel.layers.splice(st.view.layI + 1, 0, L); st.view.layI++; edited(); } };
   refs.layOps = layOps;
-  const presetSel = el("select", {}); const fillPresets = async () => { const saved = await ipcRenderer.invoke("surf:list").catch(() => []); clear(presetSel); presetSel.appendChild(el("option", { value: "", text: "Add a preset..." }));
+  const presetSel = el("select", { "data-key": "lay.preset" }); const fillPresets = async () => { const saved = await ipcRenderer.invoke("surf:list").catch(() => []); clear(presetSel); presetSel.appendChild(el("option", { value: "", text: "Add a preset..." }));
     SF.presetNames().forEach((n) => presetSel.appendChild(el("option", { value: "b:" + n, text: n }))); saved.forEach((n) => presetSel.appendChild(el("option", { value: "s:" + n, text: "Saved: " + n }))); };
   fillPresets(); refs.fillPresets = fillPresets;
   presetSel.addEventListener("change", async () => { const v = presetSel.value; presetSel.value = ""; if (!v || !canLayer()) return; await addPreset(v.slice(2), v[0] === "s"); });
-  const presetName = el("input", { type: "text", class: "num wide", placeholder: "Preset name", title: "Name for the saved stack" });
+  const presetName = el("input", { type: "text", class: "num wide", placeholder: "Preset name", title: "Name for the saved stack", "data-key": "lay.presetName" });
   const laySeg = (path, opts) => segGroup(path, opts.map((v) => ({ v, l: v })));
   const lay = (node) => only(node, hasLay);
   const picName = el("span", { class: "lbl2" }); bind(() => { picName.textContent = hasLay() ? "PICTURE  " + String(st.lay.img ? st.lay.img.name : "none").slice(0, 20).toUpperCase() : ""; });
   const maskName = el("span", { class: "lbl2" }); bind(() => { maskName.textContent = hasLay() && st.lay.mask === "Bitmap" ? "MASK  " + String(st.lay.mimg ? st.lay.mimg.name : "none - load one").slice(0, 20).toUpperCase() : ""; });
-  const nameIn = el("input", { type: "text", class: "num wide", title: "Layer name" }); bind(() => { if (document.activeElement !== nameIn) nameIn.value = hasLay() ? st.lay.name : ""; });
+  const nameIn = el("input", { type: "text", class: "num wide", title: "Layer name", "data-key": "lay.name" }); bind(() => { if (document.activeElement !== nameIn) nameIn.value = hasLay() ? st.lay.name : ""; });
   nameIn.addEventListener("change", () => { if (hasLay()) { st.lay.name = nameIn.value.slice(0, 40) || "Layer"; edited(); } });
   const psPicName = el("span", { class: "lbl2" }); bind(() => { psPicName.textContent = refs.psPic ? "FROM PHOTOSHOP  " + String(refs.psPic.name).slice(0, 18).toUpperCase() : ""; });
   const surfCard = card("Surfaces", [
@@ -635,8 +636,8 @@ function buildBar(ui) {
   refs.keys = el("div", { class: "keyhints", title: "Keys for what you're doing now" });
   refs.meter = ui.brand.meter(12);
   refs.go = el("button", { class: "apply", text: "Render PNG", title: "Render the scene at the output size, with Depth, Object mask and Sky mask passes (Cmd+R)" }); refs.go.addEventListener("click", () => renderNow());
-  const num = (path, title) => { const i = el("input", { type: "text", class: "num", title }); ui.bind(() => { i.value = String(st.out[path]); }); i.addEventListener("change", () => { const v = Math.round(parseFloat(i.value)); if (v >= 16 && v <= 8000) st.out[path] = v; ui.refreshAll(); placeFrameGuide(); }); return i; };
-  const size = el("select", {}); [["", "Size..."], ["1920x1080", "HD 1920 x 1080"], ["3840x2160", "4K 3840 x 2160"], ["1080x1080", "Square 1080"], ["1080x1920", "Story 1080 x 1920"], ["2400x1600", "Print 3:2"], ["view", "Match the view"]].forEach(([v, l]) => size.appendChild(el("option", { value: v, text: l })));
+  const num = (path, title) => { const i = el("input", { type: "text", class: "num", title, "data-key": "out." + path }); ui.bind(() => { i.value = String(st.out[path]); }); i.addEventListener("change", () => { const v = Math.round(parseFloat(i.value)); if (v >= 16 && v <= 8000) st.out[path] = v; ui.refreshAll(); placeFrameGuide(); }); return i; };
+  const size = el("select", { "data-key": "out.size" }); [["", "Size..."], ["1920x1080", "HD 1920 x 1080"], ["3840x2160", "4K 3840 x 2160"], ["1080x1080", "Square 1080"], ["1080x1920", "Story 1080 x 1920"], ["2400x1600", "Print 3:2"], ["view", "Match the view"]].forEach(([v, l]) => size.appendChild(el("option", { value: v, text: l })));
   size.addEventListener("change", () => { const v = size.value; if (v === "view") { st.out.h = 1080; st.out.w = Math.round(1080 * vpwrap.clientWidth / vpwrap.clientHeight); } else if (v) { const [w, h] = v.split("x").map(Number); st.out.w = w; st.out.h = h; } size.value = ""; ui.refreshAll(); placeFrameGuide(); });
   bar.appendChild(refs.status); bar.appendChild(refs.keys);
   bar.appendChild(el("span", { class: "lbl3", text: "OUTPUT" })); bar.appendChild(num("w", "Width (px)")); bar.appendChild(el("span", { text: "x" })); bar.appendChild(num("h", "Height (px)")); bar.appendChild(size);
@@ -726,9 +727,17 @@ ipcRenderer.on("app:close-request", async () => { if (await askSave()) ipcRender
 
 // ---- start-up
 const root = document.getElementById("app");
-const ui = createUI({ getState: () => st, onChange: () => edited(), onLive: () => changed("drag"), pickColor, brand: "console", glow: GLOW, storeKey: "worlds-app" });
-const lui = createUI({ getState: () => st, onChange: () => changed("val"), pickColor, brand: "console", glow: GLOW, storeKey: "worlds-app-lib" });
+// 3.0 interface, same as the plugins: Night Arcade style, pixel type, LCD value boxes, hover help with the HELP switch
+root.classList.add("brand-console", "arcade", "ui3");
+const ui = createUI({ getState: () => st, onChange: () => edited(), onLive: () => changed("drag"), pickColor, brand: "console", glow: GLOW, storeKey: "worlds-lab", arcade: true, helpText: HELP });
+const lui = createUI({ getState: () => st, onChange: () => changed("val"), pickColor, brand: "console", glow: GLOW, storeKey: "worlds-lab", arcade: true, helpText: HELP });
 uis = [ui, lui]; refs.insp = ui;
+ui.help.onChange((on) => { if (lui.help.on !== on) lui.help.setOn(on); }); lui.help.onChange((on) => { if (ui.help.on !== on) ui.help.setOn(on); });   // one HELP switch for the whole app
+let sweepT = null; const sweepAll = () => { clearTimeout(sweepT); sweepT = setTimeout(() => { ui.sweep(document.getElementById("insp")); ["top", "lib", "centre", "bar"].forEach((id) => lui.sweep(document.getElementById(id)));
+  root.querySelectorAll("#insp .tabbtn").forEach((n) => { if (n.__help && n.__help.kind === "tab") n.__help.kind = "seg"; });   // the app's tabs have no on/off dot
+  root.querySelectorAll(".wbcell, .wbtile, .wbobj").forEach((n) => { if (n.__help) return; const u = n.closest("#insp") ? ui : lui, nm = (n.textContent || "").trim().slice(0, 40);
+    u.helpAt(n, n.classList.contains("wbcell") ? { key: "lib.scene", name: nm, kind: "grid" } : n.classList.contains("wbtile") ? { key: "lib.add", name: nm, kind: "grid" } : n.closest(".wblayers") ? { key: "lay.row", name: nm, kind: "info" } : { key: "lib.obj", name: nm, kind: "info" }); }); }, 60); };
+new MutationObserver(sweepAll).observe(root, { childList: true, subtree: true });   // panes that redraw (layers, objects) get their help too
 buildTop(lui); buildLibrary(lui); buildToolbar(lui); buildPads(lui); buildInspector(ui); buildBar(lui);
 refs.axes = axisGizmo(vpwrap, () => st.scene.cam, (yaw, pitch, name) => { if (st.view.camLock) return; const c = st.scene.cam; if (yaw !== null) c.yaw = yaw; c.pitch = pitch; changed("view"); setStatus(name); });
 pressGlow(root);
@@ -741,4 +750,4 @@ ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

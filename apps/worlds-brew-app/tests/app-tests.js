@@ -236,13 +236,28 @@ async function uiTests() {
       await new Promise((r) => setTimeout(r, 400));
       fs.mkdirSync(path.join(base, "Bridge/Pictures"), { recursive: true });
       fs.writeFileSync(path.join(base, "Bridge/doc-size.json"), JSON.stringify({ worldsBrewBridge: 1, w: 3000, h: 2000, doc: "poster.psd", time: Date.now() }));
-      const PNG = require("../engine/png.js"); fs.writeFileSync(path.join(base, "Bridge/Pictures/brick.png"), PNG.encodePNG(new Uint8Array(8 * 8 * 4).fill(180), 8, 8, 4));
+      const PNG = require("../engine/kit/png.js"); fs.writeFileSync(path.join(base, "Bridge/Pictures/brick.png"), PNG.encodePNG(new Uint8Array(8 * 8 * 4).fill(180), 8, 8, 4));
       fs.writeFileSync(path.join(base, "Bridge/picture.json"), JSON.stringify({ worldsBrewBridge: 1, file: "brick.png", name: "Brick wall", w: 8, h: 8, time: Date.now() }));
       await win.waitForFunction(() => window.__wb.st.out.w === 3000 && !!window.__wb.refs.psPic, null, { timeout: 5000 });
       assert.strictEqual(await W(() => window.__wb.st.out.h), 2000);
       const n = await W(async () => { const w = window.__wb, S = w.S, c = S.obj("cube", 0, 1, 0, 1, "Matte"); w.st.scene.objs.push(c); w.select(c); await w.commands().find((x) => x.label === "Add the picture from Photoshop").run(); await new Promise((r) => setTimeout(r, 100)); return [c.layers.length, c.layers[0].img.name, c.layers[0].img.w]; });
       assert.deepStrictEqual(n, [1, "Brick wall", 8]);
     } finally { await W(() => { const w = window.__wb; w.refs.bridgeWatch && w.refs.bridgeWatch.stop(); }); fs.rmSync(root, { recursive: true, force: true }); }
+  });
+  await t("app: 3.0 interface like the plugins: Night Arcade style, pixel type, LCD boxes, one HELP switch, help text on every control", async () => {
+    const r = await W(async () => {
+      const w = window.__wb, root = document.getElementById("app");
+      for (const tb of [...document.querySelectorAll("#insp .tabbtn")]) { tb.click(); await new Promise((q) => setTimeout(q, 120)); }
+      w.sweepAll(); await new Promise((q) => setTimeout(q, 200));
+      const miss = {}; w.uis.forEach((u) => u.help.missing().forEach((m) => { miss[m.key] = m.name; }));
+      const sw = document.querySelector("#top .assist"), was = w.uis[0].help.on; sw.click(); const off = w.uis.map((u) => u.help.on); sw.click();
+      return { cls: ["arcade", "ui3"].every((c) => root.classList.contains(c)), bg: getComputedStyle(root).backgroundColor, sprites: document.querySelectorAll("#app .pxt").length,
+        lcd: document.querySelectorAll("#insp .vbox .lcd").length, helped: w.uis.reduce((n, u) => n + u.help.nodes().length, 0), miss, was, off, back: w.uis.map((u) => u.help.on) };
+    });
+    assert.ok(r.cls, "#app has the arcade / ui3 classes"); assert.strictEqual(r.bg, "rgb(5, 4, 12)");
+    assert.ok(r.sprites > 10, "pixel-sprite headings: " + r.sprites); assert.ok(r.lcd > 0, "LCD value boxes in the Inspector");
+    assert.ok(r.helped > 150, "controls with hover help: " + r.helped); assert.deepStrictEqual(r.miss, {}, "controls without help text");
+    assert.deepStrictEqual([r.was, r.off, r.back], [true, [false, false], [true, true]], "one HELP switch turns every bubble off and on");
   });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
   await t("app: Quit with unsaved changes asks first; Don't Save ends the app (macOS used to keep it running)", async () => {
