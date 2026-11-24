@@ -2,7 +2,7 @@
 const { clone, merge } = require("../core/imgmath.js");
 const S = (p, c) => ({ p, c });
 const DEFAULTS = {
-  depth: { source: "smart", auto: true, invert: false, smooth: 2, near: 100, far: 0, levels: 12, pop: 50, horizon: 45, detail: 1, layerId: null, layerName: "" },
+  depth: { source: "smart", auto: true, invert: false, smooth: 2, near: 100, far: 0, levels: 12, pop: 50, horizon: 45, detail: 1, layerId: null, layerName: "", layerDoc: null },
   style: "terraces",
   photo: 0,
   look: { stops: [S(0, "#1B1F3B"), S(50, "#4F7CAC"), S(100, "#F2E8CF")], fog: 0, fogColor: "#C9D6DF" },

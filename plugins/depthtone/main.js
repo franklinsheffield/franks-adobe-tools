@@ -5,22 +5,14 @@
 const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
-const PD = require("./js/ps-depth.js");
+const DS = require("./core/depth.js");
 
 const APP = "Frank's Depthtone Brew";
-let panel = null, refindSubject = false;
+let panel = null;
 const st = () => (panel ? panel._test.state : DEFAULTS);
 
-async function prepareSource(doc, r, phase) {
-  const d = st().depth || {};
-  if (d.source === "smart") {
-    try { await PD.addSubject(doc, r, phase, APP, refindSubject); refindSubject = false; }
-    catch (e) { console.warn("Select Subject failed: " + (e && e.message)); }
-  } else if (d.source === "layer" && d.layerId != null) {
-    try { await PD.addDepthLayer(doc, r, d.layerId, APP); }
-    catch (e) { console.warn("Depth layer read failed: " + (e && e.message)); }
-  }
-}
+// Smart depth / Depth layer inputs (shared/depth.js)
+const prepareSource = (doc, r, phase) => DS.prepareSourceFor(st, APP)(doc, r, phase);
 
 panel = createToolPanel({
   code: "DT-03", glow: "#f5ff3b",
@@ -29,7 +21,9 @@ panel = createToolPanel({
   footer: "Frank's Depthtone Brew 2.0  -  Frank's Brew suite",
   Engine, DEFAULTS, PRESETS, merge, clone,
   prepareSource,
-  keepOnLook: ["depth.source", "depth.layerId", "depth.layerName"],
+  // the suite sample photo plus its subject mask, so look thumbnails use Smart depth too
+  lookSample: Object.assign({}, require("./look-sample.js"), { subject: require("./look-subject.js") }),
+  keepOnLook: ["depth.source", "depth.layerId", "depth.layerName", "depth.layerDoc"],
   outputRows: (ui) => [ui.checkRow("Also add the depth map as a hidden layer", "out.depthLayer")],
   cards: (ui, kit) => {
     const { card, sliderRow, selectRow, checkRow, segGroup, el, showIf, row } = ui;
@@ -37,30 +31,8 @@ panel = createToolPanel({
     const when = (node, fn) => { showIf(node, fn); return node; };
     const is = (...v) => () => v.includes(s().style);
 
-    // Depth source (first card)
-    const layerLine = el("div", { class: "hint", text: "" });
-    const useLayer = el("button", { class: "btn small", text: "Use active layer as depth map" });
-    useLayer.addEventListener("click", () => {
-      const doc = kit.io.activeDoc(), L = doc ? kit.io.activeLayer(doc) : null;
-      if (!L) { kit.setStatus("Select the depth map layer in the Layers panel first.", true); return; }
-      s().depth.layerId = L.id; s().depth.layerName = L.name; kit.touch();
-    });
-    const refind = el("button", { class: "btn small", text: "Find subject again" });
-    refind.addEventListener("click", () => { refindSubject = true; PD.clearCache(); kit.touch(); });
-    ui.bind(() => { const d = s().depth; layerLine.textContent = d.layerId != null ? "Depth layer: " + (d.layerName || "#" + d.layerId) + " (hide it before Apply)" : "No depth layer chosen yet."; });
-    const source = card("Depth source", [
-      segGroup("depth.source", [
-        { v: "smart", l: "Smart", t: "Photoshop's Select Subject lifts the subject off a floor plane. Automatic." },
-        { v: "layer", l: "Depth layer", t: "A depth map layer, e.g. Filter > Neural Filters > Depth Blur > Output depth map only. Best quality." },
-        { v: "brightness", l: "Brightness", t: "1.0 behaviour: bright areas come forward." }
-      ], "big"),
-      when(el("div", { class: "row wrap" }, [refind]), () => s().depth.source === "smart"),
-      when(sliderRow("Subject pop", "depth.pop", 0, 100, 1, "%"), () => s().depth.source === "smart"),
-      when(sliderRow("Horizon", "depth.horizon", 0, 90, 1, "%"), () => s().depth.source === "smart"),
-      when(el("div", { class: "row wrap" }, [useLayer]), () => s().depth.source === "layer"),
-      when(layerLine, () => s().depth.source === "layer"),
-      checkRow("Show the depth map in the preview", "view.depth")
-    ]);
+    // Depth source (first card, shared with other tools)
+    const source = DS.depthSourceCard(ui, kit);
     const depth = card("Depth", [
       checkRow("Auto range", "depth.auto"),
       sliderRow("Smooth", "depth.smooth", 0, 20, 1, " px"),

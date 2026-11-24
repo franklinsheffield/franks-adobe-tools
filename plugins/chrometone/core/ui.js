@@ -12,7 +12,7 @@
 // No Photoshop calls in here.
 // ======================================================================
 
-function getPath(o, p) { return p.split(".").reduce((a, k) => a[k], o); }
+function getPath(o, p) { return p.split(".").reduce((a, k) => (a == null ? undefined : a[k]), o); }
 function setPath(o, p, v) {
   const ks = p.split(".");
   let a = o;

@@ -8,6 +8,7 @@
 const photoshop = require("photoshop");
 const { app, core, imaging, constants, action } = photoshop;
 const { storage } = require("uxp");
+const Blend = require("./blend.js");
 const fsys = storage.localFileSystem;
 
 // Per-tool names: call configure() once from the tool's main.js.
@@ -169,7 +170,8 @@ async function putLayerPixels(doc, layer, buf, w, h, components, origin) {
   }
 }
 
-// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds }
+// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds, blend }
+// blend (optional) = { mode, opacity }: set on the result group (shared/blend.js)
 // hiddenIds (optional array) receives the ids of the source layers this call hid
 async function writeResult(doc, res, opts) {
   const n = res.w * res.h;
@@ -213,6 +215,7 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      if (opts.blend && group) Blend.applyToGroup(group, opts.blend, constants);
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
@@ -295,6 +298,6 @@ async function swapToSource(doc, group, ids) {
 }
 
 module.exports = {
-  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult, getPixels,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

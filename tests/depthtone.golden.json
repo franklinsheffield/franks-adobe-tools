@@ -14,9 +14,10 @@
   "Haze",
   "Colour (far to near)",
   "Colour Deck",
+  "Blend",
   "Output"
  ],
- "controls": "input:65 select:7 button:61 textarea:0",
+ "controls": "input:66 select:8 button:61 textarea:0",
  "previewDefault": "18271b374957",
  "presets": [
   "Lines - Holo Contours = 18271b374957",

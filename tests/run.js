@@ -313,6 +313,7 @@ async function t(name, fn) {
   }
 
   await require("./depthtone.js")(t);
+  await require("./blending.js")(t);
   await require("./batch-mock-brew.js")(t);
   await require("./paint-brew.js")(t);
   await require("./crt-phaser.js")(t);

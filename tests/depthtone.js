@@ -88,6 +88,45 @@ module.exports = async function (t) {
     assert.strictEqual(S2.depth.source, "layer"); assert.strictEqual(S2.depth.layerId, 7); assert.strictEqual(S2.depth.layerName, "Depth");
   });
 
+  await t("depthtone: the depth layer read never opens a read Photoshop can't finish (other document, missing layer, outside the layer)", async () => {
+    const pio = require.resolve("../plugins/depthtone/core/ps-io.js");
+    const calls = [];
+    const saved = require.cache[pio];
+    require.cache[pio] = { id: pio, filename: pio, loaded: true, exports: { async getPixels(doc, id, b, ts) {
+      calls.push(JSON.stringify([id, b, ts])); const w = ts ? ts.width : b.right - b.left, h = ts ? ts.height : b.bottom - b.top;
+      return { w, h, c: 4, data: new Uint8Array(w * h * 4).fill(200) };
+    } } };
+    try {
+      delete require.cache[require.resolve("../plugins/depthtone/js/ps-depth.js")];
+      const PD = require("../plugins/depthtone/js/ps-depth.js");
+      const doc = { id: 5, layers: [{ id: 9, name: "Depth", bounds: { left: 50, top: 0, right: 100, bottom: 100 } }] };
+      const r = () => ({ src: { w: 50, h: 50 }, scale: 0.5, origin: { left: 0, top: 0 } });
+      await assert.rejects(PD.addDepthLayer(doc, r(), 9, "T", 6), /another document/);
+      await assert.rejects(PD.addDepthLayer(doc, r(), 77, "T", 5), /gone/);
+      assert.strictEqual(calls.length, 0, "no read for a wrong document or a missing layer");
+      const rr = r(); await PD.addDepthLayer(doc, rr, 9, "T", 5);
+      assert.deepStrictEqual(JSON.parse(calls[0]), [9, { left: 50, top: 0, right: 100, bottom: 100 }, { width: 25, height: 50 }], "reads only the part the layer covers");
+      const dm = rr.src.depthMap;
+      assert.strictEqual(dm.data[0], 0, "left half (no layer) is far");
+      assert.strictEqual(dm.data[(10 * 50 + 40) * 4], 200, "right half from the layer");
+      doc.layers[0].bounds = { left: 300, top: 300, right: 400, bottom: 400 };
+      calls.length = 0; await PD.addDepthLayer(doc, r(), 9, "T", 5);
+      assert.strictEqual(calls.length, 0, "a layer outside the area is never read");
+    } finally {
+      if (saved) require.cache[pio] = saved; else delete require.cache[pio];
+    }
+  });
+
+  await t("shared depth.js: getDepth returns 0 = near, 1 = far at source size (3.0 API, e.g. CRT Lidar)", async () => {
+    const SD = require("../shared/depth.js");
+    const s2 = Object.assign({}, src, { subject });
+    const D = await SD.getDepth({ id: 1 }, { src: s2, scale: 1 }, { source: "brightness" });
+    assert.strictEqual(D.length, w * h);
+    const b = SD.build(s2, { depth: { source: "brightness", smooth: 2 } }).D;
+    assert.ok(Math.abs(D[100] - (1 - b[100])) < 1e-6, "inverted: near is 0");
+    assert.strictEqual(typeof SD.depthSourceCard, "function");
+  });
+
   await t("depthtone panel matches its golden fingerprint (UI, 18 presets, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins", "depthtone")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "depthtone.golden.json"), "utf8"));
