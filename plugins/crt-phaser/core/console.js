@@ -1,7 +1,7 @@
 "use strict";
 // ======================================================================
 // "Hardware Console" panel brand (Frank picked concept C, 2026-11-22).
-// Opt-in per tool with createToolPanel({ brand: "console", code: "PB-09", glow: "#4d7cff" }).
+// Opt-in per tool with createToolPanel({ brand: "console", code: "PB-09", glow: "#6c96ff" }).
 //   header(): rack unit with screw corners, FRANK'S · <code>, the wordmark
 //             in the tool's neon and a status LED (READY / BUSY / ERROR)
 //   dial():   rotary knob for a number setting with a value box beside it.

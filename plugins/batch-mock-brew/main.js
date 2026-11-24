@@ -28,7 +28,7 @@ const lists = { mockups: [], artwork: [] };
 const refs = {};
 let built = false, saveT = null, lib = null;
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff3b30", storeKey: "Frank's Batch Mock Brew" });
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: "Frank's Batch Mock Brew" });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
 function busyNow() { try { return !!batch.running; } catch (e) { return false; } }

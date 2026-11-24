@@ -7,7 +7,7 @@ const { createToolPanel } = require("./core/toolpanel.js");
 const phaseOn = (s) => s.phase.mode !== "off";
 
 const panel = createToolPanel({
-  code: "CRT-06", glow: "#b14cff",
+  code: "CRT-06", glow: "#bc71fe",
   appName: "Frank's CRT Phaser Brew", title: "Frank's CRT Phaser Brew", sub: "phase fx  /  scanlines  /  phosphor  /  tube", panelId: "crtPhaserPanel",
   presetFile: "presets.json", exportName: "crt-phaser-looks.json",
   footer: "Frank's CRT Phaser Brew 1.1  -  Frank's Brew suite",

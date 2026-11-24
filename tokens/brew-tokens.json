@@ -19,9 +19,9 @@
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          1,
-          1,
-          1
+          1.0,
+          1.0,
+          1.0
         ],
         "alpha": 0.85,
         "hex": "#ffffff"
@@ -33,9 +33,9 @@
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          1,
-          1,
-          1
+          1.0,
+          1.0,
+          1.0
         ],
         "alpha": 0.35,
         "hex": "#ffffff"
@@ -212,11 +212,11 @@
         "$value": {
           "colorSpace": "srgb",
           "components": [
-            0.6941,
-            0.298,
-            1.0
+            0.7373,
+            0.4431,
+            0.9961
           ],
-          "hex": "#b14cff"
+          "hex": "#bc71fe"
         },
         "$description": "Frank's CRT Phaser Brew neon (CRT-06)",
         "$extensions": {
@@ -231,11 +231,11 @@
         "$value": {
           "colorSpace": "srgb",
           "components": [
-            1.0,
-            0.2314,
-            0.1882
+            0.9961,
+            0.3686,
+            0.3098
           ],
-          "hex": "#ff3b30"
+          "hex": "#fe5e4f"
         },
         "$description": "Frank's Batch Mock Brew neon (BM-07)",
         "$extensions": {
@@ -250,11 +250,11 @@
         "$value": {
           "colorSpace": "srgb",
           "components": [
-            0.302,
-            0.4863,
+            0.4235,
+            0.5882,
             1.0
           ],
-          "hex": "#4d7cff"
+          "hex": "#6c96ff"
         },
         "$description": "Frank's Paint Brew neon (PB-09)",
         "$extensions": {
