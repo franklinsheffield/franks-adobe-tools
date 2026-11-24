@@ -12,11 +12,12 @@
 // No Photoshop calls in here.
 // ======================================================================
 
-function getPath(o, p) { return p.split(".").reduce((a, k) => a[k], o); }
+// null-safe: controls bound to array slots that don't exist yet (e.g. a gradient's 9th stop) read undefined
+function getPath(o, p) { return p.split(".").reduce((a, k) => (a == null ? undefined : a[k]), o); }
 function setPath(o, p, v) {
   const ks = p.split(".");
   let a = o;
-  for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]];
+  for (let i = 0; i < ks.length - 1; i++) { a = a[ks[i]]; if (a == null) return; }
   a[ks[ks.length - 1]] = v;
 }
 
@@ -95,6 +96,7 @@ function createUI(opts) {
     lookup: (key, info) => {
       const T = Object.assign({}, require("./help-text.js").TEXT, opts.helpText);
       let t = T[key];
+      if (t == null && key) t = T[String(key).replace(/\.\d+(?=\.|$)/g, ".#")];   // array slots: "deck.grad.stops.3.p" -> "deck.grad.stops.#.p"
       if (t == null && info && info.alias) t = T[info.alias];
       if (typeof t === "function") t = t(info);
       return t || "";

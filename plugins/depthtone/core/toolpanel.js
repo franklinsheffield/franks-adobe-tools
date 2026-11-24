@@ -457,8 +457,11 @@ function createToolPanel(cfg) {
   function markApplyReady(ok) {
     const b = refs.apply;
     if (!b) return;
-    if (ok) { b.classList.remove("blocked"); b.setAttribute("title", "Apply to the document as a new layer group (one undo step)"); }
-    else { b.classList.add("blocked"); b.setAttribute("title", "Open a document first. The preview is using the demo image."); }
+    const why = ok ? "Apply to the document as a new layer group (one undo step)" : "Open a document first. The preview is using the demo image.";
+    if (ok) b.classList.remove("blocked"); else b.classList.add("blocked");
+    // 3.0: no native tooltip (it doubled up with the help pop-up on the Mac); the reason goes in the pop-up
+    if (cfg.ui3) { b.removeAttribute("title"); if (b.__help) b.__help.note = ok ? "" : why; }
+    else b.setAttribute("title", why);
   }
   // Esc cancels a running Apply (UX-04)
   try {
@@ -524,7 +527,8 @@ function createToolPanel(cfg) {
           origin: r.origin,
           groupName: base + cfg.title + " - " + (cfg.groupLabel ? cfg.groupLabel(state, presetName) : presetName) + tag,
           hideSource: state.out.hide,
-          hideLayers: t.kind === "layer" ? [t.layer] : null
+          hideLayers: t.kind === "layer" ? [t.layer] : null,
+          placeAbove: t.prev ? t.layer : null
         });
         if (tag) await rememberLook(tag.slice(2), hiddenIds);
         done++;
@@ -972,7 +976,7 @@ function createToolPanel(cfg) {
     sc.appendChild(secBar("EFFECT", "controls"));
     sc.appendChild(fx.panes);
     // 6. shared cards
-    if (hasDeck) { deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus }); by.colour.push(deck.card); }
+    if (hasDeck) { deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, v3: true, inkTool: cfg.inkTool }); by.colour.push(deck.card); }
     if (by.colour.length) { sc.appendChild(secBar("COLOUR", "colour")); by.colour.forEach((c) => sc.appendChild(c)); }
     sc.appendChild(secBar("LOOKS", "look"));
     if (PRESETS.length) { lookBrowser = createLookBrowser(); refs.lookCard = lookBrowser.card; sc.appendChild(lookBrowser.card); }
@@ -1044,6 +1048,16 @@ function createToolPanel(cfg) {
     await lib.load();
     if (deck) await deck.load();
     schedulePreview(100);
+    // 3.0: re-preview when a document opens, closes or is switched (Mac test 2026-11-24: a panel
+    // opened before the document kept showing the demo image until Refresh)
+    if (cfg.ui3) {
+      try {
+        require("photoshop").action.addNotificationListener(["open", "close", "select", "newDocument"], (ev, d) => {
+          if (ev === "select" && !(d && d._target && JSON.stringify(d._target).includes("document"))) return;
+          schedulePreview(250);
+        });
+      } catch (e) { /* host without notifications (tests) */ }
+    }
   }
 
   try {

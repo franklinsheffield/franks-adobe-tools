@@ -6,13 +6,15 @@ const assert = require("assert");
 const path = require("path");
 
 const TOOLS = ["chrometone", "crt-phaser", "decompressor", "depthtone", "mobglow", "paint-brew"];
+// Tools on the 3.0 layout are checked by tests/brew3.js instead of the panel system 2 section layout.
+const LAYOUT2 = TOOLS.filter((x) => !require("./brew3.js").UI3.includes(x));
 
 module.exports = async function (t) {
   const { loadPanel } = require("./harness.js");
   const ready = async (P) => { for (let i = 0; i < 200 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50); };
 
   await t("Panel system: every toolpanel plugin has sections in order, a jump strip, one Effects tab card and foldable cards", async () => {
-    for (const tool of TOOLS) {
+    for (const tool of LAYOUT2) {
       const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
       const D = P.document;
       const ids = Array.from(D.querySelectorAll(".section")).map((s) => s.id);

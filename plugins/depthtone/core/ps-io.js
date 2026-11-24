@@ -119,7 +119,9 @@ async function readSource(doc, target, view) {
   let bounds = { left: 0, top: 0, right: info.w, bottom: info.h };
   let layerId = null;
   if (target.kind === "layer") {
-    layerId = target.layer.id;
+    // a Brew result group can't be read by layer id ("Unsupported layer type" in PS 28, found on the
+    // Mac 2026-11-24): chaining reads the visible composite inside the group's bounds instead
+    layerId = target.prev ? null : target.layer.id;
     bounds = layerBounds(target.layer, info.w, info.h);
   }
   const bw = bounds.right - bounds.left, bh = bounds.bottom - bounds.top;
@@ -233,6 +235,12 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      // chaining: the active layer sits inside the previous Brew group, so Photoshop made the new
+      // group inside it; move it out, above that group, before the old one is hidden (Mac 2026-11-24)
+      if (opts.placeAbove && group) {
+        try { await group.move(opts.placeAbove, constants.ElementPlacement.PLACEBEFORE); }
+        catch (e) { warnings.push("Could not move the new group above the previous result: " + e.message); }
+      }
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
@@ -314,7 +322,40 @@ async function swapToSource(doc, group, ids) {
   }, { commandName: CFG.appName + ": re-edit" });
 }
 
+// ---- Colour 3.0: swatch sync + palette files ------------------------------
+// Photoshop's foreground / background colours as "#RRGGBB" (null when unreadable)
+function getFgBg() {
+  const hx = (c) => { try { const h = c && c.rgb && c.rgb.hexValue; return h ? "#" + String(h).toUpperCase() : null; } catch (e) { return null; } };
+  return { fg: hx(app.foregroundColor), bg: hx(app.backgroundColor) };
+}
+// adds each colour to the Swatches panel (named "<name> 1..n"); returns the count added
+async function addSwatches(colors, name) {
+  const list = colors.map((h, i) => {
+    const c = String(h).replace("#", "");
+    return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Brew") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
+  });
+  await core.executeAsModal(async () => action.batchPlay(list, {}), { commandName: CFG.appName + ": add swatches" });
+  return list.length;
+}
+// open a palette file (.ase .aco .gpl .txt .hex): resolves { name, data } or null
+async function openPaletteFile() {
+  const f = await fsys.getFileForOpening({ types: ["ase", "aco", "gpl", "txt", "hex"] });
+  if (!f) return null;
+  const ext = String(f.name || "").toLowerCase().split(".").pop(), bin = ext === "ase" || ext === "aco";
+  const data = bin ? await f.read({ format: storage.formats.binary }) : await f.read();
+  return { name: f.name, data };
+}
+// save text or bytes (Uint8Array) through the system Save dialog
+async function savePaletteFile(name, data) {
+  const ext = String(name).split(".").pop();
+  const f = await fsys.getFileForSaving(name, { types: [ext] });
+  if (!f) return false;
+  if (typeof data === "string") await f.write(data);
+  else await f.write(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), { format: storage.formats.binary });
+  return true;
+}
 module.exports = {
+  getFgBg, addSwatches, openPaletteFile, savePaletteFile,
   findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

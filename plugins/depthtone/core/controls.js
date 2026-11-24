@@ -109,7 +109,7 @@ function createControls(env, selection) {
     const { path, min, max, step } = o;
     const u = String(o.unit || "").trim();
     const fmt = fmtFor(step), snap = snapFor(min, max, step);
-    const get = () => env.getPath(S(), path);
+    const get = () => { const v = env.getPath(S(), path); return typeof v === "number" && isFinite(v) ? v : min; };   // missing array slot reads as min
     const startV = get();
     const baseline = () => { let v; try { v = env.getDefault ? env.getDefault(path) : undefined; } catch (e) { v = undefined; } return typeof v === "number" && isFinite(v) ? v : startV; };
     const box = valueBox({ cls: o.boxCls });
@@ -279,15 +279,16 @@ function createControls(env, selection) {
   function range(label, loPath, hiPath, min, max, step, unit) {
     const bar = el("div", { class: "rfill" }), h1 = el("div", { class: "rh" }), h2 = el("div", { class: "rh" });
     const track = el("div", { class: "rtrack" }, [bar, h1, h2]);
-    const lo = numeric({ label: label + " low", path: loPath, min, max, step, unit, kind: "range", cls: "rpart", noUnit: true, layout: (v, box) => [box], visual: () => ({ node: el("span"), draw: () => paint() }) });
-    const hi = numeric({ label: label + " high", path: hiPath, min, max, step, unit, kind: "range", cls: "rpart", layout: (v, box, l, kids) => [box, kids[2]], visual: () => ({ node: el("span"), draw: () => paint() }) });
+    let lo = null, hi = null;     // paint() runs while the boxes are being built
+    lo = numeric({ label: label + " low", path: loPath, min, max, step, unit, kind: "range", cls: "rpart", noUnit: true, layout: (v, box) => [box], visual: () => ({ node: el("span"), draw: () => paint() }) });
+    hi = numeric({ label: label + " high", path: hiPath, min, max, step, unit, kind: "range", cls: "rpart", layout: (v, box, l, kids) => [box, kids[2]], visual: () => ({ node: el("span"), draw: () => paint() }) });
     // keep low <= high
     const loSet = lo.set, hiSet = hi.set;
     lo.set = (v, c) => loSet(Math.min(v, hi.get()), c);
     hi.set = (v, c) => hiSet(Math.max(v, lo.get()), c);
     const frac = (v) => Math.max(0, Math.min(1, (v - min) / (max - min || 1)));
     function paint() {
-      if (!lo.get || !hi.get) return;
+      if (!lo || !hi) return;
       const a = frac(lo.get()) * 100, b = frac(hi.get()) * 100;
       h1.style.left = a + "%"; h2.style.left = b + "%";
       bar.style.left = a + "%"; bar.style.width = Math.max(0, b - a) + "%";
@@ -330,7 +331,7 @@ function createControls(env, selection) {
     const tiles = options.map((op) => {
       const img = op.img ? el("img", { class: "timg", src: typeof op.img === "function" ? op.img() : op.img }) : el("div", { class: "timg blank" });
       const name = paintLabel(el("div", { class: "tname" }), op.l);
-      const t = el("div", { class: "tile" }, [img, name]);
+      const t = el("div", { class: "tile" + (op.img ? "" : " noimg") }, [img, name]);
       t.addEventListener("click", () => { env.setPath(S(), path, op.v); if (o.after) o.after(op.v); env.onChange(); });
       help(t, { key: path + "=" + op.v, name: op.l, kind: "grid" });
       wrap.appendChild(t);
