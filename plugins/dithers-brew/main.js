@@ -555,7 +555,7 @@ function build(root) {
     el("div", { class: "row" }, ui.brand ? [refresh,
       ui.brand.miniToggle("Auto-update", true, setAuto),
       ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title),
-      ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")
+      refs.splitSw = ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")
     ] : [refresh, el("span", { class: "lbl2", text: "Auto-update" }), autoCb, el("span", { class: "lbl2", text: "Pin on top" }), pinCb]),
     refs.status,
     (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })),
@@ -837,7 +837,7 @@ function menuAction(id) {
     state = clone(lookBase); state.out = keepOut; state.view = keepView; state.deck = keepDeck;
     preSig = preKey(); touch(); setStatus("Knobs reset to the last loaded look.");
   }
-  else if (id === "split") { state.view.split = state.view.split ? 0 : 50; refreshAll(); paintPreview(); }
+  else if (id === "split") { if (refs.splitSw) refs.splitSw.__sw.set(!state.view.split); else { state.view.split = state.view.split ? 0 : 50; paintPreview(); } }
   else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
   else if (id === "about") {
     let v = ""; try { v = require("./manifest.json").version; } catch (e) { /* no manifest in tests */ }

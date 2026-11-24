@@ -572,7 +572,7 @@ function createToolPanel(cfg) {
         segGroup("view.bg", [{ v: "checker", l: "Checker" }, { v: "white", l: "White" }, { v: "black", l: "Black" }])
       ])
     ]).concat([
-      cfg.split && ui.brand ? el("div", { class: "row" }, [ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")]) : null,
+      cfg.split && ui.brand ? el("div", { class: "row" }, [refs.splitSw = ui.brand.miniToggle("Before / After", !!state.view.split, (v) => { state.view.split = v ? 50 : 0; paintPreview(); }, "Split the preview: original on the left, result on the right. Drag on the preview to move the line.")]) : null,
       el("div", { class: "row" }, ui.brand ? [refresh,
         ui.brand.miniToggle("Auto-update", true, setAuto),
         ui.brand.miniToggle("Pin on top", true, setPin, pinCb.title)
@@ -654,7 +654,7 @@ function createToolPanel(cfg) {
       state = clone(lookBase); state.out = keepOut; state.view = keepView;
       touch(); setStatus("Knobs reset to " + presetName + ".");
     }
-    else if (id === "split") { state.view.split = state.view.split ? 0 : 50; paintPreview(); schedulePreview(0); }
+    else if (id === "split") { if (refs.splitSw) refs.splitSw.__sw.set(!state.view.split); else { state.view.split = state.view.split ? 0 : 50; paintPreview(); } }
     else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
     else if (id === "about") setStatus(cfg.title + " " + (cfg.version || "") + "  |  " + (cfg.code || "") + "  |  Frank's Brew suite. Hover any control for help.");
   }

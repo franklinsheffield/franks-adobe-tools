@@ -84,6 +84,7 @@ module.exports = async function (t) {
     const src0 = T.refs.preview.src;
     panel.invokeMenu("split");
     assert.strictEqual(T.state.view.split, 50, "dithers split on");
+    assert.ok(T.refs.splitSw.querySelector(".switch").classList.contains("on"), "dithers Before/After switch follows the menu");
     assert.notStrictEqual(T.refs.preview.src, src0, "dithers preview repainted with the split");
     panel.invokeMenu("split");
     assert.strictEqual(T.state.view.split, 0, "dithers split off");

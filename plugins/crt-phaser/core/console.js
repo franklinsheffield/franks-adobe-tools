@@ -184,9 +184,14 @@ function createConsoleKit(env) {
       set(drag.v + dpx * k, false);
       if (env.onLive) env.onLive(path);   // optional: tools that render live frames while a knob turns
     };
-    const up = () => {
+    // a press-release that didn't move is a tap; two taps within 400 ms reset too
+    // (UXP on the Mac can swallow the second mousedown on a text label, 2026-11-24)
+    let lastTap = 0;
+    const up = (e) => {
       if (!drag) return;
+      const still = !e || e.clientX == null || (Math.abs(e.clientX - drag.x) < 3 && Math.abs(e.clientY - drag.y) < 3);
       drag = null;
+      if (still) { const t = Date.now(); if (t - lastTap < 400) { lastTap = 0; me.reset(); } else lastTap = t; }
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", up);
       node.classList.remove("turning");
@@ -204,6 +209,8 @@ function createConsoleKit(env) {
     img.addEventListener("mousedown", press(false));
     lab.addEventListener("mousedown", press(true));
     [img, lab].forEach((n) => { n.addEventListener("mousemove", move); n.addEventListener("mouseup", up); });
+    // text labels in UXP get a real dblclick instead of a second mousedown (Mac test 2026-11-24)
+    [img, lab].forEach((n) => n.addEventListener("dblclick", (e) => { me.reset(); if (e.preventDefault) e.preventDefault(); }));
     me.wheelStep = (dir) => {
       pick();
       set(env.getPath(S(), path) + dir * Math.max(step, (max - min) / 50), true);
