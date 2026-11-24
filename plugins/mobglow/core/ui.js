@@ -45,6 +45,15 @@ function arcadeText(e, v) {
 // Buttons are drawn as <div class="ub"> because UXP renders a real <button>
 // as a native grey Spectrum button that ignores the suite theme.
 // A [disabled] attribute still blocks clicks.
+// Brew 3.0 Night Arcade: display text (titles, headings, labels) is drawn with the
+// suite's own sprite fonts (shared/pixfont.js) instead of an installed font.
+let ARCADE_SPRITES = null;   // set by createUI({ arcade: true }); one panel per plugin
+function arcadePaint(e, cls, v) {
+  const PF = require("./pixfont.js");
+  if (/(^|\s)title(\s|$)/.test(cls)) return PF.paint(e, v, { font: "pixel", scale: 2, glow: 1, color: ARCADE_SPRITES.glow });
+  if (/(^|\s)(sub)(\s|$)/.test(cls)) return PF.paint(e, v, { font: "pixel", scale: 1, color: "#b9b6cc" });
+  return PF.paint(e, v, { font: "label", color: /ctitle/.test(cls) ? "#ffffff" : "#e9e7f5" });
+}
 function el(tag, props, kids) {
   const isBtn = tag === "button";
   const e = document.createElement(isBtn ? "div" : tag);
@@ -53,7 +62,7 @@ function el(tag, props, kids) {
     for (const k of Object.keys(props)) {
       const v = props[k];
       if (k === "class") e.className = v;
-      else if (k === "text") { if (ARCADE.test(props.class || "")) arcadeText(e, v); else e.textContent = v; }
+      else if (k === "text") { if (ARCADE.test(props.class || "")) { if (ARCADE_SPRITES) arcadePaint(e, props.class || "", v); else arcadeText(e, v); } else e.textContent = v; }
       else if (k === "style") { for (const s of Object.keys(v)) e.style[s] = v[s]; }
       else e.setAttribute(k, v);
     }
@@ -78,12 +87,27 @@ function createUI(opts) {
   const rules = [];
 
   const S = () => getState();
+  ARCADE_SPRITES = opts.arcade ? { glow: opts.glow || "#5cf2ff" } : null;
+  // Brew 3.0 hover help (shared/help.js): opts.helpText = { key: text } from the plugin,
+  // merged over shared/help-text.js. Every control attaches itself; sweep() catches the rest.
+  const help = opts.helpText ? require("./help.js").createHelp({
+    el, storeKey: opts.storeKey,
+    lookup: (key, info) => {
+      const T = Object.assign({}, require("./help-text.js").TEXT, opts.helpText);
+      let t = T[key];
+      if (t == null && info && info.alias) t = T[info.alias];
+      if (typeof t === "function") t = t(info);
+      return t || "";
+    },
+    paintName: opts.arcade ? (n, txt) => require("./pixfont.js").paint(n, txt, { font: "label", color: "#ffffff" }) : null
+  }) : null;
+  const helpAt = (node, info) => { if (help && node) help.attach(node, info); return node; };
   function bind(fn) { binders.push(fn); fn(); }
   function showIf(node, fn) { rules.push(() => { node.style.display = fn() ? "" : "none"; }); }
   function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); }
   // Optional "Hardware Console" brand: dials and switches instead of sliders and checkboxes.
   const brand = opts.brand === "console"
-    ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), onLive: opts.onLive, glow: opts.glow, getDefault: opts.getDefault, onSelect: (i) => { if (opts.onSelect) opts.onSelect(i); } })
+    ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), onLive: opts.onLive, glow: opts.glow, getDefault: opts.getDefault, onSelect: (i) => { if (opts.onSelect) opts.onSelect(i); }, help, lcd: !!opts.arcade })
     : null;
 
   function row(label, ...controls) {
@@ -101,6 +125,13 @@ function createUI(opts) {
     return row(label, input, val);
   }
 
+  // Brew 3.0 controls (shared/controls.js); without the console brand they fall back to sliders
+  function fader(label, path, min, max, step, unit) { return brand ? brand.fader(label, path, min, max, step, unit) : sliderRow(label, path, min, max, step, unit); }
+  function stepper(label, path, min, max, step, unit) { return brand ? brand.stepper(label, path, min, max, step, unit) : sliderRow(label, path, min, max, step, unit); }
+  function angle(label, path, min, max, step) { return brand ? brand.angle(label, path, min, max, step) : sliderRow(label, path, min == null ? 0 : min, max == null ? 360 : max, step || 1, " deg"); }
+  function range(label, lo, hi, min, max, step, unit) { return brand ? brand.range(label, lo, hi, min, max, step, unit) : el("div", {}, [sliderRow(label + " low", lo, min, max, step, unit), sliderRow(label + " high", hi, min, max, step, unit)]); }
+  function grid(path, options, o) { return brand ? brand.grid(path, options, o) : segGroup(path, options); }
+
   function selectRow(label, path, options, after) {
     const sel = el("select", {});
     options.forEach((o) => sel.appendChild(el("option", { value: String(o.v), text: o.l })));
@@ -117,7 +148,7 @@ function createUI(opts) {
       if (i < 0) i = 0;
       sel.selectedIndex = i;
     });
-    return row(label, sel);
+    return helpAt(row(label, sel), { key: path, name: label, kind: "select" });
   }
 
   function checkRow(label, path, after) {
@@ -125,7 +156,7 @@ function createUI(opts) {
     const cb = el("input", { type: "checkbox" });
     cb.addEventListener("change", () => { setPath(S(), path, !!cb.checked); if (after) after(!!cb.checked); onChange(); });
     bind(() => { cb.checked = !!getPath(S(), path); });
-    return el("div", { class: "row chk" }, [cb, el("span", { class: "lbl2", text: label })]);
+    return helpAt(el("div", { class: "row chk" }, [cb, el("span", { class: "lbl2", text: label })]), { key: path, name: label, kind: "switch" });
   }
 
   function segGroup(path, options, cls) {
@@ -133,6 +164,7 @@ function createUI(opts) {
     const btns = options.map((o) => {
       const b = el("button", { class: "segbtn", text: o.l, title: o.t || "" });
       b.addEventListener("click", () => { setPath(S(), path, o.v); onChange(); });
+      helpAt(b, { key: path, name: o.l, kind: "seg", note: o.t || "" });
       wrap.appendChild(b);
       return b;
     });
@@ -146,14 +178,14 @@ function createUI(opts) {
     b.appendChild(el("span", { text: label }));
     b.addEventListener("click", () => { setPath(S(), path, !getPath(S(), path)); onChange(); });
     bind(() => { if (getPath(S(), path)) b.classList.add("on"); else b.classList.remove("on"); });
-    return b;
+    return helpAt(b, { key: path, name: label, kind: "switch" });
   }
 
   function textRow(label, path, placeholder, after) {
     const input = el("input", { type: "text", placeholder: placeholder || "" });
     input.addEventListener("change", () => { setPath(S(), path, input.value); if (after) after(); onChange(); });
     bind(() => { input.value = String(getPath(S(), path)); });
-    return row(label, input);
+    return helpAt(row(label, input), { key: path, name: label, kind: "info" });
   }
 
   function numInput(path, min, max) {
@@ -217,6 +249,15 @@ function createUI(opts) {
     const body = el("div", { class: "cardbody" }, kids);
     const head = el("div", { class: "cardhead" }, [el("span", { class: "ctitle", text: title })]);
     const c = el("div", { class: "card" }, [head, body]);
+    helpAt(head, { key: "card:" + title, name: title, kind: "card", alias: o.help });
+    // 3.0 rule 11: max 6 primary controls per effect; the rest go in a folded Advanced card
+    if (o.advanced && o.advanced.length) {
+      const adv = card(o.advancedTitle || "Advanced", o.advanced, { open: false, foldKey: title + " / Advanced", help: "card:Advanced" });
+      adv.classList.add("advcard");
+      body.appendChild(adv);
+      // hide the Advanced card when none of its controls apply in the current mode (rule 12)
+      rules.push(() => { adv.style.display = o.advanced.some((n) => n && n.style.display !== "none") ? "" : "none"; });
+    }
     if (o.hint) body.insertBefore(el("div", { class: "hint", text: o.hint }), body.firstChild);
     const info = { title, opts: o, head, body, node: c, foldable: o.fold !== false };
     c.__card = info;
@@ -229,11 +270,12 @@ function createUI(opts) {
       info.setOpen = (open, remember) => {
         if (open) { c.classList.remove("shut"); chev.textContent = "-"; sum.textContent = ""; }
         else { c.classList.add("shut"); chev.textContent = "+"; sum.textContent = summary(body); }
-        if (remember) { foldMem[title] = open ? 1 : 0; saveFold(); }
+        if (remember) { foldMem[o.foldKey || title] = open ? 1 : 0; saveFold(); }
       };
       info.isOpen = () => !c.classList.contains("shut");
       head.addEventListener("click", () => info.setOpen(!info.isOpen(), true));
-      const start = title in foldMem ? !!foldMem[title] : o.open !== false;
+      const fk = o.foldKey || title;
+      const start = fk in foldMem ? !!foldMem[fk] : o.open !== false;
       info.setOpen(start, false);
       allCards.push(info);
     }
@@ -309,6 +351,7 @@ function createUI(opts) {
       const canOff = !!(info.opts && info.opts.bypass);
       const dot = canOff ? el("span", { class: "tabdot", title: "Switch this effect on or off" }) : null;
       const btn = el("div", { class: "tabbtn", role: "tab", title: info.title }, [dot, el("span", { class: "tabtxt", text: info.title })]);
+      helpAt(btn, { key: "tab:" + info.title, name: info.title, kind: "tab", alias: "card:" + info.title });
       const wrap = el("div", { class: "tabpane" }, [c]);
       row.appendChild(btn);
       panes.appendChild(wrap);
@@ -342,15 +385,34 @@ function createUI(opts) {
       stack.textContent = "Stack: " + (items.filter((x) => visible(x) && (!x.canOff || o.isOn(x.title))).map((x) => x.title).join("  >  ") || "nothing on") + "   (dot = on / off)";
       choose(cur, false);
     });
+    const api = { choose: (t) => choose(t, true), items, get current() { return cur; } };
+    // 3.0: the tab row is pinned under the preview and the panes scroll (o.split)
+    if (o.split) { row.classList.add("fxbar"); panes.classList.add("fxpanes"); panes.__tabs = api; row.__tabs = api; return { bar: row, panes, api }; }
     const node = card(o.title || "Effects", [row, stack, panes], { open: true });
     node.classList.add("tabcard");
-    node.__tabs = { choose: (t) => choose(t, true), items, get current() { return cur; } };
+    node.__tabs = api;
     return node;
   }
 
+  function sweep(rootNode) {
+    if (!help || !rootNode) return;
+    const txt = (n) => String((n.__pxStr != null ? n.__pxStr : n.textContent) || "").replace(/\s+/g, " ").trim();
+    rootNode.querySelectorAll(".ub, select, .switch, .sw.pick, .look, .tile, input").forEach((n) => {
+      for (let p = n; p && p !== rootNode; p = p.parentNode) if (p.__help) return;
+      if (n.classList.contains("ub")) helpAt(n, { key: "btn:" + txt(n), name: txt(n), kind: "button" });
+      else if (n.classList.contains("look")) helpAt(n, { key: "look", name: txt(n), kind: "grid" });
+      else if (n.classList.contains("sw")) helpAt(n, { key: "swatch", name: "Colour", kind: "swatch" });
+      else if (n.classList.contains("hex")) helpAt(n, { key: "swatch", name: "Hex colour", kind: "swatch" });
+      else if (n.getAttribute("data-key")) helpAt(n, { key: n.getAttribute("data-key"), name: n.getAttribute("placeholder") || "", kind: n.tagName === "SELECT" ? "select" : "info" });
+      else if (n.closest && n.closest(".stops")) helpAt(n, { key: "grad.pos", name: "Stop position", kind: "info", min: 0, max: 100, unit: "%" });
+      else helpAt(n, { key: "ctl:" + (n.className || n.tagName), name: n.getAttribute("title") || "", kind: "info" });
+    });
+  }
+
   return {
+    help, helpAt, sweep,
     el, clear, bind, showIf, refreshAll, getPath, setPath,
-    row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand,
+    row, sliderRow, fader, stepper, angle, range, grid, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand,
     section, tabs, jumpStrip, foldAll, anyOpen
   };
 }

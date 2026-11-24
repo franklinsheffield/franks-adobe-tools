@@ -129,7 +129,7 @@ module.exports = async function (t) {
     assert.ok(!btn("Finish").querySelector(".tabdot"), "Finish has no on/off dot");
   });
 
-  await t("Knobs: value box beside the knob; click selects (white), arrows step (Shift x10), wheel turns, only one selected", async () => {
+  await t("Knobs: value box beside the knob; click selects (white), arrows step (Shift x10), wheel never turns it (3.0 rule 1)", async () => {
     const DIR = path.join(__dirname, "..", "plugins", "decompressor");
     const P = await loadPanel(DIR, { withDoc: false });
     const D = P.document, T = P.mod._test;
@@ -149,25 +149,17 @@ module.exports = async function (t) {
     key("ArrowDown"); key("ArrowDown"); assert.strictEqual(T.state.jpeg.quality, q0 - 1);
     key("ArrowDown", true); assert.strictEqual(T.state.jpeg.quality, Math.max(1, q0 - 11), "Shift = 10 steps");
     assert.strictEqual(qi.value, String(T.state.jpeg.quality), "box shows the value");
+    // Brew 3.0 rule 1 (Frank, 2026-11-24): the wheel never changes a value; it always scrolls the panel
     const g0 = T.state.jpeg.generations;
     g.querySelector(".knob").dispatchEvent(new P.window.WheelEvent("wheel", { deltaY: -100, bubbles: true }));
-    assert.ok(T.state.jpeg.generations > g0, "wheel up turns it up");
-    assert.ok(g.classList.contains("sel") && !q.classList.contains("sel"), "wheel selects; one knob selected at a time");
-    // UXP sends no wheel events: a scroll of the panel while the pointer is on a knob turns the knob and the panel stays put
+    assert.strictEqual(T.state.jpeg.generations, g0, "wheel over a knob does not turn it");
     const sc = D.querySelector(".scroller");
     Object.defineProperty(sc, "scrollHeight", { configurable: true, get: () => 5000 });
     sc.scrollTop = 100; sc.dispatchEvent(new P.window.Event("scroll"));
     g.dispatchEvent(new P.window.MouseEvent("mouseover", { bubbles: true }));
-    const g1 = T.state.jpeg.generations;
-    sc.scrollTop = 97; sc.dispatchEvent(new P.window.Event("scroll"));
-    assert.ok(T.state.jpeg.generations > g1, "scroll up over a knob turns it up");
-    assert.strictEqual(sc.scrollTop, 100, "panel scroll put back");
-    sc.dispatchEvent(new P.window.Event("scroll"));            // the host's echo of the reset
-    g.dispatchEvent(new P.window.MouseEvent("mouseout", { bubbles: true, relatedTarget: D.body }));
-    const g2 = T.state.jpeg.generations;
     sc.scrollTop = 140; sc.dispatchEvent(new P.window.Event("scroll"));
-    assert.strictEqual(T.state.jpeg.generations, g2, "off the knob the panel just scrolls");
-    assert.strictEqual(sc.scrollTop, 140);
+    assert.strictEqual(T.state.jpeg.generations, g0, "scrolling over a knob leaves it alone");
+    assert.strictEqual(sc.scrollTop, 140, "the panel scrolls");
     qi.value = "500"; qi.dispatchEvent(new P.window.Event("change"));
     assert.strictEqual(T.state.jpeg.quality, 100, "typed value clamps");
   });

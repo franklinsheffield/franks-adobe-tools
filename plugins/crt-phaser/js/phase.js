@@ -63,17 +63,36 @@ async function renderPhase(src, P, hooks) {
   await yieldFn();
 
   // 2. the field
+  // Lidar depth: 0 near .. 1 far. Prototype takes P.depthMap (Smart depth / Depth layer in the plugin); falls back to inverted smooth brightness
+  let DEP = null;
+  if (mode === "lidar") {
+    DEP = P.depthMap ? Float32Array.from(P.depthMap) : Float32Array.from(Ls, (v) => 1 - v);
+    const srt = Float32Array.from(DEP).sort(), lo = srt[(n * 0.02) | 0], hi = srt[(n * 0.98) | 0];
+    for (let i = 0; i < n; i++) DEP[i] = clamp((DEP[i] - lo) / Math.max(1e-3, hi - lo), 0, 1);   // stretch to the full near..far range
+  }
   const F = new Float32Array(n), bend = Q.amp / 100 * 10;
   // Angle turns the line direction in every mode (0 = horizontal lines, 90 = vertical); brightness bends lines across it
   const ang = (Q.angle || 0) * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
   let flow = null;
   if (mode === "flux" || mode === "fluxdots" || Q.warp > 0) flow = flowNoise(w, h, sp * 6, Q.seed | 0);
   const warp = Q.warp / 100 * 1.5, levels = 2 + Q.amp / 100 * 10;
-  for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) {
+  // Instability (3.0 proto): wander = slow line drift, jitter = fast per-line wobble, tear = sideways sync slips
+  const U = Q.unstable || 0, un = U / 100;
+  let wander = null, jit = null, tearX = null;
+  if (un > 0) {
+    wander = flowNoise(w, h, sp * (10 - 6 * (Q.chaos || 50) / 100), (Q.seed | 0) + 101);
+    jit = flowNoise(w, h, Math.max(2, sp * 1.2), (Q.seed | 0) + 202);
+    tearX = new Float32Array(h); const rt = M.rng((Q.seed | 0) + 303); let off = 0;
+    for (let y = 0; y < h; y++) { if (rt() < 0.04 * un) off = (rt() * 2 - 1) * sp * 14 * un; else off *= 0.97; tearX[y] = off; }
+  }
+  for (let y = 0, i = 0; y < h; y++) for (let x0 = 0; x0 < w; x0++, i++) {
+    const x = tearX ? x0 + tearX[y] : x0;
     const t = ang ? -x * sa + y * ca : y;          // distance across the line direction
     if (mode === "waveform") F[i] = t / sp - bend * (0.7 * Ls[i] + 0.3 * Ld[i]) + (flow ? warp * 0.4 * flow[i] : 0);
     else if (mode === "linear") F[i] = t / sp + (flow ? warp * 0.25 * flow[i] : 0);
+    else if (mode === "lidar") F[i] = t / sp + bend * 0.6 * (1 - DEP[i]);
     else F[i] = (t / sp) * 0.35 + levels * (0.55 * Ld[i] + 0.45 * Ls[i]) + warp * flow[i];
+    if (un > 0) { const xi = y * w + Math.min(w - 1, Math.max(0, x | 0)); F[i] += un * (3.2 * wander[i] + 0.6 * jit[i]) * (0.6 + 0.8 * Ls[xi]); }
   }
   await yieldFn();
 
@@ -89,6 +108,23 @@ async function renderPhase(src, P, hooks) {
       const gy = (F[Math.min(y + 1, h - 1) * w + x] - F[Math.max(y - 1, 0) * w + x]) / ((y > 0 && y < h - 1) ? 2 : 1);
       const gm = Math.max(Math.hypot(gx, gy), 0.15 / sp);
       const fr = F[i] - Math.round(F[i]), d = Math.abs(fr) / gm;          // pixels to the nearest line
+      if (mode === "lidar") {
+        // scan ring = nearest whole F; dots along the ring, sparser and smaller with distance, random dropouts
+        const ring = Math.round(F[i]); const dRing = Math.abs(F[i] - ring) / gm;
+        const D = DEP[i], pitchL = Math.max(2, sp * (0.4 + 1.2 * D) * (0.6 + Q.dots / 100));
+        const along = ang ? x * ca + y * sa : x;
+        const k0 = Math.round((along + (ring & 1) * pitchL * 0.5) / pitchL);
+        const da = along + (ring & 1) * pitchL * 0.5 - k0 * pitchL;
+        const hsh = (M.hashNoise(k0, ring, (Q.seed | 0) + 41) + 1) / 2;
+        if (hsh < 0.05 + 0.35 * D * ((Q.drop == null ? 30 : Q.drop) / 100)) continue;            // dropouts, more far away
+        const rad = Math.max(0.7, wBase * (2.4 - 1.5 * D) * (0.8 + 0.4 * hsh));
+        const dd = Math.hypot(da, dRing), disc = clamp(rad - dd + 0.5, 0, 1);
+        if (disc <= 0) continue;
+        const v = 0.35 + 0.65 * Math.pow(clamp((Ld[i] - th) / (1 - th) + 0.25, 0, 1), 0.8);   // return intensity
+        I[i] = disc * (Q.color === "depth" ? 1 : v); core[i] = disc * (1 - D) * 0.6;
+        if (Q.color === "depth") I[i] = disc * (0.4 + 0.6 * (1 - D));          // ramp by distance: near = hot end
+        continue;
+      }
       if (mode === "fluxdots") {
         // light the grid dot whose centre sits on a contour; dot size follows line strength there
         const row = Math.floor(y / dp3), ox = (row & 1) ? dp3 / 2 : 0;

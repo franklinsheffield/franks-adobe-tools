@@ -57,8 +57,20 @@ function isGroup(layer) {
 }
 
 // Which things should we process?  [{ kind:"flat" } | { kind:"layer", layer }]
+// Brew 3.0 chaining (Frank, 2026-11-24): "prev" = the topmost Brew result group in the document
+// (any plugin's "<layer> - Frank's <Tool> Brew - <look>" group), so one plugin runs on another's result.
+function findPrevBrew(doc) {
+  let top = [];
+  try { top = Array.from(doc.layers || []); } catch (e) { top = []; }
+  return top.find((l) => { try { return l.visible !== false && /Frank's .+ Brew - /.test(String(l.name || "")); } catch (e) { return false; } }) || null;
+}
 function collectTargets(doc, source) {
   if (source === "flat") return [{ kind: "flat" }];
+  if (source === "prev") {
+    const g = findPrevBrew(doc);
+    if (!g) throw new Error("No earlier Brew result in this document. Apply another Brew plugin first, or set Source to Flattened document.");
+    return [{ kind: "layer", layer: g, prev: true }];
+  }
   let layers = [];
   try { layers = Array.from(doc.activeLayers || []); } catch (e) { layers = []; }
   layers = layers.filter((l) => !isGroup(l));
@@ -118,6 +130,14 @@ async function readSource(doc, target, view) {
     const cw = Math.min(bw, size), ch = Math.min(bh, size);
     const l = bounds.left + Math.floor((bw - cw) / 2), t = bounds.top + Math.floor((bh - ch) / 2);
     src = await getPixels(doc, layerId, { left: l, top: t, right: l + cw, bottom: t + ch });
+    origin = { left: l, top: t };
+  } else if (view.kind === "region") {
+    // Brew 3.0 zoom: a rect of the source (relative to the layer bounds), read at view.scale (<= 1)
+    const r = view.rect, sc = Math.min(1, view.scale || 1);
+    const l = bounds.left + r.l, t = bounds.top + r.t;
+    const rb = { left: l, top: t, right: l + r.w, bottom: t + r.h };
+    src = sc < 1 ? await getPixels(doc, layerId, rb, { width: Math.max(1, Math.round(r.w * sc)), height: Math.max(1, Math.round(r.h * sc)) }) : await getPixels(doc, layerId, rb);
+    scale = src.w / r.w;
     origin = { left: l, top: t };
   } else if (view.kind === "whole") {
     const size = view.size || 360;
@@ -295,6 +315,6 @@ async function swapToSource(doc, group, ids) {
 }
 
 module.exports = {
-  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };

@@ -6,8 +6,8 @@
 //             in the tool's neon and a status LED (READY / BUSY / ERROR)
 //   dial():   rotary knob for a number setting with a value box beside it.
 //             Click the knob or its box to select it (white glow, one per panel);
-//             Up/Down arrows step it (Shift = 10 steps), the mouse wheel turns it,
-//             drag up/down (Shift = fine), or type a value (Frank, 2026-11-22).
+//             Up/Down arrows step it (Shift = 10 steps), drag up/down (Shift = fine),
+//             or type a value (Frank, 2026-11-22). 3.0: no mouse wheel (rule 1).
 //             Research quick wins (2026-11-23): drag the label too (Adobe "scrubby"
 //             labels), double-click the knob or label to reset it to the look's
 //             value, the unit shows beside the box, and env.onSelect(info) lets the
@@ -85,11 +85,12 @@ function createConsoleKit(env) {
     const node = el("div", { class: "rack" }, [
       screw("tl"), screw("tr", true), screw("bl", true), screw("br"),
       el("div", { class: "rackl" }, [
-        el("div", { class: "sub rackcode", text: "FRANK'S  -  " + (cfg.code || "BREW") }),
+        el("div", { class: "sub rackcode", text: (env.lcd ? "FRANK'S " : "FRANK'S  -  ") + (cfg.code || "BREW") }),
         el("div", { class: "title", text: name })
       ]),
-      el("div", { class: "rackr" }, [led, ledTxt])
+      el("div", { class: "rackr" }, [env.help ? env.help.switchNode() : null, led, ledTxt])
     ]);
+    if (env.help) env.help.attach(led.parentNode, { key: "help.led", name: "Status light", kind: "info" });
     function set(mode) {
       led.className = "led" + (mode === "busy" ? " busy" : mode === "err" ? " err" : "");
       ledTxt.textContent = mode === "busy" ? "BUSY" : mode === "err" ? "ERROR" : "READY";
@@ -97,96 +98,35 @@ function createConsoleKit(env) {
     return { node, set };
   }
 
-  let selected = null;   // the one selected dial in this panel
+  let selected = null;   // the one selected control in this panel (knob, fader, stepper, ...)
   function select(d) {
     if (selected === d) return;
     const old = selected;
     selected = d;
-    if (old) old.redraw();
-    if (d) d.redraw();
+    if (old && old.redraw) old.redraw();
+    if (d && d.redraw) d.redraw();
   }
+  const selection = { select, get: () => selected };
+  const C = require("./controls.js").createControls(env, selection);
 
-  // UXP (PS 28) never sends wheel events to panel elements: the wheel only
-  // scrolls the panel's scroller. So while the pointer is over a knob, a
-  // scroll of the scroller is undone and turned into knob steps instead.
-  let hovered = null, scroller = null, lastTop = 0, restoring = false;
-  function findScroller(n) {
-    for (let p = n; p; p = p.parentNode) if (p.classList && p.classList.contains("scroller")) return p;
-    return null;
-  }
-  function watchScroll(n) {
-    const sc = findScroller(n);
-    if (!sc || sc === scroller) return;
-    scroller = sc; lastTop = sc.scrollTop;
-    sc.addEventListener("scroll", () => {
-      const top = sc.scrollTop;
-      if (restoring) { restoring = false; lastTop = top; return; }
-      const delta = top - lastTop;
-      if (hovered && delta) {
-        hovered.wheelStep(delta < 0 ? 1 : -1);
-        restoring = true;
-        sc.scrollTop = lastTop;                          // put the panel back
-        if (sc.scrollTop === top) { restoring = false; lastTop = top; }   // host ignored the reset
-        return;
-      }
-      lastTop = top;
-    });
-  }
-
+  // Rule 1 (Brew 3.0, Frank 2026-11-24): NO mouse-wheel input on any control. The wheel
+  // always scrolls the panel, even with the pointer over a knob. (Panel system 2 turned
+  // knobs with the wheel; that is gone.) Values change by drag, arrows, typing or label drag.
   function dial(label, path, min, max, step, unit) {
-    const S = env.getState;
-    const fmt = (v) => (step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.1 ? 2 : 1));
-    const snap = (v) => {
-      v = Math.max(min, Math.min(max, v));
-      v = min + Math.round((v - min) / step) * step;
-      return parseFloat(v.toFixed(6));
-    };
-    const u = String(unit || "").trim();
-    const tip = label + (u ? " (" + u + ")" : "") + ": drag, wheel or Up/Down to change. Shift = fine drag, x10 arrows. Double-click resets.";
-    const img = el("img", { class: "knob", title: tip });
-    const val = el("input", { type: "text", class: "dialval", title: tip });
-    const lab = el("div", { class: "dlabel scrub", text: label, title: "Drag left/right or up/down to change. Double-click resets." });
-    const node = el("div", { class: "dial" }, [el("div", { class: "dialrow" }, [img, val, u ? el("span", { class: "dunit", text: u }) : null]), lab]);
-    const startV = env.getPath(S(), path);
-    const baseline = () => { let v; try { v = env.getDefault ? env.getDefault(path) : undefined; } catch (e) { v = undefined; } return typeof v === "number" && isFinite(v) ? v : startV; };
-    const me = {
-      node,
-      redraw() {
-        const on = selected === me;
-        if (on) node.classList.add("sel"); else node.classList.remove("sel");
-        draw(env.getPath(S(), path));
-      }
-    };
-    const draw = (v) => {
-      img.src = dialImage((v - min) / (max - min || 1), glow(), selected === me);
-      if (document.activeElement !== val || !val.__typing) val.value = fmt(v);
-    };
-    const set = (v, commit) => {
-      v = snap(v);
-      if (v !== env.getPath(S(), path)) env.setPath(S(), path, v);
-      draw(v);
-      if (commit) env.onChange();
-    };
-    const pick = () => {
-      select(me);
-      if (env.onSelect) env.onSelect({ label, unit: u, min, max, step });
-      try { if (document.activeElement !== val) val.focus(); } catch (e) { /* host without focus() */ }
-    };
-    // UXP does not reliably send dblclick, so a second press within 350 ms on the same spot counts
-    let lastPress = 0;
-    const doublePress = () => { const t = Date.now(), d = t - lastPress < 350; lastPress = d ? 0 : t; return d; };
-    me.reset = () => { set(baseline(), true); };
-    let drag = null;
+    let me = null;
+    const img = el("img", { class: "knob" });
+    me = C.numeric({ label, path, min, max, step, unit, kind: "knob", cls: "dial",
+      visual: () => ({ node: img, draw: (v, sel) => { img.src = dialImage((v - min) / (max - min || 1), glow(), sel); } }) });
+    // pressing the knob selects it and focuses its box so the arrow keys reach it
+    const focusBox = () => { const i = me.node.querySelector(".dialval"); try { if (document.activeElement !== i) i.focus(); } catch (e) { /* host without focus() */ } };
+    let drag = null, lastTap = 0;
     const move = (e) => {
       if (!drag) return;
       const k = (e.shiftKey ? 0.2 : 1) * (max - min) / 160;
-      const dpx = drag.label ? (e.clientX - drag.x) + (drag.y - e.clientY) : (drag.y - e.clientY);   // a label scrubs sideways too
-      set(drag.v + dpx * k, false);
-      if (env.onLive) env.onLive(path);   // optional: tools that render live frames while a knob turns
+      me.set(drag.v + (drag.y - e.clientY) * k, false);
     };
     // a press-release that didn't move is a tap; two taps within 400 ms reset too
-    // (UXP on the Mac can swallow the second mousedown on a text label, 2026-11-24)
-    let lastTap = 0;
+    // (UXP on the Mac can swallow the second mousedown, 2026-11-24)
     const up = (e) => {
       if (!drag) return;
       const still = !e || e.clientX == null || (Math.abs(e.clientX - drag.x) < 3 && Math.abs(e.clientY - drag.y) < 3);
@@ -194,67 +134,21 @@ function createConsoleKit(env) {
       if (still) { const t = Date.now(); if (t - lastTap < 400) { lastTap = 0; me.reset(); } else lastTap = t; }
       document.removeEventListener("mousemove", move);
       document.removeEventListener("mouseup", up);
-      node.classList.remove("turning");
+      me.node.classList.remove("turning");
       env.onChange();
     };
-    const press = (isLabel) => (e) => {
-      pick();
-      if (doublePress()) { me.reset(); if (e.preventDefault) e.preventDefault(); return; }
-      drag = { x: e.clientX, y: e.clientY, v: env.getPath(S(), path), label: isLabel };
-      node.classList.add("turning");
+    img.addEventListener("mousedown", (e) => {
+      me.pick(); focusBox();
+      if (me.doublePress()) { me.reset(); if (e.preventDefault) e.preventDefault(); return; }
+      drag = { x: e.clientX, y: e.clientY, v: me.get() };
+      me.node.classList.add("turning");
       document.addEventListener("mousemove", move);
       document.addEventListener("mouseup", up);
       if (e.preventDefault) e.preventDefault();
-    };
-    img.addEventListener("mousedown", press(false));
-    lab.addEventListener("mousedown", press(true));
-    [img, lab].forEach((n) => { n.addEventListener("mousemove", move); n.addEventListener("mouseup", up); });
-    // text labels in UXP get a real dblclick instead of a second mousedown (Mac test 2026-11-24)
-    [img, lab].forEach((n) => n.addEventListener("dblclick", (e) => { me.reset(); if (e.preventDefault) e.preventDefault(); }));
-    me.wheelStep = (dir) => {
-      pick();
-      set(env.getPath(S(), path) + dir * Math.max(step, (max - min) / 50), true);
-    };
-    node.addEventListener("mouseover", () => { hovered = me; watchScroll(node); if (scroller) lastTop = scroller.scrollTop; });
-    node.addEventListener("mouseout", (e) => {
-      const to = e.relatedTarget;
-      if (to && node.contains && node.contains(to)) return;
-      if (hovered === me) hovered = null;
     });
-    const wheel = (e) => {
-      const dir = e.deltaY < 0 ? 1 : -1;
-      me.wheelStep(dir);
-      if (e.preventDefault) e.preventDefault();
-      if (e.stopPropagation) e.stopPropagation();
-    };
-    img.addEventListener("wheel", wheel);
-    val.addEventListener("wheel", wheel);
-    val.addEventListener("focus", () => select(me));
-    val.addEventListener("mousedown", () => select(me));
-    val.addEventListener("keydown", (e) => {
-      const k = e.key || e.code;
-      if (k === "ArrowUp" || k === "ArrowDown" || e.keyCode === 38 || e.keyCode === 40) {
-        const dir = (k === "ArrowUp" || e.keyCode === 38) ? 1 : -1;
-        val.__typing = false;
-        set(env.getPath(S(), path) + dir * step * (e.shiftKey ? 10 : 1), true);
-        if (e.preventDefault) e.preventDefault();
-        return;
-      }
-      if (k === "Enter" || e.keyCode === 13) { commitTyped(); return; }
-      if (k === "Escape" || e.keyCode === 27) { val.__typing = false; draw(env.getPath(S(), path)); return; }
-      val.__typing = true;
-    });
-    function commitTyped() {
-      val.__typing = false;
-      const v = parseFloat(String(val.value).replace(",", "."));
-      if (isNaN(v)) { draw(env.getPath(S(), path)); return; }
-      set(v, true);
-    }
-    val.addEventListener("change", commitTyped);
-    val.addEventListener("blur", () => { if (val.__typing) commitTyped(); });
-    bind(() => draw(env.getPath(S(), path)));
-    node.__dial = { set: (v) => set(v, true), select: () => pick(), reset: () => me.reset(), get selected() { return selected === me; } };
-    return node;
+    img.addEventListener("mousemove", move); img.addEventListener("mouseup", up);
+    img.addEventListener("dblclick", (e) => { me.reset(); if (e.preventDefault) e.preventDefault(); });
+    return me.node;
   }
 
   function toggle(label, path, after) {
@@ -271,11 +165,13 @@ function createConsoleKit(env) {
     // the whole row is the click target, not just the small switch (WCAG 2.5.8 target size)
     const lab = el("span", { class: "lbl2 swlbl", text: label });
     lab.addEventListener("click", () => sw.click());
-    return el("div", { class: "row chk swrow" }, [lab, sw]);
+    const rowN = el("div", { class: "row chk swrow" }, [lab, sw]);
+    if (env.help) env.help.attach(rowN, { key: path, name: label, kind: "switch" });
+    return rowN;
   }
 
   // small inline switch for panel-level options (Auto-update, Pin on top) that are not in state
-  function miniToggle(label, initial, onSet, title) {
+  function miniToggle(label, initial, onSet, title, helpKey) {
     let v = !!initial;
     const sw = el("div", { class: "switch" + (v ? " on" : ""), role: "switch", title: title || label }, [el("div", { class: "swknob" })]);
     const show = () => { if (v) sw.classList.add("on"); else sw.classList.remove("on"); };
@@ -283,6 +179,7 @@ function createConsoleKit(env) {
     sw.addEventListener("click", () => set(!v));
     const node = el("span", { class: "minisw" }, [el("span", { class: "lbl2", text: label }), sw]);
     node.__sw = { get: () => v, set };
+    if (env.help) env.help.attach(node, { key: helpKey || ("opt:" + label), name: label, kind: "switch" });
     return node;
   }
 
@@ -292,6 +189,7 @@ function createConsoleKit(env) {
     for (let i = 0; i < n; i++) segs.push(el("div", { class: "seg8" }));
     const pct = el("span", { class: "mpct", text: "" });
     const node = el("div", { class: "meter" }, [el("span", { class: "sub mlbl", text: "RENDER" }), el("div", { class: "segs" }, segs), pct]);
+    if (env.help) env.help.attach(node, { key: "apply.meter", name: "Render meter", kind: "info" });
     let timer = null, pos = 0;
     const light = (k, chase) => segs.forEach((s, i) => {
       const on = chase ? (i <= k && i > k - 4) : i < k;
@@ -306,7 +204,8 @@ function createConsoleKit(env) {
     };
   }
 
-  return { header, dial, toggle, miniToggle, meter, get selectedDial() { return selected ? selected.node : null; } };
+  return { header, dial, toggle, miniToggle, meter, fader: C.fader, stepper: C.stepper, angle: C.angle, range: C.range, grid: C.grid, valueBox: C.valueBox,
+    get selectedDial() { return selected ? selected.node : null; } };
 }
 
 module.exports = { createConsoleKit, dialImage };

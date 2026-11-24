@@ -17,7 +17,7 @@
 function pressGlow(root) {
   if (root.__pressGlow) return;
   root.__pressGlow = true;
-  const SEL = ".btn, .segbtn, .pill, .apply, .sw.pick";
+  const SEL = ".btn, .segbtn, .pill, .apply, .sw.pick, .stepb, .tile, .lookbtn, .tbtn";
   const find = (t) => { while (t && t !== root) { if (t.matches && t.matches(SEL)) return t; t = t.parentNode; } return null; };
   const on = (e) => {
     const b = find(e.target);
@@ -30,13 +30,16 @@ function pressGlow(root) {
   root.addEventListener("click", on);
 }
 
-function splitLayout(root, el) {
+// opts.footer (Brew 3.0): a pinned footer under the scroller for the render meter and Apply key
+function splitLayout(root, el, opts) {
   root.classList.add("split");
   pressGlow(root);
   const pinned = el("div", { class: "pinned" });
   const scroller = el("div", { class: "scroller" });
   root.appendChild(pinned);
   root.appendChild(scroller);
+  const footer = opts && opts.footer ? el("div", { class: "pfoot" }) : null;
+  if (footer) root.appendChild(footer);
   let isPinned = true;
 
   function setPinned(on) {
@@ -61,7 +64,7 @@ function splitLayout(root, el) {
     const h = root.clientHeight || 820;
     return Math.max(120, Math.round(h * (fraction || 0.38)));
   }
-  return { pinned, scroller, setPinned, previewMaxHeight, get isPinned() { return isPinned; } };
+  return { pinned, scroller, footer, setPinned, previewMaxHeight, get isPinned() { return isPinned; } };
 }
 
 module.exports = { splitLayout, pressGlow };

@@ -33,26 +33,44 @@ function put32(buf, off, v) {
 }
 
 // data: Uint8Array of w*h*channels (channels = 3 or 4)
-function encodePNG(data, w, h, channels) {
+// palette (optional, 3.0 sprite fonts): data holds one palette index (0-15) per pixel and is
+// written as a 4-bit indexed PNG with transparency, 8x smaller than RGBA.
+function encodePNG(data, w, h, channels, palette) {
   channels = channels || 3;
-  const rowBytes = w * channels;
+  const indexed = Array.isArray(palette) && palette.length > 0;
+  const rowBytes = indexed ? Math.ceil(w / 2) : w * channels;
   const raw = new Uint8Array(h * (rowBytes + 1));
   for (let y = 0; y < h; y++) {
     raw[y * (rowBytes + 1)] = 0;
-    raw.set(data.subarray(y * rowBytes, (y + 1) * rowBytes), y * (rowBytes + 1) + 1);
+    if (indexed) {
+      const o = y * (rowBytes + 1) + 1;
+      for (let x = 0; x < w; x++) raw[o + (x >> 1)] |= (data[y * w + x] & 15) << (x & 1 ? 0 : 4);
+    } else raw.set(data.subarray(y * rowBytes, (y + 1) * rowBytes), y * (rowBytes + 1) + 1);
   }
   const blocks = Math.max(1, Math.ceil(raw.length / 65535));
   const zlen = 2 + raw.length + blocks * 5 + 4;
-  const total = 8 + (12 + 13) + (12 + zlen) + 12;
+  const pal = indexed ? palette.slice(0, 16) : null;
+  const total = 8 + (12 + 13) + (pal ? (12 + pal.length * 3) + (12 + pal.length) : 0) + (12 + zlen) + 12;
   const out = new Uint8Array(total);
   out.set([137, 80, 78, 71, 13, 10, 26, 10], 0);
   let p = 8;
   // IHDR
   put32(out, p, 13); out.set([73, 72, 68, 82], p + 4);
   put32(out, p + 8, w); put32(out, p + 12, h);
-  out[p + 16] = 8; out[p + 17] = channels === 4 ? 6 : 2; out[p + 18] = 0; out[p + 19] = 0; out[p + 20] = 0;
+  out[p + 16] = indexed ? 4 : 8; out[p + 17] = indexed ? 3 : channels === 4 ? 6 : 2; out[p + 18] = 0; out[p + 19] = 0; out[p + 20] = 0;
   put32(out, p + 21, crc32(out, p + 4, p + 21));
   p += 25;
+  if (pal) {
+    // PLTE + tRNS
+    put32(out, p, pal.length * 3); out.set([80, 76, 84, 69], p + 4);
+    pal.forEach((c, i) => { out[p + 8 + i * 3] = c[0]; out[p + 9 + i * 3] = c[1]; out[p + 10 + i * 3] = c[2]; });
+    put32(out, p + 8 + pal.length * 3, crc32(out, p + 4, p + 8 + pal.length * 3));
+    p += 12 + pal.length * 3;
+    put32(out, p, pal.length); out.set([116, 82, 78, 83], p + 4);
+    pal.forEach((c, i) => { out[p + 8 + i] = c[3] == null ? 255 : c[3]; });
+    put32(out, p + 8 + pal.length, crc32(out, p + 4, p + 8 + pal.length));
+    p += 12 + pal.length;
+  }
   // IDAT
   put32(out, p, zlen); out.set([73, 68, 65, 84], p + 4);
   let q = p + 8;
@@ -99,8 +117,8 @@ function toBase64(u8) {
   return parts.join("");
 }
 
-function dataURL(data, w, h, channels) {
-  return "data:image/png;base64," + toBase64(encodePNG(data, w, h, channels));
+function dataURL(data, w, h, channels, palette) {
+  return "data:image/png;base64," + toBase64(encodePNG(data, w, h, channels, palette));
 }
 
 module.exports = { encodePNG, toBase64, dataURL, crc32, adler32 };

@@ -66,7 +66,7 @@ function createColourDeck(ui, o) {
 
   // ---- preset picker (built-ins + saved), rebuilt when the saved list changes
   function presetPicker(kind) {
-    const sel = el("select", {});
+    const sel = el("select", { "data-key": "deck.picker." + kind });
     let opts = [];
     const fill = () => {
       while (sel.firstChild) sel.removeChild(sel.firstChild);
@@ -138,7 +138,7 @@ function createColourDeck(ui, o) {
     return track;
   }
   function numBox(get, set) {
-    const n = el("input", { type: "text", class: "num cdnum" });
+    const n = el("input", { type: "text", class: "num cdnum", "data-key": "deck.band" });
     n.addEventListener("change", () => { let v = parseFloat(n.value); if (isNaN(v)) v = get(); set(Math.max(0, Math.min(100, Math.round(v)))); touch(); });
     bind(() => { n.value = String(get()); });
     return n;

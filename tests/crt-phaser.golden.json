@@ -1,23 +1,22 @@
 {
  "cards": [
-  "Preview",
-  "Look browser",
-  "Library",
-  "Effects",
   "Phase FX",
+  "Advanced",
   "Phase look",
   "Screen",
   "Convergence",
-  "Phosphor mask",
+  "Mask",
   "Scanlines",
   "Tube",
   "Signal",
   "Finish",
   "Phase colour",
   "Colour Deck",
+  "Look browser",
+  "Library",
   "Output"
  ],
- "controls": "input:74 select:8 button:64 textarea:0",
+ "controls": "input:82 select:5 button:88 textarea:0",
  "previewDefault": "ba98f44d8e73",
  "presets": [
   "Arcade - Arcade Cabinet = ba98f44d8e73",
@@ -43,11 +42,11 @@
   "Flux - Contour Map = 34078c79bfb2",
   "Flux - Plasma Bend = 784b4875bb61",
   "Flux - Bent Signal = 66d388fb2b29",
-  "Flux Dots - Dot Flux Ice = 2e9927bf1fef",
-  "Flux Dots - Dot Flux Ember = 664dab58ad44",
-  "Flux Dots - Dot Flux Matrix = 1b716c06f1dc",
-  "Flux Dots - Dot Flux Plasma = 9faf6efc76ed",
-  "Flux Dots - Dot Flux Heat = 1836b9696858"
+  "Lidar - Lidar Ice = 5c6e44a0c130",
+  "Lidar - Lidar Spectrum = 2852ef7a767e",
+  "Lidar - Lidar Scope = b545bb320f57",
+  "Lidar - Lidar Ember = a32053eec7a9",
+  "Lidar - Lidar Survey = 7a4054d864b9"
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
@@ -59,7 +58,7 @@
   "putPixels|100|4|480000",
   "createLayerGroup|Frank's CRT Phaser Brew - Arcade Cabinet #TAG|1",
   "resumeHistory",
-  "fileWrite|1154"
+  "fileWrite|1188"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."
 }
