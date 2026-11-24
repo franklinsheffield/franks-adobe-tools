@@ -50,6 +50,11 @@ ipcMain.handle("dlg:ask", async (e, o) => {
 });
 ipcMain.handle("fs:write", async (e, file, data) => { fs.writeFileSync(file, typeof data === "string" ? data : Buffer.from(data)); return true; });
 ipcMain.handle("fs:read", async (e, file) => fs.readFileSync(file));
+// saved surface layer stacks: userData/surface-presets/<name>.json
+const presetDir = () => { const d = path.join(app.getPath("userData"), "surface-presets"); fs.mkdirSync(d, { recursive: true }); return d; };
+ipcMain.handle("surf:list", () => fs.readdirSync(presetDir()).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort());
+ipcMain.handle("surf:save", (e, name, json) => { const n = String(name).replace(/[^\w\- ]+/g, "").trim().slice(0, 60) || "Preset"; fs.writeFileSync(path.join(presetDir(), n + ".json"), json); return n; });
+ipcMain.handle("surf:load", (e, name) => fs.readFileSync(path.join(presetDir(), String(name).replace(/[^\w\- ]+/g, "") + ".json"), "utf8"));
 ipcMain.handle("app:info", () => ({ version: app.getVersion(), docs: app.getPath("documents"), userData: app.getPath("userData") }));
 ipcMain.handle("app:reveal", (e, file) => { shell.showItemInFolder(file); return true; });
 ipcMain.on("app:close-ok", () => { if (win) { win.__closeOk = true; win.close(); } if (quitting) app.quit(); });

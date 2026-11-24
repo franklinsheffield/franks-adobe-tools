@@ -291,14 +291,14 @@ function compile(scene) {
 function tone(v) { v = v / (1 + v * 0.12) * 1.06; return clamp(Math.round(Math.pow(clamp(v, 0, 1), 0.95) * 255), 0, 255); }
 
 /* Render a scene to RGBA (+ optional depth / object-id buffers for the extra layers).
-   opt: { step (1 = every pixel, 3 = draft blocks), aa (1 or 2 = 2x2 samples), passes }
+   opt: { step (1 = every pixel, 3 = draft blocks), aa (1 or 2 = 2x2 samples), passes, slice (ms of work between yields, default 16) }
    hooks: { yield(progress) -> Promise (called about every 16 ms), cancelled() -> bool } */
 async function render(scene, cam, W, H, opt, hooks) {
   opt = opt || {}; hooks = hooks || {};
   const step = opt.step || 1, aa = opt.aa || 1, R = compile(scene), B = camBasis(cam, W / H), n = aa * aa;
   const rgba = new Uint8Array(W * H * 4), depth = opt.passes ? new Float32Array(W * H) : null, ids = opt.passes ? new Int16Array(W * H) : null;
   const col = [0, 0, 0], info = { t: 0, id: 0 }, now = () => (typeof performance !== "undefined" ? performance.now() : Date.now()), t0 = now();
-  let tick = t0 + 16;
+  const slice = opt.slice || 16; let tick = t0 + slice;
   for (let y = 0; y < H; y += step) {
     for (let x = 0; x < W; x += step) {
       let r = 0, g = 0, b = 0;
@@ -315,7 +315,7 @@ async function render(scene, cam, W, H, opt, hooks) {
         if (depth) { depth[p] = info.t; ids[p] = info.id; }
       }
     }
-    if (hooks.yield && now() > tick) { if (hooks.cancelled && hooks.cancelled()) return null; await hooks.yield(Math.min(1, (y + step) / H)); tick = now() + 16; }
+    if (hooks.yield && now() > tick) { if (hooks.cancelled && hooks.cancelled()) return null; await hooks.yield(Math.min(1, (y + step) / H)); tick = now() + slice; }
   }
   if (hooks.yield) await hooks.yield(1);
   return { w: W, h: H, rgba, depth, ids, ms: now() - t0 };
@@ -328,8 +328,9 @@ function layers(res, want) {
   const out = [{ name: "Render", rgba: res.rgba, blend: "normal" }], N = res.w * res.h;
   if (!res.depth) return out;
   const mk = (name, fn) => { const a = new Uint8Array(N * 4); for (let p = 0; p < N; p++) { const c = fn(p); a[p * 4] = c[0]; a[p * 4 + 1] = c[1]; a[p * 4 + 2] = c[2]; a[p * 4 + 3] = 255; } out.push({ name, rgba: a, blend: "normal", hidden: true }); };
-  if (want.depth) { let far = 1; for (let p = 0; p < N; p++) if (res.depth[p] > far) far = res.depth[p]; mk("Depth", (p) => { const t = res.depth[p]; const v = t < 0 ? 0 : Math.round(255 * clamp(1 - t / far, 0, 1)); return [v, v, v]; }); }
-  if (want.mask) mk("Object mask", (p) => { const id = res.ids[p]; return id < 0 ? [0, 0, 0] : id === -3 ? [40, 90, 160] : id === -4 ? [90, 70, 50] : ID_COLOURS[id % ID_COLOURS.length]; });
+  if (want.depth) { let far = 1, farAll = 1; for (let p = 0; p < N; p++) { const t = res.depth[p]; if (t > farAll) farAll = t; if (res.ids[p] >= 0 && t > far) far = t; }   // scaled to the farthest object, not the endless ground
+    if (far <= 1) far = farAll; far *= 1.15; mk("Depth", (p) => { const t = res.depth[p]; const v = t < 0 ? 0 : Math.round(255 * clamp(1 - t / far, 0, 1)); return [v, v, v]; }); }
+  if (want.mask) mk("Object mask", (p) => { const id = res.ids[p]; return id === -3 ? [40, 90, 160] : id === -4 ? [90, 70, 50] : id < 0 ? [0, 0, 0] : ID_COLOURS[id % ID_COLOURS.length]; });
   if (want.sky) mk("Sky mask", (p) => (res.depth[p] < 0 ? [255, 255, 255] : [0, 0, 0]));
   return out;
 }

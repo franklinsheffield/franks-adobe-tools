@@ -92,6 +92,38 @@ function shade(o, F, lp, ln, wny, uv, base) {
   }
   return { glow, h };
 }
+
+// ---- built-in layer stacks (pictures painted from code, made once)
+const { fbm, vnoise } = require("./noise.js");
+const PICS = {};
+const pic = (k, size, paint) => PICS[k] || (PICS[k] = makeImage(k, size, paint));
+const c255 = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
+const PIC = {
+  bricks: () => pic("Bricks", 256, (u, v) => { const row = Math.floor(v * 8), bu = ((u + (row % 2 ? 0.125 : 0)) * 4) % 1, bv = (v * 8) % 1, n = fbm(u * 24, v * 24, 3, 0.5);
+    return bu < 0.05 || bv < 0.09 ? [c255(0.74 + n * 0.1), c255(0.72 + n * 0.1), c255(0.68 + n * 0.1)] : [c255(0.5 + (row * 37 % 9) / 60 + n * 0.12), c255(0.2 + n * 0.08), c255(0.14 + n * 0.06)]; }),
+  snow: () => pic("Snow", 128, (u, v) => { const n = fbm(u * 10, v * 10, 3, 0.5); return [c255(0.9 + n * 0.1), c255(0.93 + n * 0.07), 255]; }),
+  moss: () => pic("Moss", 128, (u, v) => { const n = fbm(u * 14, v * 14, 4, 0.55); return [c255(0.16 + n * 0.14), c255(0.3 + n * 0.22), c255(0.1 + n * 0.06)]; }),
+  rust: () => pic("Rust", 256, (u, v) => { const n = fbm(u * 9, v * 9, 5, 0.6); return [c255(0.45 + n * 0.3), c255(0.2 + n * 0.14), c255(0.08 + n * 0.05)]; }),
+  blotch: () => pic("Blotches", 256, (u, v) => { const n = fbm(u * 5 + 3, v * 5, 5, 0.6), k = n > 0.52 ? 255 : n > 0.47 ? c255((n - 0.47) / 0.05) : 0; return [k, k, k]; }),
+  gold: () => pic("Gold", 64, (u, v) => { const n = vnoise(u * 30, v * 30); return [c255(0.95), c255(0.72 + n * 0.06), c255(0.3)]; }),
+  grid: () => pic("Neon grid", 128, (u, v) => { const a = Math.min(u * 8 % 1, 1 - u * 8 % 1, v * 8 % 1, 1 - v * 8 % 1), k = Math.max(0, 1 - a * 22); return [c255(0.37 * k), c255(1 * k), c255(0.78 * k)]; }),
+  bands: () => pic("Planet bands", 256, (u, v) => { const t = v * 14 + fbm(u * 6, v * 30, 4, 0.5) * 3, s = Math.sin(t) * 0.5 + 0.5; return [c255(0.75 + s * 0.2), c255(0.55 + s * 0.25), c255(0.38 + s * 0.2)]; }),
+  strata: () => pic("Strata", 256, (u, v) => { const t = v * 22 + fbm(u * 4, v * 4, 3, 0.5) * 4, s = Math.sin(t) * 0.5 + 0.5; return [c255(0.7 + s * 0.25), c255(0.55 + s * 0.22), c255(0.45 + s * 0.15)]; }),
+  cracks: () => pic("Cracked rock", 256, (u, v) => { const n = fbm(u * 8, v * 8, 5, 0.55), r = Math.abs(fbm(u * 6 + 9, v * 6, 4, 0.5) - 0.5), k = r < 0.02 ? 0.2 : 0.55 + n * 0.35; return [c255(k), c255(k * 0.97), c255(k * 0.93)]; })
+};
+const PRESETS = {
+  "Snowy peaks": () => [layer({ name: "Snow", img: PIC.snow(), mask: "Height", lo: 0.62, soft: 0.07 }), layer({ name: "Snow on flats", img: PIC.snow(), mask: "Slope", lo: 0.88, soft: 0.04, opacity: 70 })],
+  "Moss on flats": () => [layer({ name: "Moss", img: PIC.moss(), mask: "Slope", lo: 0.72, soft: 0.08, tile: 3 })],
+  "Red bricks": () => [layer({ name: "Bricks", img: PIC.bricks(), bump: 1, tile: 1.5 })],
+  "Rusty metal": () => [layer({ name: "Rust", img: PIC.rust(), mask: "Bitmap", mimg: PIC.blotch(), bump: 0.6, shine: true, rough: 0.85, metal: 0.2 })],
+  "Gold trim": () => [layer({ name: "Gold band", img: PIC.gold(), mask: "Height", hi: 0.14, soft: 0.01, shine: true, rough: 0.22, metal: 1 })],
+  "Neon grid": () => [layer({ name: "Grid", img: PIC.grid(), blend: "Add", glow: 2, tile: 1 })],
+  "Gas giant": () => [layer({ name: "Bands", img: PIC.bands(), wrap: "Sphere" })],
+  "Desert strata": () => [layer({ name: "Strata", img: PIC.strata(), blend: "Multiply", tile: 0.6 })],
+  "Cracked rock": () => [layer({ name: "Rock", img: PIC.cracks(), bump: 1.2, tile: 2 })]
+};
+const presetNames = () => Object.keys(PRESETS);
+const preset = (name) => (PRESETS[name] ? PRESETS[name]() : []);
 const active = (o) => !!(o && o.layers && o.layers.some((L) => L.on && L.img));
 
 // a picture from code (for the built-in presets and tests): paint(u, v) -> [r, g, b] or [r, g, b, a] in 0..255
@@ -101,4 +133,4 @@ function makeImage(name, size, paint) {
   return { w: size, h: size, d, name };
 }
 
-module.exports = { WRAPS, BLENDS, MASKS, layer, frame, sample, place, wrapSample, band, blendCh, shade, active, makeImage, lum };
+module.exports = { WRAPS, BLENDS, MASKS, presetNames, preset, layer, frame, sample, place, wrapSample, band, blendCh, shade, active, makeImage, lum };

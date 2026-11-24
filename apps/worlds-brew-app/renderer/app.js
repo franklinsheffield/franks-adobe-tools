@@ -3,6 +3,7 @@
 // with a render bar along the bottom. The scene is the same plain data the Photoshop plugin uses.
 import { Viewport, snapshot } from "./view3d.js";
 import { axisGizmo, palette } from "./ux.js";
+import { renderGPU, passPictures } from "./gpurender.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -15,8 +16,9 @@ const PNG = req("../engine/png.js");
 const { createUI, el, clear } = req("../engine/ui.js");
 const { pressGlow } = req("../engine/layout.js");
 const SC = req("./scaletools.js");
+const SF = req("../engine/surface.js");
 
-const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.6.1";
+const APP = "Frank's Worlds Brew", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.7.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -25,9 +27,14 @@ const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
 const st = {
   scene: S.loadPreset("Chrome Garden"), sel: NONE,
   view: { gizmo: "move", step: "med", stick: true, camLock: false, libPack: "Classic", addPack: "Shapes", brush: "raise", bsize: 0.12, bpow: 0.5, lockScale: true, realH: 1.8, matchId: 0 },
-  out: { quality: "final", w: 1920, h: 1080 }
+  out: { quality: "final", engine: "gpu", w: 1920, h: 1080 }
 };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
+// the selected surface layer (a stand-in when there is none, so the Surfaces dials always have something to read)
+const NOLAYER = SF.layer({ name: "-" });
+st.view.layI = 0;
+Object.defineProperty(st, "lay", { get: () => { const Ls = hasSel() && st.sel.layers; if (!Ls || !Ls.length) return NOLAYER; st.view.layI = Math.max(0, Math.min(Ls.length - 1, st.view.layI)); return Ls[st.view.layI]; } });
+const hasLay = () => st.lay !== NOLAYER;
 const is = (...types) => () => hasSel() && types.includes(st.sel.type);
 const refs = {};
 let filePath = null, dirty = false, homeCam = null, rendering = false, cancelReq = false, lastStretch = null;
@@ -241,6 +248,31 @@ async function loadTexture() {
   const p = await ipcRenderer.invoke("dlg:open", { title: "Surface image", filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }] }); if (!p) return;
   const b = await ipcRenderer.invoke("fs:read", p[0]); st.sel.img = await decodeImage(req("path").basename(p[0]), b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); edited(); setStatus("Surface image: " + st.sel.img.name);
 }
+// ---- surface layers: pictures, masks and presets
+async function pickPicture(title) {
+  const p = await ipcRenderer.invoke("dlg:open", { title, filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }] }); if (!p) return null;
+  const b = await ipcRenderer.invoke("fs:read", p[0]); return decodeImage(req("path").basename(p[0]), b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+}
+async function loadLayerPicture(asNew) {
+  if (!hasSel() || st.sel.type === "light") return; const img = await pickPicture("Layer picture"); if (!img) return;
+  if (asNew || !hasLay()) refs.layOps.add([SF.layer({ name: img.name.replace(/\.\w+$/, "").slice(0, 30), img, wrap: st.sel.type === "mesh" && st.sel.mesh.uv ? "UV" : "Box" })]);
+  else { st.lay.img = img; edited(); }
+  setStatus("Layer picture: " + img.name);
+}
+async function loadLayerMask() { if (!hasLay()) return; const img = await pickPicture("Mask picture (white shows the layer)"); if (!img) return; st.lay.mimg = img; st.lay.mask = "Bitmap"; edited(); }
+async function addPreset(name, saved) {
+  if (!hasSel() || st.sel.type === "light") return;
+  let Ls;
+  if (saved) { const j = JSON.parse(await ipcRenderer.invoke("surf:load", name)); Ls = j.layers.map((L) => SF.layer(Object.assign({}, L, { id: undefined, img: S.unpic(L.img), mimg: S.unpic(L.mimg) }))); Ls.forEach((L) => { L.id = SF.layer().id; }); }
+  else Ls = SF.preset(name);
+  refs.layOps.add(Ls); setStatus("Added surface preset: " + name);
+}
+async function saveLayerPreset(name) {
+  if (!hasSel() || !(st.sel.layers || []).length) return;
+  name = String(name || "").trim() || (st.sel.layers[0].name + " stack");
+  const json = JSON.stringify({ worldsBrewLayers: 1, layers: st.sel.layers.map((L) => Object.assign({}, L, { img: S.pic(L.img), mimg: S.pic(L.mimg) })) });
+  const n = await ipcRenderer.invoke("surf:save", name, json); await refs.fillPresets(); setStatus("Saved surface preset: " + n);
+}
 async function askSave() {
   if (!dirty) return true;
   const r = await ipcRenderer.invoke("dlg:ask", { message: "Save changes to " + (st.scene.name || "this scene") + "?", detail: "Your changes are lost if you don't save them.", buttons: ["Save", "Don't Save", "Cancel"] });
@@ -261,26 +293,40 @@ async function openScene(p) {
 async function newScene() { if (!(await askSave())) return; loadScene(BLANK()); setStatus("New scene. Drag shapes and models in from the Library."); }
 
 // ---- render to PNG (the full-quality CPU ray tracer)
+// hand control back to the window for a moment. A message (not setTimeout) so the browser can't throttle it to once a second
+const yieldNow = () => new Promise((res) => { const ch = new MessageChannel(); ch.port1.onmessage = () => { ch.port1.close(); res(); }; ch.port2.postMessage(0); });
 async function renderNow() {
   if (rendering) { cancelReq = true; return; }
-  const W = Math.max(16, Math.min(8000, Math.round(st.out.w))), H = Math.max(16, Math.min(8000, Math.round(st.out.h)));
-  rendering = true; cancelReq = false; refs.go.textContent = "Cancel render"; refs.meter.run(); setStatus("Rendering " + W + " x " + H + "..."); refs.led.set("busy");
-  const t0 = performance.now();
+  const W = Math.max(16, Math.min(8000, Math.round(st.out.w))), H = Math.max(16, Math.min(8000, Math.round(st.out.h))), gpu = st.out.engine !== "ray", q = st.out.quality;
+  const what = (gpu ? "GPU " : "Ray traced ") + (q === "final" ? "Final" : "Draft") + " " + W + " x " + H;
+  rendering = true; cancelReq = false; refs.go.textContent = gpu ? "Rendering..." : "Cancel render"; refs.meter.run(); setStatus("Rendering " + what + "..."); refs.led.set("busy");
+  const t0 = performance.now(); vp.paused = true;   // the live view rests while a render runs
   try {
-    const r = await E.render(st.scene, st.scene.cam, W, H, { aa: st.out.quality === "final" ? 2 : 1 }, { yield: (p) => { refs.status.textContent = "Rendering " + W + " x " + H + "...  " + Math.round(p * 100) + "%"; return new Promise((res) => setTimeout(res, 0)); }, cancelled: () => cancelReq });
+    const r = gpu ? await renderGPU(st.scene, st.scene.cam, W, H, { quality: q, passes: true }, { status: (t) => { refs.status.textContent = what + ": " + t; } })
+      : await E.render(st.scene, st.scene.cam, W, H, { aa: q === "final" ? 2 : 1, passes: true, slice: 400 }, { yield: (p) => { refs.status.textContent = "Rendering " + what + "...  " + Math.round(p * 100) + "%"; return yieldNow(); }, cancelled: () => cancelReq });
     if (!r) { refs.meter.idle(); setStatus("Render cancelled"); return; }
-    const png = PNG.encodePNG(r.rgba, W, H, 4); refs.lastPng = png; refs.meter.done((performance.now() - t0) / 1000);
-    showShot(PNG.dataURL(r.rgba, W, H, 4), png, W, H); setStatus("Rendered " + W + " x " + H + " in " + ((performance.now() - t0) / 1000).toFixed(1) + " s");
+    const secs = (performance.now() - t0) / 1000; refs.lastRender = r; refs.lastSecs = secs; refs.meter.done(secs);
+    showShot(r, W, H, what); setStatus("Rendered " + what + " in " + secs.toFixed(1) + " s");
   } catch (err) { refs.meter.idle(); setStatus("Render failed: " + (err.message || err), true); }
-  finally { rendering = false; refs.go.textContent = "Render PNG"; refs.led.set("ready"); }
+  finally { rendering = false; vp.paused = false; vp.dirty = true; refs.go.textContent = "Render PNG"; refs.led.set("ready"); }
 }
-function showShot(url, png, W, H) {
-  const box = document.getElementById("shot"), img = document.getElementById("shotimg"), row = box.querySelector(".shotrow"); img.src = url; clear(row);
+// the finished render with its passes: view each one, save the one shown or all of them
+function showShot(res, W, H, what) {
+  const box = document.getElementById("shot"), img = document.getElementById("shotimg"), row = box.querySelector(".shotrow"); clear(row);
+  const pics = passPictures(res, { depth: true, mask: true, sky: true }), pngs = new Map();
+  const png = (p) => { if (!pngs.has(p)) pngs.set(p, PNG.encodePNG(p.rgba, W, H, 4)); return pngs.get(p); };
+  let cur = pics[0]; refs.lastPng = png(pics[0]);
   const b = (l, fn, cls) => { const x = el("button", { class: cls || "btn", text: l }); x.addEventListener("click", fn); return x; };
-  row.appendChild(el("span", { class: "lbl3", text: W + " x " + H + "  PNG" }));
-  row.appendChild(b("Save PNG...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save render", name: (st.scene.name || "render").replace(/[^\w\- ]+/g, "") + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return; await ipcRenderer.invoke("fs:write", p, png); setStatus("Saved " + req("path").basename(p)); box.hidden = true; }));
+  const tabs = pics.map((p) => { const x = b(p.name, () => show(p), "btn small"); x.__p = p; return x; });
+  function show(p) { cur = p; img.src = PNG.dataURL(p.rgba, W, H, 4); tabs.forEach((t) => t.classList.toggle("on", t.__p === p)); }
+  const base = (st.scene.name || "render").replace(/[^\w\- ]+/g, "");
+  const suffix = (p) => (p === pics[0] ? "" : "-" + p.name.toLowerCase().replace(/\s+/g, "-"));
+  row.appendChild(el("span", { class: "lbl3", text: what + "  PNG" })); tabs.forEach((t) => row.appendChild(t));
+  row.appendChild(b("Save PNG...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save " + cur.name.toLowerCase(), name: base + suffix(cur) + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return; await ipcRenderer.invoke("fs:write", p, png(cur)); setStatus("Saved " + req("path").basename(p)); }));
+  row.appendChild(b("Save all passes...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save the render and its passes", name: base + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return;
+    const stem = p.replace(/\.png$/i, ""); for (const q of pics) await ipcRenderer.invoke("fs:write", stem + suffix(q) + ".png", png(q)); setStatus("Saved " + pics.length + " PNGs: " + req("path").basename(stem) + "*.png"); }));
   row.appendChild(b("Close", () => { box.hidden = true; }));
-  box.hidden = false;
+  show(pics[0]); box.hidden = false;
 }
 
 // ---- UI building blocks
@@ -499,7 +545,60 @@ function buildInspector(ui) {
     el("div", { class: "row wrap" }, [sliderRow("Lens", "scene.cam.fov", 15, 100, 1, " deg"), sliderRow("Aim height", "scene.cam.ty", -5, 30, 0.1, "")]),
     el("div", { class: "hint", text: "Drag in the view: drag = orbit, right-drag = pan, wheel = zoom. The pads under the view move the camera in fixed steps." })
   ]);
-  refs.tabs = ui.tabs([objCard, scaleCard, matCard, meshCard, shapeCard, lightCard, waterCard, skyCard, camCard], { title: "Inspector" });
+
+  // Surfaces: a stack of picture layers over the base material (wrap, tile, blend, masks, relief, shine, glow, presets)
+  const canLayer = () => hasSel() && st.sel.type !== "light";
+  const layList = el("div", { class: "wbobjs wblayers" });
+  bind(() => {
+    const Ls = canLayer() ? st.sel.layers || [] : [], sig = (canLayer() ? st.sel.id : "-") + "|" + Ls.map((L) => L.id + (L.on ? "+" : "-") + L.name + (L.img ? L.img.name : "")).join(",") + "|" + st.view.layI;
+    if (layList.__sig === sig) return; layList.__sig = sig; clear(layList);
+    Ls.slice().reverse().forEach((L) => { const i = Ls.indexOf(L);   // top of the list = top of the stack
+      const eye = el("button", { class: "btn small wbeye" + (L.on ? " on" : ""), text: L.on ? "ON" : "OFF", title: "Show / hide this layer" });
+      eye.addEventListener("click", (e) => { e.stopPropagation(); L.on = !L.on; edited(); });
+      const r = el("div", { class: "wbobj" + (i === st.view.layI ? " on" : "") }, [eye, el("span", { text: " " + L.name }), el("span", { class: "k", text: L.img ? String(L.img.name).slice(0, 14) : "no picture" })]);
+      r.addEventListener("click", () => { st.view.layI = i; changed("val"); }); layList.appendChild(r); });
+    if (!Ls.length) layList.appendChild(el("div", { class: "hint", text: "No layers yet. Add a preset or a picture of your own." }));
+  });
+  const layOps = { add: (Ls) => { st.sel.layers = (st.sel.layers || []).concat(Ls); st.view.layI = st.sel.layers.length - 1; edited(); },
+    move: (d) => { const Ls = st.sel.layers, i = st.view.layI, j = i + d; if (!Ls || j < 0 || j >= Ls.length) return; [Ls[i], Ls[j]] = [Ls[j], Ls[i]]; st.view.layI = j; edited(); },
+    remove: () => { const Ls = st.sel.layers; if (!Ls || !Ls.length) return; Ls.splice(st.view.layI, 1); st.view.layI = Math.max(0, st.view.layI - 1); edited(); },
+    dup: () => { if (!hasLay()) return; const L = Object.assign({}, st.lay, { id: SF.layer().id, name: st.lay.name + " copy" }); st.sel.layers.splice(st.view.layI + 1, 0, L); st.view.layI++; edited(); } };
+  refs.layOps = layOps;
+  const presetSel = el("select", {}); const fillPresets = async () => { const saved = await ipcRenderer.invoke("surf:list").catch(() => []); clear(presetSel); presetSel.appendChild(el("option", { value: "", text: "Add a preset..." }));
+    SF.presetNames().forEach((n) => presetSel.appendChild(el("option", { value: "b:" + n, text: n }))); saved.forEach((n) => presetSel.appendChild(el("option", { value: "s:" + n, text: "Saved: " + n }))); };
+  fillPresets(); refs.fillPresets = fillPresets;
+  presetSel.addEventListener("change", async () => { const v = presetSel.value; presetSel.value = ""; if (!v || !canLayer()) return; await addPreset(v.slice(2), v[0] === "s"); });
+  const presetName = el("input", { type: "text", class: "num wide", placeholder: "Preset name", title: "Name for the saved stack" });
+  const laySeg = (path, opts) => segGroup(path, opts.map((v) => ({ v, l: v })));
+  const lay = (node) => only(node, hasLay);
+  const picName = el("span", { class: "lbl2" }); bind(() => { picName.textContent = hasLay() ? "PICTURE  " + String(st.lay.img ? st.lay.img.name : "none").slice(0, 20).toUpperCase() : ""; });
+  const maskName = el("span", { class: "lbl2" }); bind(() => { maskName.textContent = hasLay() && st.lay.mask === "Bitmap" ? "MASK  " + String(st.lay.mimg ? st.lay.mimg.name : "none - load one").slice(0, 20).toUpperCase() : ""; });
+  const nameIn = el("input", { type: "text", class: "num wide", title: "Layer name" }); bind(() => { if (document.activeElement !== nameIn) nameIn.value = hasLay() ? st.lay.name : ""; });
+  nameIn.addEventListener("change", () => { if (hasLay()) { st.lay.name = nameIn.value.slice(0, 40) || "Layer"; edited(); } });
+  const surfCard = card("Surfaces", [
+    only(el("div", { class: "hint", text: "Select an object to give it surface layers." }), () => !canLayer()),
+    only(layList, canLayer),
+    only(el("div", { class: "row wrap" }, [presetSel, btn("Picture layer...", () => loadLayerPicture(true), "Add a layer with a PNG / JPG of your own")]), canLayer),
+    only(el("div", { class: "row wrap" }, [btn("Up", () => layOps.move(1), "Move the layer up the stack"), btn("Down", () => layOps.move(-1)), btn("Duplicate", () => layOps.dup()), btn("Delete", () => layOps.remove())]), () => canLayer() && hasLay()),
+    lay(row("Name", nameIn)),
+    lay(el("div", { class: "row wrap" }, [picName, btn("Change picture...", () => loadLayerPicture(false))])),
+    lay(el("div", { class: "lbl3", text: "WRAP" })), lay(row("", laySeg("lay.wrap", SF.WRAPS))),
+    lay(el("div", { class: "row wrap" }, [sliderRow("Tile", "lay.tile", 0.1, 20, 0.05, "x"), sliderRow("Turn", "lay.rot", 0, 359, 1, " deg"), sliderRow("Offset X", "lay.ox", -1, 1, 0.01, ""), sliderRow("Offset Y", "lay.oy", -1, 1, 0.01, "")])),
+    lay(el("div", { class: "lbl3", text: "BLEND" })), lay(row("", laySeg("lay.blend", SF.BLENDS))),
+    lay(el("div", { class: "row wrap" }, [sliderRow("Opacity", "lay.opacity", 0, 100, 1, "%")])),
+    lay(el("div", { class: "lbl3", text: "MASK" })), lay(row("", laySeg("lay.mask", SF.MASKS))),
+    only(el("div", { class: "row wrap" }, [sliderRow("From", "lay.lo", 0, 1, 0.01, ""), sliderRow("To", "lay.hi", 0, 1, 0.01, ""), sliderRow("Softness", "lay.soft", 0, 0.5, 0.01, "")]), () => hasLay() && (st.lay.mask === "Height" || st.lay.mask === "Slope")),
+    only(el("div", { class: "row wrap" }, [maskName, btn("Load mask...", () => loadLayerMask(), "Black hides the layer, white shows it")]), () => hasLay() && st.lay.mask === "Bitmap"),
+    only(ui.brand.toggle("Invert mask", "lay.inv"), () => hasLay() && st.lay.mask !== "None"),
+    only(el("div", { class: "hint", text: "Height: 0 = bottom of the object, 1 = top. Slope: 0 = walls, 1 = flat ground." }), () => hasLay() && (st.lay.mask === "Height" || st.lay.mask === "Slope")),
+    lay(el("div", { class: "lbl3", text: "FINISH" })),
+    lay(el("div", { class: "row wrap" }, [sliderRow("Relief", "lay.bump", 0, 3, 0.01, ""), sliderRow("Glow", "lay.glow", 0, 5, 0.05, "")])),
+    lay(ui.brand.toggle("Own shine", "lay.shine")),
+    only(el("div", { class: "row wrap" }, [sliderRow("Roughness", "lay.rough", 0, 1, 0.01, ""), sliderRow("Metal", "lay.metal", 0, 1, 0.01, "")]), () => hasLay() && st.lay.shine),
+    only(el("div", { class: "lbl3", text: "SAVE THIS STACK" }), () => canLayer() && hasLay()),
+    only(el("div", { class: "row wrap" }, [presetName, btn("Save preset", () => saveLayerPreset(presetName.value))]), () => canLayer() && hasLay())
+  ]);
+  refs.tabs = ui.tabs([objCard, scaleCard, matCard, surfCard, meshCard, shapeCard, lightCard, waterCard, skyCard, camCard], { title: "Inspector" });
   box.appendChild(refs.tabs);
 }
 function buildBar(ui) {
@@ -507,13 +606,14 @@ function buildBar(ui) {
   refs.status = el("div", { class: "status", text: "Starting..." });
   refs.keys = el("div", { class: "keyhints", title: "Keys for what you're doing now" });
   refs.meter = ui.brand.meter(12);
-  refs.go = el("button", { class: "apply", text: "Render PNG", title: "Full-quality ray-traced render (Cmd+R)" }); refs.go.addEventListener("click", () => renderNow());
+  refs.go = el("button", { class: "apply", text: "Render PNG", title: "Render the scene at the output size, with Depth, Object mask and Sky mask passes (Cmd+R)" }); refs.go.addEventListener("click", () => renderNow());
   const num = (path, title) => { const i = el("input", { type: "text", class: "num", title }); ui.bind(() => { i.value = String(st.out[path]); }); i.addEventListener("change", () => { const v = Math.round(parseFloat(i.value)); if (v >= 16 && v <= 8000) st.out[path] = v; ui.refreshAll(); placeFrameGuide(); }); return i; };
   const size = el("select", {}); [["", "Size..."], ["1920x1080", "HD 1920 x 1080"], ["3840x2160", "4K 3840 x 2160"], ["1080x1080", "Square 1080"], ["1080x1920", "Story 1080 x 1920"], ["2400x1600", "Print 3:2"], ["view", "Match the view"]].forEach(([v, l]) => size.appendChild(el("option", { value: v, text: l })));
   size.addEventListener("change", () => { const v = size.value; if (v === "view") { st.out.h = 1080; st.out.w = Math.round(1080 * vpwrap.clientWidth / vpwrap.clientHeight); } else if (v) { const [w, h] = v.split("x").map(Number); st.out.w = w; st.out.h = h; } size.value = ""; ui.refreshAll(); placeFrameGuide(); });
   bar.appendChild(refs.status); bar.appendChild(refs.keys);
   bar.appendChild(el("span", { class: "lbl3", text: "OUTPUT" })); bar.appendChild(num("w", "Width (px)")); bar.appendChild(el("span", { text: "x" })); bar.appendChild(num("h", "Height (px)")); bar.appendChild(size);
-  bar.appendChild(segGroup("out.quality", [{ v: "draft", l: "Draft", t: "One ray per pixel, fast" }, { v: "final", l: "Final", t: "Four rays per pixel, smooth edges" }]));
+  bar.appendChild(segGroup("out.engine", [{ v: "gpu", l: "GPU", t: "Graphics card: the live view's look at full size, in seconds" }, { v: "ray", l: "Ray traced", t: "The CPU ray tracer: true reflections and soft light, slower" }]));
+  bar.appendChild(segGroup("out.quality", [{ v: "draft", l: "Draft", t: "Fast: one sample per pixel" }, { v: "final", l: "Final", t: "Smooth edges (2x2 samples); on the GPU also sharper shadows and scene reflections" }]));
   bar.appendChild(refs.meter.node); bar.appendChild(refs.go);
 }
 
@@ -524,7 +624,7 @@ function commands() {
   add("File", "New scene", () => newScene(), M + "N", true); add("File", "Open scene...", () => openScene(), M + "O", true);
   add("File", "Save", () => save(false), M + "S", true); add("File", "Save as...", () => save(true), M + "Shift+S");
   add("File", "Import model...", () => importModel(), M + "I", true); add("Render", "Render PNG", () => renderNow(), M + "R", true);
-  add("Render", "Draft quality", () => { st.out.quality = "draft"; changed("val"); }); add("Render", "Final quality", () => { st.out.quality = "final"; changed("val"); });
+  add("Render", "Draft quality", () => { st.out.quality = "draft"; changed("val"); }); add("Render", "Render on the GPU", () => { st.out.engine = "gpu"; changed("val"); }); add("Render", "Render with the ray tracer", () => { st.out.engine = "ray"; changed("val"); }); add("Render", "Final quality", () => { st.out.quality = "final"; changed("val"); });
   [["HD 1920 x 1080", 1920, 1080], ["4K 3840 x 2160", 3840, 2160], ["Square 1080", 1080, 1080], ["Story 1080 x 1920", 1080, 1920], ["Print 3:2", 2400, 1600]].forEach(([l, w, h]) => add("Render size", l, () => { st.out.w = w; st.out.h = h; uis.forEach((u) => u.refreshAll()); placeFrameGuide(); }));
   add("Edit", "Undo", () => undo(), M + "Z", true); add("Edit", "Redo", () => redo(), M + "Shift+Z");
   if (hasSel()) {
@@ -538,6 +638,9 @@ function commands() {
       add("Size", "Reset stretch", () => { SC.resetStretch(sc(), st.sel, st.view.stick); edited(); });
       Object.keys(S.MATS).forEach((m) => add("Material", m, () => { st.sel.mat = m; st.sel.refl = null; edited(); }));
       if (st.sel.type !== "terrain") add("Material", "Load surface image...", () => loadTexture());
+      SF.presetNames().forEach((n) => add("Surfaces", "Add preset: " + n, () => addPreset(n, false)));
+      add("Surfaces", "Add picture layer...", () => loadLayerPicture(true));
+      if (hasLay()) { add("Surfaces", "Delete layer", () => refs.layOps.remove()); add("Surfaces", "Duplicate layer", () => refs.layOps.dup()); add("Surfaces", (st.lay.on ? "Hide" : "Show") + " layer", () => { st.lay.on = !st.lay.on; edited(); }); }
     }
   }
   [["move", "Move", "W"], ["rotate", "Rotate", "E"], ["scale", "Scale", "R"], ["sculpt", "Sculpt", "B"]].forEach(([g, l, k]) => add("Tool", l, () => { st.view.gizmo = g; changed("view"); }, k));
@@ -604,4 +707,4 @@ setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.")
 setTimeout(() => drawLibrary().catch((err) => console.error(err)), 50);
 
 // for the automated tests
-window.__wb = { pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

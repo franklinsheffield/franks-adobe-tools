@@ -1,7 +1,7 @@
 // Frank's Worlds Brew app: the live GPU viewport (Three.js on WebGL2).
 // A World mirrors one Worlds Brew scene (plain data from engine/scene.js) as Three objects;
 // the Viewport adds the window's camera, picking, the move / rotate / scale handles and the brush ring.
-// The final render still comes from the CPU ray tracer (engine/engine.js), so the look here is a close preview.
+// Renders: renderer/gpurender.js draws this same world offscreen at full size; the CPU ray tracer (engine/engine.js) is the other choice.
 import * as THREE from "three";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { attachLayers, layersKey } from "./surfaces.js";
@@ -286,7 +286,7 @@ export class Viewport {
     this.tc.addEventListener("objectChange", () => { const n = this.tc.object; if (n && this.hooks.onGizmoChange) this.hooks.onGizmoChange(n.userData.obj, n, this.tc.mode); });
     this.data = null; this.sel = null; this.dirty = true; this.last = performance.now();
     const ro = new ResizeObserver(() => this.resize()); ro.observe(canvas.parentElement || canvas); this.resize();
-    const loop = (t) => { const dt = Math.min(0.1, (t - this.last) / 1000); this.last = t; if (this.world.updateWaves(dt)) this.dirty = true; if (this.dirty) this.draw(); requestAnimationFrame(loop); };
+    const loop = (t) => { const dt = Math.min(0.1, (t - this.last) / 1000); this.last = t; if (!this.paused) { if (this.world.updateWaves(dt)) this.dirty = true; if (this.dirty) this.draw(); } requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
   resize() { const p = this.canvas.parentElement, w = Math.max(50, p.clientWidth), h = Math.max(50, p.clientHeight); this.renderer.setSize(w, h, false); this.dirty = true; }

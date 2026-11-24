@@ -160,4 +160,4 @@ function fromJSON(text) {
   return withDefaults(s);
 }
 
-module.exports = { MATS, SKIES, heightmap, baseHeightmap, edgeMask, hmAt, light, DEFAULTS, withDefaults, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N };
+module.exports = { MATS, SKIES, heightmap, baseHeightmap, edgeMask, hmAt, light, DEFAULTS, withDefaults, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N, pic, unpic };

@@ -1,7 +1,7 @@
 {
   "name": "franks-worlds-brew",
   "productName": "Frank's Worlds Brew",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Frank's Worlds Brew (WB-10): standalone 3D scene builder",
   "main": "main.js",
   "private": true,

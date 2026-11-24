@@ -38,6 +38,21 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
     }
     const sc = S.loadPreset("Chrome Garden"), tall = S.obj("sphere", 0, 0, 0, 1, "Matte", { sy: 3 }); ED.dropToGround(sc, tall); assert.strictEqual(tall.y, 3, "drop to ground uses the height stretch");
   });
+  await t("surface layers: shared maths (place, masks, blends), presets, the ray tracer draws them, layers save and load", async () => {
+    const SF = require("../engine/surface.js");
+    assert.deepStrictEqual(SF.place({ tile: 2 }, 0.75, 0.5), [1, 0.5], "tile doubles around the centre");
+    const rp = SF.place({ rot: 90 }, 1, 0.5); assert.ok(Math.abs(rp[0] - 0.5) < 1e-9 && Math.abs(rp[1] - 1) < 1e-9, "turn 90 degrees");
+    assert.strictEqual(SF.band({ lo: 0.5, soft: 0.01 }, 0.9), 1); assert.strictEqual(SF.band({ lo: 0.5, soft: 0.01 }, 0.1), 0); assert.strictEqual(SF.band({ hi: 0.3, soft: 0.01 }, 0.9), 0);
+    assert.strictEqual(SF.blendCh("Multiply", 0.5, 0.5), 0.25); assert.strictEqual(SF.blendCh("Screen", 0.5, 0.5), 0.75); assert.strictEqual(SF.blendCh("Add", 0.8, 0.5), 1);
+    assert.ok(SF.presetNames().length >= 9 && SF.presetNames().every((n) => SF.preset(n).every((L) => L.img && L.img.d.length === L.img.w * L.img.h * 4)));
+    const mk = () => { const sc = S.loadPreset("Chrome Garden"); sc.objs = [S.obj("cube", 0, 1, 0, 1, "Matte")]; sc.cam = { yaw: 30, pitch: 15, dist: 5, fov: 45, tx: 0, ty: 1, tz: 0 }; return sc; };
+    const a = await E.render(mk(), mk().cam, 64, 36), lay = mk(); lay.objs[0].layers = SF.preset("Red bricks");
+    const b = await E.render(lay, lay.cam, 64, 36); assert.notStrictEqual(hash(a.rgba), hash(b.rgba), "a layer changes the picture");
+    lay.objs[0].layers[0].on = false; const c = await E.render(lay, lay.cam, 64, 36); assert.strictEqual(hash(a.rgba), hash(c.rgba), "a hidden layer changes nothing");
+    lay.objs[0].layers[0].on = true; const back = S.fromJSON(JSON.parse(JSON.stringify(S.toJSON(lay))));
+    const L0 = back.objs[0].layers[0]; assert.strictEqual(L0.bump, 1); assert.strictEqual(hash(L0.img.d), hash(lay.objs[0].layers[0].img.d), "the picture survives save and open");
+    const d = await E.render(back, back.cam, 64, 36); assert.strictEqual(hash(b.rgba), hash(d.rgba));
+  });
   await t("the starter pack doubled: 52 models and 10 maps", () => {
     assert.strictEqual(PK.assets("Fantasy").length + PK.assets("Alien").length, 52);
     assert.strictEqual(PK.PACKS.reduce((n, p) => n + Object.keys(PK.MAPS[p]).length, 0), 10);
@@ -179,6 +194,29 @@ async function uiTests() {
     await W(() => { const w = window.__wb; w.st.view.gizmo = "sculpt"; w.changed("view"); }); assert.ok(/sculpt terrain/.test(await win.locator(".keyhints").textContent()));
     await W(() => { const w = window.__wb; w.st.view.gizmo = "move"; w.select(w.st.scene.objs.find((o) => o.type === "cube")); w.changed("view"); });
     await win.screenshot({ path: path.join(OUT, "app-axes-hints.png") });
+  });
+  await t("app: Surfaces tab: presets add layers, the live GPU view shows them, undo takes them off", async () => {
+    const px = () => W(() => { const w = window.__wb, c = document.getElementById("vp"); w.vp.draw(); const g = c.getContext("webgl2", { preserveDrawingBuffer: true }), p = new Uint8Array(4); g.readPixels(c.width >> 1, c.height >> 1, 1, 1, g.RGBA, g.UNSIGNED_BYTE, p); return Array.from(p); });
+    await W(() => { const w = window.__wb, S = w.S; w.loadScene(S.loadPreset("Chrome Garden")); const sc = w.st.scene; sc.objs = []; const cube = S.obj("cube", 0, 1, 0, 1.2, "Matte"); sc.objs.push(cube); w.select(cube); sc.cam = { yaw: 0, pitch: 8, dist: 5, fov: 45, tx: 0, ty: 1.2, tz: 0 }; w.changed("view"); w.commit(); });
+    const before = await px();
+    await W(() => { window.__wb.commands().find((c) => c.label === "Surfaces tab").run(); window.__wb.commands().find((c) => c.label === "Add preset: Neon grid").run(); });
+    assert.strictEqual(await W(() => window.__wb.st.sel.layers.length), 1);
+    assert.ok(await W(() => document.querySelectorAll(".wblayers .wbobj").length === 1), "the layer is listed");
+    await W(() => { window.__wb.st.sel.layers[0].opacity = 100; window.__wb.st.sel.layers[0].blend = "Normal"; window.__wb.st.sel.layers[0].tile = 0.13; window.__wb.changed("val"); });   // big grid: the centre is a dark cell
+    const after = await px(); assert.ok(Math.abs(after[0] - before[0]) + Math.abs(after[1] - before[1]) + Math.abs(after[2] - before[2]) > 40, "the view shows the layer: " + before + " -> " + after);
+    await win.screenshot({ path: path.join(OUT, "app-surfaces.png") });
+    await W(() => window.__wb.undo()); assert.ok(!(await W(() => (window.__wb.st.sel.layers || []).length)), "undo takes the layer off");
+  });
+  await t("app: GPU render (Draft and Final) with Depth, Object mask and Sky mask passes; ray tracer still works", async () => {
+    for (const [engine, quality] of [["gpu", "draft"], ["gpu", "final"], ["ray", "draft"]]) {
+      await W(([e, q]) => { const w = window.__wb; Object.assign(w.st.out, { engine: e, quality: q, w: e === "gpu" ? 320 : 96, h: e === "gpu" ? 180 : 54 }); return w.renderNow(); }, [engine, quality]);
+      const info = await W(() => { const r = window.__wb.refs.lastRender; const ids = new Set(r.ids); return { w: r.w, h: r.h, n: r.rgba.length, objs: Array.from(ids).filter((i) => i >= 0).length, sky: Array.from(ids).includes(-1), tabs: Array.from(document.querySelectorAll("#shot .shotrow > *")).map((b) => b.textContent.trim()) }; });
+      assert.strictEqual(info.n, info.w * info.h * 4, engine + " " + quality + " picture size");
+      assert.ok(info.objs >= 1 && info.sky, engine + " " + quality + " passes see the object and the sky");
+      assert.deepStrictEqual(info.tabs.slice(1, 5), ["Render", "Depth", "Object mask", "Sky mask"]);
+    }
+    await win.screenshot({ path: path.join(OUT, "app-gpu-render.png") });
+    await win.keyboard.press("Escape"); await W(() => { document.getElementById("shot").hidden = true; });
   });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
   await t("app: Quit with unsaved changes asks first; Don't Save ends the app (macOS used to keep it running)", async () => {
