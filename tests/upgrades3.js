@@ -94,6 +94,36 @@ module.exports = async function (t) {
     assert.ok(near(st, 85, 118, 38, 42) - near(bright, 85, 118, 38, 42) > 3 * Math.max(0.5, near(st, 0, 120, 2, 6) - near(bright, 0, 120, 2, 6)), "streak runs across, not up");
   });
 
+  await t("Dithers 3.0: Modulation and Pattern algorithms print the right amount of ink; Smooth resample, Denoise, Colour in view, ASCII gradient bands overlap", async () => {
+    const E = require("../plugins/dithers-brew/js/engine.js");
+    const { DEFAULTS, merge, clone } = require("../plugins/dithers-brew/js/state.js");
+    const W = 120, flat = (v) => { const d = new Uint8Array(W * W * 4); for (let i = 0; i < W * W; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; } return { w: W, h: W, c: 4, data: d }; };
+    const ink = (o) => { let k = 0; const m = o.layers[0].mask; for (let i = 0; i < m.length; i++) if (m[i]) k++; return k / m.length; };
+    const pats = E.DITHERS.filter((d) => d.t === "pat");
+    assert.ok(pats.length >= 15, "15 new algorithms: " + pats.length);
+    for (const d of pats) {
+      const o = await E.render(flat(178), merge(clone(DEFAULTS), { engine: "dither", algo: { dither: d.id }, tune: { spacing: 5 } }));
+      const f = ink(o);
+      assert.ok(f > 0.2 && f < 0.42, d.name + " prints ~30% ink on 30% grey: " + f.toFixed(2));
+    }
+    const grad = (() => { const d = new Uint8Array(W * W * 4); for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; d[i] = d[i + 1] = d[i + 2] = Math.round(x / W * 255); d[i + 3] = 255; } return { w: W, h: W, c: 4, data: d }; })();
+    const px = await E.render(grad, merge(clone(DEFAULTS), { engine: "dither", algo: { dither: "b8" }, pixel: 4 }));
+    const sm = await E.render(grad, merge(clone(DEFAULTS), { engine: "dither", algo: { dither: "b8" }, pixel: 4, resample: "smooth" }));
+    assert.notDeepStrictEqual(Array.from(sm.layers[0].mask), Array.from(px.layers[0].mask), "smooth resample rounds the pixels");
+    const dn = await E.render(grad, merge(clone(DEFAULTS), { engine: "dither", algo: { dither: "fs" }, fx: { pre: { on: true, denoise: 100 } } }));
+    assert.ok(dn.layers.length >= 1, "denoise renders");
+    const cv = await E.render(grad, merge(clone(DEFAULTS), { engine: "dither", algo: { dither: "atk" }, mode: "tonal", tonal: { inks: ["#FFFFFF", "#888888", "#222222"] }, colorView: { on: true } }));
+    const top = cv.layers[cv.layers.length - 1];
+    assert.ok(top.rgba && top.name === "Colour in view" && top.blend === "COLOR", "3 inks: original on top as Color");
+    const cv2 = await E.render(grad, merge(clone(DEFAULTS), { engine: "dither", algo: { dither: "atk" }, colorView: { on: true } }));
+    assert.strictEqual(cv2.layers[cv2.layers.length - 1].blend, "MULTIPLY", "1 ink: Multiply");
+    const ramp = [{ c: [40, 20, 120], p: 0 }, { c: [200, 40, 160], p: 0.5 }, { c: [255, 240, 200], p: 1 }];
+    const ov = await E.render(grad, merge(clone(DEFAULTS), { engine: "ascii", ascii: { cell: 8, glyph: "overlap", ramp } }));
+    assert.strictEqual(ov.layers.length, 3, "one layer per gradient colour");
+    let both = 0; for (let i = 0; i < W * W; i++) if (ov.layers[0].mask[i] && ov.layers[1].mask[i] || ov.layers[1].mask[i] && ov.layers[2].mask[i]) both++;
+    assert.ok(both > 0, "neighbouring bands overlap");
+  });
+
   await t("Looks: no two looks in a plugin share the same settings", () => {
     const fs = require("fs");
     for (const tool of fs.readdirSync(path.join(ROOT, "plugins"))) {

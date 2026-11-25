@@ -17,9 +17,10 @@
   "Colour",
   "Colour Deck",
   "Blend",
+  "Colour in view",
   "Output"
  ],
- "controls": "input:79 select:14 button:73 textarea:1",
+ "controls": "input:81 select:14 button:78 textarea:1",
  "previewDefault": "2807e930cda1",
  "presets": [
   "Print - Newsprint 45 deg / 35 LPI = 6eb46d7800c8",
@@ -61,9 +62,21 @@
   "Line Art - Topo contours (orange on black) = e079219770b8",
   "Line Art - Hypno spiral = 9a1bb9bc8bc0",
   "Line Art - Crosswave riso = 3765d1b2fd4a",
-  "Line Art - Blue-noise stipple = a7a9582a5912"
+  "Line Art - Blue-noise stipple = a7a9582a5912",
+  "Modulation - CRT modulation = 80a64cf50175",
+  "Modulation - Circuit board (green on black) = cb2f60406715",
+  "Modulation - Dispersed modulation = 6c104dd7e815",
+  "Modulation - Tilt hatch riso = bd67bb81d8a7",
+  "Pattern - Variable hatch = 46d4b1e72d7e",
+  "Pattern - Brick block = 961fcac819e7",
+  "Pattern - Star pattern (violet) = 8745629f57e8",
+  "Pattern - Cyber stitch = 3af95ba5c821",
+  "Pattern - Serpentine = f7c848588077",
+  "Bitmap - Smooth Bayer blobs = 5d5ec8fac009",
+  "Bitmap - Colour in view (3 tones) = 5150f753bc8b",
+  "ASCII - ASCII gradient map (sunset) = d6f534a4d7e5"
  ],
- "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  2 layers",
  "applyCalls": [
   "executeAsModal|Dithers Lab: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",

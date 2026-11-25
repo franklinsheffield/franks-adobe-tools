@@ -10,7 +10,7 @@ const DEFAULTS = {
   tune: { threshold: 50, strength: 100, direction: "h", weight: 2, spacing: 6, jitter: 0 },
   ascii: { size: 4, custom: "FRANK", keepOrder: false, edge: 0, textMode: false, text: "FRANK",
            // 3.0: algorithm (20), built-in font, cell height px (0 = Scale x 8, as 2.x), spacing px, invert, seed, glyph colour
-           algo: "luma", font: "classic", cell: 0, spacing: 0, invert: false, seed: 1, glyph: "ink", gangle: 0 },
+           algo: "luma", font: "classic", cell: 0, spacing: 0, invert: false, seed: 1, glyph: "ink", gangle: 0, reverse: false },
   mono:  { ink: "#000000", paper: "" },
   tonal: { tone: "duonavy", inks: ["#7FA6C9", "#1B2A49"], paper: "#F4EBD0", angles: [45, 15, 75, 0, 60] },
   grade: { palette: "pico8", colors: ["#000000", "#1D2B53", "#7E2553", "#008751", "#AB5236", "#5F574F", "#C2C3C7", "#FFF1E8", "#FF004D", "#FFA300", "#FFEC27", "#00E436", "#29ADFF", "#83769C", "#FF77A8", "#FFCCAA"],
@@ -19,7 +19,7 @@ const DEFAULTS = {
   rgb:   { angles: [15, 75, 45], on: [true, true, true], strength: [100, 100, 100] },
   fx: {
     // Image card. invert is a 0-100 amount (1.0 looks stored true/false: both still work)
-    pre:      { on: false, brightness: 0, contrast: 0, gamma: 1, black: 0, white: 255, blur: 0, sharpen: 0, radius: 1.5, noise: 0, haze: 0, invert: 0 },
+    pre:      { on: false, brightness: 0, contrast: 0, gamma: 1, black: 0, white: 255, blur: 0, sharpen: 0, radius: 1.5, noise: 0, haze: 0, invert: 0, denoise: 0 },
     edges:    { on: false, strength: 60, thick: 1 },
     dtf:      { on: false, garment: "#1A1A1A", fuzz: 15, feather: 20, dots: true, view: "garment" },
     gain:     { on: false, amount: 0 },
@@ -27,6 +27,8 @@ const DEFAULTS = {
     clean:    { on: false, mm: 0.5 },
     distress: { on: false, amount: 30 }
   },
+  resample: "pixel",                        // 3.0: pixel | smooth (rounded blobs when Pixel size > 1)
+  colorView: { on: false, blend: "auto", opacity: 100 },   // 3.0: original picture on top (Multiply, or Color with 3+ inks)
   out: { source: "flat", hide: true, paper: false, dpi: 0 },
   view: { kind: "detail", size: 360, bg: "white", split: 0 }
 };
@@ -94,7 +96,20 @@ const PRESETS = [
   { cat: "Line Art", name: "Topo contours (orange on black)", p: Object.assign(D("contour"), { pixel: 2, tune: { weight: 4 }, mono: { ink: "#FF9F1C", paper: "#000000" } }) },
   { cat: "Line Art", name: "Hypno spiral",                   p: Object.assign(D("spiral"), { pixel: 2, tune: { spacing: 8 } }) },
   { cat: "Line Art", name: "Crosswave riso",                 p: Object.assign(D("crosswave"), { mode: "tonal", pixel: 2, tonal: { tone: "rb", inks: ["#FF48B0", "#0078BF"], paper: "#F5F0E6" } }) },
-  { cat: "Line Art", name: "Blue-noise stipple",             p: Object.assign(D("stipple"), { pixel: 1, fx: { pre: { on: true, contrast: 10 } } }) }
+  { cat: "Line Art", name: "Blue-noise stipple",             p: Object.assign(D("stipple"), { pixel: 1, fx: { pre: { on: true, contrast: 10 } } }) },
+  // 3.0 (Frank's reference videos 2026-11-25): Modulation and Pattern families, smooth resample, colour in view, ASCII gradient
+  { cat: "Modulation", name: "CRT modulation",               p: Object.assign(D("modlines"), { tune: { spacing: 5 }, fx: { pre: { on: true, denoise: 60, sharpen: 40 } } }) },
+  { cat: "Modulation", name: "Circuit board (green on black)", p: Object.assign(D("circuit"), { tune: { spacing: 4 }, mono: { ink: "#39FF88", paper: "#04140A" }, fx: { pre: { on: true, invert: 100 } } }) },
+  { cat: "Modulation", name: "Dispersed modulation",         p: Object.assign(D("moddisp"), { tune: { spacing: 4 } }) },
+  { cat: "Modulation", name: "Tilt hatch riso",              p: Object.assign(D("modtilt"), { mode: "tonal", tune: { spacing: 5 }, tonal: { tone: "rb", inks: ["#FF48B0", "#0078BF"], paper: "#F5F0E6" } }) },
+  { cat: "Pattern", name: "Variable hatch",                  p: Object.assign(D("vhatch"), { tune: { spacing: 4 } }) },
+  { cat: "Pattern", name: "Brick block",                     p: Object.assign(D("brick"), { tune: { spacing: 4 } }) },
+  { cat: "Pattern", name: "Star pattern (violet)",           p: Object.assign(D("star"), { tune: { spacing: 5 }, mono: { ink: "#B9A2FF", paper: "#120A26" }, fx: { pre: { on: true, invert: 100 } } }) },
+  { cat: "Pattern", name: "Cyber stitch",                    p: Object.assign(D("cyber"), { tune: { spacing: 5 }, mono: { ink: "#00E5FF", paper: "#000000" }, fx: { pre: { on: true, invert: 100 } } }) },
+  { cat: "Pattern", name: "Serpentine",                      p: Object.assign(D("serpent"), { tune: { spacing: 5 } }) },
+  { cat: "Bitmap", name: "Smooth Bayer blobs",               p: Object.assign(D("b8"), { pixel: 4, resample: "smooth" }) },
+  { cat: "Bitmap", name: "Colour in view (3 tones)",         p: Object.assign(D("atk"), { pixel: 2, mode: "tonal", tonal: { tone: "custom", inks: ["#FFFFFF", "#8A8A8A", "#202020"], paper: "#000000" }, colorView: { on: true } }) },
+  { cat: "ASCII", name: "ASCII gradient map (sunset)",       p: { engine: "ascii", ascii: { cell: 10, glyph: "overlap", ramp: [{ c: [40, 20, 120], p: 0 }, { c: [200, 40, 160], p: 0.33 }, { c: [255, 140, 60], p: 0.66 }, { c: [255, 240, 200], p: 1 }] } } }
 ];
 
 // 2.x looks: Scale x becomes the 3.0 cell height (x 8 px); text mode becomes the Text halftone algorithm

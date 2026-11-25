@@ -144,7 +144,7 @@ function createColourDeck(ui, o) {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d.fill(x, (y * w + x) * 3, (y * w + x) * 3 + 3);
     rampImg.src = PNG.dataURL(d, w, h, 3);
   })();
-  bind(() => { if (C().mode !== "off") { const s = Colour.strip(C(), 256); stripImg.src = PNG.dataURL(s.rgb, s.w, s.h, 3); } });
+  bind(() => { if (C().mode !== "off") { const s = Colour.strip(C(), 256), u = PNG.dataURL(s.rgb, s.w, s.h, 3); if (stripImg.__u !== u) { stripImg.__u = u; stripImg.src = u; } } });
 
   // ---- one tone band row: swatch + two-handle range bar + numbers
   function rangeBar(i) {

@@ -234,7 +234,7 @@ function paint(e, str, opts) {
     e.appendChild(img); e.appendChild(txt);
     e.__pxImg = img; e.__pxTxt = txt;
   }
-  img.src = t.url;
+  if (img.__u !== t.url) { img.__u = t.url; img.src = t.url; }
   img.style.width = t.w + "px"; img.style.height = t.h + "px";
   img.setAttribute("alt", String(str));
   txt.textContent = String(str);

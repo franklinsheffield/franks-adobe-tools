@@ -94,6 +94,6 @@ module.exports = async function (t) {
     assert.ok(b.layers.length >= 2 && b.layers.every((x) => x.mask && x.color && /^ASCII band \d #/.test(x.name)), "band layers: " + b.layers.map((x) => x.name));
     // no ramp (deck off): falls back to the ink colours and still draws
     const f = await run("tone", { ramp: null }); assert.ok(f.layers[0].rgba.some((v, i) => i % 4 === 3 && v));
-    assert.deepStrictEqual(E.ASCII_COLOUR_MODES, ["cell", "match", "tone", "across", "bands"]);
+    assert.deepStrictEqual(E.ASCII_COLOUR_MODES, ["cell", "match", "tone", "across", "bands", "overlap"]);
   });
 };

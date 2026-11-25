@@ -41,7 +41,7 @@ let deck = null;
 const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));
 // ink layers recoloured, or one Colour Deck layer read from the print on white paper
 // ASCII glyph colour modes that take their colours FROM the deck (the deck is then not laid on top)
-const DECK_FEEDS = ["match", "tone", "across", "bands"];
+const DECK_FEEDS = ["match", "tone", "across", "bands", "overlap"];
 const deckFeedsGlyphs = () => state.engine === "ascii" && state.ascii && DECK_FEEDS.includes(state.ascii.glyph);
 // the deck's colours as a ramp for the ASCII colour modes: gradient stops at their positions,
 // any other mode's colours dark -> light, evenly spaced. null = deck off (engine uses the inks).
@@ -662,7 +662,8 @@ function build(root) {
   showIf(htBox, () => state.engine === "halftone");
   const diBox = el("div", {}, [
     selectRow("Algorithm", "algo.dither", Engine.DITHERS.map((s) => ({ v: s.id, l: s.name }))),
-    sliderRow("Scale", "pixel", 1, 16, 1, "x")
+    sliderRow("Scale", "pixel", 1, 16, 1, "x"),
+    (function () { const r = segGroup("resample", [{ v: "pixel", l: "Pixel edges" }, { v: "smooth", l: "Smooth edges" }]); const w = row("Resample", r); showIf(w, () => (state.pixel || 1) > 1); return w; })()
   ]);
   showIf(diBox, () => state.engine === "dither");
   const customRow = textRow("Characters", "ascii.custom", "e.g. FRANK 01");
@@ -685,13 +686,15 @@ function build(root) {
   // Gradient across / Tone bands take their colours from the Colour Deck (palette, gradient, tone map, inks).
   const glyphRow = selectRow("Glyph colour", "ascii.glyph", [
     { v: "ink", l: "Ink" }, { v: "cell", l: "Cell colour (photo)" }, { v: "match", l: "Palette match" },
-    { v: "tone", l: "Gradient by tone" }, { v: "across", l: "Gradient across" }, { v: "bands", l: "Tone bands (layer per colour)" },
+    { v: "tone", l: "Gradient by tone" }, { v: "across", l: "Gradient across" }, { v: "bands", l: "Tone bands (layer per colour)" }, { v: "overlap", l: "Gradient bands (overlapping)" },
     { v: "deck", l: "Colour Deck on top" }]);
   const gangleRow = ui.angle("Gradient angle", "ascii.gangle", 0, 360, 1);
   showIf(gangleRow, () => state.ascii.glyph === "across");
+  const revRow = checkRow("Reverse gradient", "ascii.reverse");
+  showIf(revRow, () => state.ascii.glyph === "overlap");
   const glyphNote = el("div", { class: "hint" });
   bind(() => {
-    const feeds = ["match", "tone", "across", "bands"].indexOf(state.ascii.glyph) >= 0;
+    const feeds = DECK_FEEDS.indexOf(state.ascii.glyph) >= 0;
     glyphNote.style.display = feeds ? "" : "none";
     glyphNote.textContent = Colour.active(D()) ? "Colours come from the Colour Deck (" + Colour.label(D()) + ")." : "Colours come from the inks. Turn on the Colour Deck to use a palette or gradient.";
   });
@@ -703,7 +706,7 @@ function build(root) {
     ui.stepper("Spacing", "ascii.spacing", 0, 8, 1, "px"),
     edgeRow, seedRow,
     checkRow("Invert (light glyphs on dark)", "ascii.invert"),
-    glyphRow, gangleRow, glyphNote,
+    glyphRow, gangleRow, revRow, glyphNote,
     textRowEl
   ]));
   showIf(asBox, () => state.engine === "ascii");
@@ -727,13 +730,13 @@ function build(root) {
   const dirWrap = row("Direction", dirRow);
   showIf(dirWrap, () => isLine() && ["wavescan", "waveamp", "lineweight"].indexOf(state.algo.dither) >= 0);
   const strRow = sliderRow("Strength", "tune.strength", 0, 100, 1, "%");
-  showIf(strRow, () => state.engine === "dither" && (curDither().t === "ed" || curDither().t === "ord" || (isLine() && (lineInfo().bend || state.algo.dither === "contour"))));
+  showIf(strRow, () => state.engine === "dither" && (curDither().t === "ed" || curDither().t === "ord" || curDither().t === "pat" || (isLine() && (lineInfo().bend || state.algo.dither === "contour"))));
   const spRow = sliderRow("Spacing", "tune.spacing", 2, 24, 1, " px");
-  showIf(spRow, () => isLine() && state.algo.dither !== "stipple");
+  showIf(spRow, () => (isLine() && state.algo.dither !== "stipple") || (state.engine === "dither" && curDither().t === "pat"));
   const wtRow = sliderRow("Weight", "tune.weight", 1, 8, 1);
   showIf(wtRow, () => isLine() && (lineInfo().bend || state.algo.dither === "contour"));
   const jitRow = sliderRow("Jitter", "tune.jitter", 0, 100, 1, "%");
-  showIf(jitRow, () => state.engine === "dither" && curDither().t === "ord");
+  showIf(jitRow, () => state.engine === "dither" && (curDither().t === "ord" || curDither().t === "pat"));
   const thrRow = sliderRow("Threshold", "tune.threshold", 0, 100, 1);
   showIf(thrRow, () => state.mode !== "grade");
   const tuneHint = el("div", { class: "hint" });
@@ -841,6 +844,7 @@ function build(root) {
     levelsWidget(),
     sliderRow("Sharpen", "fx.pre.sharpen", 0, 200, 1, "%"),
     radRow,
+    sliderRow("Denoise", "fx.pre.denoise", 0, 100, 1, "%"),
     sliderRow("Noise -/+", "fx.pre.noise", -100, 100, 1),
     sliderRow("Haze", "fx.pre.haze", 0, 100, 1, "%"),
     sliderRow("Invert", "fx.pre.invert", 0, 100, 1, "%"),
@@ -882,6 +886,11 @@ function build(root) {
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
   root.appendChild(Blend.card(ui, () => state));
+  root.appendChild(card("Colour in view", [
+    checkRow("Original colours on top", "colorView.on"),
+    (function () { const r = segGroup("colorView.blend", [{ v: "auto", l: "Auto" }, { v: "multiply", l: "Multiply" }, { v: "color", l: "Color" }]); const w = row("Blend", r); showIf(w, () => state.colorView.on); return w; })(),
+    (function () { const r = sliderRow("Opacity", "colorView.opacity", 0, 100, 1, "%"); showIf(r, () => state.colorView.on); return r; })()
+  ]));
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),
