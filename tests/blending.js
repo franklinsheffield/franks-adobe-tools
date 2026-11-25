@@ -43,11 +43,12 @@ module.exports = async function (t) {
       const sel = Array.from(D.querySelectorAll("select")).find((s) => Array.from(s.options).some((o) => o.value === "LUMINOSITY"));
       assert.ok(sel && sel.options.length === 27, tool + " blend menu has 27 modes");
       assert.deepStrictEqual(T.state.blend, { mode: "NORMAL", opacity: 100 }, tool + " default blend");
-      const img = T.refs.preview, before = img && img.src;
+      const img = T.refs.preview, src = () => img && img.getAttribute("src"), before = src();
       T.state.blend = { mode: "SCREEN", opacity: 80 };
       if (T.state.out) T.state.out.hide = true;
       T.touch(); await P.settle(900);
-      if (img) assert.notStrictEqual(img.src, before, tool + " preview changes with Screen 80%");
+      for (let i = 0; i < 40 && img && src() === before; i++) await P.settle(200);   // slow engines (Paint) under load
+      if (img) assert.notStrictEqual(src(), before, tool + " preview changes with Screen 80%");
       P.host.calls.length = 0;
       await T.applyNow(); await P.settle(300);
       assert.ok(group, tool + " made a group");
