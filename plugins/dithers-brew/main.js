@@ -885,12 +885,12 @@ function build(root) {
   refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
-  root.appendChild(Blend.card(ui, () => state));
   root.appendChild(card("Colour in view", [
     checkRow("Original colours on top", "colorView.on"),
     (function () { const r = segGroup("colorView.blend", [{ v: "auto", l: "Auto" }, { v: "multiply", l: "Multiply" }, { v: "color", l: "Color" }]); const w = row("Blend", r); showIf(w, () => state.colorView.on); return w; })(),
     (function () { const r = sliderRow("Opacity", "colorView.opacity", 0, 100, 1, "%"); showIf(r, () => state.colorView.on); return r; })()
   ]));
+  root.appendChild(Blend.card(ui, () => state));
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),

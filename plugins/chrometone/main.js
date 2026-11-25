@@ -80,11 +80,16 @@ panel = createToolPanel({
       when(sliderRow("Bevel width", "surface.bevel", 0, 200, 1, " px"), outlineMode),
       when(segGroup("surface.profile", [{ v: "chamfer", l: "Chamfer" }, { v: "round", l: "Round" }, { v: "rim", l: "Rim + flat" }]), outlineMode),
       when(segGroup("surface.reflect", [{ v: "gradient", l: "Gradient", t: "Metal gradient from the Look card, top to bottom" }, { v: "horizon", l: "Horizon", t: "Sky, wavy horizon, ground" }]), outlineMode),
+      // 3.0 desert chrome (Frank's reference video 2026-11-25): horizon shape, bend, own bevel gradient
+      when(segGroup("surface.hshape", [{ v: "hills", l: "Hills" }, { v: "mountains", l: "Mountains" }, { v: "angled", l: "Angled" }, { v: "curtain", l: "Curtain" }, { v: "flat", l: "Flat" }]), horizonOn),
       when(fader("Horizon height", "surface.horizon", 0, 100, 1, "%"), horizonOn),
       when(sliderRow("Horizon wave", "surface.wave", 0, 100, 1, "%"), horizonOn),
       when(sliderRow("Wave size", "surface.waveSize", 0, 100, 1, "%"), horizonOn),
+      when(sliderRow("Bend to shape", "surface.bend", 0, 100, 1, "%"), horizonOn),
       when(el("div", { class: "lbl3", text: "Sky" }), horizonOn), when(kit.gradientEditor("surface.sky"), horizonOn),
-      when(el("div", { class: "lbl3", text: "Ground" }), horizonOn), when(kit.gradientEditor("surface.ground"), horizonOn)
+      when(el("div", { class: "lbl3", text: "Ground" }), horizonOn), when(kit.gradientEditor("surface.ground"), horizonOn),
+      when(checkRow("Bevel gradient", "surface.bevelOn"), horizonOn),
+      when(kit.gradientEditor("surface.bevelStops"), () => horizonOn() && st().surface.bevelOn)
     ]);
 
     const look = card("Look", [kit.gradientEditor("look.stops"), checkRow("Invert (dark becomes bright)", "look.invert")], { section: "colour" });

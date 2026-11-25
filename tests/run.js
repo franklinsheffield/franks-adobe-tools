@@ -90,7 +90,7 @@ async function t(name, fn) {
     const seg = [...d.querySelectorAll(".segbtn")].find((b) => b.textContent === "Dither");
     seg.dispatchEvent(new P.window.Event("click"));
     await P.settle(800);
-    assert.strictEqual(d.querySelectorAll(".algostrip .thumb").length, 28, "dither thumbs incl. Line Art");
+    assert.strictEqual(d.querySelectorAll(".algostrip .thumb").length, 43, "dither thumbs incl. Line Art + 3.0 Modulation and Pattern (15)");
     assert.ok(d.getElementById("app").classList.contains("brand-console") && d.querySelector(".rack .led"), "Hardware Console header");
     const dial = [...d.querySelectorAll(".dial")].find((n) => /Threshold/.test(n.querySelector(".dlabel").textContent));
     const knob = dial.querySelector("img.knob");

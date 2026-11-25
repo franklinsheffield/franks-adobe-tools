@@ -98,11 +98,21 @@ async function outlineFace(M, w, h, P, sc, yieldFn) {
   const lut = gradientLUT(P.look.stops), sky = gradientLUT(surf.sky), ground = gradientLUT(surf.ground);
   const bands = P.bands, bc = bands.count, bph = bands.phase / 360, bmix = bands.mix / 100, bsoft = bands.soft / 100, inv = !!P.look.invert;
   const amp = surf.wave / 100 * 0.14, freq = 1.5 + surf.waveSize / 100 * 10, hz0 = surf.horizon / 100, e = 1.2 / bh;
+  // 3.0 desert chrome (Frank's reference video 2026-11-25): horizon shapes, bend to the letters, bevel gradient
+  const shape = surf.hshape || "hills";
   const hline = new Float32Array(w);
   for (let x = 0; x < w; x++) {
     const fx = (x - bb.l) / bwd;
-    hline[x] = clamp(hz0 + amp * (0.7 * FX.noise1(fx * freq, 7) + 0.3 * FX.noise1(fx * freq * 2.7, 13)), 0.02, 0.98);
+    let v;
+    if (shape === "mountains") v = -1.6 * (Math.abs(FX.noise1(fx * freq * 0.8, 7)) * 0.75 + Math.abs(FX.noise1(fx * freq * 2.1, 13)) * 0.35) + 0.6;
+    else if (shape === "angled") v = (fx - 0.5) * 1.6 + 0.25 * FX.noise1(fx * freq * 1.5, 7);
+    else if (shape === "curtain") v = -Math.sin(Math.PI * clamp(fx, 0, 1)) * 1.4 + 0.7 + 0.15 * Math.sin(fx * freq * 2.2);
+    else if (shape === "flat") v = 0.06 * FX.noise1(fx * freq * 3, 7);
+    else v = 0.7 * FX.noise1(fx * freq, 7) + 0.3 * FX.noise1(fx * freq * 2.7, 13);
+    hline[x] = clamp(hz0 + amp * v, 0.02, 0.98);
   }
+  const bend = (surf.bend || 0) / 100 * 0.35;
+  const bevG = surf.bevelOn ? gradientLUT(surf.bevelStops || surf.sky) : null;
   const R = new Float32Array(n * 3), S = new Float32Array(n);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -114,9 +124,13 @@ async function outlineFace(M, w, h, P, sc, yieldFn) {
       let u = (y - bb.t) / bh + ny * 0.55 + Math.abs(nx) * 0.08;
       let r, g, b;
       if (horizon) {
-        const hv = hline[x], m = FX.smooth(hv - e, hv + e, u);
+        const hv = clamp(hline[x] + (bend ? ny * bend + nx * bend * 0.4 : 0), 0.02, 0.98), m = FX.smooth(hv - e, hv + e, u);
         const us = Math.round(clamp(u / hv, 0, 1) * 255) * 3, ug = Math.round(clamp((u - hv) / (1 - hv), 0, 1) * 255) * 3;
         r = sky[us] + (ground[ug] - sky[us]) * m; g = sky[us + 1] + (ground[ug + 1] - sky[us + 1]) * m; b = sky[us + 2] + (ground[ug + 2] - sky[us + 2]) * m;
+        if (bevG) {   // the bevel rim takes its own gradient (top to bottom of the shape)
+          const k = 1 - FX.smooth(bw * 0.3, bw * 0.55, D[i]);
+          if (k > 0) { const q = Math.round(clamp((y - bb.t) / bh + ny * 0.35, 0, 1) * 255) * 3; r += (bevG[q] - r) * k; g += (bevG[q + 1] - g) * k; b += (bevG[q + 2] - b) * k; }
+        }
       } else {
         let t = clamp(u, 0, 1);
         if (inv) t = 1 - t;

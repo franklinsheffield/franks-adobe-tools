@@ -124,6 +124,21 @@ module.exports = async function (t) {
     assert.ok(both > 0, "neighbouring bands overlap");
   });
 
+  await t("Chroma 3.0 desert chrome: horizon shapes differ, Bend and Bevel gradient change the face, 6 Desert chrome looks", async () => {
+    const E = require("../plugins/chrometone/js/engine.js");
+    const { DEFAULTS, PRESETS, merge, clone } = require("../plugins/chrometone/js/state.js");
+    const w = 200, h = 100, d = new Uint8Array(w * h * 4);
+    for (let y = 20; y < 80; y++) for (let x = 20; x < 180; x++) { const i = (y * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = 255; }
+    const src = { w, h, c: 4, data: d };
+    const run = async (sp) => { const P = merge(clone(DEFAULTS), { surface: Object.assign({ from: "outline", reflect: "horizon", wave: 60 }, sp), bands: { count: 0 } }); P.scale = 1; return E.composite(await E.render(src, P, { yield: async () => {} }), { type: "black" }, src); };
+    const diff = (a, b) => { let k = 0; for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 8) k++; return k; };
+    const hills = await run({ hshape: "hills" });
+    for (const sh of ["mountains", "angled", "curtain", "flat"]) assert.ok(diff(await run({ hshape: sh }), hills) > 200, sh + " differs from hills");
+    assert.ok(diff(await run({ hshape: "hills", bend: 80 }), hills) > 200, "bend moves the horizon");
+    assert.ok(diff(await run({ hshape: "hills", bevelOn: true, bevel: 20 }), await run({ hshape: "hills", bevel: 20 })) > 200, "bevel gradient recolours the rim");
+    assert.strictEqual(PRESETS.filter((p) => p.cat === "Desert chrome").length, 6);
+  });
+
   await t("Looks: no two looks in a plugin share the same settings", () => {
     const fs = require("fs");
     for (const tool of fs.readdirSync(path.join(ROOT, "plugins"))) {

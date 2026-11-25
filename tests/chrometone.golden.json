@@ -20,7 +20,7 @@
   "Blend",
   "Output"
  ],
- "controls": "input:216 select:18 button:172 textarea:0",
+ "controls": "input:233 select:18 button:186 textarea:0",
  "previewDefault": "59c4d4011150",
  "presets": [
   "Chrome - Liquid Silver = 59c4d4011150",
@@ -46,9 +46,15 @@
   "Retro chrome - Night Drive = aabb70bfcd81",
   "Retro chrome - Mercury Drop = d4165b96e5cc",
   "Retro chrome - Prism Foil = 7e1683a5a1e1",
-  "Retro chrome - Titan Block = 634b196d6469"
+  "Retro chrome - Titan Block = 634b196d6469",
+  "Desert chrome - Desert Chrome = 4af4ce02588c",
+  "Desert chrome - Desert Chrome 3D = 6a21a0492db8",
+  "Desert chrome - Pure Chrome Horizon = 650c6ad9c4a2",
+  "Desert chrome - 80s Chrome = 3cc9efc786e1",
+  "Desert chrome - Hot Sunset Chrome = 15aef94347f9",
+  "Desert chrome - Gold Desert = b1d42e177b6a"
  ],
- "statusAfterPresets": "Preview 360 x 270 in N ms  |  4 layers",
+ "statusAfterPresets": "Preview 360 x 270 in N ms  |  2 layers",
  "applyCalls": [
   "executeAsModal|Chroma Lab: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",

@@ -16,8 +16,8 @@
   "Distress",
   "Colour",
   "Colour Deck",
-  "Blend",
   "Colour in view",
+  "Blend",
   "Output"
  ],
  "controls": "input:81 select:14 button:78 textarea:1",

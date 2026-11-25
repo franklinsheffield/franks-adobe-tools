@@ -8,7 +8,7 @@ const DEFAULTS = {
   look: { stops: [S(0, "#1B1F3B"), S(50, "#4F7CAC"), S(100, "#F2E8CF")], fog: 0, fogColor: "#C9D6DF" },
   lines: { width: 2, every: 1, colorBy: "solid", color: "#111111", fill: false, index: true },
   light: { angle: 135, shadow: 6, strength: 60, shine: 30, detail: 100 },
-  ridges: { spacing: 7, lift: 40, colorBy: "depth", bg: "#000000" },
+  ridges: { spacing: 7, lift: 40, colorBy: "depth", bg: "#000000", dir: "rows", tilt: 0, contrast: 0, glow: 0 },
   anaglyph: { strength: 40, grey: true },
   haze: { blur: 6, warm: 100, nearTint: "#FFB36B" },
   view: { kind: "whole", bg: "checker", size: 360, depth: false },

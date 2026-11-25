@@ -12,7 +12,10 @@ const DEFAULTS = {
   surface: {
     from: "brightness", key: 12, bevel: 30, profile: "chamfer", reflect: "gradient", horizon: 52, wave: 35, waveSize: 40,
     sky: [{ p: 0, c: "#FFFFFF" }, { p: 55, c: "#BFD9FF" }, { p: 100, c: "#7FA8E8" }],
-    ground: [{ p: 0, c: "#3A2418" }, { p: 45, c: "#B86A3C" }, { p: 100, c: "#FFF1DC" }]
+    ground: [{ p: 0, c: "#3A2418" }, { p: 45, c: "#B86A3C" }, { p: 100, c: "#FFF1DC" }],
+    // 3.0 desert chrome (Frank's reference video 2026-11-25)
+    hshape: "hills", bend: 0, bevelOn: false,
+    bevelStops: [{ p: 0, c: "#FFFFFF" }, { p: 45, c: "#9AA6B8" }, { p: 55, c: "#2A3038" }, { p: 100, c: "#E8EEF6" }]
   },
   extrude: { on: false, depth: 80, angle: 290, persp: 0, stops: [{ p: 0, c: "#E8EEF6" }, { p: 100, c: "#20242C" }], shade: 60, lines: 50, shadow: 0 },
   glow: { modules: [
@@ -83,5 +86,19 @@ const RETRO = [
   { name: "Titan Block", p: { surface: surf({ bevel: 20 }), look: { stops: [S(0, "#050607"), S(40, "#2C3138"), S(65, "#9AA3AE"), S(80, "#3E444C"), S(100, "#D7DCE2")] }, bands: { count: 2, mix: 40 }, extrude: { on: true, depth: 160, angle: 270, stops: [S(0, "#6A727C"), S(100, "#0A0C10")], lines: 60 }, glow: { modules: mods(G("bloom", "#E0E8FF", 30, 60)) } } }
 ];
 RETRO.forEach((r) => PRESETS.push({ cat: "Retro chrome", name: r.name, p: r.p }));
+
+// ---- 3.0 Desert chrome (Frank's reference video 2026-11-25): mountain horizon through the letters,
+// blue sky above, airbrushed red-orange ground below, own bevel gradient, warm glow, grain
+const DSKY = [S(0, "#0B2A8A"), S(45, "#3C7BE0"), S(100, "#CFE6FF")], DGROUND = [S(0, "#1A0400"), S(35, "#B3200A"), S(70, "#FF7A1A"), S(100, "#FFE2A0")];
+const BEV = [S(0, "#FFFFFF"), S(40, "#A8B4C8"), S(52, "#20242C"), S(100, "#F0F4FA")];
+const DESERT = [
+  { name: "Desert Chrome", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "mountains", horizon: 50, wave: 55, waveSize: 35, sky: DSKY, ground: DGROUND, bevelOn: true, bevelStops: BEV }), bands: { count: 0 }, relief: { depth: 55, gloss: 55, spec: 65 }, glow: { modules: mods(G("dreamy", "#FFB070", 55, 40)) }, shine: { sweep: { on: true, angle: 60, pos: 30, width: 12, strength: 25 } }, finish: { grain: 20, bloom: 20 } } },
+  { name: "Desert Chrome 3D", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "mountains", horizon: 50, wave: 55, waveSize: 35, sky: DSKY, ground: DGROUND, bevelOn: true, bevelStops: BEV }), bands: { count: 0 }, relief: { depth: 55, gloss: 55, spec: 65 }, extrude: { on: true, depth: 90, angle: 270, stops: [S(0, "#D84A1A"), S(100, "#2A0800")], shade: 60, lines: 40 }, glow: { modules: mods(G("dreamy", "#FFB070", 55, 40)) }, finish: { grain: 20, bloom: 20 } } },
+  { name: "Pure Chrome Horizon", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "angled", horizon: 52, wave: 40, sky: [S(0, "#3A4048"), S(50, "#C8D0DA"), S(100, "#FFFFFF")], ground: [S(0, "#000000"), S(40, "#2A2E34"), S(100, "#D8DEE6")], bevelOn: true, bevelStops: BEV }), bands: { count: 0 }, relief: { depth: 55, gloss: 65, spec: 70 }, finish: { grain: 15, bloom: 25 } } },
+  { name: "80s Chrome", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "flat", horizon: 50, wave: 20, sky: [S(0, "#10104A"), S(50, "#3A6AF0"), S(100, "#E8F0FF")], ground: [S(0, "#2A0A30"), S(40, "#C02A90"), S(100, "#FFC8F0")], bevelOn: true, bevelStops: [S(0, "#FFFFFF"), S(45, "#FF7AD8"), S(55, "#2A0830"), S(100, "#FFE8FA")] }), bands: { count: 0 }, glow: { modules: mods(G("neon", "#FF4FD8", 14, 55)) }, shine: { glints: { on: true, count: 3, size: 90, rays: 4 } }, finish: { grain: 18 } } },
+  { name: "Hot Sunset Chrome", p: { surface: surf({ bevel: 18, reflect: "horizon", hshape: "curtain", horizon: 48, wave: 70, sky: [S(0, "#3A0A40"), S(45, "#E0305A"), S(100, "#FFD080")], ground: [S(0, "#0A0204"), S(45, "#7A1408"), S(100, "#FF8A2A")], bevelOn: true, bevelStops: [S(0, "#FFF4D8"), S(45, "#E08A40"), S(55, "#2A0A04"), S(100, "#FFE0B0")] }), bands: { count: 0 }, glow: { modules: mods(G("dreamy", "#FF7A40", 60, 50)) }, finish: { grain: 22, bloom: 30 } } },
+  { name: "Gold Desert", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "mountains", horizon: 54, wave: 45, sky: [S(0, "#5A3A08"), S(45, "#E8B040"), S(100, "#FFF4C8")], ground: [S(0, "#1A0A00"), S(45, "#8A4A08"), S(100, "#FFD070")], bevelOn: true, bevelStops: [S(0, "#FFFBE8"), S(45, "#D8A040"), S(55, "#2A1800"), S(100, "#FFF0C0")], bend: 40 }), bands: { count: 0 }, relief: { depth: 55, gloss: 60, spec: 70 }, finish: { grain: 18, bloom: 25 } } }
+];
+DESERT.forEach((r) => PRESETS.push({ cat: "Desert chrome", name: r.name, p: r.p }));
 
 module.exports = { DEFAULTS, PRESETS, clone, merge };
