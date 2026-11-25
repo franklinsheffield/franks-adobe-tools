@@ -3,7 +3,7 @@
 ## What's in it
 - **Lab-3.0-Photoshop.zip**: 8 Photoshop plugins (.ccx): Chroma, Depth, Halo, Scanline, Dithers, Decompressor, Paint and Batch Mock Lab.
 - **Lab-3.0-AE-Windows.zip**: the 7 After Effects / Premiere Pro effects for Windows, with the Lab Console and installers.
-- **Lab-3.0-AE-Mac.zip**: the 7 effects for Mac, with `install-mac.command`. Get the Lab Console from Lab-3.0-AE-Console.zip.
+- **Lab-3.0-AE-Mac.zip**: the 7 effects for Mac. The installers and the Lab Console are in Lab-3.0-AE-Console.zip.
 - **Lab-3.0-AE-Console.zip**: the After Effects Lab Console panel and the installers for Mac and Windows.
 - **lab-console-premiere-3.0.0.ccx**: the Lab Console panel for Premiere Pro.
 
@@ -18,7 +18,7 @@
 
 ## Install
 - **Photoshop:** unzip, then double-click each .ccx. Creative Cloud installs it. Restart Photoshop, then open it from the Plugins menu.
-- **After Effects / Premiere (Mac):** unzip Lab-3.0-AE-Mac.zip, quit After Effects, then run `install-mac.command`. It asks for your Mac password. Then unzip Lab-3.0-AE-Console.zip and run `install-console-mac.command`.
+- **After Effects / Premiere (Mac):** unzip Lab-3.0-AE-Mac.zip and Lab-3.0-AE-Console.zip. Copy `install-mac.command` from the Console folder into the Lab-3.0-AE-Mac folder, next to the .plugin files. Quit After Effects, then run it. It asks for your Mac password. Then run `install-console-mac.command`.
 - **After Effects / Premiere (Windows):** unzip, then run `install-win.bat` as administrator. Then run `install-console-win.bat`.
 - **Premiere panel:** double-click `lab-console-premiere-3.0.0.ccx`.
 
