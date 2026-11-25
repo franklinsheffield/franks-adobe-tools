@@ -9,7 +9,10 @@ const { createToolPanel } = require("./core/toolpanel.js");
 const PNG = require("./core/png.js");
 const { runModal } = require("./core/modal.js");
 
-const GROUP = "Frank's Mobglow Brew";
+const BRAND = require("./brand.js");
+const HELP = require("./help.js");
+const { SUITE } = require("./core/brand.js");
+const GROUP = BRAND.NAME;
 
 // ---- icons: white line glyphs drawn in code (UXP's SVG support is patchy)
 function icon(kind) {
@@ -61,18 +64,20 @@ async function maskGlowAndBrush() {
 }
 
 const panel = createToolPanel({
-  code: "MG-04", glow: "#ff2fd6",
-  appName: GROUP, title: GROUP, sub: "one-click realistic, dreamy glow", panelId: "mobglowPanel",
+  code: "MG-04", glow: "#ff2fd6", ui3: true, help: HELP, version: "3.0",
+  autoTone: { on: false },
+  appName: GROUP, title: GROUP, storeKey: BRAND.LEGACY, sub: "one-click realistic, dreamy glow", panelId: "mobglowPanel",
   presetFile: "presets.json", exportName: "mobglow-looks.json",
   applyLabel: "Render", split: true,
-  footer: GROUP + " 2.0  -  Frank's Brew suite",
+  footer: GROUP + " 3.0  -  " + SUITE,
   Engine, DEFAULTS, PRESETS, merge, clone,
   cards: (ui, kit) => {
-    const { card, sliderRow, checkRow, el, showIf, bind } = ui;
+    const { card, sliderRow, checkRow, el, showIf, bind } = ui;   // 3.0: knobs for character, Render key on the Glow card
     let picking = false;
     const key = (kind, title, onClick) => {
       const b = el("button", { class: "btn mgkey", title }, [el("img", { class: "mgico", src: icon(kind) })]);
       b.addEventListener("click", onClick);
+      if (ui.helpAt) ui.helpAt(b, { key: "key:" + kind, name: title.split(":")[0], kind: "button" });
       return b;
     };
     const srcKey = key("image", "Glow source: flattened image or the active layer (click to switch)", () => {

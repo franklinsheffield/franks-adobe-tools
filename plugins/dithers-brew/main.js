@@ -10,6 +10,8 @@ const ASCII = require("./js/ascii.js");
 // shared suite core (synced from /shared by tools/sync-core.js)
 const PNG = require("./core/png.js");
 const PS = require("./core/ps-io.js");
+const BRAND = require("./brand.js");
+const { SUITE } = require("./core/brand.js");
 const { createUI, getPath } = require("./core/ui.js");
 const QW = require("./core/quickwins.js");
 const IM = require("./core/imgmath.js");
@@ -20,7 +22,7 @@ const Colour = require("./core/colour.js");
 const Blend = require("./core/blend.js");
 const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = require("./core/colourdeck.js");
 
-PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
+PS.configure({ appName: BRAND.NAME, presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
 if (!DEFAULTS.blend) DEFAULTS.blend = clone(Blend.DEFAULT);   // Blending (all plugins), saved with the look
 let state = normAscii(clone(DEFAULTS));
@@ -38,16 +40,29 @@ let deck = null;
 // Colour Deck state (shared suite colour control); states set from outside may lack it
 const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));
 // ink layers recoloured, or one Colour Deck layer read from the print on white paper
+// ASCII glyph colour modes that take their colours FROM the deck (the deck is then not laid on top)
+const DECK_FEEDS = ["match", "tone", "across", "bands"];
+const deckFeedsGlyphs = () => state.engine === "ascii" && state.ascii && DECK_FEEDS.includes(state.ascii.glyph);
+// the deck's colours as a ramp for the ASCII colour modes: gradient stops at their positions,
+// any other mode's colours dark -> light, evenly spaced. null = deck off (engine uses the inks).
+function deckRamp() {
+  const C = D();
+  if (!Colour.active(C)) return null;
+  if (C.mode === "gradient" && C.grad && C.grad.stops) return C.grad.stops.map((x) => ({ c: Colour.hexToRgb(x.c), p: (+x.p || 0) / 100 }));
+  const cs = Colour.colours(C).map(Colour.hexToRgb).sort((a, b) => (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114) - (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114));
+  return cs.map((c, k) => ({ c, p: cs.length > 1 ? k / (cs.length - 1) : 0 }));
+}
+const withRamp = (P) => (P.engine === "ascii" && DECK_FEEDS.includes(P.ascii && P.ascii.glyph) ? Object.assign(P, { ascii: Object.assign({}, P.ascii, { ramp: deckRamp() }) }) : P);
 function withDeck(res) {
   const C = D();
-  if (!Colour.active(C)) return res;
+  if (!Colour.active(C) || deckFeedsGlyphs()) return res;
   // ASCII 3.0 Glyph colour "Colour Deck": the deck recolours the glyph ink layers
   const inks = C.inks || (state.engine === "ascii" && state.ascii && state.ascii.glyph === "deck");
   return inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
 }
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: "Frank's Dithers Brew",
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: BRAND.LEGACY,
   getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
 const KEYS_IDLE = QW.keysIdle("");
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
@@ -93,7 +108,7 @@ function setStatus(msg, isErr) {
   if (isErr) msg = QW.plainError(msg);
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
-  if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Brewing)/.test(msg) ? "busy" : "ready"));
+  if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Applying)/.test(msg) ? "busy" : "ready"));
 }
 
 // ---------------------------------------------------------------- palette widgets
@@ -401,13 +416,14 @@ async function previewOnce() {
 
 async function previewFrame(src, scale, ppi, quick) {
   const t0 = Date.now();
-  const P = Object.assign({}, state, { ppi: effPpi(ppi), scale });
+  const P = withRamp(Object.assign({}, state, { ppi: effPpi(ppi), scale }));
   const res = await Engine.render(src, P, { yield: tick });
   const dtf = state.fx.dtf;
   const bgType = state.view.bg;
   const bg = (dtf.on && dtf.view === "garment") ? { type: "garment", color: Engine.hexToRgb(dtf.garment) } : { type: bgType };
   let rgb;
-  if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
+  if (deckFeedsGlyphs()) rgb = Engine.composite(res, bg);
+  else if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
   else { rgb = Engine.composite(res, bg); applyDeckPreview(rgb, res, D(), Engine, null, bgType, "white"); }
   if (Blend.active(state.blend)) rgb = Blend.preview(Engine, withDeck(res), src, state.blend);   // as the group will look over the picture
   lastShown = { rgb, w: res.w, h: res.h, before: IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: bgType }, src) };
@@ -481,13 +497,13 @@ async function applyNow() {
     confirmArmed = false;
     var tStart = Date.now();
     refs.meter.run();
-    btn.textContent = "Brewing...";
+    btn.textContent = "Applying...";
     btn.setAttribute("disabled", "true");
     let done = 0;
     for (const t of targets) {
       setStatus("Reading pixels " + (done + 1) + "/" + targets.length + "...");
       const r = await PS.readSource(doc, t, { kind: "full" });
-      const P = Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 });
+      const P = withRamp(Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 }));
       const res0 = await Engine.render(r.src, P, {
         yield: tick,
         progress: (i, n, name) => setStatus("Rendering " + (done + 1) + "/" + targets.length + ": " + name + " (" + (i + 1) + "/" + n + ")...")
@@ -500,7 +516,7 @@ async function applyNow() {
       const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
       const warnings = await PS.writeResult(doc, res, {
         origin: r.origin,
-        groupName: base + "Brew - " + label + (state.engine === "halftone" ? " " + state.lpi + " LPI" : ""),
+        groupName: base + BRAND.NAME + " - " + label + (state.engine === "halftone" ? " " + state.lpi + " LPI" : ""),
         hideSource: state.out.hide && !Blend.active(state.blend),   // a blended group needs its source visible
         hideLayers: t.kind === "layer" ? [t.layer] : null,
         paperLayer: state.out.paper,
@@ -549,7 +565,7 @@ function build(root) {
 
   // header
   root.classList.add("brand-console");
-  refs.led = ui.brand.header({ title: "Frank's Dithers Brew", code: "DB-01" });
+  refs.led = ui.brand.header({ title: BRAND.NAME, code: "DB-01" });
   top.appendChild(refs.led.node);
 
   // ---- preview card
@@ -665,6 +681,20 @@ function build(root) {
   showIf(edgeRow, () => ["luma", "equal", "ordered", "bluenoise", "glitch", "edge"].indexOf(state.ascii.algo) >= 0);
   const seedRow = ui.stepper("Seed", "ascii.seed", 1, 9999, 1, "");
   showIf(seedRow, () => ["bluenoise", "glitch", "rain"].indexOf(state.ascii.algo) >= 0);
+  // Glyph colour (Frank 2026-11-24): colour is part of every algorithm. Palette match / Gradient by tone /
+  // Gradient across / Tone bands take their colours from the Colour Deck (palette, gradient, tone map, inks).
+  const glyphRow = selectRow("Glyph colour", "ascii.glyph", [
+    { v: "ink", l: "Ink" }, { v: "cell", l: "Cell colour (photo)" }, { v: "match", l: "Palette match" },
+    { v: "tone", l: "Gradient by tone" }, { v: "across", l: "Gradient across" }, { v: "bands", l: "Tone bands (layer per colour)" },
+    { v: "deck", l: "Colour Deck on top" }]);
+  const gangleRow = ui.angle("Gradient angle", "ascii.gangle", 0, 360, 1);
+  showIf(gangleRow, () => state.ascii.glyph === "across");
+  const glyphNote = el("div", { class: "hint" });
+  bind(() => {
+    const feeds = ["match", "tone", "across", "bands"].indexOf(state.ascii.glyph) >= 0;
+    glyphNote.style.display = feeds ? "" : "none";
+    glyphNote.textContent = Colour.active(D()) ? "Colours come from the Colour Deck (" + Colour.label(D()) + ")." : "Colours come from the inks. Turn on the Colour Deck to use a palette or gradient.";
+  });
   const asBox = el("div", {}, algoGrids.concat([
     selectRow("Font", "ascii.font", ASCII3.FONTS.map((f) => ({ v: f.id, l: f.name }))),
     ui.stepper("Size", "ascii.cell", 4, 96, 1, "px"),
@@ -673,7 +703,7 @@ function build(root) {
     ui.stepper("Spacing", "ascii.spacing", 0, 8, 1, "px"),
     edgeRow, seedRow,
     checkRow("Invert (light glyphs on dark)", "ascii.invert"),
-    segGroup("ascii.glyph", [{ v: "ink", l: "Ink" }, { v: "cell", l: "Cell colour" }, { v: "deck", l: "Colour Deck" }]),
+    glyphRow, gangleRow, glyphNote,
     textRowEl
   ]));
   showIf(asBox, () => state.engine === "ascii");
@@ -862,7 +892,7 @@ function build(root) {
   ]));
 
   top.appendChild(ui.jumpStrip(secs, layout.scroller));
-  root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.1  -  your artwork is never changed; results land in new layers." }));
+  root.appendChild(el("div", { class: "foot", text: BRAND.NAME + " 1.1  -  your artwork is never changed; results land in new layers." }));
 
   root.addEventListener("input", onDragInput);
   preSig = preKey();
@@ -880,7 +910,7 @@ function menuAction(id) {
   else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
   else if (id === "about") {
     let v = ""; try { v = require("./manifest.json").version; } catch (e) { /* no manifest in tests */ }
-    setStatus("Frank's Dithers Brew " + v + "  |  DB-01  |  Frank's Brew suite. Hover any control for help.");
+    setStatus(BRAND.NAME + " " + v + "  |  DB-01  |  " + SUITE + ". Hover any control for help.");
   }
 }
 
@@ -906,7 +936,7 @@ try {
           { id: "split", label: "Before / After split" },
           { id: "foldAll", label: "Fold or open all cards" },
           "-",
-          { id: "about", label: "About Frank's Dithers Brew" }
+          { id: "about", label: "About " + BRAND.NAME }
         ],
         invokeMenu(id) { menuAction(id); }
       }

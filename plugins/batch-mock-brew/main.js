@@ -2,7 +2,7 @@
 // ======================================================================
 // Frank's Batch Mock Brew - batch Smart Object mockups.
 // Pick a Mockups, Artwork and Export folder, choose placement, format and
-// naming, press Brew Batch: every artwork goes into every mockup's target
+// naming, press Run Batch: every artwork goes into every mockup's target
 // Smart Objects and the results are exported. Settings and folders are
 // remembered. Mockup files on disk are never changed.
 // ======================================================================
@@ -18,7 +18,9 @@ const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 const { createBatch, formatLog } = require("./core/batch.js");
 
-const TITLE = "Frank's Batch Mock Brew";
+const BRAND = require("./brand.js");
+const { SUITE } = require("./core/brand.js");
+const TITLE = BRAND.NAME;
 const SETTINGS_FILE = "settings.json";
 PS.configure({ appName: TITLE, presetFile: "setups.json", exportName: "batch-mock-setups.json" });
 
@@ -33,7 +35,7 @@ let built = false, saveT = null, lib = null;
 let lookBase = clone(state);
 const KEYS_IDLE = QW.keysIdle("the batch after the current job");
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: "Frank's Batch Mock Brew",
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: BRAND.LEGACY,
   getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
@@ -122,7 +124,7 @@ async function brew(testOnly) {
   let cur = null;   // { key, doc, targets, dirty }
   const dirCache = {};
   setRunning(true);
-  setStatus(testOnly ? "Test: first job only, the result stays open in Photoshop." : "Brewing " + list.length + " mockups...");
+  setStatus(testOnly ? "Test: first job only, the result stays open in Photoshop." : "Running " + list.length + " mockups...");
   // one mockup job per modal; the watchdog ends a job that never finishes instead of leaving a stuck Progress window
   const modal = (fn, name) => runModal(TITLE + ": " + name, fn, { timeoutMs: 10 * 60000 });
   const closeCur = async () => { if (cur) { const d = cur.doc; cur = null; await modal(() => PSM.closeDoc(d), "close mockup"); } };
@@ -173,7 +175,7 @@ async function brew(testOnly) {
 }
 function setRunning(on) {
   [refs.brew, refs.test].forEach((b) => { if (on) b.setAttribute("disabled", "true"); else b.removeAttribute("disabled"); });
-  refs.brew.textContent = on ? "Brewing..." : "Brew Batch";
+  refs.brew.textContent = on ? "Running..." : "Run Batch";
   if (refs.led) refs.led.set(on ? "busy" : "ready");
   refs.cancel.style.display = on ? "" : "none";
   if (!on) refs.job.textContent = "";
@@ -188,7 +190,7 @@ function build(root) {
   root.classList.add("brand-console");
   refs.led = ui.brand.header({ title: TITLE, code: "BM-07" });
   lay.pinned.appendChild(refs.led.node);
-  refs.brew = el("button", { class: "apply", text: "Brew Batch" });
+  refs.brew = el("button", { class: "apply", text: "Run Batch" });
   refs.brew.addEventListener("click", () => brew(false));
   refs.test = el("button", { class: "btn small", text: "Test first job", title: "Runs only the first job and leaves the result open, without exporting" });
   refs.test.addEventListener("click", () => brew(true));
@@ -200,7 +202,7 @@ function build(root) {
   refs.status = el("div", { class: "status", text: "Choose your folders to start." });
   refs.summary = el("div", { class: "info" });
   refs.counts = el("div", { class: "info counts" });
-  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })), refs.summary], { fold: false }));
+  lay.pinned.appendChild(card("Run", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })), refs.summary], { fold: false }));
 
   const s = lay.scroller;
   // organized panel (Frank, 2026-11-22): A Look / B Setup / D Output (no colour section in this tool)
@@ -255,7 +257,7 @@ function build(root) {
     refs.example
   ]));
   lay.pinned.appendChild(ui.jumpStrip(secs, s));
-  s.appendChild(el("div", { class: "foot", text: TITLE + " 1.0  -  Frank's Brew suite" }));
+  s.appendChild(el("div", { class: "foot", text: TITLE + " 1.0  -  " + SUITE }));
   refreshAll(); updateCounts();
 }
 
@@ -290,7 +292,7 @@ function menuAction(id) {
   if (id === "resetLook") { const keep = clone(state.folders); state = clone(lookBase); state.folders = keep; touch(); setStatus("Settings reset to the last loaded setup."); }
   else if (id === "test") { if (!busyNow()) brew(true); }
   else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
-  else if (id === "about") setStatus(TITLE + "  |  BM-07  |  Frank's Brew suite. Hover any control for help.");
+  else if (id === "about") setStatus(TITLE + "  |  BM-07  |  " + SUITE + ". Hover any control for help.");
 }
 setTimeout(() => { init(); }, 0);
 

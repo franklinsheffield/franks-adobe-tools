@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Frank's Brew Console for After Effects (CEP 12, AE 2027). Free install: see ae/tools/install-console-mac.command -->
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.franks.brewconsole" ExtensionBundleVersion="1.0.0" ExtensionBundleName="Frank's Brew Console"
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.franks.brewconsole" ExtensionBundleVersion="1.0.0" ExtensionBundleName="Lab Console"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
     <Extension Id="com.franks.brewconsole.panel" Version="1.0.0" />
@@ -31,7 +31,7 @@
         </Lifecycle>
         <UI>
           <Type>Panel</Type>
-          <Menu>Frank's Brew Console</Menu>
+          <Menu>Lab Console</Menu>
           <Geometry>
             <Size><Height>720</Height><Width>340</Width></Size>
             <MinSize><Height>300</Height><Width>260</Width></MinSize>

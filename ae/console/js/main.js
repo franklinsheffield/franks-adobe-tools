@@ -44,7 +44,7 @@
   let tool = B.tools[0], cat = "All";
   try { const s = localStorage.getItem("brewconsole.tool"); const f = B.tools.find((t) => t.id === s); if (f) tool = f; } catch (e) { /* no storage */ }
   const toolNodes = {};
-  function shortName(t) { return t.title.replace(/^Frank's\s+/, "").replace(/\s+Brew$/, "").toUpperCase(); }
+  function shortName(t) { return t.title.replace(/^Frank's\s+/, "").replace(/\s+(Brew|Lab)$/, "").toUpperCase(); }
   function buildTools() {
     const box = $("tools");
     B.tools.concat(B.coming).forEach((t) => {
@@ -267,7 +267,7 @@
   $("importBtn").addEventListener("click", async () => {
     const r = await run("Importing", host("brew_importLooks"));
     if (!r.ok || r.cancelled) return status(r.ok ? "" : r.error, r.ok ? "" : "err");
-    let list; try { list = JSON.parse(r.text); } catch (e) { return status("That file is not a Brew look file.", "err"); }
+    let list; try { list = JSON.parse(r.text); } catch (e) { return status("That file is not a Lab look file.", "err"); }
     if (!Array.isArray(list)) list = [list];
     let n = 0;
     for (const it of list) {

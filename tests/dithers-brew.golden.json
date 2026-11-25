@@ -19,7 +19,7 @@
   "Blend",
   "Output"
  ],
- "controls": "input:78 select:13 button:76 textarea:1",
+ "controls": "input:79 select:14 button:73 textarea:1",
  "previewDefault": "2807e930cda1",
  "presets": [
   "Print - Newsprint 45 deg / 35 LPI = 6eb46d7800c8",
@@ -65,13 +65,13 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
-  "executeAsModal|Frank's Dithers Brew: reading pixels",
+  "executeAsModal|Dithers Lab: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Frank's Dithers Brew",
-  "suspendHistory|Frank's Dithers Brew",
+  "executeAsModal|Dithers Lab",
+  "suspendHistory|Dithers Lab",
   "createPixelLayer|Ink #000000 45°",
   "putPixels|100|4|480000",
-  "createLayerGroup|Brew - Round Dot 35 LPI|1",
+  "createLayerGroup|Dithers Lab - Round Dot 35 LPI|1",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

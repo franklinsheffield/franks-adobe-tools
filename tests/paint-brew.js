@@ -72,7 +72,7 @@ module.exports = async function (t) {
     P.document.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
     for (let i = 0; i < 300 && !/^(Done|Apply failed)/.test(P.document.querySelector(".status").textContent); i++) await P.settle(100);
     const calls = P.host.calls.map((c) => c.join("|"));
-    assert.ok(calls.includes("duplicate|test - Paint Brew print"), "copy made: " + calls.slice(0, 6));
+    assert.ok(calls.includes("duplicate|test - Paint Lab print"), "copy made: " + calls.slice(0, 6));
     assert.ok(calls.includes("resizeImage|3000|2250|300"), "upscaled to 3000 px at 300 ppi");
     assert.ok(/^Done/.test(P.document.querySelector(".status").textContent), P.document.querySelector(".status").textContent);
     const put = P.host.calls.filter((c) => c[0] === "putPixels");
@@ -127,7 +127,7 @@ module.exports = async function (t) {
     const D = P.document, st = P.mod._test.state;
     for (let i = 0; i < 100 && !/^Preview /.test(D.querySelector(".status").textContent); i++) await P.settle(50);
     assert.ok(D.querySelector("#app.brand-console"), "brand class on #app");
-    assert.strictEqual(D.querySelector(".rack .title").textContent, "PAINT BREW");
+    assert.strictEqual(D.querySelector(".rack .title").textContent, "PAINT LAB");
     assert.strictEqual(D.querySelectorAll(".rack .screw").length, 4);
     assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
     assert.strictEqual(D.querySelectorAll('input[type="range"]').length, 0, "no stock sliders");

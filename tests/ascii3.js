@@ -71,4 +71,29 @@ module.exports = async function (t) {
     assert.strictEqual(normAscii(merge(DEFAULTS, { ascii: { size: 3 } })).ascii.cell, 24);
     assert.strictEqual(normAscii(merge(DEFAULTS, { ascii: { textMode: true } })).ascii.algo, "text");
   });
+
+  await t("Dithers engine: glyph colour modes - palette match, gradient by tone, gradient across, tone bands (Colour Deck ramp)", async () => {
+    const E = require("../plugins/dithers-brew/js/engine.js");
+    const { DEFAULTS, merge } = require("../plugins/dithers-brew/js/state.js");
+    const w = 128, h = 64, data = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, v = Math.round(20 + x / (w - 1) * 200); data[i * 4] = v; data[i * 4 + 1] = v; data[i * 4 + 2] = x < w / 2 ? 200 : 20; data[i * 4 + 3] = 255; }
+    const RED = [255, 0, 0], BLUE = [0, 0, 255], ramp = [{ c: RED, p: 0 }, { c: BLUE, p: 1 }];
+    const run = async (glyph, extra) => { const P = merge(DEFAULTS, { engine: "ascii", ascii: Object.assign({ algo: "ordered", cell: 16, glyph, invert: true }, extra) }); P.ppi = 72; P.scale = 1; P.ascii.ramp = (extra && "ramp" in extra) ? extra.ramp : ramp; return E.render({ w, h, c: 4, data }, P); };
+    const colAt = (r, x0, x1) => { const q = r.layers[0].rgba; for (let y = 0; y < h; y++) for (let x = x0; x < x1; x++) { const i = y * w + x; if (q[i * 4 + 3] > 200) return Array.from(q.slice(i * 4, i * 4 + 3)); } return null; };
+    // match: every glyph is exactly one ramp colour
+    const m = await run("match"); const q = m.layers[0].rgba;
+    for (let i = 0; i < w * h; i++) if (q[i * 4 + 3]) assert.ok(String(q.slice(i * 4, i * 4 + 3)) === String(RED) || String(q.slice(i * 4, i * 4 + 3)) === String(BLUE), "match uses only ramp colours");
+    // tone: dark cells near red end, light cells near blue end
+    const tn = await run("tone"); const L = colAt(tn, 0, 20), R = colAt(tn, w - 20, w);
+    assert.ok(L && R && L[0] > L[2] && R[2] > R[0], "tone: dark->red, light->blue " + L + " " + R);
+    // across at 0 deg: left red, right blue; at 180 deg reversed
+    const a0 = await run("across", { gangle: 0 }), a1 = await run("across", { gangle: 180 });
+    assert.ok(colAt(a0, 0, 20)[0] > colAt(a0, 0, 20)[2] && colAt(a1, 0, 20)[2] > colAt(a1, 0, 20)[0], "across follows the angle");
+    // bands: one mask layer per colour that has glyphs, named by colour
+    const b = await run("bands", { ramp: [{ c: RED, p: 0 }, { c: [0, 255, 0], p: 0.5 }, { c: BLUE, p: 1 }] });
+    assert.ok(b.layers.length >= 2 && b.layers.every((x) => x.mask && x.color && /^ASCII band \d #/.test(x.name)), "band layers: " + b.layers.map((x) => x.name));
+    // no ramp (deck off): falls back to the ink colours and still draws
+    const f = await run("tone", { ramp: null }); assert.ok(f.layers[0].rgba.some((v, i) => i % 4 === 3 && v));
+    assert.deepStrictEqual(E.ASCII_COLOUR_MODES, ["cell", "match", "tone", "across", "bands"]);
+  });
 };

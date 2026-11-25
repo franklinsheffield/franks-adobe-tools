@@ -243,7 +243,7 @@ function clearCache() { cache = null; }
 // pop, horizon, detail, smooth, auto, phase: "preview"|"apply", appName }.
 // Returns a Float32Array at src size, 0 = near, 1 = far.
 async function getDepth(doc, r, opts) {
-  const o = Object.assign({ source: "smart", phase: "preview", appName: "Frank's Brew" }, opts || {});
+  const o = Object.assign({ source: "smart", phase: "preview", appName: "Lab" }, opts || {});
   if (o.source === "smart") { try { await addSubject(doc, r, o.phase, o.appName, false); } catch (e) { console.warn("Select Subject failed: " + (e && e.message)); } }
   else if (o.source === "layer" && o.layerId != null) { try { await addDepthLayer(doc, r, o.layerId, o.appName, o.layerDoc); } catch (e) { console.warn("Depth layer read failed: " + (e && e.message)); } }
   const res = build(r.src, { scale: r.scale || 1, depth: { source: o.source, pop: o.pop, horizon: o.horizon, detail: o.detail, smooth: o.smooth == null ? 2 : o.smooth, auto: o.auto !== false } });

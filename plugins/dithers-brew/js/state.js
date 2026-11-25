@@ -10,7 +10,7 @@ const DEFAULTS = {
   tune: { threshold: 50, strength: 100, direction: "h", weight: 2, spacing: 6, jitter: 0 },
   ascii: { size: 4, custom: "FRANK", keepOrder: false, edge: 0, textMode: false, text: "FRANK",
            // 3.0: algorithm (20), built-in font, cell height px (0 = Scale x 8, as 2.x), spacing px, invert, seed, glyph colour
-           algo: "luma", font: "classic", cell: 0, spacing: 0, invert: false, seed: 1, glyph: "ink" },
+           algo: "luma", font: "classic", cell: 0, spacing: 0, invert: false, seed: 1, glyph: "ink", gangle: 0 },
   mono:  { ink: "#000000", paper: "" },
   tonal: { tone: "duonavy", inks: ["#7FA6C9", "#1B2A49"], paper: "#F4EBD0", angles: [45, 15, 75, 0, 60] },
   grade: { palette: "pico8", colors: ["#000000", "#1D2B53", "#7E2553", "#008751", "#AB5236", "#5F574F", "#C2C3C7", "#FFF1E8", "#FF004D", "#FFA300", "#FFEC27", "#00E436", "#29ADFF", "#83769C", "#FF77A8", "#FFCCAA"],

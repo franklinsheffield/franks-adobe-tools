@@ -1,7 +1,7 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.decompressor",
-  "name": "Frank's Decompressor Brew",
+  "name": "Decompressor Lab",
   "version": "1.0.1",
   "main": "index.html",
   "host": {
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "decompressorPanel",
       "label": {
-        "default": "Frank's Decompressor Brew"
+        "default": "Decompressor Lab"
       },
       "minimumSize": {
         "width": 300,

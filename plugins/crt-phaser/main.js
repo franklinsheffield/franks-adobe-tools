@@ -6,6 +6,8 @@
 const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
+const BRAND = require("./brand.js");
+const { SUITE } = require("./core/brand.js");
 const HELP = require("./help.js");
 
 const phaseOn = (s) => s.phase.mode !== "off";
@@ -13,9 +15,10 @@ const lidar = (s) => s.phase.mode === "lidar";
 
 const panel = createToolPanel({
   code: "CRT-06", glow: "#bc71fe", ui3: true, help: HELP, version: "3.0",
-  appName: "Frank's CRT Phaser Brew", title: "Frank's CRT Phaser Brew", sub: "phase fx  /  scanlines  /  phosphor  /  tube", panelId: "crtPhaserPanel",
+  autoTone: { on: (s) => !!(s.phase && s.phase.mode !== "off") },
+  appName: BRAND.NAME, title: BRAND.NAME, storeKey: BRAND.LEGACY, sub: "phase fx  /  scanlines  /  phosphor  /  tube", panelId: "crtPhaserPanel",
   presetFile: "presets.json", exportName: "crt-phaser-looks.json",
-  footer: "Frank's CRT Phaser Brew 3.0  -  Frank's Brew suite",
+  footer: BRAND.NAME + " 3.0  -  " + SUITE,
   reEdit: true,
   Engine, DEFAULTS, PRESETS, merge, clone,
   cards: (ui, kit) => {

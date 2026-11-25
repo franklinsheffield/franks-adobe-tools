@@ -15,8 +15,8 @@ async function makePrintCopy(doc, minLong, ppi) {
   const info = PS.docInfo(doc);
   const s = minLong / longSide(info);
   const W = Math.round(info.w * s), H = Math.round(info.h * s);
-  const name = String(info.name).replace(/\.[^.]+$/, "") + " - Paint Brew print";
-  return runModal("Frank's Paint Brew: print-ready copy", async () => {
+  const name = String(info.name).replace(/\.[^.]+$/, "") + " - Paint Lab print";
+  return runModal("Paint Lab: print-ready copy", async () => {
     const dup = await doc.duplicate(name);
     try { if (constants.BitsPerChannelType && dup.bitsPerChannel !== constants.BitsPerChannelType.EIGHT) dup.bitsPerChannel = constants.BitsPerChannelType.EIGHT; } catch (e) { /* already 8-bit */ }
     try { if (constants.DocumentMode && dup.mode !== constants.DocumentMode.RGB) await dup.changeMode(constants.ChangeMode.RGB); } catch (e) { /* already RGB */ }
@@ -66,7 +66,7 @@ async function readFocus(doc, mode, layer, r) {
   const box = readBox(r);
   const opts = { documentID: doc.id, sourceBounds: box };
   if ((r.scale || 1) < 1) opts.targetSize = { width: r.src.w, height: r.src.h };
-  return runModal("Frank's Paint Brew: reading focus", async () => {
+  return runModal("Paint Lab: reading focus", async () => {
     let res;
     if (mode === "selection") res = await imaging.getSelection(opts);
     else {

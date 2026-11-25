@@ -302,13 +302,13 @@ function writeASE(colors, name) {
   const u16 = (x) => [(x >> 8) & 255, x & 255], u32 = (x) => [(x >>> 24) & 255, (x >> 16) & 255, (x >> 8) & 255, x & 255];
   const f32 = (x) => { const d = new DataView(new ArrayBuffer(4)); d.setFloat32(0, x); return [d.getUint8(0), d.getUint8(1), d.getUint8(2), d.getUint8(3)]; };
   const block = (type, body) => parts.push(...u16(type), ...u32(body.length), ...body);
-  const g = str(name || "Brew palette"); block(0xC001, [...u16(g.n), ...g.a]);
+  const g = str(name || "Lab palette"); block(0xC001, [...u16(g.n), ...g.a]);
   cols.forEach((h) => { const s = str(h), c = hexToRgb(h).map((v) => v / 255); block(1, [...u16(s.n), ...s.a, 82, 71, 66, 32, ...f32(c[0]), ...f32(c[1]), ...f32(c[2]), ...u16(2)]); });
   block(0xC002, []);
   return Uint8Array.from([65, 83, 69, 70, 0, 1, 0, 0, ...u32(cols.length + 2), ...parts]);
 }
 function writeGPL(colors, name) {
-  return "GIMP Palette\nName: " + (name || "Brew palette") + "\nColumns: 8\n#\n" + colors.filter(isHex).map((h) => { const c = hexToRgb(h); return c.map((v) => String(v).padStart(3)).join(" ") + "\t" + h; }).join("\n") + "\n";
+  return "GIMP Palette\nName: " + (name || "Lab palette") + "\nColumns: 8\n#\n" + colors.filter(isHex).map((h) => { const c = hexToRgb(h); return c.map((v) => String(v).padStart(3)).join(" ") + "\t" + h; }).join("\n") + "\n";
 }
 
 // ---- 5 Brand palette lock --------------------------------------------------

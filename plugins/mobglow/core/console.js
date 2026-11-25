@@ -85,7 +85,7 @@ function createConsoleKit(env) {
     const node = el("div", { class: "rack" }, [
       screw("tl"), screw("tr", true), screw("bl", true), screw("br"),
       el("div", { class: "rackl" }, [
-        el("div", { class: "sub rackcode", text: (env.lcd ? "FRANK'S " : "FRANK'S  -  ") + (cfg.code || "BREW") }),
+        el("div", { class: "sub rackcode", text: (env.lcd ? "LAB " : "LAB  -  ") + (cfg.code || "") }),
         el("div", { class: "title", text: name })
       ]),
       el("div", { class: "rackr" }, [env.help ? env.help.switchNode() : null, led, ledTxt])

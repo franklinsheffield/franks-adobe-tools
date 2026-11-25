@@ -141,4 +141,38 @@ function merge(base, patch) {
   return out;
 }
 
-module.exports = { clamp, hexToRgb, isHex, boxBlur, gradientLUT, hashNoise, rng, luminance, planes, toRGBA, composite, demoImage, BLENDS, clone, merge };
+
+// ---- Auto Tone (3.0 upgrade 1, approved 2026-11-24): a pre-pass that gives every tool a well
+// exposed picture to work from. Luminance stretch (1st..99.5th percentile), midtone lift so the
+// median lands at 0.45, then large-radius local contrast; hue is kept (RGB scaled by L'/L).
+// amount 0..100 blends from the original to the full correction. Transparent pixels are skipped
+// for the statistics. Returns a NEW source { w, h, c, data }.
+function autoTone(src, amount) {
+  const t = clamp((amount == null ? 100 : amount) / 100, 0, 1);
+  if (!src || !t) return src;
+  const w = src.w, h = src.h, n = w * h, c = src.c || 4, d = src.data;
+  const { L, A } = luminance(src);
+  const hist = new Uint32Array(1024); let cnt = 0;
+  for (let i = 0; i < n; i++) if (A[i] > 8) { hist[Math.min(1023, Math.floor(L[i] * 1023))]++; cnt++; }
+  if (!cnt) return src;
+  const pct = (q) => { const goal = cnt * q; let a = 0; for (let v = 0; v < 1024; v++) { a += hist[v]; if (a >= goal) return v / 1023; } return 1; };
+  const lo = pct(0.01), hi = Math.max(pct(0.995), lo + 0.02), med = pct(0.5);
+  const medN = clamp((med - lo) / (hi - lo), 1e-3, 0.999);
+  const g = Math.log(0.45) / Math.log(medN);
+  const Ln = new Float32Array(n);
+  for (let i = 0; i < n; i++) Ln[i] = Math.pow(clamp((L[i] - lo) / (hi - lo), 0, 1), g);
+  const B = boxBlur(Float32Array.from(Ln), w, h, Math.max(2, Math.round(Math.max(w, h) * 0.05)), 3);
+  const out = new Uint8Array(n * c);
+  for (let i = 0, j = 0; i < n; i++, j += c) {
+    const l2 = clamp(Ln[i] + 0.6 * (Ln[i] - B[i]), 0, 1), r = l2 / Math.max(L[i], 1e-3);
+    let R = d[j] * r, G = (c >= 3 ? d[j + 1] : d[j]) * r, Bl = (c >= 3 ? d[j + 2] : d[j]) * r;
+    const m = Math.max(R, G, Bl); if (m > 255) { const k = 255 / m; R *= k; G *= k; Bl *= k; }   // keep hue when a channel clips
+    if (c >= 3) {
+      out[j] = d[j] + (R - d[j]) * t; out[j + 1] = d[j + 1] + (G - d[j + 1]) * t; out[j + 2] = d[j + 2] + (Bl - d[j + 2]) * t;
+      if (c >= 4) out[j + 3] = d[j + 3];
+    } else out[j] = d[j] + (R - d[j]) * t;
+  }
+  return Object.assign({}, src, { data: out });   // keeps subject / focus / depth masks
+}
+
+module.exports = { autoTone, clamp, hexToRgb, isHex, boxBlur, gradientLUT, hashNoise, rng, luminance, planes, toRGBA, composite, demoImage, BLENDS, clone, merge };

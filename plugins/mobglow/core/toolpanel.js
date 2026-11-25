@@ -37,6 +37,7 @@
 // ======================================================================
 const PNG = require("./png.js");
 const PS = require("./ps-io.js");
+const Brand = require("./brand.js");
 const { createUI, getPath } = require("./ui.js");
 const { createPreviewLoop, tick } = require("./preview.js");
 const { splitLayout } = require("./layout.js");
@@ -59,6 +60,18 @@ function createToolPanel(cfg) {
   PS.configure({ appName: cfg.appName, presetFile: cfg.presetFile || "presets.json", exportName: cfg.exportName || "looks.json" });
 
   let state = PRESETS[0] ? merge(DEFAULTS, PRESETS[0].p) : clone(DEFAULTS);   // start on the first preset so its name matches
+  // ---- Auto Tone (3.0 upgrade 1): cfg.autoTone = { on: bool | (state) => bool } turns the shared
+  // pre-pass on for a tool; a look without its own autoTone gets the tool's default for that look.
+  const AT = cfg.autoTone || null;
+  function ensureAutoTone(st, patch) {
+    if (!AT) return st;
+    const own = patch && patch.autoTone;
+    const on = typeof AT.on === "function" ? !!AT.on(st) : !!AT.on;
+    st.autoTone = Object.assign({ on, amount: 100 }, own || {});
+    return st;
+  }
+  const toneSrc = (src, st) => (AT && st && st.autoTone && st.autoTone.on && st.autoTone.amount > 0 ? IM.autoTone(src, st.autoTone.amount) : src);
+  ensureAutoTone(state, PRESETS[0] && PRESETS[0].p);
   const hasDeck = cfg.colour !== false && !cfg.previewRender && !cfg.outputCard;
   if (cfg.split == null) cfg.split = !cfg.previewRender;   // Before/After on every pixel tool (research quick win ID-09)
   if (hasDeck) state.deck = Colour.normalize(PRESETS[0] && PRESETS[0].p.deck);
@@ -82,7 +95,7 @@ function createToolPanel(cfg) {
   let lookBase = clone(state);
   // Brew 3.0 (cfg.ui3, CRT Phaser pilot first): Night Arcade style, 7 fixed zones, hover help
   if (cfg.ui3) cfg.brand = "console";
-  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.appName || cfg.title,
+  const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: cfg.brand, glow: cfg.glow, storeKey: cfg.storeKey || cfg.appName || cfg.title,
     getDefault: (path) => getPath(lookBase, path), onSelect: (i) => showKeys(i),
     arcade: !!cfg.ui3, helpText: cfg.ui3 ? (cfg.help || {}) : null });
   // live key hints for the selected knob (Blender-style status line, research quick win ID-13)
@@ -175,7 +188,7 @@ function createToolPanel(cfg) {
     }
     refs.docline.textContent = docCache.demo ? "No document open - demo image" : (docCache.name + "  " + docCache.w + " x " + docCache.h + " px");
     markApplyReady(!docCache.demo);
-    const res = await Engine.render(src, engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
+    const res = await Engine.render(toneSrc(src, state), engineState({ scale, fullH: docCache.h, fullW: docCache.w }), { yield: tick });
     let rgb = Engine.composite(res, { type: state.view.bg }, src);
     lastSrc = src; lastScale = scale;
     if (lookBrowser) lookBrowser.sourceChanged();
@@ -333,7 +346,7 @@ function createToolPanel(cfg) {
       if (s < 1) src = resizeNearest(src, Math.max(1, Math.round(R.w * s)), Math.max(1, Math.round(R.h * s)));
       scale = src.w / R.w;
     }
-    const res = await Engine.render(src, engineState({ scale, fullH: H, fullW: W }), { yield: tick });
+    const res = await Engine.render(toneSrc(src, state), engineState({ scale, fullH: H, fullW: W }), { yield: tick });
     let rgb = Engine.composite(res, { type: state.view.bg }, src);
     if (hasDeck) applyDeckPreview(rgb, res, D(), Engine, src, state.view.bg, cfg.colourBase);
     let before = cfg.split ? IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: state.view.bg }, src) : null;
@@ -524,7 +537,7 @@ function createToolPanel(cfg) {
         const r = await whenNotModal(() => PS.readSource(doc, t, { kind: "full" }));
         if (cfg.prepareSource) await cfg.prepareSource(doc, r, "apply");
         setStatus("Rendering " + (done + 1) + "/" + runTargets.length + "...");
-        let res = await Engine.render(r.src, engineState({ scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
+        let res = await Engine.render(toneSrc(r.src, state), engineState({ scale: 1, fullH: r.info.h, fullW: r.info.w }), hooks);
         if (hasDeck && Colour.active(D())) { setStatus("Colour Deck..."); res = addDeckLayer(res, D(), Engine, r.src, cfg.colourBase); }
         setStatus("Writing layers...");
         const base = t.kind === "layer" && !t.prev ? (t.layer.name + " - ") : "";
@@ -621,7 +634,7 @@ function createToolPanel(cfg) {
     return out;
   }
   function createLookBrowser() {
-    const KEY = "brew.looks." + (cfg.appName || cfg.title);
+    const KEY = "brew.looks." + (cfg.storeKey || cfg.appName || cfg.title);
     let smp = cfg.lookSample;   // each plugin's own sample picture: plugins/<tool>/look-sample.js
     if (!smp) { try { smp = require("../look-sample.js"); } catch (e) { smp = null; } }
     const sample = smp && smp.rgb ? decodeSample(smp) : null;
@@ -676,7 +689,8 @@ function createToolPanel(cfg) {
           P.out = clone(state.out); P.view = clone(state.view);
           (Array.isArray(o.pr.p._off) ? o.pr.p._off : []).forEach((t) => { const m = bypassMaps[t]; if (m) Object.keys(m).forEach((k) => { try { ui.setPath(P, k, m[k]); } catch (e) { /* not in state */ } }); });
           Object.assign(P, useDoc ? { scale, fullH: docCache.h || src.h, fullW: docCache.w || src.w } : { scale, fullH: src.h, fullW: src.w });
-          const res = await Engine.render(src, P, { yield: tick });
+          ensureAutoTone(P, o.pr.p);
+          const res = await Engine.render(toneSrc(src, P), P, { yield: tick });
           const rgb = Engine.composite(res, { type: state.view.bg }, src);
           if (hasDeck && o.pr.p.deck) applyDeckPreview(rgb, res, Colour.normalize(o.pr.p.deck), Engine, src, state.view.bg, cfg.colourBase);
           o.img.src = PNG.dataURL(rgb, res.w, res.h, 3);
@@ -741,6 +755,7 @@ function createToolPanel(cfg) {
     const path = (o, k) => k.split(".").reduce((a, b) => (a == null ? a : a[b]), o);
     const kept = (cfg.keepOnLook || []).map((k) => [k, clone({ v: path(state, k) }).v]);
     state = merge(DEFAULTS, p);
+    ensureAutoTone(state, p);
     state.out = keepOut; state.view = keepView;
     for (const [k, v] of kept) {
       if (v === undefined || path(p, k) !== undefined) continue;
@@ -861,7 +876,7 @@ function createToolPanel(cfg) {
     if (cfg.outputCard) {
       addSection("D", "OUTPUT", "output", [cfg.outputCard(ui, kit)].concat(by.output));
       if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
-      root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
+      root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  " + Brand.SUITE) }));
       refreshAll();
       if (lookBrowser) lookBrowser.start();
       return;
@@ -891,7 +906,7 @@ function createToolPanel(cfg) {
       el("div", { class: "hint", text: "Creates a layer group; your artwork is never changed. One undo step." })
     ]))]));
     if (ui.brand) top.appendChild(ui.jumpStrip(secs, layout.scroller));
-    root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  Frank's Brew suite") }));
+    root.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + " 1.0  -  " + Brand.SUITE) }));
     refreshAll();
     if (lookBrowser) lookBrowser.start();
   }
@@ -1012,15 +1027,20 @@ function createToolPanel(cfg) {
     by.look.forEach((c) => sc.appendChild(c));
     sc.appendChild(secBar("OUTPUT", "output"));
     by.output.forEach((c) => sc.appendChild(c));
+    if (AT) {
+      const amt = ui.fader("Amount", "autoTone.amount", 0, 100, 1, "%");
+      ui.showIf(amt, () => !!(state.autoTone && state.autoTone.on));
+      sc.appendChild(card("Auto Tone", [ui.checkRow("Auto Tone", "autoTone.on"), amt]));
+    }
     if (hasBlend) sc.appendChild(Blend.card(ui, () => state));   // spec zone 6: Blend card above Output
     sc.appendChild(card("Output", [
-      selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }, { v: "prev", l: "Previous Brew result (chain)" }], () => { confirmArmed = false; })
+      selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }, { v: "prev", l: "Previous Lab result (chain)" }], () => { confirmArmed = false; })
     ].concat(cfg.outputRows ? cfg.outputRows(ui, kit) : []).concat([
       checkRow("Hide source artwork afterwards", "out.hide"),
       cfg.reEdit ? (() => { const b = el("button", { class: "btn small reedit", text: "Re-edit selected group" }); b.addEventListener("click", () => { reEditNow().catch((e) => setStatus("Re-edit failed: " + e.message, true)); }); H(b, { key: "out.reedit", name: "Re-edit selected group", kind: "button" }); return b; })() : null,
       el("div", { class: "hint", text: "Apply makes one new layer group; your artwork is never changed. One undo step." })
     ])));
-    sc.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + "  -  Frank's Brew suite") }));
+    sc.appendChild(el("div", { class: "foot", text: cfg.footer || (cfg.title + "  -  " + Brand.SUITE) }));
     // the section menu sits at the end of the effects row: GO opens a short list of sections
     const jump = ui.jumpStrip(secs, sc);
     jump.classList.add("secmenu");
@@ -1068,7 +1088,7 @@ function createToolPanel(cfg) {
     else if (id === "assist") { if (ui.help) ui.help.setOn(!ui.help.on); setStatus("Assistance (help bubbles) " + (ui.help && ui.help.on ? "on." : "off.")); }
     else if (/^delay(\d+)$/.test(id)) { if (ui.help) ui.help.setDelay(+id.slice(5)); setStatus("Help pop-ups after " + id.slice(5) + " s."); }
     else if (id === "auto") { auto = !auto; if (auto) schedulePreview(0); setStatus("Auto-update " + (auto ? "on." : "off: press Refresh.")); }
-    else if (id === "about") setStatus(cfg.title + " " + (cfg.version || "") + "  |  " + (cfg.code || "") + "  |  Frank's Brew suite. Hover any control for help.");
+    else if (id === "about") setStatus(cfg.title + " " + (cfg.version || "") + "  |  " + (cfg.code || "") + "  |  " + Brand.SUITE + ". Hover any control for help.");
   }
   async function init() {
     if (built) return;
@@ -1114,7 +1134,7 @@ function createToolPanel(cfg) {
   } catch (e) { /* older hosts: fall through to direct init */ }
   setTimeout(() => { init(); }, 0);
 
-  return { _test: { ui, setZoom, get zoom() { return zoom; }, zoomNow: () => zoomNow(), get zc() { return zc; }, get layout() { return layout; }, stepLook, get presetName() { return presetName; }, get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, runPreview: () => loop.run(), init, refs, touch, menuAction, plainError, get lookBase() { return lookBase; }, get lookBrowser() { return lookBrowser; } } };
+  return { _test: { ui, setZoom, get zoom() { return zoom; }, zoomNow: () => zoomNow(), get zc() { return zc; }, get layout() { return layout; }, stepLook, get presetName() { return presetName; }, get state() { return state; }, set state(v) { state = v; }, applyNow, reEditNow, applyPatch: (p, n) => applyPatch(p, n), runPreview: () => loop.run(), init, refs, touch, menuAction, plainError, get lookBase() { return lookBase; }, get lookBrowser() { return lookBrowser; } } };
 }
 
 module.exports = { createToolPanel };

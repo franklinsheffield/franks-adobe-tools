@@ -102,7 +102,7 @@ module.exports = async function (t) {
     bp.invokeMenu("resetLook");
     assert.strictEqual(BT.state.export.quality, q0, "batch mock menu reset returns settings to the setup");
     bp.invokeMenu("about");
-    assert.ok(/Batch Mock Brew/.test(B.document.querySelector(".status").textContent), "about shows in the status line");
+    assert.ok(/Batch Mock Lab/.test(B.document.querySelector(".status").textContent), "about shows in the status line");
   });
 
   await t("Design tokens: brew-tokens.json is DTCG, every plugin's --glow matches it, and every glow reads on black (>= 4.5:1)", async () => {

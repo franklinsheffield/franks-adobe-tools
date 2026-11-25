@@ -8,13 +8,13 @@ const root = path.join(__dirname, "..", "..");
 const rd = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
 const TOOLS = [
-  { id: "crt-phaser", pre: "crt", code: "CRT-06", glow: "#bc71fe", title: "Frank's CRT Phaser Brew", match: "com.franks.crtphaser.ae" },
-  { id: "mobglow", pre: "mob", code: "MG-04", glow: "#ff2fd6", title: "Frank's Mobglow Brew", match: "com.franks.mobglow.ae" },
-  { id: "depthtone", pre: "dt", code: "DT-03", glow: "#f5ff3b", title: "Frank's Depthtone Brew", match: "com.franks.depthtone.ae" },
-  { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Frank's Decompressor Brew", match: "com.franks.decompressor.ae" },
-  { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Frank's Chrometone Brew", match: "com.franks.chrometone.ae" },
-  { id: "dithers-brew", pre: "di", code: "DB-01", glow: "#ff9f1c", title: "Frank's Dithers Brew", match: "com.franks.dithers.ae" },
-  { id: "paint-brew", pre: "pb", code: "PB-09", glow: "#6c96ff", title: "Frank's Paint Brew", match: "com.franks.paint.ae" }
+  { id: "crt-phaser", pre: "crt", code: "CRT-06", glow: "#bc71fe", title: "Scanline Lab", match: "com.franks.crtphaser.ae" },
+  { id: "mobglow", pre: "mob", code: "MG-04", glow: "#ff2fd6", title: "Halo Lab", match: "com.franks.mobglow.ae" },
+  { id: "depthtone", pre: "dt", code: "DT-03", glow: "#f5ff3b", title: "Depth Lab", match: "com.franks.depthtone.ae" },
+  { id: "decompressor", pre: "dc", code: "DC-05", glow: "#39ff14", title: "Decompressor Lab", match: "com.franks.decompressor.ae" },
+  { id: "chrometone", pre: "ct", code: "CT-02", glow: "#00e5ff", title: "Chroma Lab", match: "com.franks.chrometone.ae" },
+  { id: "dithers-brew", pre: "di", code: "DB-01", glow: "#ff9f1c", title: "Dithers Lab", match: "com.franks.dithers.ae" },
+  { id: "paint-brew", pre: "pb", code: "PB-09", glow: "#6c96ff", title: "Paint Lab", match: "com.franks.paint.ae" }
 ];
 // Tools shown in the rack as "coming soon" until their AE effects exist (none now).
 const COMING = [];

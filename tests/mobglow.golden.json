@@ -1,16 +1,17 @@
 {
  "cards": [
-  "Preview",
-  "Look browser",
-  "Library",
-  "Effects",
   "Glow",
   "Finish",
-  "Colour Deck",
+  "Colour",
+  "Colour grade",
+  "Advanced",
+  "Look browser",
+  "Library",
+  "Auto Tone",
   "Blend",
   "Output"
  ],
- "controls": "input:34 select:6 button:44 textarea:0",
+ "controls": "input:110 select:12 button:119 textarea:0",
  "previewDefault": "06f226288451",
  "presets": [
   "Dreamy - Dreamy = 06f226288451",
@@ -24,13 +25,13 @@
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  2 layers",
  "applyCalls": [
-  "executeAsModal|Frank's Mobglow Brew: reading pixels",
+  "executeAsModal|Halo Lab: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Frank's Mobglow Brew",
-  "suspendHistory|Frank's Mobglow Brew",
+  "executeAsModal|Halo Lab",
+  "suspendHistory|Halo Lab",
   "createPixelLayer|Glow",
   "putPixels|100|4|480000",
-  "createLayerGroup|Frank's Mobglow Brew - Dreamy|1",
+  "createLayerGroup|Halo Lab - Dreamy|1",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

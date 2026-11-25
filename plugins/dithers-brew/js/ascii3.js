@@ -233,8 +233,22 @@ function isLegacy(O) {
 function render(demandIn, W, H, O) {
   const algo = ALGO_BY_ID[O.algo] ? O.algo : "luma";
   let demand = demandIn;
-  if (O.invert) { demand = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) demand[i] = 255 - demandIn[i]; }
-  const legacy = isLegacy(O);
+  // O.bright: glyphs on dark paper, so bright areas get the dense glyphs (colour glyph modes)
+  if (!!O.invert !== !!O.bright) { demand = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) demand[i] = 255 - demandIn[i]; }
+  if (O.bright) {
+    // dark photos would leave the page empty: stretch the 2nd..99th percentile to the full range
+    const N = W * H, hist = new Uint32Array(256);
+    for (let i = 0; i < N; i++) hist[demand[i]]++;
+    let lo = 0, hi = 255, acc = 0;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= N * 0.02) { lo = v; break; } }
+    acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= N * 0.01) { hi = v; break; } }
+    if (hi - lo > 8 && (lo > 0 || hi < 255)) {
+      const src = demand === demandIn ? demandIn : demand, d2 = new Uint8Array(N), sc = 255 / (hi - lo);
+      for (let i = 0; i < N; i++) { const v = (src[i] - lo) * sc; d2[i] = v < 0 ? 0 : v > 255 ? 255 : v; }
+      demand = d2;
+    }
+  }
+  const legacy = isLegacy(O) && !O.bright;
   if (legacy) {
     // the exact 2.x renderer (byte-identical for saved looks)
     const k = Math.max(1, Math.round((O.cell || 8) / 8));
@@ -418,7 +432,7 @@ function render(demandIn, W, H, O) {
       }
     }
   }
-  if (O.invert && out) for (let i = 0; i < W * H; i++) out[i] = 255 - out[i];
+  if (O.invert && out) for (let i = 0; i < W * H; i++) out[i] = 255 - out[i];   // invert = negative cells
   return out;
 }
 

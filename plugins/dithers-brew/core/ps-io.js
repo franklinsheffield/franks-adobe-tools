@@ -11,11 +11,12 @@ const { app, core, imaging, constants, action } = photoshop;
 const { storage } = require("uxp");
 const Blend = require("./blend.js");
 const { runModal } = require("./modal.js");
+const Brand = require("./brand.js");
 const fsys = storage.localFileSystem;
 
 // Per-tool names: call configure() once from the tool's main.js.
 const CFG = {
-  appName: "Frank's Tools",          // history step + modal command name
+  appName: "Lab",                  // history step + modal command name
   presetFile: "presets.json",        // in the plugin's private data folder
   exportName: "presets.json"         // default file name for Export all
 };
@@ -65,13 +66,13 @@ function isGroup(layer) {
 function findPrevBrew(doc) {
   let top = [];
   try { top = Array.from(doc.layers || []); } catch (e) { top = []; }
-  return top.find((l) => { try { return l.visible !== false && /Frank's .+ Brew - /.test(String(l.name || "")); } catch (e) { return false; } }) || null;
+  return top.find((l) => { try { return l.visible !== false && Brand.isResult(l.name); } catch (e) { return false; } }) || null;
 }
 function collectTargets(doc, source) {
   if (source === "flat") return [{ kind: "flat" }];
   if (source === "prev") {
     const g = findPrevBrew(doc);
-    if (!g) throw new Error("No earlier Brew result in this document. Apply another Brew plugin first, or set Source to Flattened document.");
+    if (!g) throw new Error("No earlier Lab result in this document. Apply another Lab plugin first, or set Source to Flattened document.");
     return [{ kind: "layer", layer: g, prev: true }];
   }
   let layers = [];
@@ -338,7 +339,7 @@ function getFgBg() {
 async function addSwatches(colors, name) {
   const list = colors.map((h, i) => {
     const c = String(h).replace("#", "");
-    return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Brew") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
+    return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Lab") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
   });
   await runModal(CFG.appName + ": add swatches", async () => action.batchPlay(list, {}), { timeoutMs: 30000 });
   return list.length;

@@ -782,7 +782,9 @@ async function render(src, P, hooks) {
     lum: lum,
     edgeAmt: (P.ascii.edge || 0) / 100,
     textMode: !!P.ascii.textMode,
-    text: P.ascii.text
+    text: P.ascii.text,
+    // colour glyph modes sit on black paper: dense glyphs where the picture is bright
+    bright: ["cell", "match", "tone", "across", "bands"].indexOf(P.ascii.glyph) >= 0
   };
   const edgeD = P.fx.edges.on ? edgeDemand(lum, w, h, P.fx.edges, s) : null;
 
@@ -931,29 +933,94 @@ async function render(src, P, hooks) {
     notes.push(pal.length + " colours" + (skip >= 0 ? " (lightest left as paper)" : ""));
   }
 
-  // ASCII 3.0 Glyph colour "Cell colour": every glyph takes its cell's average picture colour
-  if (E.engine === "ascii" && P.ascii.glyph === "cell" && layers.length && layers.every((L) => L.mask)) {
-    const G = ASCII3.geom(asc), cols = Math.ceil(w / G.cw), rows = Math.ceil(h / G.ch);
-    const cc = new Float32Array(cols * rows * 3), cn = new Float32Array(cols * rows);
+  // ASCII 3.0 Glyph colour (Frank 2026-11-24: "I want color a part of the algorithms").
+  //   cell   every glyph takes its cell's average picture colour
+  //   match  every glyph takes the ramp colour nearest its cell's colour
+  //   tone   cell brightness picks a point on the ramp (dark end -> light end)
+  //   across the ramp sweeps over the frame at P.ascii.gangle degrees
+  //   bands  cell brightness splits glyphs into one layer per ramp colour
+  // The ramp is P.ascii.ramp ([{ c:[r,g,b], p:0..1 }], from the Colour Deck), else the ink colours dark -> light.
+  const GMODE = P.ascii.glyph;
+  if (E.engine === "ascii" && ASCII_COLOUR_MODES.includes(GMODE) && layers.length && layers.every((L) => L.mask)) {
+    const G = ASCII3.geom(asc), cols = Math.ceil(w / G.cw), rows = Math.ceil(h / G.ch), nc = cols * rows;
+    const cc = new Float32Array(nc * 3), cn = new Float32Array(nc);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw), p = (y * w + x) * 3;
       cc[j * 3] += rgb[p]; cc[j * 3 + 1] += rgb[p + 1]; cc[j * 3 + 2] += rgb[p + 2]; cn[j]++;
     }
-    const rgba = new Uint8Array(n * 4);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x; let a = 0;
-      for (const L of layers) if (L.mask[i] > a) a = L.mask[i];
-      if (!a) continue;
-      const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw), c = cn[j] || 1;
-      rgba[i * 4] = cc[j * 3] / c; rgba[i * 4 + 1] = cc[j * 3 + 1] / c; rgba[i * 4 + 2] = cc[j * 3 + 2] / c; rgba[i * 4 + 3] = a;
-    }
+    for (let j = 0; j < nc; j++) { const c = cn[j] || 1; cc[j * 3] /= c; cc[j * 3 + 1] /= c; cc[j * 3 + 2] /= c; }
+    const ramp = asciiRamp(P.ascii.ramp, layers);
+    const glyphA = new Uint8Array(n);
+    for (const L of layers) for (let i = 0; i < n; i++) if (L.mask[i] > glyphA[i]) glyphA[i] = L.mask[i];
+    // cell tones stretched 2nd..98th percentile so a dark photo still reaches both ends of the ramp
+    const tv = new Float32Array(nc); for (let j = 0; j < nc; j++) tv[j] = luma([cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]]) / 255;
+    const ts = Array.from(tv).sort((p, q) => p - q), tlo = ts[Math.floor(nc * 0.02)] || 0, thi = ts[Math.min(nc - 1, Math.floor(nc * 0.98))] || 1;
+    const tone = (j) => (thi - tlo > 0.03 ? clamp((tv[j] - tlo) / (thi - tlo), 0, 1) : tv[j]);
     layers.length = 0;
-    layers.push({ name: "ASCII cell colour", rgba, blend: "NORMAL" });
+    if (GMODE === "bands") {
+      // one editable layer per ramp colour; band k owns tones [k/N, (k+1)/N)
+      const N = ramp.length, bandOf = new Uint8Array(nc);
+      for (let j = 0; j < nc; j++) bandOf[j] = Math.min(N - 1, Math.floor(tone(j) * N));
+      const ms = ramp.map(() => new Uint8Array(n));
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x; if (!glyphA[i]) continue;
+        ms[bandOf[Math.floor(y / G.ch) * cols + Math.floor(x / G.cw)]][i] = glyphA[i];
+      }
+      ramp.forEach((r, k) => { if (ms[k].some((v) => v)) layers.push({ name: "ASCII band " + (k + 1) + " " + rgbToHex(r.c), color: r.c, mask: ms[k], blend: "NORMAL" }); });
+    } else {
+      const col = new Uint8Array(nc * 3);
+      const ang = ((P.ascii.gangle == null ? 0 : P.ascii.gangle) * Math.PI) / 180, ux = Math.cos(ang), uy = Math.sin(ang);
+      const span = Math.abs(ux) * w + Math.abs(uy) * h || 1, x0 = Math.min(0, ux * w) + Math.min(0, uy * h);
+      for (let j = 0; j < nc; j++) {
+        let c;
+        if (GMODE === "cell") c = [cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]];
+        else if (GMODE === "match") c = nearestRamp(ramp, cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]);
+        else if (GMODE === "tone") c = sampleRamp(ramp, tone(j));
+        else { const cx = ((j % cols) + 0.5) * G.cw, cy = (Math.floor(j / cols) + 0.5) * G.ch; c = sampleRamp(ramp, (cx * ux + cy * uy - x0) / span); }
+        col[j * 3] = c[0]; col[j * 3 + 1] = c[1]; col[j * 3 + 2] = c[2];
+      }
+      const rgba = new Uint8Array(n * 4);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x, a = glyphA[i]; if (!a) continue;
+        const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw);
+        rgba[i * 4] = col[j * 3]; rgba[i * 4 + 1] = col[j * 3 + 1]; rgba[i * 4 + 2] = col[j * 3 + 2]; rgba[i * 4 + 3] = a;
+      }
+      layers.push({ name: "ASCII " + ASCII_COLOUR_NAMES[GMODE].toLowerCase(), rgba, blend: "NORMAL" });
+    }
     if (!paper) paper = [0, 0, 0];
   }
 
   progress(1, 1, "done");
   return { w, h, layers, paper, notes, E };
+}
+
+
+// ---- ASCII glyph colour helpers
+const ASCII_COLOUR_MODES = ["cell", "match", "tone", "across", "bands"];
+const ASCII_COLOUR_NAMES = { cell: "Cell colour", match: "Palette match", tone: "Gradient by tone", across: "Gradient across", bands: "Tone bands" };
+// ramp stops sorted by position; fallback: the result's ink colours, dark -> light, evenly spaced
+function asciiRamp(ramp, layers) {
+  let r = Array.isArray(ramp) ? ramp.filter((x) => x && Array.isArray(x.c)).map((x) => ({ c: x.c.slice(0, 3), p: clamp(+x.p || 0, 0, 1) })) : [];
+  if (r.length < 2) {
+    const cs = layers.map((L) => L.color).filter(Boolean).slice().sort((a, b) => luma(a) - luma(b));
+    const base = cs.length >= 2 ? cs : [[0, 40, 0], [120, 255, 140]];
+    r = base.map((c, k) => ({ c, p: base.length > 1 ? k / (base.length - 1) : 0 }));
+  }
+  return r.sort((a, b) => a.p - b.p);
+}
+function sampleRamp(r, t) {
+  t = clamp(t, 0, 1);
+  if (t <= r[0].p) return r[0].c;
+  for (let k = 1; k < r.length; k++) if (t <= r[k].p) {
+    const a = r[k - 1], b = r[k], u = b.p > a.p ? (t - a.p) / (b.p - a.p) : 1;
+    return [a.c[0] + (b.c[0] - a.c[0]) * u, a.c[1] + (b.c[1] - a.c[1]) * u, a.c[2] + (b.c[2] - a.c[2]) * u];
+  }
+  return r[r.length - 1].c;
+}
+function nearestRamp(r, R, G, B) {
+  let best = r[0].c, bd = Infinity;
+  for (const x of r) { const dr = x.c[0] - R, dg = x.c[1] - G, db = x.c[2] - B, d = 0.3 * dr * dr + 0.59 * dg * dg + 0.11 * db * db; if (d < bd) { bd = d; best = x.c; } }
+  return best;
 }
 
 // ----------------------------------------------------------------------
@@ -998,6 +1065,7 @@ function composite(result, bg) {
 }
 
 module.exports = {
+  ASCII_COLOUR_MODES, ASCII_COLOUR_NAMES,
   SCREENS, DITHERS, KERNELS, SPOTS, ASCII_SETS: ASCII.ASCII_SETS,
   render, composite, demoImage, paletteFromImage, mergeClosest,
   hexToRgb, rgbToHex, isHex, luma, clamp,

@@ -157,8 +157,8 @@ module.exports = async function run(t) {
     const F = setup(SPEC);
     const P = await loadPanel(DIR, { withDoc: false, extend: F.extend });
     const d = P.document;
-    assert.ok(d.querySelector(".rack .title").textContent === "BATCH MOCK BREW" && d.querySelector("#app.brand-console"), "console rack header");
-    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Brew", "Library", "Folders", "Smart Objects", "Placement", "Export", "Naming"]);
+    assert.ok(d.querySelector(".rack .title").textContent === "BATCH MOCK LAB" && d.querySelector("#app.brand-console"), "console rack header");
+    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Run", "Library", "Folders", "Smart Objects", "Placement", "Export", "Naming"]);
     await choose(P);
     assert.strictEqual(d.querySelector(".counts").textContent, "2 mockups, 2 artworks = 4 jobs");
     assert.strictEqual(d.querySelector(".example").textContent, "Example: tee-front/tee-front_logo-red.jpg");

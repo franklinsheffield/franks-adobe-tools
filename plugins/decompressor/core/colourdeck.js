@@ -376,7 +376,7 @@ function createColourDeck(ui, o) {
           } catch (e) { say("Could not read that palette: " + e.message, true); }
         }),
         hb("Export", "deck.pal.export", async () => {
-          try { const ok = io.savePaletteFile && await io.savePaletteFile("brew-palette.ase", K.writeASE(Colour.colours(C()), "Brew palette")); if (ok) say("Saved the palette as an .ase swatch file."); }
+          try { const ok = io.savePaletteFile && await io.savePaletteFile("lab-palette.ase", K.writeASE(Colour.colours(C()), "Lab palette")); if (ok) say("Saved the palette as an .ase swatch file."); }
           catch (e) { say("Could not save: " + e.message, true); }
         })
       ]),
@@ -441,7 +441,7 @@ function createColourDeck(ui, o) {
           touch();
         }),
         hb("To Swatches", "deck.sync.swatches", async () => {
-          try { const n = io.addSwatches ? await io.addSwatches(Colour.colours(C()), "Brew") : 0; say("Added " + n + " colours to the Swatches panel."); }
+          try { const n = io.addSwatches ? await io.addSwatches(Colour.colours(C()), "Lab") : 0; say("Added " + n + " colours to the Swatches panel."); }
           catch (e) { say("Could not add swatches: " + e.message, true); }
         })
       ]),
