@@ -877,7 +877,7 @@ function build(root) {
   }));
   sec("C", "COLOUR", "colour");
   root.appendChild(colourCard);
-  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true });
+  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true, v3: true });
   root.appendChild(deck.card);
 
   // ---- output
