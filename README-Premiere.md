@@ -19,6 +19,12 @@ The **Lab Console** UXP panel (`premiere/console`) works in Premiere too. It pro
 
 ## Update notes
 
+**Phase 3 (2026-11-25): shared console code for After Effects UXP**
+
+- `ae/uxp` + `tools/build-ae-uxp-console.js` build the same Lab Console as an After Effects UXP panel (`dist/ae-uxp-console`, `lab-console-ae-<version>.ccx`). It runs the CEP host calls on `require("aftereffects")`.
+- After Effects 2027 (27.0) does not load UXP panels: UXP Developer Tools shows "App not supported". AE UXP is in the After Effects (Beta) only, which is not installed (Frank, 2026-11-25). After Effects keeps the CEP Lab Console, which Adobe supports until 2028. Test the UXP panel when After Effects ships UXP in a release.
+- Tests: the AE UXP adapter runs against a mocked After Effects (looks, Look popup from 1, keyframes at comp time, one undo step per click).
+
 **Milestone 2 (2026-11-25): all 7 effects + Media Encoder**
 
 - Tested on the Mac in Premiere 2027: Depth (Terrace Stack), Halo (Blue Hour), Decompressor (Fax Machine), Chroma (Polished Gold), Dithers (Game Boy) and Paint (Loose Wash). Each was applied from the console, and each render matches its thumbnail.
