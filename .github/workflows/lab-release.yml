@@ -1,0 +1,94 @@
+# Lab Suite 3.0 release: builds the Photoshop .ccx files, the Premiere Lab Console and the
+# After Effects effects (Mac + Windows), then publishes them to the private release "lab-v3.0".
+# Runs when this file or release/lab-3.0.md changes on main, or by hand (Actions > Lab release).
+name: Lab release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/lab-release.yml", "release/lab-3.0.md"]
+permissions:
+  contents: write
+concurrency: { group: lab-release, cancel-in-progress: false }
+env:
+  TAG: lab-v3.0
+  TOOLS: crt-phaser mobglow depthtone decompressor chrometone dithers-brew paint-brew
+jobs:
+  photoshop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Build .ccx files
+        run: |
+          set -e
+          node tools/build.js
+          node tools/build-premiere-console.js
+          mkdir Lab-3.0-Photoshop
+          for p in batch-mock-brew chrometone crt-phaser decompressor depthtone dithers-brew mobglow paint-brew; do cp dist/$p-*.ccx Lab-3.0-Photoshop/; done
+          N=$(ls Lab-3.0-Photoshop/*.ccx | wc -l); echo "packed $N plugins"; [ "$N" -eq 8 ]
+          zip -qr Lab-3.0-Photoshop.zip Lab-3.0-Photoshop
+          cp dist/lab-console-premiere-*.ccx .
+      - uses: actions/upload-artifact@v4
+        with: { name: ps-files, path: "Lab-3.0-Photoshop.zip\nlab-console-premiere-*.ccx" }
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all effects (universal, ad-hoc signed)
+        run: |
+          set -e
+          for T in $TOOLS; do bash ae/tools/build-mac.sh "$PWD/ae/sdk/win/AfterEffectsSDK" "$T"; done
+          N=$(ls -d ae/dist/mac/*.plugin | wc -l); echo "built $N plug-ins"; [ "$N" -eq 7 ]
+          for P in ae/dist/mac/*.plugin; do codesign --verify --deep "$P"; done
+      - name: Package
+        run: |
+          D=Lab-3.0-AE-Mac; mkdir "$D"
+          cp -R ae/dist/mac/*.plugin "$D/"
+          cp ae/tools/install-mac.command ae/tools/install-console-mac.command "$D/"
+          chmod +x "$D"/*.command
+          cp -R ae/console "$D/console"
+          ditto -c -k --keepParent "$D" "$D.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: mac-zip, path: Lab-3.0-AE-Mac.zip }
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with: { arch: x64 }
+      - name: Build all effects
+        shell: cmd
+        run: call ae\tools\build-win.bat "%GITHUB_WORKSPACE%\ae\sdk\win\AfterEffectsSDK" all
+      - name: Package
+        shell: pwsh
+        run: |
+          $n = (Get-ChildItem ae\dist\win\*.aex).Count; "built $n plug-ins"; if ($n -ne 7) { exit 1 }
+          $d = "Lab-3.0-AE-Windows"; New-Item -ItemType Directory $d | Out-Null
+          Copy-Item ae\dist\win\*.aex $d\
+          Copy-Item ae\tools\install-win.bat, ae\tools\install-console-win.bat $d\
+          Copy-Item -Recurse ae\console $d\console
+          Compress-Archive -Path $d -DestinationPath "$d.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: win-zip, path: Lab-3.0-AE-Windows.zip }
+  release:
+    needs: [photoshop, mac, windows]
+    # macOS runners may be unavailable on this account: publish whatever built (Photoshop + Windows are required).
+    if: ${{ always() && needs.photoshop.result == 'success' && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    env: { GH_TOKEN: "${{ github.token }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: Publish the release
+        run: |
+          ls -la out
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --notes-file release/lab-3.0.md
+          else
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+              --title "Lab Suite 3.0" --notes-file release/lab-3.0.md
+          fi
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber out/*
