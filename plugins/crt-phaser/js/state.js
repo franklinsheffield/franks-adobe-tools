@@ -11,7 +11,7 @@ const DEFAULTS = {
   // 1.1 Phase FX: "off" keeps the classic tube render exactly as in 1.0
   phase: {
     mode: "off", lines: 150, amp: 40, smooth: 40, width: 45, threshold: 10, angle: 0, warp: 15, detail: 50,
-    dots: 35, drop: 30, unstable: 0, chaos: 50, glow: 55, fringe: 30, debris: 0, flare: 0, grain: 25, seed: 7,
+    dots: 35, drop: 30, unstable: 0, chaos: 50, glow: 55, fringe: 30, debris: 0, flare: 0, flareAt: "random", photo: 0, calm: 0, grain: 25, seed: 7,
     color: "ramp", ramp: [{ p: 0, c: "#000000" }, { p: 20, c: "#3A0A00" }, { p: 50, c: "#D2400C" }, { p: 75, c: "#FF9A2E" }, { p: 100, c: "#FFF3D6" }], base: "#000000"
   },
   view: { kind: "whole", bg: "black", size: 360 },

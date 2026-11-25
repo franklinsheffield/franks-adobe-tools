@@ -99,4 +99,14 @@ module.exports = async function (t) {
     const b = await E.render(src, P2);
     assert.notStrictEqual(Buffer.from(a.layers[0].rgba).toString("base64"), Buffer.from(b.layers[0].rgba).toString("base64"), "depth map changes the scan");
   });
+  await t("crt-phaser 3.0: Photo mix, Background calm and Flare at Highlights change the render; 0 / Random keep it as before", async () => {
+    const src = E.demoImage(160, 120);
+    const run = async (patch) => { const P = S.merge(S.DEFAULTS, S.merge(S.PRESETS.find((p) => p.name === "Ember Trace").p, patch)); P.scale = 1; P.fullH = 120; const r = await E.render(src, P); return Buffer.from(r.layers[0].rgba); };
+    const base = await run({});
+    assert.ok(base.equals(await run({ phase: { photo: 0, calm: 0, flareAt: "random" } })), "defaults unchanged");
+    const lum = (b) => { let s = 0; for (let i = 0; i < b.length; i += 4) s += b[i] + b[i + 1] + b[i + 2]; return s; };
+    assert.ok(lum(await run({ phase: { photo: 60 } })) > lum(base) * 1.05, "Photo mix brightens the dark areas");
+    assert.ok(lum(await run({ phase: { calm: 100 } })) < lum(base), "Background calm thins lines");
+    assert.ok(!(await run({ phase: { flare: 80, flareAt: "bright" } })).equals(await run({ phase: { flare: 80 } })), "flares move to the highlights");
+  });
 };

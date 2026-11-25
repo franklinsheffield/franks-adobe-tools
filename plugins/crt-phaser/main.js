@@ -45,6 +45,7 @@ const panel = createToolPanel({
       only(sliderRow("Unstable", "phase.unstable", 0, 100, 1, "%"), phaseOn)
     ], { advanced: [
       only(sliderRow("Chaos", "phase.chaos", 0, 100, 1, "%"), (s) => phaseOn(s) && s.phase.unstable > 0),
+      only(sliderRow("Background calm", "phase.calm", 0, 100, 1, "%"), (s) => phaseOn(s) && !lidar(s) && s.phase.mode !== "fluxdots"),
       only(sliderRow("Threshold", "phase.threshold", 0, 90, 1, "%"), phaseOn),
       only(sliderRow("Depth bend", "phase.amp", 0, 100, 1, "%"), lidar),
       only(sliderRow("Smoothness", "phase.smooth", 0, 100, 1, "%"), (s) => s.phase.mode === "waveform"),
@@ -57,17 +58,19 @@ const panel = createToolPanel({
       sliderRow("Colour fringe", "phase.fringe", 0, 100, 1, "%"),
       sliderRow("Signal debris", "phase.debris", 0, 100, 1, "%"),
       sliderRow("Prism flare", "phase.flare", 0, 100, 1, "%"),
+      only(segGroup("phase.flareAt", [{ v: "random", l: "Random", t: "Flares land at random spots" }, { v: "bright", l: "Highlights", t: "Flares sit on the brightest highlights" }]), (s) => s.phase.flare > 0),
       sliderRow("Grain", "phase.grain", 0, 100, 1, "%"),
       stepper("Seed", "phase.seed", 1, 99, 1, "")
     ]), phaseOn);
     const colourCard = only(card("Phase colour", [
       segGroup("phase.color", [{ v: "ramp", l: "Ramp", t: "Dark to hot colours from the ramp below, by brightness (Lidar: by return intensity)" }, { v: "depth", l: "Distance", t: "Lidar: near dots take the hot end of the ramp, far dots the dim end" }, { v: "full", l: "Photo", t: "Keep the photo's own colours" }]),
       only(kit.gradientEditor("phase.ramp"), (s) => s.phase.color !== "full"),
-      kit.colourRow("Screen base", "phase.base")
+fader("Photo mix", "phase.photo", 0, 100, 1, "%"),
+            kit.colourRow("Screen base", "phase.base")
     ], { section: "colour" }), phaseOn);
     return [
       phaseCard, lookCard,
-      only(card("Screen", [stepper("Lines", "screen.lines", 60, 1200, 10, "")]), (s) => !phaseOn(s) || s.scan.strength > 0),
+      only(card("Screen", [segGroup("screen.lines", [{ v: 240, l: "240", t: "Low-res arcade / TV rows" }, { v: 480, l: "480", t: "Standard-definition rows" }, { v: 720, l: "720", t: "HD monitor rows" }]), stepper("Lines", "screen.lines", 60, 1200, 10, "")]), (s) => !phaseOn(s) || s.scan.strength > 0),
       card("Convergence", [
         stepper("Red / blue X", "conv.x", -10, 10, 0.5, "px"),
         stepper("Red / blue Y", "conv.y", -10, 10, 0.5, "px")
