@@ -6,7 +6,7 @@
 //   names: position -> display name (used at run time to find Premiere's offset and check the map)
 //   kinds: AE param id -> num | popup | bool | color | angle | topic | end
 //   lookVals: for each built-in look (1-based, same order as the Look menu) the full AE values
-//             from the Photoshop preset (LabConvert.psToAE), so Premiere can set every control
+//             from the effect's compiled LOOKS table (<ns>_presets.h, via LabConvert.psToAE), so Premiere can set every control
 //             even if it never sends PF_Cmd_USER_CHANGED_PARAM for the Look popup.
 // Usage: node ae/tools/gen-ppro-map.js   (run after gen-console-map.js)
 const fs = require("fs"), path = require("path"), vm = require("vm");
@@ -33,6 +33,20 @@ function parseEnum(src) {
   }
   if (ids.P_MO_BASE !== undefined) MO.forEach((k, i) => { ids["P_MO_" + k] = ids.P_MO_BASE + i; });
   return ids;
+}
+// Inverse of ae/tests/params-text.js: "group.key value" lines -> look object ("p:#hex p:#hex" = gradient stops)
+function fromText(txt) {
+  const o = {};
+  for (const line of txt.split("\n")) {
+    if (!line.trim()) continue;
+    const sp = line.indexOf(" "), k = sp < 0 ? line : line.slice(0, sp), v = sp < 0 ? "" : line.slice(sp + 1);
+    let val = v;
+    if (/^-?\d+(\.\d+)?:#[0-9a-fA-F]{6}( |$)/.test(v)) val = v.trim().split(/\s+/).map((s) => { const i = s.indexOf(":"); return { p: Number(s.slice(0, i)), c: s.slice(i + 1) }; });
+    else if (v === "true" || v === "false") val = v === "true";
+    else if (v !== "" && !isNaN(Number(v))) val = Number(v);
+    LabConvert.setPath(o, k, val);
+  }
+  return o;
 }
 // ParamOrder (ae/core/param_order.h) in JS
 function positions(order, numParams) {
@@ -93,8 +107,12 @@ for (const t of B.tools) {
   if (ids.P_LOOKB !== undefined && !kinds[ids.P_LOOKB]) kinds[ids.P_LOOKB] = "popup";
   const missing = Object.keys(t.params).filter((id) => !kinds[id]);
   if (missing.length) console.warn(`  ${t.id}: ${missing.length} params without a parsed kind (inferred from the value at run time)`);
-  const st = require(path.join(root, `plugins/${t.id}/js/state.js`));
-  const lookVals = st.PRESETS.map((p) => LabConvert.psToAE(t, p.p));
+  // The effect's own looks: the LOOKS table compiled into it (ae/effects/<tool>/<ns>_presets.h), in Look-menu order
+  const hdr = fs.readdirSync(path.join(root, `ae/effects/${t.id}`)).find((f) => /_presets\.h$/.test(f));
+  const looks = [...rd(`ae/effects/${t.id}/${hdr}`).matchAll(/\{ ("(?:[^"\\]|\\.)*"), ("(?:[^"\\]|\\.)*"), ("(?:[^"\\]|\\.)*") \},/g)]
+    .map((m) => ({ cat: JSON.parse(m[1]), name: JSON.parse(m[2]), p: fromText(JSON.parse(m[3])) }));
+  t.looks.forEach((l) => { if (!looks[l.i - 1] || looks[l.i - 1].name !== l.name) throw new Error(`${t.id}: look ${l.i} is "${l.name}" in brewmap but "${looks[l.i - 1] && looks[l.i - 1].name}" in ${hdr}`); });
+  const lookVals = looks.map((l) => LabConvert.psToAE(t, l.p));
   out[t.id] = { match: t.match, look: ids.P_LOOK, lookB: ids.P_LOOKB, morph: ids.P_MORPH, count: ids.P_NUM, pos: Object.fromEntries(pos.map((p, id) => [id, p]).slice(1)), names, kinds, lookVals };
   console.log(`${t.id}: ${ids.P_NUM - 1} params, ${Object.keys(names).length} named, ${lookVals.length} looks`);
 }

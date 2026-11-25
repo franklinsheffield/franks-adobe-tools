@@ -74,7 +74,7 @@ module.exports = async function (t) {
     assert.ok(Object.keys(m.lookVals[0]).length > 40, "a look sets the whole effect");
   });
 
-  await t("Premiere console: every Lab effect param has a kind (popups must be known: Premiere counts them from 0)", () => {
+  await t("Premiere console: every Lab effect param has a kind (Premiere counts popups from 0) and every Look-menu look has values", () => {
     const sb = { window: {} }; require("vm").runInNewContext(fs.readFileSync(path.join(D, "js/ppro-map.js"), "utf8"), sb);
     const bm = { window: {} }; require("vm").runInNewContext(fs.readFileSync(path.join(D, "js/brewmap.js"), "utf8"), bm);
     for (const tool of bm.window.BREW.tools) {
@@ -82,6 +82,7 @@ module.exports = async function (t) {
       const missing = Object.keys(tool.params).filter((id) => !m.kinds[id]);
       assert.deepStrictEqual(missing, [], tool.id + " params without a kind");
       for (const e of Object.values(tool.keys)) if (e.kind === "popup") assert.strictEqual(m.kinds[e.id], "popup", tool.id + " popup " + e.id);
+      assert.strictEqual(m.lookVals.length, Math.max(...tool.looks.map((l) => l.i)), tool.id + ": one value set per look in the effect's Look menu");
     }
   });
 
