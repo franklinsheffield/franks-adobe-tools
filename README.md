@@ -158,7 +158,9 @@ The tools read the brightness and edges of your image, so strong, clean artwork 
 **Best pictures:** bold, high-contrast graphics, pixel art and portraits. Very fine detail can shimmer, so raise the screen lines.
 
 ### Frank's Paint Brew
-**What:** turns a photo into an editable painting in six styles: **Oil**, **Watercolour**, **Impressionism**, **Alcohol Ink**, **Spray Paint** and **Pastel**. Each painting is built from separate stroke and texture layers. There are 24 looks.
+**What:** turns a photo into an editable painting in six styles: **Oil**, **Watercolour**, **Impressionism**, **Alcohol Ink**, **Spray Paint** and **Pastel**. Each painting is built from separate stroke and texture layers. There are 21 looks.
+
+**Update 2026-11-25:** the three white-edged watercolour looks (Loose Wash, Ink and Wash, Splash Pop) were removed. The Watercolour style is still in the Style menu. In After Effects and Premiere, Look menu entries after Golden Hour move up three places; a Paint Lab effect already on a clip keeps its control values.
 **How:** pick a style and a look, then set the brush size and detail. Choose paper, wall and ink colours from the swatches, the hex box or the colour picker in the panel. Spray Paint has a **Wall** card for the surface (brick, wood, stucco), grime, cracks, and the paint's blend and opacity. Optionally pick a selection or mask under **Focus** to keep the subject sharp, then click **Apply**. **Print-ready copy** upscales small photos to 300 ppi on a duplicate first.
 **Best pictures:** photos with a clear subject and good light; bold, high-contrast subjects suit Spray Paint and Alcohol Ink. 2500 px or more is best for print.
 
