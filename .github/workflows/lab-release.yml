@@ -30,8 +30,14 @@ jobs:
           N=$(ls Lab-3.0-Photoshop/*.ccx | wc -l); echo "packed $N plugins"; [ "$N" -eq 8 ]
           zip -qr Lab-3.0-Photoshop.zip Lab-3.0-Photoshop
           cp dist/lab-console-premiere-*.ccx .
+          # After Effects Lab Console + installers for both platforms (the Mac effects zip may be added by hand)
+          mkdir Lab-3.0-AE-Console
+          cp -R ae/console Lab-3.0-AE-Console/console
+          cp ae/tools/install-console-mac.command ae/tools/install-console-win.bat ae/tools/install-mac.command ae/tools/install-win.bat Lab-3.0-AE-Console/
+          chmod +x Lab-3.0-AE-Console/*.command
+          zip -qr Lab-3.0-AE-Console.zip Lab-3.0-AE-Console
       - uses: actions/upload-artifact@v4
-        with: { name: ps-files, path: "Lab-3.0-Photoshop.zip\nlab-console-premiere-*.ccx" }
+        with: { name: ps-files, path: "Lab-3.0-Photoshop.zip\nLab-3.0-AE-Console.zip\nlab-console-premiere-*.ccx" }
   mac:
     runs-on: macos-14
     steps:
