@@ -29,7 +29,18 @@ html, body { height: 100%; overflow: hidden; user-select: none; }
 #vpwrap.drop { outline: 2px solid var(--glow); outline-offset: -2px; }
 #vphint { display: none; }
 /* axis cube (ViewHelper style): click an axis end to snap the view */
-.axisgizmo { position: absolute; right: 8px; top: 8px; z-index: 3; cursor: pointer; overflow: visible; }
+.axisnav { position: absolute; right: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 4px; user-select: none; }
+.axisgizmo { display: block; cursor: grab; overflow: visible; touch-action: none; }
+.axisgizmo.dragging { cursor: grabbing; }
+.axisgizmo .agaxis { cursor: pointer; }
+.axisgizmo .agaxis.neg text { fill: #fff; font-size: 7px; opacity: 0; }
+.axisgizmo:hover .agaxis.neg text, .axisgizmo .agaxis.neg.cur text { opacity: 1; }
+.axisgizmo .agaxis.cur circle { stroke: #fff; stroke-width: 2.5; }
+.agbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 88px; }
+.agb { font: 700 8px var(--ui, sans-serif); letter-spacing: 0.08em; color: #fff; text-align: center; padding: 3px 0; border: 1px solid rgba(255,255,255,0.35); border-radius: 3px; background: rgba(0,0,0,0.55); touch-action: none; }
+.agb[data-nav="zoom"] { cursor: ns-resize; } .agb[data-nav="pan"] { cursor: move; } .agb[data-nav="frame"], .agb[data-nav="home"] { cursor: pointer; }
+.agb:hover { border-color: var(--glow-dim, #5cf2ff); }
+.agb.on { border-color: var(--press, #5cf2ff); color: var(--press, #5cf2ff); box-shadow: 0 0 6px var(--press, #5cf2ff); }
 .axisgizmo .agring { fill: rgba(0,0,0,0.35); stroke: rgba(255,255,255,0.18); }
 .axisgizmo:hover .agring { fill: rgba(0,0,0,0.55); stroke: var(--glow-dim); }
 .axisgizmo line { stroke-width: 2.5; }

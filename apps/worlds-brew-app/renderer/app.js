@@ -739,7 +739,11 @@ let sweepT = null; const sweepAll = () => { clearTimeout(sweepT); sweepT = setTi
     u.helpAt(n, n.classList.contains("wbcell") ? { key: "lib.scene", name: nm, kind: "grid" } : n.classList.contains("wbtile") ? { key: "lib.add", name: nm, kind: "grid" } : n.closest(".wblayers") ? { key: "lay.row", name: nm, kind: "info" } : { key: "lib.obj", name: nm, kind: "info" }); }); }, 60); };
 new MutationObserver(sweepAll).observe(root, { childList: true, subtree: true });   // panes that redraw (layers, objects) get their help too
 buildTop(lui); buildLibrary(lui); buildToolbar(lui); buildPads(lui); buildInspector(ui); buildBar(lui);
-refs.axes = axisGizmo(vpwrap, () => st.scene.cam, (yaw, pitch, name) => { if (st.view.camLock) return; const c = st.scene.cam; if (yaw !== null) c.yaw = yaw; c.pitch = pitch; changed("view"); setStatus(name); });
+refs.axes = axisGizmo(vpwrap, () => st.scene.cam, {   // the view ball: drag to orbit, snap to axes, ZOOM / PAN / FRAME / HOME
+  change: (name) => { changed("view"); if (name) setStatus(name); }, locked: () => st.view.camLock,
+  zoom: (f) => CT.camZoom(st.scene.cam, f), pan: (c0, dx, dy) => ED.pan(st.scene.cam, c0, dx, dy, canvas.width / canvas.height),
+  frame: () => { CT.frame(st.scene, hasSel() ? st.sel : undefined); }, home: () => { if (homeCam) { CT.camSet(st.scene.cam, homeCam); changed("view"); setStatus("Home view"); } },
+  help: (n, info) => lui.helpAt(n, info) });
 pressGlow(root);
 homeCam = CT.camCopy(st.scene.cam); resetHistory(); uis.forEach((u) => u.refreshAll()); changed("scene"); title();
 setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.");
@@ -750,4 +754,4 @@ ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

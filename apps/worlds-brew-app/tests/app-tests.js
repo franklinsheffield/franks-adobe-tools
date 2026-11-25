@@ -187,19 +187,46 @@ async function uiTests() {
     assert.strictEqual(await W(() => window.__wb.st.sel.asset), "fantasy/knight");
     await win.keyboard.press("Control+k"); await win.keyboard.press("Escape"); assert.ok(!(await W(() => window.__wb.pal.isOpen)), "Esc closes");
   });
-  await t("app: axis cube snaps the view; status bar shows live key hints", async () => {
+  await t("app: view ball: smooth axis snaps, same axis again = opposite, drag orbits, ZOOM / PAN / FRAME / HOME, camera lock; key hints", async () => {
     await W(() => { const w = window.__wb; w.st.scene.cam.yaw = 30; w.st.scene.cam.pitch = 20; w.changed("view"); });
     assert.strictEqual(await win.locator(".axisgizmo .agaxis").count(), 6);
-    await win.locator(".axisgizmo .agaxis title", { hasText: "Right view" }).locator("..").dispatchEvent("pointerdown");
-    assert.deepStrictEqual(await W(() => [window.__wb.st.scene.cam.yaw, window.__wb.st.scene.cam.pitch]), [90, 6]);
-    await win.locator(".axisgizmo .agaxis title", { hasText: "Top view" }).locator("..").dispatchEvent("pointerdown");
-    assert.strictEqual(await W(() => window.__wb.st.scene.cam.pitch), 89);
+    const cam = () => W(() => { const c = window.__wb.st.scene.cam; return [c.yaw, c.pitch, c.dist, c.tx, c.ty, c.tz]; });
+    const click = async (sel) => { const n = win.locator(sel); await n.dispatchEvent("pointerdown", { clientX: 5, clientY: 5 }); await n.dispatchEvent("pointerup", { clientX: 5, clientY: 5 }); };
+    const settle = () => win.waitForTimeout(450);
+    await click('.axisgizmo .agaxis[data-axis="+X"]');
+    const mid = await cam(); assert.ok(mid[0] !== 90 || mid[1] !== 6, "snap is animated, not instant");
+    await settle(); assert.deepStrictEqual((await cam()).slice(0, 2), [90, 6]);
+    await click('.axisgizmo .agaxis[data-axis="+X"]'); await settle(); assert.deepStrictEqual((await cam()).slice(0, 2), [270, 6], "same end again: opposite view");
+    await click('.axisgizmo .agaxis[data-axis="+Y"]'); await settle(); assert.strictEqual((await cam())[1], 89);
+    await click('.axisgizmo .agaxis[data-axis="+Z"]'); await settle(); assert.deepStrictEqual((await cam()).slice(0, 2), [0, 6]);
+    // drag the ball: orbit
+    const ball = win.locator(".axisgizmo");
+    await ball.dispatchEvent("pointerdown", { clientX: 100, clientY: 100 });
+    for (let i = 1; i <= 5; i++) { await ball.dispatchEvent("pointermove", { clientX: 100 + i * 6, clientY: 100 + i * 2 }); }
+    await win.waitForTimeout(200); await ball.dispatchEvent("pointerup", { clientX: 130, clientY: 110 }); await win.waitForTimeout(600);
+    const o = await cam(); assert.ok(Math.abs(((o[0] + 540) % 360) - 180) > 40 && o[1] > 6, "dragging the ball orbits: " + o);
+    // ZOOM drag + click, PAN drag, FRAME, HOME
+    const zb = win.locator('.agb[data-nav="zoom"]'), d0 = (await cam())[2];
+    await zb.dispatchEvent("pointerdown", { clientX: 50, clientY: 50 }); await zb.dispatchEvent("pointermove", { clientX: 50, clientY: 10 }); await zb.dispatchEvent("pointerup", { clientX: 50, clientY: 10 });
+    assert.ok((await cam())[2] < d0 * 0.8, "drag up zooms in");
+    const d1 = (await cam())[2]; await click('.agb[data-nav="zoom"]'); assert.ok(Math.abs((await cam())[2] - d1 * 0.85) < 0.02, "click zooms one step");
+    const pb = win.locator('.agb[data-nav="pan"]'), t0 = await cam();
+    await pb.dispatchEvent("pointerdown", { clientX: 50, clientY: 50 }); await pb.dispatchEvent("pointermove", { clientX: 90, clientY: 50 }); await pb.dispatchEvent("pointerup", { clientX: 90, clientY: 50 });
+    const t1 = await cam(); assert.ok(Math.hypot(t1[3] - t0[3], t1[5] - t0[5]) > 0.01 && t1[0] === t0[0], "pan slides the target, no turn");
+    await W(() => { const w = window.__wb; w.select(w.st.scene.objs.find((x) => x.type === "cube")); });
+    await click('.agb[data-nav="frame"]'); const fr = await W(() => { const w = window.__wb, c = w.st.scene.cam, s = w.st.sel; return Math.hypot(c.tx - s.x, c.tz - s.z); }); assert.ok(fr < 0.01, "frame centres the selection");
+    await click('.agb[data-nav="home"]'); assert.ok(await W(() => { const w = window.__wb, c = w.st.scene.cam, h = w.homeCam; return ["yaw", "pitch", "dist", "tx", "ty", "tz"].every((k) => c[k] === h[k]); }), "HOME restores the opening view");
+    await W(() => window.__wb.select(null));
+    // camera lock: the ball can't move the camera
+    await W(() => { window.__wb.st.view.camLock = true; }); const lk = await cam();
+    await click('.axisgizmo .agaxis[data-axis="-Z"]'); await settle(); await click('.agb[data-nav="zoom"]'); assert.deepStrictEqual(await cam(), lk, "camera lock holds");
+    await W(() => { window.__wb.st.view.camLock = false; });
     await W(() => { const w = window.__wb; w.CT.camView(w.st.scene.cam, "three"); w.select(w.st.scene.objs.find((o) => o.type === "cube")); });
     const k1 = await win.locator(".keyhints").textContent(); assert.ok(/nudge/.test(k1) && /Del/.test(k1), "selection hints: " + k1);
     await W(() => window.__wb.select(null)); const k2 = await win.locator(".keyhints").textContent(); assert.ok(/select next/.test(k2) && !/nudge/.test(k2), "no-selection hints: " + k2);
     await W(() => { const w = window.__wb; w.st.view.gizmo = "sculpt"; w.changed("view"); }); assert.ok(/sculpt terrain/.test(await win.locator(".keyhints").textContent()));
     await W(() => { const w = window.__wb; w.st.view.gizmo = "move"; w.select(w.st.scene.objs.find((o) => o.type === "cube")); w.changed("view"); });
-    await win.screenshot({ path: path.join(OUT, "app-axes-hints.png") });
+    await win.screenshot({ path: path.join(OUT, "app-view-ball.png") });
   });
   await t("app: Surfaces tab: presets add layers, the live GPU view shows them, undo takes them off", async () => {
     const px = () => W(() => { const w = window.__wb, c = document.getElementById("vp"); w.vp.draw(); const g = c.getContext("webgl2", { preserveDrawingBuffer: true }), p = new Uint8Array(4); g.readPixels(c.width >> 1, c.height >> 1, 1, 1, g.RGBA, g.UNSIGNED_BYTE, p); return Array.from(p); });

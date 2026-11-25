@@ -55,6 +55,11 @@ const T = {
   "btn:View 2": "Camera memory. Click once to save this view, click again to go back to it. Alt-click saves over it.",
   "btn:View 3": "Camera memory. Click once to save this view, click again to go back to it. Alt-click saves over it.",
   "view.camLock": "Lock camera: the pads, the view and the axis cube can no longer move the camera, so you can't knock a framed shot by accident.",
+  "nav.ball": "View ball: drag it to orbit the camera (let go while moving and it keeps turning a little). Click an axis end for a smooth snap to that view; click the same end again for the opposite view. Double-click for Home. Grey ends point away from you.",
+  "nav.zoom": "Zoom: drag up to zoom in, down to zoom out. A click zooms in one step.",
+  "nav.pan": "Pan: drag to slide the camera sideways and up or down without turning it.",
+  "nav.frame": "Frame: fits the selected object in the view, or the whole scene when nothing is selected (F / A).",
+  "nav.home": "Home: back to the view the scene opened with (H).",
 
   // render bar
   "out.w": "Width of the render in pixels. Match document size in the Photoshop bridge panel sets it for you.",
