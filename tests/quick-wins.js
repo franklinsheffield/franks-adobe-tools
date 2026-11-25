@@ -94,7 +94,7 @@ module.exports = async function (t) {
     const B = await loadPanel(path.join(ROOT, "plugins", "batch-mock-brew"), { withDoc: false });
     await B.settle(200);
     const bp = B.host.uxp.entrypoints.last.panels.batchMockPanel;
-    assert.deepStrictEqual(bp.menuItems.filter((m) => m.id).map((m) => m.id), ["resetLook", "test", "foldAll", "about"]);
+    assert.deepStrictEqual(bp.menuItems.filter((m) => m.id).map((m) => m.id), ["resetLook", "test", "sheet", "foldAll", "about"]);
     assert.ok(B.document.querySelector(".keys"), "batch mock has the key-hint line");
     const BT = B.mod._test;
     const q0 = BT.state.export.quality;

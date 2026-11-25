@@ -8,7 +8,13 @@ const DEFAULTS = {
   so: { name: "artwork", rule: "exact", all: true, numbered: false },
   place: { mode: "fit", bg: "transparent", bgHex: "#FFFFFF" },
   export: { format: "jpg", quality: 10, pngAlpha: true, organise: "mockup", skipExisting: false },
-  naming: { order: ["mockup", "artwork", "suffix"], delim: "_", suffix: "" }
+  naming: { order: ["mockup", "artwork", "suffix"], delim: "_", suffix: "" },
+  // 3.0 (all off by default, so 1.0 setups run exactly as before)
+  variants: { on: false, layer: "Colour", list: "Black #111111, White #F5F5F5, Red #C8102E" },
+  csv: { on: false, path: "" },
+  sizes: { on: false, list: "1080x1080, 1920x1080", keepFull: true },
+  sheet: { cell: 240 },
+  last: { failed: [] }
 };
 
 const PRESETS = [
