@@ -1,0 +1,10 @@
+/* Lab Console in Premiere Pro (UXP): UXP has no CSS grid, so the grids become wrapping flex rows
+   with the same columns and gaps. Loaded after console.css (the shared Night Arcade style). */
+#app { height: 100%; }
+.tools, .cats, .lookgrid, .motion { display: flex; flex-wrap: wrap; }
+.tools > *, .cats > *, .motion > * { margin: 0 4px 4px 0; }
+.tools > * { width: calc(25% - 4px); }
+.motion > * { width: calc(33.33% - 4px); }
+.cats > * { width: calc(100% / var(--cols, 3) - 4px); }
+.lookgrid > * { width: calc(33.33% - 5px); margin: 0 5px 5px 0; }
+.aud { display: none; }
