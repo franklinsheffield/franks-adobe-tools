@@ -327,6 +327,7 @@ async function t(name, fn) {
   await require("./upgrades3.js")(t);
   await require("./ascii3.js")(t);
   await require("./premiere-console.js")(t);
+  await require("./ae-uxp-console.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);
