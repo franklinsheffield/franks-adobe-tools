@@ -319,6 +319,7 @@ async function t(name, fn) {
   await require("./crt-phaser.js")(t);
   await require("./colour-deck.js")(t);
   await require("./panel-system.js")(t);
+  await require("./worlds-brew.js")(t);
   await require("./quick-wins.js")(t);
   await require("./brew3.js")(t);
   await require("./colour3.js")(t);

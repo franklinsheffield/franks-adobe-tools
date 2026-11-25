@@ -1,0 +1,5 @@
+/* Worlds Lab Bridge on top of core/panel.css. */
+/* Plugin neon (aurora mint, token color.glow.worlds-brew): title text and every glow use this colour. */
+:root { --glow: #5effc8; --glowbg: #0b2e24; }
+.wbthumb { width: 100%; height: auto; max-height: 220px; object-fit: contain; background: #111; border: 1px solid rgba(255,255,255,0.35); margin-bottom: 6px; }
+.info.path { word-break: break-all; opacity: 0.8; }

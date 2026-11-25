@@ -119,6 +119,15 @@ def glyph_font(d, s, c):
         rr = s * 0.035
         d.ellipse([x - rr, yy - rr, x + rr, yy + rr], fill=c)
 
+def glyph_worlds(d, s, c):
+    # a ringed sun over two peaks on a horizon line (Worlds Brew)
+    w = int(s * 0.05)
+    r = s * 0.12; cx, cy = s * 0.66, s * 0.3
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=c)
+    d.arc([cx - r * 1.9, cy - r * 0.55, cx + r * 1.9, cy + r * 0.55], 200, 340, fill=c, width=max(1, w // 2))
+    d.line([(s * 0.12, s * 0.74), (s * 0.36, s * 0.42), (s * 0.5, s * 0.58), (s * 0.62, s * 0.48), (s * 0.88, s * 0.74)], fill=c, width=w, joint="curve")
+    d.line([(s * 0.1, s * 0.8), (s * 0.9, s * 0.8)], fill=c, width=max(1, w // 2))
+
 TOOLS = {
     "dithers-brew": (glyph_dithers, "icon_D", "icon_N"),
     "chrometone": (glyph_chrome, "icon_C", "icon_CL"),
@@ -128,6 +137,7 @@ TOOLS = {
     "crt-phaser": (glyph_crt, "icon_C", "icon_CL"),
     "batch-mock-brew": (glyph_mock, "icon_C", "icon_CL"),
     "paint-brew": (glyph_paint, "icon_C", "icon_CL"),
+    "worlds-brew": (glyph_worlds, "icon_C", "icon_CL"),
 }
 
 def draw(glyph, size, color, tile, glow=GLOW):

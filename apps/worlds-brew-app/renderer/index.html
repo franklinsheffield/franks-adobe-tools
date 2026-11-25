@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worlds Lab</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob:; img-src 'self' data: blob:">
+<link rel="stylesheet" href="../engine/kit/panel.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<script type="importmap">{ "imports": { "three": "../node_modules/three/build/three.module.js", "three/addons/controls/TransformControls.js": "./vendor/TransformControls.js" } }</script>
+</head>
+<body>
+<div id="app" class="brand-console">
+  <header id="top"></header>
+  <aside id="lib" class="side"></aside>
+  <section id="centre">
+    <div id="toolbar"></div>
+    <div id="vpwrap"><canvas id="vp"></canvas><div id="vphint"></div><div id="dropmark"></div></div>
+    <div id="pad"></div>
+  </section>
+  <aside id="insp" class="side"></aside>
+  <footer id="bar"></footer>
+</div>
+<div id="shot" hidden><div class="shotbox"><img id="shotimg" alt=""><div class="shotrow"></div></div></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
