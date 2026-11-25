@@ -28,6 +28,9 @@ function noise1(x, seed) {
 function pickMode(src, surf) {
   const from = surf.from || "brightness";
   if (from === "brightness") return { mode: "brightness" };
+  // 3.0: Photo Chrome (photo as embossed metal) and Subject cut-out (Select Subject gives the shape)
+  if (from === "photo") return { mode: "photo" };
+  if (from === "subject") return src.subject && src.subject.length === src.w * src.h ? { mode: "outline", subject: true } : { mode: "photo", noSubject: true };
   const w = src.w, h = src.h, n = w * h, c = src.c || 4, d = src.data;
   let transp = 0;
   if (c >= 4) for (let i = 0; i < n; i++) if (d[i * c + 3] < 128) transp++;

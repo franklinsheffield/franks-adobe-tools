@@ -81,11 +81,19 @@ function hashNoise(x, y) {
 // Bevel from the distance to the shape's edge; colour from a reflection that
 // follows the surface tilt (Gradient: through the metal stops, Horizon: sky /
 // wavy horizon / ground); same Lambert + Blinn lighting as the classic relief.
-async function outlineFace(M, w, h, P, sc, yieldFn) {
+async function outlineFace(M, w, h, P, sc, yieldFn, photoL) {
   const n = w * h, surf = P.surface, rel = P.relief;
   const D = FX.insideDistance(M, w, h);
   const bw = Math.max(1, surf.bevel * sc);
   const H = FX.bevelHeight(D, n, bw, surf.profile);
+  // 3.0 Subject cut-out: the photo's own relief inside the subject, so faces and folds read as metal
+  let AMB = null;
+  if (photoL) {
+    const Lb = Float32Array.from(photoL); boxBlur(Lb, w, h, Math.max(1, (2 + P.tone.blur) * sc), 3);
+    AMB = Float32Array.from(photoL); boxBlur(AMB, w, h, Math.max(2, 10 * sc), 2);
+    const k = Math.max(6 * sc, bw) * 1.6;
+    for (let i = 0; i < n; i++) { H[i] += Lb[i] * k * M[i]; AMB[i] = 0.3 + 0.7 * Math.pow(clamp(AMB[i] * 0.6 + photoL[i] * 0.4, 0, 1), 0.5); }
+  }
   boxBlur(H, w, h, Math.max(1, rel.soft * sc * 0.5), 2);
   await yieldFn();
   const bb = FX.bbox(M, w, h), bh = Math.max(1, bb.b - bb.t + 1), bwd = Math.max(1, bb.r - bb.l + 1);
@@ -139,9 +147,9 @@ async function outlineFace(M, w, h, P, sc, yieldFn) {
         r = lut[q]; g = lut[q + 1]; b = lut[q + 2];
       }
       const diff = Math.max(0, nx * lx + ny * ly + nz * lz);
-      const m = clamp(1 - depth * 0.75 * (1 - diff / lz), 0, 1.4);
+      const m = clamp(1 - depth * 0.75 * (1 - diff / lz), 0, 1.4) * (AMB ? AMB[i] : 1);
       R[i * 3] = r * m; R[i * 3 + 1] = g * m; R[i * 3 + 2] = b * m;
-      S[i] = clamp(Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), shin) * sAmt, 0, 1);
+      S[i] = clamp(Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), shin) * sAmt * (AMB ? AMB[i] : 1), 0, 1);
     }
     if ((y & 63) === 0) await yieldFn();
   }
@@ -316,6 +324,55 @@ function flatten(layers, n) {
   return out;
 }
 
+// ---------------------------------------------------------------- 3.0: Photo Chrome
+// The photo as embossed metal: a height map from the smoothed photo, surface normals,
+// a sky / horizon / ground environment reflected in them, ambient shade so darks stay dark.
+async function photoChrome(L, w, h, P, sc, yieldFn) {
+  const n = w * h, surf = P.surface, rel = P.relief;
+  const H = Float32Array.from(L);
+  boxBlur(H, w, h, Math.max(1, (2 + P.tone.blur) * sc), 3);
+  const A = Float32Array.from(L); boxBlur(A, w, h, Math.max(2, 10 * sc), 2);
+  await yieldFn();
+  const depth = Math.max(0.15, rel.depth / 100), str = 10 * depth / Math.max(0.25, sc);
+  const az = rel.angle * Math.PI / 180, el = 50 * Math.PI / 180;
+  const lx = Math.cos(az) * Math.cos(el), ly = -Math.sin(az) * Math.cos(el), lz = Math.sin(el);
+  let hx = lx, hy = ly, hz = lz + 1; const hl = Math.hypot(hx, hy, hz); hx /= hl; hy /= hl; hz /= hl;
+  const shin = 4 + rel.gloss * 1.2, sAmt = rel.spec / 100;
+  const horizon = surf.reflect === "horizon";
+  const lut = gradientLUT(P.look.stops), sky = gradientLUT(surf.sky), ground = gradientLUT(surf.ground);
+  const bands = P.bands, bc = bands.count, bph = bands.phase / 360, bmix = bands.mix / 100, bsoft = bands.soft / 100, inv = !!P.look.invert;
+  const hz0 = surf.horizon / 100, amp = surf.wave / 100 * 0.12, freq = 1.5 + surf.waveSize / 100 * 10;
+  const R = new Float32Array(n * 3), S = new Float32Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const gx = (H[y * w + Math.min(x + 1, w - 1)] - H[y * w + Math.max(x - 1, 0)]) * 0.5 * str;
+      const gy = (H[Math.min(y + 1, h - 1) * w + x] - H[Math.max(y - 1, 0) * w + x]) * 0.5 * str;
+      const nl = Math.hypot(gx, gy, 1), nx = -gx / nl, ny = -gy / nl, nz = 1 / nl;
+      // reflection lookup: mostly the normal, a little screen position so flat areas still read
+      const u = clamp(0.5 + ny * 0.95 + (y / h - 0.5) * 0.3 + Math.abs(nx) * 0.06, 0, 1);
+      let r, g, b;
+      if (horizon) {
+        const hv = clamp(hz0 + amp * (0.7 * FX.noise1(x / w * freq, 7) + 0.3 * FX.noise1(x / w * freq * 2.7, 13)), 0.05, 0.95), m = FX.smooth(hv - 0.02, hv + 0.02, u);
+        const us = Math.round(clamp(u / hv, 0, 1) * 255) * 3, ug = Math.round(clamp((u - hv) / (1 - hv), 0, 1) * 255) * 3;
+        r = sky[us] + (ground[ug] - sky[us]) * m; g = sky[us + 1] + (ground[ug + 1] - sky[us + 1]) * m; b = sky[us + 2] + (ground[ug + 2] - sky[us + 2]) * m;
+      } else {
+        let t = clamp(0.35 * u + 0.65 * clamp((H[i] - 0.5) * P.tone.contrast / 100 + 0.5, 0, 1), 0, 1);
+        if (inv) t = 1 - t;
+        if (bc > 0 && bmix > 0) t = t + (bandShape(t * bc + bph, bands.shape, bsoft) - t) * bmix;
+        const q = Math.round(t * 255) * 3; r = lut[q]; g = lut[q + 1]; b = lut[q + 2];
+      }
+      const diff = Math.max(0, nx * lx + ny * ly + nz * lz);
+      const amb = 0.18 + 0.82 * Math.pow(clamp(A[i] * 0.6 + L[i] * 0.4, 0, 1), 0.55);      // darks stay dark
+      const m = clamp((1 - depth * 0.6 * (1 - diff / lz)) * amb, 0, 1.4);
+      R[i * 3] = r * m; R[i * 3 + 1] = g * m; R[i * 3 + 2] = b * m;
+      S[i] = clamp(Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), shin) * sAmt * amb, 0, 1);
+    }
+    if ((y & 63) === 0) await yieldFn();
+  }
+  return { R, S };
+}
+
 async function render(src, P, hooks) {
   hooks = hooks || {};
   const yieldFn = hooks.yield || (async () => {});
@@ -333,11 +390,15 @@ async function render(src, P, hooks) {
   // 1b. surface: outline (shape) or brightness (classic)
   const surf = P.surface || { from: "brightness" };
   const pick = FX.pickMode(src, surf);
-  const outline = pick.mode === "outline";
-  const Mf = outline ? FX.shapeMask(src, L, pick.key, surf.key) : null;
+  const outline = pick.mode === "outline", subj = !!pick.subject;
+  if (pick.noSubject) notes.push("No subject found yet: showing Photo Chrome. Open a document and press Find subject again.");
+  const Mf = outline ? (subj ? Float32Array.from(src.subject, (v) => clamp(v, 0, 1)) : FX.shapeMask(src, L, pick.key, surf.key)) : null;
   let R, S, faceD = null, bb = null;
-  if (outline) {
-    const f = await outlineFace(Mf, w, h, P, sc, yieldFn);
+  if (pick.mode === "photo") {
+    const f = await photoChrome(L, w, h, P, sc, yieldFn);
+    R = f.R; S = f.S;
+  } else if (outline) {
+    const f = await outlineFace(Mf, w, h, P, sc, yieldFn, subj ? L : null);
     R = f.R; S = f.S; faceD = f.D; bb = f.bb;
   } else {
     // 2. pre-blur
@@ -409,10 +470,11 @@ async function render(src, P, hooks) {
       let v = R[i * 3 + ch] + g;
       if (mix > 0) v = v + ((c >= 3 ? d[j + ch] : d[j]) - v) * mix;
       if (!split) v = 255 - (255 - v) * (1 - S[i]);          // screen the shine in
+      if (subj) v = v * Mf[i] + (c >= 3 ? d[j + ch] : d[j]) * (1 - Mf[i]);   // the photo stays around the cut-out
       colour[i * 4 + ch] = clamp(Math.round(v), 0, 255);
     }
-    colour[i * 4 + 3] = outline ? Math.round(Mf[i] * 255) : A[i];
-    const s = Math.round(S[i] * 255);
+    colour[i * 4 + 3] = outline && !subj ? Math.round(Mf[i] * 255) : A[i];
+    const s = Math.round(S[i] * 255 * (subj ? Mf[i] : 1));
     shine[i * 4] = s; shine[i * 4 + 1] = s; shine[i * 4 + 2] = s; shine[i * 4 + 3] = outline ? Math.round(Mf[i] * 255) : A[i];
   }
   const layers = [{ name: "Chrome colour", rgba: colour, blend: "NORMAL" }];

@@ -655,9 +655,10 @@ function createToolPanel(cfg) {
       clear(grid);
       cells = PRESETS.map((pr) => {
         const img = el("img", { class: "lookimg" });
-        const c = el("div", { class: "look", title: (pr.cat ? pr.cat + " - " : "") + pr.name + ": click to load" }, [img, el("div", { class: "lookname", text: pr.name })]);
+        // 3.0: a badge marks looks that need a shape (type, a logo or a subject cut-out)
+        const c = el("div", { class: "look", title: (pr.cat ? pr.cat + " - " : "") + pr.name + ": click to load" + (pr.badge === "Shape" ? " (best on type, logos or a Subject cut-out)" : "") }, [img, el("div", { class: "lookname", text: pr.name })].concat(pr.badge ? [el("span", { class: "lookbadge", text: pr.badge })] : []));
         c.addEventListener("click", () => { applyPatch(pr.p, pr.name); mark(); });
-        if (ui.helpAt) ui.helpAt(c, { key: "look", name: pr.name, kind: "grid", note: pr.cat ? "Group: " + pr.cat : "" });
+        if (ui.helpAt) ui.helpAt(c, { key: "look", name: pr.name, kind: "grid", note: (pr.cat ? "Group: " + pr.cat : "") + (pr.badge === "Shape" ? ". Needs a shape: type, a logo, or Surface > Subject cut-out on photos." : "") });
         grid.appendChild(c);
         return { pr, img, node: c };
       });

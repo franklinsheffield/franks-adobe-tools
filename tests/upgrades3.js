@@ -139,6 +139,28 @@ module.exports = async function (t) {
     assert.strictEqual(PRESETS.filter((p) => p.cat === "Desert chrome").length, 6);
   });
 
+  await t("Chroma 3.0 photo: Photo chrome embosses a photo, Subject cut-out wraps the subject and keeps the photo around it, Shape badges, Prism Foil retuned", async () => {
+    const E = require("../plugins/chrometone/js/engine.js");
+    const { DEFAULTS, PRESETS, merge, clone } = require("../plugins/chrometone/js/state.js");
+    const src = E.demoImage(160, 120), n = 160 * 120;
+    const run = async (p, s2) => { const P = merge(clone(DEFAULTS), p); P.scale = 1; P.out.layers = "merged"; const r = await E.render(s2 || src, P, { yield: async () => {} }); return r; };
+    const px = (r) => r.layers[0].rgba;
+    const sd = (b) => { let s = 0, q = 0; for (let i = 0; i < b.length; i += 4) { const v = b[i] + b[i + 1] + b[i + 2]; s += v; q += v * v; } const m = s / (b.length / 4); return Math.sqrt(q / (b.length / 4) - m * m); };
+    const pc = await run(PRESETS.find((p) => p.name === "Photo Chrome").p);
+    assert.ok(sd(px(pc)) > 60, "photo chrome has shape, not flat grey: " + sd(px(pc)));
+    // no subject yet: falls back to photo chrome with a note
+    const ns = await run(PRESETS.find((p) => p.name === "Subject Chrome").p);
+    assert.ok(ns.notes.some((x) => /No subject/.test(x)), "note when there is no subject");
+    const subject = new Float32Array(n); for (let y = 30; y < 100; y++) for (let x = 50; x < 110; x++) subject[y * 160 + x] = 1;
+    const sb = await run(PRESETS.find((p) => p.name === "Subject Chrome").p, Object.assign({}, src, { subject }));
+    const q = px(sb), i0 = (5 * 160 + 5) * 4;
+    assert.deepStrictEqual(Array.from(q.slice(i0, i0 + 4)), [src.data[i0], src.data[i0 + 1], src.data[i0 + 2], 255], "photo kept outside the subject");
+    const i1 = (60 * 160 + 80) * 4; assert.ok(Math.abs(q[i1] - src.data[i1]) + Math.abs(q[i1 + 2] - src.data[i1 + 2]) > 20, "chrome inside the subject");
+    assert.ok(PRESETS.filter((p) => p.badge === "Shape").length >= 20 && !PRESETS.find((p) => p.name === "Photo Chrome").badge, "Shape badges on outline looks only");
+    const a = Buffer.from(px(await run(PRESETS.find((p) => p.name === "Holo Foil").p))), b = Buffer.from(px(await run(PRESETS.find((p) => p.name === "Prism Foil").p)));
+    let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]); assert.ok(d / a.length > 20, "Prism Foil no longer matches Holo Foil");
+  });
+
   await t("Depth 3.0 depth waves: Columns, Tilt, Depth contrast and Line glow each change the scan; 4 Depth waves looks", async () => {
     const E = require("../plugins/depthtone/js/engine.js");
     const S = require("../plugins/depthtone/js/state.js");

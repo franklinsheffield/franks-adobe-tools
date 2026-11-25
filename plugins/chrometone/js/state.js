@@ -82,10 +82,10 @@ const RETRO = [
   { name: "Rose Ingot", p: { surface: surf({ bevel: 26 }), look: { stops: [S(0, "#3A1A18"), S(35, "#B8706A"), S(58, "#FFE0D8"), S(75, "#D89088"), S(100, "#FFF4F0")] }, bands: { count: 2, mix: 45 }, extrude: { on: true, depth: 50, stops: [S(0, "#E0A090"), S(100, "#4A2420")] }, shine: { rim: { on: true, color: "#FFE8D8", width: 8 } } } },
   { name: "Night Drive", p: { surface: surf({ bevel: 22, reflect: "horizon", horizon: 46, wave: 60, waveSize: 55, sky: [S(0, "#FFE8FF"), S(50, "#C890F0"), S(100, "#7A40C8")], ground: [S(0, "#200828"), S(50, "#FF6A20"), S(100, "#FFD080")] }), bands: { count: 0 }, shine: { glints: { on: true, count: 4, size: 80, rays: 8 } } } },
   { name: "Mercury Drop", p: { surface: surf({ profile: "round", bevel: 45 }), look: { stops: [S(0, "#20242A"), S(30, "#8A929C"), S(55, "#FFFFFF"), S(75, "#6A727C"), S(100, "#F4F6F8")] }, bands: { count: 2, mix: 60 }, shine: { sweep: { on: true, angle: 45, pos: 60, width: 25, strength: 55 } } } },
-  { name: "Prism Foil", p: { surface: surf({ bevel: 18 }), look: { stops: [S(0, "#3A1C71"), S(20, "#D76D77"), S(40, "#FFAF7B"), S(60, "#7BF1FF"), S(80, "#B983FF"), S(100, "#FFFFFF")] }, bands: { count: 5, mix: 70 }, glow: { modules: mods(G("neon", "#FF7BF0", 12, 70)) } } },
+  { name: "Prism Foil", p: { surface: surf({ bevel: 18, profile: "round", reflect: "horizon", horizon: 48, wave: 55, waveSize: 70, sky: [S(0, "#FF3BD0"), S(35, "#7B5CFF"), S(70, "#2FE6FF"), S(100, "#E8FFFF")], ground: [S(0, "#14003A"), S(40, "#FF7A2A"), S(75, "#FFE14A"), S(100, "#FFFFFF")] }), relief: { depth: 60, gloss: 70, spec: 70 }, bands: { count: 0 }, glow: { modules: mods(G("neon", "#FF7BF0", 12, 70)) }, shine: { sweep: { on: true, angle: 60, pos: 35, width: 18, strength: 50 } } } },
   { name: "Titan Block", p: { surface: surf({ bevel: 20 }), look: { stops: [S(0, "#050607"), S(40, "#2C3138"), S(65, "#9AA3AE"), S(80, "#3E444C"), S(100, "#D7DCE2")] }, bands: { count: 2, mix: 40 }, extrude: { on: true, depth: 160, angle: 270, stops: [S(0, "#6A727C"), S(100, "#0A0C10")], lines: 60 }, glow: { modules: mods(G("bloom", "#E0E8FF", 30, 60)) } } }
 ];
-RETRO.forEach((r) => PRESETS.push({ cat: "Retro chrome", name: r.name, p: r.p }));
+RETRO.forEach((r) => PRESETS.push({ cat: "Retro chrome", name: r.name, p: r.p, badge: "Shape" }));
 
 // ---- 3.0 Desert chrome (Frank's reference video 2026-11-25): mountain horizon through the letters,
 // blue sky above, airbrushed red-orange ground below, own bevel gradient, warm glow, grain
@@ -99,6 +99,15 @@ const DESERT = [
   { name: "Hot Sunset Chrome", p: { surface: surf({ bevel: 18, reflect: "horizon", hshape: "curtain", horizon: 48, wave: 70, sky: [S(0, "#3A0A40"), S(45, "#E0305A"), S(100, "#FFD080")], ground: [S(0, "#0A0204"), S(45, "#7A1408"), S(100, "#FF8A2A")], bevelOn: true, bevelStops: [S(0, "#FFF4D8"), S(45, "#E08A40"), S(55, "#2A0A04"), S(100, "#FFE0B0")] }), bands: { count: 0 }, glow: { modules: mods(G("dreamy", "#FF7A40", 60, 50)) }, finish: { grain: 22, bloom: 30 } } },
   { name: "Gold Desert", p: { surface: surf({ bevel: 16, reflect: "horizon", hshape: "mountains", horizon: 54, wave: 45, sky: [S(0, "#5A3A08"), S(45, "#E8B040"), S(100, "#FFF4C8")], ground: [S(0, "#1A0A00"), S(45, "#8A4A08"), S(100, "#FFD070")], bevelOn: true, bevelStops: [S(0, "#FFFBE8"), S(45, "#D8A040"), S(55, "#2A1800"), S(100, "#FFF0C0")], bend: 40 }), bands: { count: 0 }, relief: { depth: 55, gloss: 60, spec: 70 }, finish: { grain: 18, bloom: 25 } } }
 ];
-DESERT.forEach((r) => PRESETS.push({ cat: "Desert chrome", name: r.name, p: r.p }));
+DESERT.forEach((r) => PRESETS.push({ cat: "Desert chrome", name: r.name, p: r.p, badge: "Shape" }));
+// 3.0 photo looks (upgrade proposal): Photo Chrome works on any photo; Subject cut-out shapes the people with Select Subject
+const PHOTO = [
+  { name: "Photo Chrome", p: { surface: { from: "photo", reflect: "horizon", horizon: 50, wave: 25 }, bands: { count: 0 }, relief: { depth: 55, gloss: 55, spec: 60 }, finish: { bloom: 25 } } },
+  { name: "Photo Chrome Desert", p: { surface: { from: "photo", reflect: "horizon", horizon: 48, wave: 45, sky: DSKY, ground: DGROUND }, bands: { count: 0 }, relief: { depth: 60, gloss: 55, spec: 65 }, finish: { grain: 15, bloom: 25 } } },
+  { name: "Photo Liquid Gold", p: { surface: { from: "photo", reflect: "gradient" }, look: { stops: [S(0, "#1A0E02"), S(30, "#8A5A12"), S(55, "#FFE9A8"), S(72, "#C08A2A"), S(100, "#FFF6D8")] }, bands: { count: 2, mix: 45 }, relief: { depth: 50, gloss: 60, spec: 60 } } },
+  { name: "Subject Chrome", p: { surface: { from: "subject", bevel: 24, profile: "round", reflect: "horizon", horizon: 50, wave: 30 }, bands: { count: 0 }, relief: { depth: 55, gloss: 60, spec: 65 }, glow: { modules: mods(G("halo", "#CFE6FF", 25, 50)) } } },
+  { name: "Subject Desert 3D", p: { surface: { from: "subject", bevel: 18, reflect: "horizon", hshape: "mountains", horizon: 50, wave: 55, sky: DSKY, ground: DGROUND, bevelOn: true, bevelStops: BEV }, bands: { count: 0 }, relief: { depth: 55, gloss: 55, spec: 65 }, extrude: { on: true, depth: 60, angle: 270, stops: [S(0, "#D84A1A"), S(100, "#2A0800")], shade: 60, lines: 40 }, finish: { grain: 18 } } }
+];
+PHOTO.forEach((r) => PRESETS.push({ cat: "Photo chrome", name: r.name, p: r.p }));
 
 module.exports = { DEFAULTS, PRESETS, clone, merge };

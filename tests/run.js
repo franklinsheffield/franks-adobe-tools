@@ -168,7 +168,7 @@ async function t(name, fn) {
     assert.strictEqual(a1.layers.length, 2); assert.strictEqual(a1.layers[1].blend, "SCREEN");
   });
 
-  await t("Chrometone panel matches its golden fingerprint (UI, 24 presets, Apply)", () => {
+  await t("Chrometone panel matches its golden fingerprint (UI, 35 presets, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins/chrometone")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "chrometone.golden.json"), "utf8"));
     assert.deepStrictEqual(got, want);
@@ -183,7 +183,7 @@ async function t(name, fn) {
     assert.ok(P.glow.modules.length === 4 && P.glow.modules.every((m) => !m.on));
     const res = await E.render(E.demoImage(80, 60), P);
     assert.deepStrictEqual(res.layers.map((l) => l.name), ["Chrome colour", "Chrome shine"]);
-    assert.strictEqual(PRESETS.length, 24); assert.strictEqual(PRESETS.filter((p) => p.cat === "Retro chrome").length, 16);
+    assert.strictEqual(PRESETS.length, 35); assert.strictEqual(PRESETS.filter((p) => p.cat === "Retro chrome").length, 16);   // 8 classic + 16 retro + 6 desert + 5 photo (3.0)
     const short = merge(DEFAULTS, { glow: { modules: [{ on: true, type: "halo" }] } });
     assert.strictEqual(short.glow.modules.length, 4); assert.strictEqual(short.glow.modules[0].size, DEFAULTS.glow.modules[0].size);
   });

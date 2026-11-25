@@ -4,7 +4,7 @@
 const H = {
   "tab:Surface": "Surface: how the chrome shape is built from your artwork.",
   "card:Surface": "How the chrome shape is built: from the artwork's outline (type, logos) or from the picture's brightness (photos).",
-  "surface.from": "Auto: Outline when the layer has transparency or sits on black, else Brightness. Outline: bevels the edges of the shape, best for type and logos. Brightness: bright areas rise, best for photos.",
+  "surface.from": "Auto: Outline when the layer has transparency or sits on black, else Brightness. Outline: bevels the edges of the shape, best for type and logos. Brightness: bright areas rise. Photo chrome: the photo becomes embossed metal reflecting sky and ground, best for photos. Subject cut-out: Photoshop's Select Subject gives the shape, so bevel, rim and extrusion wrap the people.",
   "surface.key": "Outline mode: treats dark pixels as empty, so artwork on a black background gets a clean outline.",
   "surface.bevel": "How far the bevel reaches in from the edge, in pixels. Wide bevels give a puffy, liquid look.",
   "surface.profile": "Shape of the bevel: Chamfer is a straight cut, Round is a soft pillow, Rim + flat is a raised edge with a flat top.",

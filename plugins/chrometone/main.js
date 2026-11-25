@@ -9,6 +9,7 @@ const BRAND = require("./brand.js");
 const HELP = require("./help.js");
 const { SUITE } = require("./core/brand.js");
 const { createToolPanel } = require("./core/toolpanel.js");
+const DS = require("./core/depth.js");
 
 // how far glow / extrusion can reach past the artwork (document px)
 function reach(s) {
@@ -25,11 +26,17 @@ function reach(s) {
   return Math.min(1500, Math.ceil(r));
 }
 
-let panel = null;
+let panel = null, subjectForce = false;
 // Active-layer sources are read at the layer's bounds; widen them (inside the
 // document) so glow and extrusion aren't cut off at the layer's edge.
-async function prepareSource(doc, r) {
+async function prepareSource(doc, r, phase) {
   const s = panel ? panel._test.state : DEFAULTS;
+  // 3.0 Subject cut-out: Photoshop's Select Subject (shared with Depth Lab) gives the shape
+  if (s && s.surface && s.surface.from === "subject") {
+    try { await DS.addSubject(doc, r, phase, BRAND.NAME, subjectForce); subjectForce = false; }
+    catch (e) { console.warn("Select Subject failed: " + (e && e.message)); }
+    return;
+  }
   if (!s || (s.view && s.view.kind === "detail")) return;
   const pad = reach(s);
   if (!pad) return;
@@ -70,16 +77,21 @@ panel = createToolPanel({
     const { card, sliderRow, fader, stepper, angle, selectRow, checkRow, segGroup, el, showIf } = ui;
     const st = () => kit.state;
     const when = (node, fn) => { showIf(node, fn); return node; };
-    const outlineMode = () => st().surface.from !== "brightness";
+    const outlineMode = () => !["brightness", "photo"].includes(st().surface.from);
+    const photoMode = () => st().surface.from === "photo";
+    const refind = el("button", { class: "btn small", text: "Find subject again" });
+    refind.addEventListener("click", () => { DS.clearCache(); subjectForce = true; kit.touch(); });
 
     // Surface (1.1)
-    const horizonOn = () => outlineMode() && st().surface.reflect === "horizon";
+    const horizonOn = () => (outlineMode() || photoMode()) && st().surface.reflect === "horizon";
     const surface = card("Surface", [
       segGroup("surface.from", [{ v: "auto", l: "Auto", t: "Outline when the layer has transparency or sits on black, else Brightness" }, { v: "outline", l: "Outline" }, { v: "brightness", l: "Brightness" }]),
-      when(sliderRow("Key out dark", "surface.key", 0, 100, 1, "%"), outlineMode),
+      segGroup("surface.from", [{ v: "photo", l: "Photo chrome", t: "The photo becomes embossed metal reflecting a sky and ground" }, { v: "subject", l: "Subject cut-out", t: "Select Subject gives the shape: bevel, rim and extrusion wrap the people" }]),
+      when(el("div", { class: "row wrap" }, [refind]), () => st().surface.from === "subject"),
+      when(sliderRow("Key out dark", "surface.key", 0, 100, 1, "%"), () => outlineMode() && st().surface.from !== "subject"),
       when(sliderRow("Bevel width", "surface.bevel", 0, 200, 1, " px"), outlineMode),
       when(segGroup("surface.profile", [{ v: "chamfer", l: "Chamfer" }, { v: "round", l: "Round" }, { v: "rim", l: "Rim + flat" }]), outlineMode),
-      when(segGroup("surface.reflect", [{ v: "gradient", l: "Gradient", t: "Metal gradient from the Look card, top to bottom" }, { v: "horizon", l: "Horizon", t: "Sky, wavy horizon, ground" }]), outlineMode),
+      when(segGroup("surface.reflect", [{ v: "gradient", l: "Gradient", t: "Metal gradient from the Look card, top to bottom" }, { v: "horizon", l: "Horizon", t: "Sky, wavy horizon, ground" }]), () => outlineMode() || photoMode()),
       // 3.0 desert chrome (Frank's reference video 2026-11-25): horizon shape, bend, own bevel gradient
       when(segGroup("surface.hshape", [{ v: "hills", l: "Hills" }, { v: "mountains", l: "Mountains" }, { v: "angled", l: "Angled" }, { v: "curtain", l: "Curtain" }, { v: "flat", l: "Flat" }]), horizonOn),
       when(fader("Horizon height", "surface.horizon", 0, 100, 1, "%"), horizonOn),
