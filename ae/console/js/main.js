@@ -123,6 +123,10 @@
     const box = $("cats"); box.innerHTML = "";
     const cats = ["All"].concat([...new Set(tool.looks.map((l) => l.cat))]);
     if (cats.length <= 2) return;
+    // equal columns, balanced rows (3.0 button rule)
+    const longest = Math.max(...cats.map((c) => c.length));
+    const maxPer = longest <= 5 ? 4 : longest <= 9 ? 3 : 2, rows = Math.ceil(cats.length / maxPer);
+    box.style.setProperty("--cols", Math.ceil(cats.length / rows));
     cats.forEach((c) => {
       const b = document.createElement("button"); b.textContent = c.toUpperCase(); if (c === cat) b.className = "on";
       b.addEventListener("click", () => { cat = c; buildCats(); buildLooks(); });

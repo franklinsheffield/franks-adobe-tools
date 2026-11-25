@@ -975,7 +975,7 @@ function createToolPanel(cfg) {
     H(refs.previewBox, { key: "preview", name: "Preview", kind: "preview" });
     refs.previewBox.addEventListener("mouseover", refitPreview);
     wireZoomPointer();
-    const splitBtn = el("button", { class: "tbtn", text: "Before / After" });
+    const splitBtn = el("button", { class: "tbtn", text: "Split" });
     const paintSplit = () => { if (state.view.split) splitBtn.classList.add("on"); else splitBtn.classList.remove("on"); };
     splitBtn.addEventListener("click", () => { state.view.split = state.view.split ? 0 : 50; paintSplit(); paintPreview(); });
     refs.splitSw = { __sw: { set: (v) => { state.view.split = v ? 50 : 0; paintSplit(); paintPreview(); }, get: () => !!state.view.split } };
@@ -1051,8 +1051,9 @@ function createToolPanel(cfg) {
     jump.addEventListener("click", () => { jump.style.display = "none"; });
     try { document.addEventListener("mousedown", (e) => { if (!go.contains(e.target) && !jump.contains(e.target)) jump.style.display = "none"; }); } catch (e) { /* no document */ }
     H(go, { key: "secmenu", name: "Go to section", kind: "button" });
-    fx.bar.appendChild(go);
-    top.appendChild(el("div", { class: "fxzone" }, [fx.bar, jump]));
+    // 3.0 button rule: the effect buttons have their own bar; GO sits on a header strip above it
+    const fxhead = el("div", { class: "fxhead" }, [el("span", { class: "fxlbl", text: "EFFECTS" }), el("span", { class: "grow" }), go]);
+    top.appendChild(el("div", { class: "fxzone" }, [fxhead, fx.bar, jump]));
 
     // 7. Apply footer (pinned)
     refs.status = el("div", { class: "status", text: "Starting..." });
@@ -1073,6 +1074,7 @@ function createToolPanel(cfg) {
     layout.footer.appendChild(refs.status);
     layout.footer.appendChild(el("div", { class: "applyrow" }, [refs.meter.node, refs.apply]));
     ui.sweep(root);
+    ui.evenRows(root);
     refreshAll();
     if (lookBrowser) lookBrowser.start();
     paintLookBar();

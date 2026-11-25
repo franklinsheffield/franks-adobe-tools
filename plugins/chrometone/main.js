@@ -85,8 +85,8 @@ panel = createToolPanel({
     // Surface (1.1)
     const horizonOn = () => (outlineMode() || photoMode()) && st().surface.reflect === "horizon";
     const surface = card("Surface", [
-      segGroup("surface.from", [{ v: "auto", l: "Auto", t: "Outline when the layer has transparency or sits on black, else Brightness" }, { v: "outline", l: "Outline" }, { v: "brightness", l: "Brightness" }]),
-      segGroup("surface.from", [{ v: "photo", l: "Photo chrome", t: "The photo becomes embossed metal reflecting a sky and ground" }, { v: "subject", l: "Subject cut-out", t: "Select Subject gives the shape: bevel, rim and extrusion wrap the people" }]),
+      segGroup("surface.from", [{ v: "auto", l: "Auto", t: "Outline when the layer has transparency or sits on black, else Brightness" }, { v: "outline", l: "Outline" }, { v: "brightness", l: "Brightness" },
+        { v: "photo", l: "Photo", t: "The photo becomes embossed metal reflecting a sky and ground" }, { v: "subject", l: "Subject", t: "Select Subject gives the shape: bevel, rim and extrusion wrap the people" }]),
       when(el("div", { class: "row wrap" }, [refind]), () => st().surface.from === "subject"),
       when(sliderRow("Key out dark", "surface.key", 0, 100, 1, "%"), () => outlineMode() && st().surface.from !== "subject"),
       when(sliderRow("Bevel width", "surface.bevel", 0, 200, 1, " px"), outlineMode),

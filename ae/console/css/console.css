@@ -54,8 +54,8 @@ input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -5px; border-radius: 6px; background: #000; border: 1px solid #fff; }
 input[type=range]:active::-webkit-slider-thumb { border-color: var(--glow); box-shadow: 0 0 6px var(--glow); }
 
-.seg { display: flex; flex: 1; gap: 3px; }
-.seg button { flex: 1; border-top: 3px solid #333; }
+.seg { display: flex; flex: 1; gap: 4px; }
+.seg button { flex: 1 1 0; min-width: 0; border-top: 3px solid #333; }
 .seg button.on { border-top-color: #fff; color: #fff; }
 .sw { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .sw input { display: none; }
@@ -63,8 +63,8 @@ input[type=range]:active::-webkit-slider-thumb { border-color: var(--glow); box-
 .knobsw::after { content: ""; position: absolute; top: 1px; left: 1px; width: 8px; height: 8px; border-radius: 5px; background: #666; transition: left .12s; }
 .sw input:checked + .knobsw::after { left: 13px; background: var(--glow); box-shadow: 0 0 5px var(--glow); }
 
-.cats { display: flex; flex-wrap: wrap; gap: 3px; margin: 6px 0; }
-.cats button { padding: 3px 6px; font-size: 7px; border-color: var(--soft); }
+.cats { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 4px; margin: 6px 0; }
+.cats button { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 6px; font-size: 7px; border-color: var(--soft); }
 .cats button.on { border-color: #fff; color: #fff; }
 .lookgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 5px; }
 .look { border: 1px solid var(--soft); border-radius: 3px; padding: 3px; cursor: pointer; background: #050505; }
@@ -107,3 +107,8 @@ input[type=range]:active::-webkit-slider-thumb { border-color: var(--glow); box-
 .helptext { margin: 0 8px 5px 8px; font-size: 12px; line-height: 1.35; color: #ffffff; }
 .helptext.note { color: #cfd8ff; }
 .helprange, .helpkeys { margin: 0 8px 3px 8px; font-size: 10px; line-height: 1.35; color: #a9a6c2; }
+
+/* 3.0 button rule (Frank 2026-11-25): every group of buttons is the same size with the same 4 px spacing */
+.btns { gap: 4px; }
+.btns > * { flex: 1 1 0; min-width: 0; margin: 0; }
+.btns > .btn.key { padding: 6px 4px; }   /* same height as its neighbours */
