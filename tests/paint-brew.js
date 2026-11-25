@@ -72,7 +72,7 @@ module.exports = async function (t) {
     P.document.querySelector(".apply").dispatchEvent(new P.window.Event("click"));
     for (let i = 0; i < 300 && !/^(Done|Apply failed)/.test(P.document.querySelector(".status").textContent); i++) await P.settle(100);
     const calls = P.host.calls.map((c) => c.join("|"));
-    assert.ok(calls.includes("duplicate|test - Paint Brew print"), "copy made: " + calls.slice(0, 6));
+    assert.ok(calls.includes("duplicate|test - Paint Lab print"), "copy made: " + calls.slice(0, 6));
     assert.ok(calls.includes("resizeImage|3000|2250|300"), "upscaled to 3000 px at 300 ppi");
     assert.ok(/^Done/.test(P.document.querySelector(".status").textContent), P.document.querySelector(".status").textContent);
     const put = P.host.calls.filter((c) => c[0] === "putPixels");
@@ -127,15 +127,17 @@ module.exports = async function (t) {
     const D = P.document, st = P.mod._test.state;
     for (let i = 0; i < 100 && !/^Preview /.test(D.querySelector(".status").textContent); i++) await P.settle(50);
     assert.ok(D.querySelector("#app.brand-console"), "brand class on #app");
-    assert.strictEqual(D.querySelector(".rack .title").textContent, "PAINT BREW");
+    assert.strictEqual(D.querySelector(".rack .title").textContent, "PAINT LAB");
     assert.strictEqual(D.querySelectorAll(".rack .screw").length, 4);
     assert.strictEqual(D.querySelector(".ledtxt").textContent, "READY");
     assert.strictEqual(D.querySelectorAll('input[type="range"]').length, 0, "no stock sliders");
     assert.strictEqual(D.querySelectorAll('input[type="checkbox"]').length, 0, "no stock checkboxes");
-    assert.strictEqual(D.querySelectorAll(".minisw .switch.on").length, 2, "Auto-update and Pin on top are console switches");
+    // 3.0 layout: Auto-update moved to the panel menu, preview is always pinned
+    if (!D.querySelector(".pinned")) assert.strictEqual(D.querySelectorAll(".minisw .switch.on").length, 2, "Auto-update and Pin on top are console switches");
+    else { P.mod._test.menuAction("auto"); assert.ok(/Auto-update off/.test(D.querySelector(".status").textContent), "menu turns Auto-update off"); P.mod._test.menuAction("auto"); }
     const dials = Array.from(D.querySelectorAll(".dial"));
     assert.ok(dials.length >= 20, "dials: " + dials.length);
-    assert.ok(dials.every((d) => /^data:image\/png;base64,/.test(d.querySelector(".knob").src)), "every knob drawn");
+    assert.ok(dials.every((d) => !d.querySelector(".knob") || /^data:image\/png;base64,/.test(d.querySelector(".knob").getAttribute("src"))), "every knob drawn");
     const size = dials.find((d) => d.querySelector(".dlabel").textContent === "Stroke size");
     const inp = size.querySelector(".dialval");
     inp.value = "77"; inp.dispatchEvent(new P.window.Event("change"));

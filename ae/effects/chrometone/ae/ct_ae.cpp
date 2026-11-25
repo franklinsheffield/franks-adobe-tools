@@ -14,6 +14,7 @@
 #include "../ct_motion.h"
 #include "../ct_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 
 using namespace brew;
 using namespace brewae;
@@ -48,7 +49,7 @@ static const char* REFLECTS = "Metal gradient|Horizon (sky + ground)";
 static const char* GTYPES = "Dreamy|Halo|Neon|Bloom|Inner";
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCT-02  Frank's Brew suite\rLiquid chrome + motion.", "Frank's Chrometone Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCT-02  Lab suite\rLiquid chrome + motion.", "Chroma Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
@@ -59,126 +60,144 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
 #define CHECK(NAME, V, ID) AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX(NAME, (V) ? 1 : 0, 0, ID);
 #define POPUP(NAME, N, V, MENU, ID) AEFX_CLR_STRUCT(def); PF_ADD_POPUP(NAME, N, V, MENU, ID);
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { P_MO_BASE, T_CM_START, T_LOOK_START, T_METAL_START, T_TONE_START, T_REL_START, T_FIN_START, T_SURF_START, T_EX_START, T_SHINE_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   ct::Params D; ct::parseParams(D, ct::LOOKS[0].text);
   static std::string looks = lookMenu(ct::LOOKS, ct::LOOK_COUNT, false), looksB = lookMenu(ct::LOOKS, ct::LOOK_COUNT, true);
 
-  BREW_TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", ct::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  POPUP("Look B (morph to)", ct::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  BREW_ENDTOPIC(T_LOOK_END);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case P_MO_BASE: {  // Motion
+    if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: light orbit (deg/s)", "Drift X: reflection scroll (px/s)", "Drift Y: horizon rise (px/s)");
+  } break;
+  case T_CM_START: {  // Chrome motion
+    BREW_TOPIC("Chrome motion", T_CM_START, false);
+    BREW_FS("Band flow (deg/s)", -720, 720, -180, 180, 0, 1, P_CM_FLOW);
+    BREW_FS("Sweep travel (%/s)", -400, 400, -100, 100, 0, 1, P_CM_SWEEP);
+    BREW_FS("Glint twinkle (%)", 0, 100, 0, 100, 0, 0, P_CM_TWINKLE);
+    BREW_FS("Twinkle rate (Hz)", 0, 20, 0, 10, 3, 2, P_CM_TWINKLER);
+    BREW_ENDTOPIC(T_CM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    BREW_TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", ct::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    POPUP("Look B (morph to)", ct::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    BREW_ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_METAL_START: {  // Metal
+    BREW_TOPIC("Metal", T_METAL_START, false);
+    POPUP("Gradient stops", 5, (int)std::max<size_t>(2, std::min<size_t>(MAX_STOPS, D.stops.size())) - 1, "2|3|4|5|6", P_STOPS);
+    for (int s = 0; s < MAX_STOPS; s++) {
+      std::string hex = "#808080"; double p = s * 100.0 / (MAX_STOPS - 1);
+      if (s < (int)D.stops.size()) { hex = D.stops[s].c; p = D.stops[s].p; }
+      char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
+      COLOR(cn, hex, P_SC1 + s * 2);
+      BREW_FS(pn, 0, 100, 0, 100, p, 0, P_SP1 + s * 2);
+    }
+    CHECK("Invert", D.invert, P_INVERT);
+    BREW_ENDTOPIC(T_METAL_END);
+  } break;
+  case T_TONE_START: {  // Tone + bands
+    BREW_TOPIC("Tone + bands", T_TONE_START, true);
+    BREW_FS("Pre-blur (px)", 0, 40, 0, 20, D.blur, 1, P_BLUR);
+    BREW_FS("Contrast (%)", 10, 400, 10, 300, D.contrast, 0, P_CONTRAST);
+    BREW_FS("Midpoint (%)", 0, 100, 0, 100, D.mid, 0, P_MID);
+    BREW_FS("Bands", 0, 12, 0, 12, D.bandCount, 0, P_BCOUNT);
+    BREW_FS("Band phase (deg)", -3600, 3600, 0, 360, D.bandPhase, 0, P_BPHASE);
+    POPUP("Band shape", 3, D.bandShape + 1, SHAPES, P_BSHAPE);
+    BREW_FS("Band softness (%)", 0, 100, 0, 100, D.bandSoft, 0, P_BSOFT);
+    BREW_FS("Band mix (%)", 0, 100, 0, 100, D.bandMix, 0, P_BMIX);
+    BREW_ENDTOPIC(T_TONE_END);
+  } break;
+  case T_REL_START: {  // Relief + light
+    BREW_TOPIC("Relief + light", T_REL_START, true);
+    BREW_FS("Depth (%)", 0, 100, 0, 100, D.depth, 0, P_DEPTH);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Light angle", D.angle, P_ANGLE);
+    BREW_FS("Gloss", 0, 100, 0, 100, D.gloss, 0, P_GLOSS);
+    BREW_FS("Specular (%)", 0, 100, 0, 100, D.spec, 0, P_SPEC);
+    BREW_FS("Softness (px)", 0, 20, 0, 20, D.reliefSoft, 1, P_RSOFT);
+    BREW_ENDTOPIC(T_REL_END);
+  } break;
+  case T_FIN_START: {  // Finish
+    BREW_TOPIC("Finish", T_FIN_START, true);
+    BREW_FS("Grain (%)", 0, 100, 0, 100, D.grain, 0, P_GRAIN);
+    BREW_FS("Bloom (%)", 0, 100, 0, 100, D.bloom, 0, P_BLOOM);
+    BREW_FS("Mix with original (%)", 0, 100, 0, 100, D.mix, 0, P_MIX);
+    BREW_ENDTOPIC(T_FIN_END);
+  } break;
+  case T_SURF_START: {  // Surface
+    BREW_TOPIC("Surface", T_SURF_START, true);
+    POPUP("Build from", 3, D.from + 1, FROMS, P_FROM);
+    BREW_FS("Dark key (%)", 0, 95, 0, 60, D.key, 0, P_KEY);
+    BREW_FS("Bevel (px)", 1, 200, 1, 120, D.bevel, 0, P_BEVEL);
+    POPUP("Profile", 3, D.profile + 1, PROFILES, P_PROFILE);
+    POPUP("Reflection", 2, D.reflect + 1, REFLECTS, P_REFLECT);
+    BREW_FS("Horizon (%)", 0, 100, 0, 100, D.horizon, 0, P_HORIZON);
+    BREW_FS("Horizon wave (%)", 0, 100, 0, 100, D.wave, 0, P_WAVE);
+    BREW_FS("Wave size (%)", 0, 100, 0, 100, D.waveSize, 0, P_WAVESIZE);
+    for (int s = 0; s < 3; s++) {
+      char cn[32], pn[32]; snprintf(cn, sizeof cn, "Sky %d colour", s + 1); snprintf(pn, sizeof pn, "Sky %d position", s + 1);
+      COLOR(cn, D.sky[s].c, P_SKC1 + s * 2); BREW_FS(pn, 0, 100, 0, 100, D.sky[s].p, 0, P_SKP1 + s * 2);
+    }
+    for (int s = 0; s < 3; s++) {
+      char cn[32], pn[32]; snprintf(cn, sizeof cn, "Ground %d colour", s + 1); snprintf(pn, sizeof pn, "Ground %d position", s + 1);
+      COLOR(cn, D.ground[s].c, P_GRC1 + s * 2); BREW_FS(pn, 0, 100, 0, 100, D.ground[s].p, 0, P_GRP1 + s * 2);
+    }
+    BREW_ENDTOPIC(T_SURF_END);
+  } break;
+  case T_EX_START: {  // Extrusion
+    BREW_TOPIC("Extrusion", T_EX_START, true);
+    CHECK("Extrude", D.exOn, P_EX_ON);
+    BREW_FS("Depth (px)", 0, 400, 0, 200, D.exDepth, 0, P_EX_DEPTH);
+    BREW_FS("Direction (deg)", 0, 360, 0, 360, D.exAngle, 0, P_EX_ANGLE);
+    BREW_FS("Perspective (%)", 0, 100, 0, 100, D.exPersp, 0, P_EX_PERSP);
+    COLOR("Wall front", D.exStops.front().c, P_EX_FRONT);
+    COLOR("Wall back", D.exStops.back().c, P_EX_BACK);
+    BREW_FS("Shading (%)", 0, 100, 0, 100, D.exShade, 0, P_EX_SHADE);
+    BREW_FS("Edge lines (%)", 0, 100, 0, 100, D.exLines, 0, P_EX_LINES);
+    BREW_FS("Long shadow (%)", 0, 100, 0, 100, D.exShadow, 0, P_EX_SHADOW);
+    BREW_ENDTOPIC(T_EX_END);
 
-  BREW_TOPIC("Metal", T_METAL_START, false);
-  POPUP("Gradient stops", 5, (int)std::max<size_t>(2, std::min<size_t>(MAX_STOPS, D.stops.size())) - 1, "2|3|4|5|6", P_STOPS);
-  for (int s = 0; s < MAX_STOPS; s++) {
-    std::string hex = "#808080"; double p = s * 100.0 / (MAX_STOPS - 1);
-    if (s < (int)D.stops.size()) { hex = D.stops[s].c; p = D.stops[s].p; }
-    char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
-    COLOR(cn, hex, P_SC1 + s * 2);
-    BREW_FS(pn, 0, 100, 0, 100, p, 0, P_SP1 + s * 2);
+    for (int g = 0; g < 4; g++) {
+      const int b = g * GSTRIDE; char tn[16]; snprintf(tn, sizeof tn, "Glow %d", g + 1);
+      BREW_TOPIC(tn, T_G1_START + b, true);
+      CHECK("On", D.glow[g].on, P_G1_ON + b);
+      POPUP("Type", 5, D.glow[g].type + 1, GTYPES, P_G1_TYPE + b);
+      COLOR("Colour", D.glow[g].color, P_G1_COL + b);
+      BREW_FS("Size (px)", 1, 300, 1, 150, D.glow[g].size, 0, P_G1_SIZE + b);
+      BREW_FS("Strength (%)", 0, 100, 0, 100, D.glow[g].strength, 0, P_G1_STR + b);
+      BREW_ENDTOPIC(T_G1_END + b);
+    }
+  } break;
+  case T_SHINE_START: {  // Shine
+    BREW_TOPIC("Shine", T_SHINE_START, true);
+    CHECK("Glints", D.glOn, P_GL_ON);
+    BREW_FS("Glint count", 0, 20, 0, 12, D.glCount, 0, P_GL_COUNT);
+    BREW_FS("Glint size (px)", 2, 400, 2, 200, D.glSize, 0, P_GL_SIZE);
+    BREW_FS("Glint rays", 2, 16, 2, 16, D.glRays, 0, P_GL_RAYS);
+    BREW_FS("Glint rotation (deg)", -180, 180, -180, 180, D.glRot, 0, P_GL_ROT);
+    COLOR("Glint colour", D.glColor, P_GL_COL);
+    CHECK("Sweep", D.swOn, P_SW_ON);
+    BREW_FS("Sweep angle (deg)", 0, 180, 0, 180, D.swAngle, 0, P_SW_ANGLE);
+    BREW_FS("Sweep position (%)", -20, 120, 0, 100, D.swPos, 0, P_SW_POS);
+    BREW_FS("Sweep width (%)", 1, 100, 1, 100, D.swWidth, 0, P_SW_WIDTH);
+    BREW_FS("Sweep strength (%)", 0, 100, 0, 100, D.swStrength, 0, P_SW_STR);
+    CHECK("Rim light", D.rimOn, P_RIM_ON);
+    COLOR("Rim colour", D.rimColor, P_RIM_COL);
+    BREW_FS("Rim width (px)", 1, 60, 1, 40, D.rimWidth, 0, P_RIM_WIDTH);
+    CHECK("Electric arcs", D.arcOn, P_ARC_ON);
+    BREW_FS("Arc count", 0, 20, 0, 12, D.arcCount, 0, P_ARC_COUNT);
+    COLOR("Arc colour", D.arcColor, P_ARC_COL);
+    BREW_FS("Arc spread (%)", 0, 100, 0, 100, D.arcSpread, 0, P_ARC_SPREAD);
+    BREW_ENDTOPIC(T_SHINE_END);
+  } break;
+  default: break;
   }
-  CHECK("Invert", D.invert, P_INVERT);
-  BREW_ENDTOPIC(T_METAL_END);
-
-  BREW_TOPIC("Tone + bands", T_TONE_START, true);
-  BREW_FS("Pre-blur (px)", 0, 40, 0, 20, D.blur, 1, P_BLUR);
-  BREW_FS("Contrast (%)", 10, 400, 10, 300, D.contrast, 0, P_CONTRAST);
-  BREW_FS("Midpoint (%)", 0, 100, 0, 100, D.mid, 0, P_MID);
-  BREW_FS("Bands", 0, 12, 0, 12, D.bandCount, 0, P_BCOUNT);
-  BREW_FS("Band phase (deg)", -3600, 3600, 0, 360, D.bandPhase, 0, P_BPHASE);
-  POPUP("Band shape", 3, D.bandShape + 1, SHAPES, P_BSHAPE);
-  BREW_FS("Band softness (%)", 0, 100, 0, 100, D.bandSoft, 0, P_BSOFT);
-  BREW_FS("Band mix (%)", 0, 100, 0, 100, D.bandMix, 0, P_BMIX);
-  BREW_ENDTOPIC(T_TONE_END);
-
-  BREW_TOPIC("Relief + light", T_REL_START, true);
-  BREW_FS("Depth (%)", 0, 100, 0, 100, D.depth, 0, P_DEPTH);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Light angle", D.angle, P_ANGLE);
-  BREW_FS("Gloss", 0, 100, 0, 100, D.gloss, 0, P_GLOSS);
-  BREW_FS("Specular (%)", 0, 100, 0, 100, D.spec, 0, P_SPEC);
-  BREW_FS("Softness (px)", 0, 20, 0, 20, D.reliefSoft, 1, P_RSOFT);
-  BREW_ENDTOPIC(T_REL_END);
-
-  BREW_TOPIC("Finish", T_FIN_START, true);
-  BREW_FS("Grain (%)", 0, 100, 0, 100, D.grain, 0, P_GRAIN);
-  BREW_FS("Bloom (%)", 0, 100, 0, 100, D.bloom, 0, P_BLOOM);
-  BREW_FS("Mix with original (%)", 0, 100, 0, 100, D.mix, 0, P_MIX);
-  BREW_ENDTOPIC(T_FIN_END);
-
-  BREW_TOPIC("Surface", T_SURF_START, true);
-  POPUP("Build from", 3, D.from + 1, FROMS, P_FROM);
-  BREW_FS("Dark key (%)", 0, 95, 0, 60, D.key, 0, P_KEY);
-  BREW_FS("Bevel (px)", 1, 200, 1, 120, D.bevel, 0, P_BEVEL);
-  POPUP("Profile", 3, D.profile + 1, PROFILES, P_PROFILE);
-  POPUP("Reflection", 2, D.reflect + 1, REFLECTS, P_REFLECT);
-  BREW_FS("Horizon (%)", 0, 100, 0, 100, D.horizon, 0, P_HORIZON);
-  BREW_FS("Horizon wave (%)", 0, 100, 0, 100, D.wave, 0, P_WAVE);
-  BREW_FS("Wave size (%)", 0, 100, 0, 100, D.waveSize, 0, P_WAVESIZE);
-  for (int s = 0; s < 3; s++) {
-    char cn[32], pn[32]; snprintf(cn, sizeof cn, "Sky %d colour", s + 1); snprintf(pn, sizeof pn, "Sky %d position", s + 1);
-    COLOR(cn, D.sky[s].c, P_SKC1 + s * 2); BREW_FS(pn, 0, 100, 0, 100, D.sky[s].p, 0, P_SKP1 + s * 2);
-  }
-  for (int s = 0; s < 3; s++) {
-    char cn[32], pn[32]; snprintf(cn, sizeof cn, "Ground %d colour", s + 1); snprintf(pn, sizeof pn, "Ground %d position", s + 1);
-    COLOR(cn, D.ground[s].c, P_GRC1 + s * 2); BREW_FS(pn, 0, 100, 0, 100, D.ground[s].p, 0, P_GRP1 + s * 2);
-  }
-  BREW_ENDTOPIC(T_SURF_END);
-
-  BREW_TOPIC("Extrusion", T_EX_START, true);
-  CHECK("Extrude", D.exOn, P_EX_ON);
-  BREW_FS("Depth (px)", 0, 400, 0, 200, D.exDepth, 0, P_EX_DEPTH);
-  BREW_FS("Direction (deg)", 0, 360, 0, 360, D.exAngle, 0, P_EX_ANGLE);
-  BREW_FS("Perspective (%)", 0, 100, 0, 100, D.exPersp, 0, P_EX_PERSP);
-  COLOR("Wall front", D.exStops.front().c, P_EX_FRONT);
-  COLOR("Wall back", D.exStops.back().c, P_EX_BACK);
-  BREW_FS("Shading (%)", 0, 100, 0, 100, D.exShade, 0, P_EX_SHADE);
-  BREW_FS("Edge lines (%)", 0, 100, 0, 100, D.exLines, 0, P_EX_LINES);
-  BREW_FS("Long shadow (%)", 0, 100, 0, 100, D.exShadow, 0, P_EX_SHADOW);
-  BREW_ENDTOPIC(T_EX_END);
-
-  for (int g = 0; g < 4; g++) {
-    const int b = g * GSTRIDE; char tn[16]; snprintf(tn, sizeof tn, "Glow %d", g + 1);
-    BREW_TOPIC(tn, T_G1_START + b, true);
-    CHECK("On", D.glow[g].on, P_G1_ON + b);
-    POPUP("Type", 5, D.glow[g].type + 1, GTYPES, P_G1_TYPE + b);
-    COLOR("Colour", D.glow[g].color, P_G1_COL + b);
-    BREW_FS("Size (px)", 1, 300, 1, 150, D.glow[g].size, 0, P_G1_SIZE + b);
-    BREW_FS("Strength (%)", 0, 100, 0, 100, D.glow[g].strength, 0, P_G1_STR + b);
-    BREW_ENDTOPIC(T_G1_END + b);
-  }
-
-  BREW_TOPIC("Shine", T_SHINE_START, true);
-  CHECK("Glints", D.glOn, P_GL_ON);
-  BREW_FS("Glint count", 0, 20, 0, 12, D.glCount, 0, P_GL_COUNT);
-  BREW_FS("Glint size (px)", 2, 400, 2, 200, D.glSize, 0, P_GL_SIZE);
-  BREW_FS("Glint rays", 2, 16, 2, 16, D.glRays, 0, P_GL_RAYS);
-  BREW_FS("Glint rotation (deg)", -180, 180, -180, 180, D.glRot, 0, P_GL_ROT);
-  COLOR("Glint colour", D.glColor, P_GL_COL);
-  CHECK("Sweep", D.swOn, P_SW_ON);
-  BREW_FS("Sweep angle (deg)", 0, 180, 0, 180, D.swAngle, 0, P_SW_ANGLE);
-  BREW_FS("Sweep position (%)", -20, 120, 0, 100, D.swPos, 0, P_SW_POS);
-  BREW_FS("Sweep width (%)", 1, 100, 1, 100, D.swWidth, 0, P_SW_WIDTH);
-  BREW_FS("Sweep strength (%)", 0, 100, 0, 100, D.swStrength, 0, P_SW_STR);
-  CHECK("Rim light", D.rimOn, P_RIM_ON);
-  COLOR("Rim colour", D.rimColor, P_RIM_COL);
-  BREW_FS("Rim width (px)", 1, 60, 1, 40, D.rimWidth, 0, P_RIM_WIDTH);
-  CHECK("Electric arcs", D.arcOn, P_ARC_ON);
-  BREW_FS("Arc count", 0, 20, 0, 12, D.arcCount, 0, P_ARC_COUNT);
-  COLOR("Arc colour", D.arcColor, P_ARC_COL);
-  BREW_FS("Arc spread (%)", 0, 100, 0, 100, D.arcSpread, 0, P_ARC_SPREAD);
-  BREW_ENDTOPIC(T_SHINE_END);
-
-  if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: light orbit (deg/s)", "Drift X: reflection scroll (px/s)", "Drift Y: horizon rise (px/s)");
-
-  BREW_TOPIC("Chrome motion", T_CM_START, false);
-  BREW_FS("Band flow (deg/s)", -720, 720, -180, 180, 0, 1, P_CM_FLOW);
-  BREW_FS("Sweep travel (%/s)", -400, 400, -100, 100, 0, 1, P_CM_SWEEP);
-  BREW_FS("Glint twinkle (%)", 0, 100, 0, 100, 0, 0, P_CM_TWINKLE);
-  BREW_FS("Twinkle rate (Hz)", 0, 20, 0, 10, 3, 2, P_CM_TWINKLER);
-  BREW_ENDTOPIC(T_CM_END);
 
   out_data->num_params = P_NUM;
   return err;
@@ -242,7 +261,7 @@ static void applyLook(PF_ParamDef* p[], int idx) {
   setB(p, P_ARC_ON, P.arcOn); setF(p, P_ARC_COUNT, P.arcCount); setC(p, P_ARC_COL, P.arcColor); setF(p, P_ARC_SPREAD, P.arcSpread);
 }
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -266,20 +285,21 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's Chrometone Brew", "com.franks.chrometone.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Chroma Lab", "com.franks.chrometone.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }

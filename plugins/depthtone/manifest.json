@@ -1,8 +1,8 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.depthtone",
-  "name": "Frank's Depthtone Brew",
-  "version": "2.0.0",
+  "name": "Depth Lab",
+  "version": "3.0.1",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "depthtonePanel",
       "label": {
-        "default": "Frank's Depthtone Brew"
+        "default": "Depth Lab"
       },
       "minimumSize": {
         "width": 300,

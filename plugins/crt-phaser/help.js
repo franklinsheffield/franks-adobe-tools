@@ -23,6 +23,9 @@ module.exports = {
   "phase.fringe": "Splits red and blue slightly apart along the lines for a colour-fringed, misconverged edge.",
   "phase.debris": "Small stray specks and line fragments, like a noisy signal.",
   "phase.flare": "Rainbow streaks from the brightest points, like light catching the glass.",
+  "phase.flareAt": "Where the prism flares land: random spots, or on the brightest highlights so they don't cut across faces.",
+  "phase.photo": "Screens the photo under the lines so the subject stays readable.",
+  "phase.calm": "Thins the lines in busy textures like brick or leaves, so the subject reads first.",
   "phase.grain": "Fine film-like noise over the whole screen.",
   "phase.seed": "Picks a different random pattern for debris, grain and flare. Same seed, same pattern every time.",
   // Phase colour

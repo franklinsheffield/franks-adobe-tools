@@ -104,29 +104,56 @@ async function render(src, P, hooks) {
     }
     layers.push({ name: "Relief", rgba: null, blend: "NORMAL" });
   } else if (st === "ridges") {
-    const step = Math.max(2, Math.round(P.ridges.spacing * Math.max(0.5, sc))), amp = P.ridges.lift / 100 * h * 0.2;
-    const bg = hexToRgb(P.ridges.bg || "#000000"), byPhoto = P.ridges.colorBy === "photo";
-    const Hh = Float32Array.from(D); boxBlur(Hh, w, h, Math.max(1, 2 * sc), 2);
-    for (let i = 0; i < n; i++) { C[i * 3] = bg[0]; C[i * 3 + 1] = bg[1]; C[i * 3 + 2] = bg[2]; }
+    // Depth waves (3.0, Texturelabs reference 2026-11-25): rows of lines lifted by depth, each column moved
+    // up as a whole (no Displace copies), nearer rows hide the rows behind. Columns, tilt, depth contrast, glow.
+    const RG = P.ridges, cols = RG.dir === "cols";
+    const W = cols ? h : w, Hh0 = cols ? w : h;
+    const T = (a, k) => { if (!cols) return a; const o = new Float32Array(a.length); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let q = 0; q < k; q++) o[(x * h + y) * k + q] = a[(y * w + x) * k + q]; return o; };
+    const step = Math.max(2, Math.round(RG.spacing * Math.max(0.5, sc))), amp = RG.lift / 100 * Hh0 * 0.2;
+    const bg = hexToRgb(RG.bg || "#000000"), byPhoto = RG.colorBy === "photo";
+    let Hh = Float32Array.from(D); boxBlur(Hh, w, h, Math.max(1, 2 * sc), 2);
+    const ct = (RG.contrast || 0) / 100;
+    if (ct > 0) for (let i = 0; i < n; i++) { const v = Hh[i], s2 = v * v * (3 - 2 * v); Hh[i] = clamp(0.5 + (v + (s2 - v) * ct - 0.5) * (1 + ct), 0, 1); }
+    Hh = T(Hh, 1);
+    const Lt = T(L, 1), Sc = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) for (let q = 0; q < 3; q++) Sc[i * 3 + q] = S[i * c + (c >= 3 ? q : 0)];
+    const St = T(Sc, 3), O = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { O[i * 3] = bg[0]; O[i * 3 + 1] = bg[1]; O[i * 3 + 2] = bg[2]; }
     const lw = Math.max(0.8, P.lines.width * 0.6 * Math.max(0.5, sc));
-    for (let y0 = 0; y0 < h + amp; y0 += step) {
+    // baselines: even, or with Tilt spaced closer at the top (far) and wider at the bottom (near)
+    const tilt = (RG.tilt || 0) / 100, base = [];
+    const rowsN = Math.ceil((Hh0 + amp) / step);
+    for (let k = 0; k <= rowsN; k++) { const t = k / rowsN; base.push(tilt > 0 ? (Hh0 + amp) * Math.pow(t, 1 + tilt * 1.2) : k * step); }
+    for (let r = 0; r < base.length; r++) {
+      const y0 = base[r], next = r + 1 < base.length ? base[r + 1] : y0 + step, gap = Math.max(1, next - y0);
+      const ampR = tilt > 0 ? amp * Math.min(1.6, (gap / step) * 0.7 + 0.3) : amp;
       let prev = null;
-      const row = Math.min(h - 1, y0);
-      for (let x = 0; x < w; x++) {
-        const i = row * w + x, d = Hh[i], yl = y0 - amp * d;
-        for (let y = Math.max(0, Math.ceil(yl)); y < Math.min(h, y0 + step); y++) { const j = y * w + x; C[j * 3] = bg[0]; C[j * 3 + 1] = bg[1]; C[j * 3 + 2] = bg[2]; }
-        const lum = 0.45 + 1.1 * Math.pow(L[i], 0.8) * (photo > 0 ? 1 : 0.6) + (photo > 0 ? 0 : 0.25);
-        const r = (byPhoto ? S[i * c] : col(d, 0)) * lum, g = (byPhoto ? S[i * c + 1] : col(d, 1)) * lum, b = (byPhoto ? S[i * c + 2] : col(d, 2)) * lum;
+      const row = Math.min(Hh0 - 1, Math.round(y0));
+      for (let x = 0; x < W; x++) {
+        const i = row * W + x, d = Hh[i], yl = y0 - ampR * d;
+        for (let y = Math.max(0, Math.ceil(yl)); y < Math.min(Hh0, y0 + gap); y++) { const j = y * W + x; O[j * 3] = bg[0]; O[j * 3 + 1] = bg[1]; O[j * 3 + 2] = bg[2]; }
+        const lum = 0.45 + 1.1 * Math.pow(Lt[i], 0.8) * (photo > 0 ? 1 : 0.6) + (photo > 0 ? 0 : 0.25);
+        const cr = (byPhoto ? St[i * 3] : col(d, 0)) * lum, cg = (byPhoto ? St[i * 3 + 1] : col(d, 1)) * lum, cb = (byPhoto ? St[i * 3 + 2] : col(d, 2)) * lum;
         const y1 = prev == null ? yl : Math.min(prev, yl), y2 = prev == null ? yl : Math.max(prev, yl);
         for (let y = Math.floor(y1 - lw); y <= Math.ceil(y2 + lw); y++) {
-          if (y < 0 || y >= h) continue;
+          if (y < 0 || y >= Hh0) continue;
           const dist = y < y1 ? y1 - y : y > y2 ? y - y2 : 0, a = clamp(lw / 2 + 0.5 - dist, 0, 1);
           if (a <= 0) continue;
-          const j = y * w + x; C[j * 3] += (r - C[j * 3]) * a; C[j * 3 + 1] += (g - C[j * 3 + 1]) * a; C[j * 3 + 2] += (b - C[j * 3 + 2]) * a;
+          const j = y * W + x; O[j * 3] += (cr - O[j * 3]) * a; O[j * 3 + 1] += (cg - O[j * 3 + 1]) * a; O[j * 3 + 2] += (cb - O[j * 3 + 2]) * a;
         }
         prev = yl;
       }
-      if (((y0 / step) & 15) === 0) await yieldFn();
+      if ((r & 15) === 0) await yieldFn();
+    }
+    if (cols) { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let q = 0; q < 3; q++) C[(y * w + x) * 3 + q] = O[(x * h + y) * 3 + q]; }
+    else C.set(O);
+    const gl = (RG.glow || 0) / 100;
+    if (gl > 0) {   // line glow: blurred lines added as light
+      for (let q = 0; q < 3; q++) {
+        const pl = new Float32Array(n); for (let i = 0; i < n; i++) pl[i] = Math.max(0, C[i * 3 + q] - bg[q]);
+        boxBlur(pl, w, h, Math.max(2, 6 * sc), 3);
+        for (let i = 0; i < n; i++) C[i * 3 + q] = Math.min(255, C[i * 3 + q] + pl[i] * gl * 2.2);
+      }
     }
     layers.push({ name: "Ridges", rgba: null, blend: "NORMAL" });
   } else if (st === "heat") {

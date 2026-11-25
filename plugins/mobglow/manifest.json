@@ -1,8 +1,8 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.mobglow",
-  "name": "Frank's Mobglow Brew",
-  "version": "2.0.1",
+  "name": "Halo Lab",
+  "version": "3.0.1",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "mobglowPanel",
       "label": {
-        "default": "Frank's Mobglow Brew"
+        "default": "Halo Lab"
       },
       "minimumSize": {
         "width": 300,

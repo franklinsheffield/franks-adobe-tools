@@ -562,3 +562,29 @@ input.cdnum { width: 30px; margin-left: 2px; text-align: center; }
 #app.arcade .tile.noimg .tname { padding: 6px 4px; text-align: center; }
 #app.arcade .row .hexwrap { flex: 1; min-width: 0; display: flex; }
 #app.arcade .row .hexwrap input.hex { flex: 1; min-width: 0; width: 60px; }
+
+/* tile grids outside the 3.0 style (Dithers ASCII 3.0 algorithm picker): 5 small tiles per row */
+.tgrid { display: flex; flex-direction: row; flex-wrap: wrap; margin-bottom: 6px; }
+.tile { width: 31%; margin: 0 2% 4px 0; border: 1px solid #444; background: #000; cursor: pointer; }
+.tile.on { border-color: #ffffff; box-shadow: 0 0 6px rgba(255,255,255,0.6); }
+.tile .timg { display: block; width: 100%; height: auto; }
+.tile .tname { font-size: 10px; line-height: 12px; padding: 2px 3px; color: #ddd; }
+.tile.noimg .timg { display: none; }
+.tgrid.ascii20 .tile, #app.arcade .tgrid.ascii20 .tile { width: 18.4%; margin: 0 2% 4px 0; }
+.tgrid.ascii20 .tile:nth-child(5n) { margin-right: 0; }
+.tgrid.ascii20 .tname { font-size: 9px; line-height: 11px; height: 22px; overflow: hidden; }
+
+/* 3.0 look badge (e.g. "Shape": the look needs type, a logo or a subject cut-out) */
+.look { position: relative; }
+.look .lookbadge { position: absolute; top: 3px; right: 3px; font-size: 8px; line-height: 10px; padding: 0 3px; border: 1px solid #ffffff; border-radius: 2px; background: #000000; color: #ffffff; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* 3.0 button rule (Frank 2026-11-25): effect buttons on their own bar; every group of
+   buttons is the same size with the same spacing (widths set by ui.evenRows). */
+#app.arcade .fxhead { display: flex; flex-direction: row; align-items: center; margin: 2px 0 3px 0; }
+#app.arcade .fxhead .fxlbl { font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; opacity: 0.7; }
+#app.arcade .fxhead .grow { flex: 1; }
+#app.arcade .fxhead .gobtn { margin: 0; min-width: 36px; justify-content: center; }
+#app.brand-console .tabrow .tabbtn, #app.arcade .tabrow .tabbtn { justify-content: center; overflow: hidden; }
+#app.brand-console .tabbtn .tabtxt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.seg .segbtn, .row > button, .jump .jumpbtn { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.seg { flex-wrap: wrap; }

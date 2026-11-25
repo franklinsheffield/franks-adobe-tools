@@ -14,6 +14,7 @@
 #include "../di_motion.h"
 #include "../di_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 
 using namespace brew;
 using namespace brewae;
@@ -51,7 +52,7 @@ template <int N> static std::string menuOf(const char* const (&names)[N]) { std:
 template <int N> static int indexOf(const char* const (&ids)[N], const std::string& v) { for (int i = 0; i < N; i++) if (v == ids[i]) return i; return 0; }
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDB-01  Frank's Brew suite\rHalftones, dithers, line art + ASCII with motion.", "Frank's Dithers Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDB-01  Lab suite\rHalftones, dithers, line art + ASCII with motion.", "Dithers Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
@@ -62,141 +63,163 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
 #define CHECK(NAME, V, ID) AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX(NAME, (V) ? 1 : 0, 0, ID);
 #define POPUP(NAME, N, V, MENU, ID) AEFX_CLR_STRUCT(def); PF_ADD_POPUP(NAME, N, V, MENU, ID);
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { P_MO_BASE, T_DM_START, T_LOOK_START, T_SCR_START, T_TUNE_START, T_ASC_START, T_IMG_START, T_DTF_START, T_PFX_START, T_INK_START, T_TON_START, T_PAL_START, T_CMYK_START, T_RGB_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   di::Params D; di::parseParams(D, di::LOOKS[0].text);
   static std::string looks = lookMenu(di::LOOKS, di::LOOK_COUNT, false), looksB = lookMenu(di::LOOKS, di::LOOK_COUNT, true);
   static std::string screens = menuOf(di::SCREEN_NAMES), dithers = menuOf(di::DITHER_NAMES), ascii = menuOf(di::ASCII_NAMES);
 
-  BREW_TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", di::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  POPUP("Look B (morph to)", di::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  BREW_ENDTOPIC(T_LOOK_END);
-
-  BREW_TOPIC("Screen", T_SCR_START, false);
-  POPUP("Engine", 3, D.engine + 1, ENGINES, P_ENGINE);
-  POPUP("Halftone screen", 11, indexOf(di::SCREEN_IDS, D.algoHalftone) + 1, screens.c_str(), P_SCREEN);
-  POPUP("Dither", 28, indexOf(di::DITHER_IDS, D.algoDither) + 1, dithers.c_str(), P_DITHER);
-  POPUP("ASCII glyphs", 12, indexOf(di::ASCII_IDS, D.algoAscii) + 1, ascii.c_str(), P_ASCII);
-  BREW_FS("Resolution (PPI)", 36, 1200, 72, 600, 300, 0, P_PPI);
-  BREW_FS("Screen (LPI)", 3, 300, 10, 120, D.lpi, 0, P_LPI);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Screen angle", D.angle, P_ANGLE);
-  BREW_FS("Pixel scale", 1, 16, 1, 16, D.pixel, 1, P_PIXEL);
-  CHECK("Smooth dot edges", D.aa, P_AA);
-  BREW_ENDTOPIC(T_SCR_END);
-
-  BREW_TOPIC("Tune", T_TUNE_START, true);
-  BREW_FS("Threshold", 0, 100, 0, 100, D.tThreshold, 0, P_THRESH);
-  BREW_FS("Strength (%)", 0, 100, 0, 100, D.tStrength, 0, P_STRENGTH);
-  POPUP("Line direction", 4, (int)std::string(DIR_IDS).find(D.tDirection.empty() ? 'h' : D.tDirection[0]) % 4 + 1, DIRS, P_DIR);
-  BREW_FS("Line weight", 1, 8, 1, 8, D.tWeight, 0, P_WEIGHT);
-  BREW_FS("Line spacing (px)", 2, 48, 2, 24, D.tSpacing, 0, P_SPACING);
-  BREW_FS("Jitter (%)", 0, 100, 0, 100, D.tJitter, 0, P_JITTER);
-  BREW_ENDTOPIC(T_TUNE_END);
-
-  BREW_TOPIC("ASCII", T_ASC_START, true);
-  BREW_FS("Glyph scale", 1, 16, 1, 16, D.aSize, 0, P_ASIZE);
-  BREW_FS("Edge glyphs (%)", 0, 100, 0, 100, D.aEdge, 0, P_AEDGE);
-  CHECK("Keep my character order", D.aKeepOrder, P_AKEEP);
-  CHECK("Text halftone", D.aTextMode, P_ATEXT);
-  BREW_ENDTOPIC(T_ASC_END);
-
-  BREW_TOPIC("Inks", T_INK_START, false);
-  POPUP("Colour mode", 5, D.mode + 1, MODES, P_MODE);
-  COLOR("Mono ink", D.monoInk, P_MONO_INK);
-  CHECK("Mono paper", !D.monoPaper.empty(), P_MONO_PAPER_ON);
-  COLOR("Mono paper colour", D.monoPaper.empty() ? std::string("#FFFFFF") : D.monoPaper, P_MONO_PAPER);
-  BREW_ENDTOPIC(T_INK_END);
-
-  BREW_TOPIC("Tonal inks", T_TON_START, true);
-  POPUP("Inks", MAX_TONAL, iclamp((int)D.tonalInks.size(), 1, MAX_TONAL), TONAL_COUNTS, P_TN_COUNT);
-  for (int k = 0; k < MAX_TONAL; k++) {
-    char cn[24], an[24]; snprintf(cn, sizeof cn, "Ink %d", k + 1); snprintf(an, sizeof an, "Ink %d angle", k + 1);
-    COLOR(cn, k < (int)D.tonalInks.size() ? D.tonalInks[k] : std::string("#808080"), P_TN1 + k * 2);
-    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, k < (int)D.tonalAngles.size() ? D.tonalAngles[k] : 45, P_TA1 + k * 2);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case P_MO_BASE: {  // Motion
+    if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: screen angle (deg/s)", "Drift X: pattern scroll (px/s)", "Drift Y: pattern scroll (px/s)");
+  } break;
+  case T_DM_START: {  // Dither motion
+    BREW_TOPIC("Dither motion", T_DM_START, false);
+    BREW_FS("Screen breathe (%)", 0, 100, 0, 100, 0, 0, P_DM_BREATHE);
+    BREW_FS("Breathe rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_BREATHER);
+    BREW_FS("Tone sweep (%)", 0, 100, 0, 100, 0, 0, P_DM_TONE);
+    BREW_FS("Tone rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_TONER);
+    BREW_ENDTOPIC(T_DM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    BREW_TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", di::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    POPUP("Look B (morph to)", di::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    BREW_ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_SCR_START: {  // Screen
+    BREW_TOPIC("Screen", T_SCR_START, false);
+    POPUP("Engine", 3, D.engine + 1, ENGINES, P_ENGINE);
+    POPUP("Halftone screen", 11, indexOf(di::SCREEN_IDS, D.algoHalftone) + 1, screens.c_str(), P_SCREEN);
+    POPUP("Dither", 28, indexOf(di::DITHER_IDS, D.algoDither) + 1, dithers.c_str(), P_DITHER);
+    POPUP("ASCII glyphs", 12, indexOf(di::ASCII_IDS, D.algoAscii) + 1, ascii.c_str(), P_ASCII);
+    BREW_FS("Resolution (PPI)", 36, 1200, 72, 600, 300, 0, P_PPI);
+    BREW_FS("Screen (LPI)", 3, 300, 10, 120, D.lpi, 0, P_LPI);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Screen angle", D.angle, P_ANGLE);
+    BREW_FS("Pixel scale", 1, 16, 1, 16, D.pixel, 1, P_PIXEL);
+    CHECK("Smooth dot edges", D.aa, P_AA);
+    BREW_ENDTOPIC(T_SCR_END);
+  } break;
+  case T_TUNE_START: {  // Tune
+    BREW_TOPIC("Tune", T_TUNE_START, true);
+    BREW_FS("Threshold", 0, 100, 0, 100, D.tThreshold, 0, P_THRESH);
+    BREW_FS("Strength (%)", 0, 100, 0, 100, D.tStrength, 0, P_STRENGTH);
+    POPUP("Line direction", 4, (int)std::string(DIR_IDS).find(D.tDirection.empty() ? 'h' : D.tDirection[0]) % 4 + 1, DIRS, P_DIR);
+    BREW_FS("Line weight", 1, 8, 1, 8, D.tWeight, 0, P_WEIGHT);
+    BREW_FS("Line spacing (px)", 2, 48, 2, 24, D.tSpacing, 0, P_SPACING);
+    BREW_FS("Jitter (%)", 0, 100, 0, 100, D.tJitter, 0, P_JITTER);
+    BREW_ENDTOPIC(T_TUNE_END);
+  } break;
+  case T_ASC_START: {  // ASCII
+    BREW_TOPIC("ASCII", T_ASC_START, true);
+    BREW_FS("Glyph scale", 1, 16, 1, 16, D.aSize, 0, P_ASIZE);
+    BREW_FS("Edge glyphs (%)", 0, 100, 0, 100, D.aEdge, 0, P_AEDGE);
+    CHECK("Keep my character order", D.aKeepOrder, P_AKEEP);
+    CHECK("Text halftone", D.aTextMode, P_ATEXT);
+    BREW_ENDTOPIC(T_ASC_END);
+  } break;
+  case T_IMG_START: {  // Image
+    BREW_TOPIC("Image", T_IMG_START, true);
+    CHECK("Adjust image", D.preOn, P_PRE_ON);
+    BREW_FS("Brightness", -100, 100, -100, 100, D.brightness, 0, P_BRIGHT);
+    BREW_FS("Contrast", -100, 100, -100, 100, D.contrast, 0, P_CONTRAST);
+    BREW_FS("Gamma", 0.1, 4, 0.2, 3, D.gamma, 2, P_GAMMA);
+    BREW_FS("Black point", 0, 250, 0, 250, D.black, 0, P_BLACK);
+    BREW_FS("White point", 1, 255, 1, 255, D.white, 0, P_WHITE);
+    BREW_FS("Blur (px)", 0, 8, 0, 8, D.blur, 1, P_BLUR);
+    BREW_FS("Sharpen (%)", 0, 200, 0, 200, D.sharpen, 0, P_SHARPEN);
+    BREW_FS("Sharpen radius (px)", 0.5, 30, 0.5, 30, D.radius, 1, P_RADIUS);
+    BREW_FS("Noise -/+", -100, 100, -100, 100, D.noise, 0, P_NOISE);
+    BREW_FS("Haze (%)", 0, 100, 0, 100, D.haze, 0, P_HAZE);
+    BREW_FS("Invert (%)", 0, 100, 0, 100, D.invert, 0, P_INVERT);
+    CHECK("Edge lines", D.edgesOn, P_EDGE_ON);
+    BREW_FS("Edge strength (%)", 0, 100, 0, 100, D.edgeStrength, 0, P_EDGE_STR);
+    BREW_FS("Edge thickness (px)", 1, 6, 1, 6, D.edgeThick, 0, P_EDGE_THICK);
+    BREW_ENDTOPIC(T_IMG_END);
+  } break;
+  case T_DTF_START: {  // DTF knock-out
+    BREW_TOPIC("DTF knock-out", T_DTF_START, true);
+    CHECK("Knock out garment", D.dtfOn, P_DTF_ON);
+    COLOR("Garment colour", D.garment, P_GARMENT);
+    BREW_FS("Fuzziness (%)", 0, 100, 0, 100, D.fuzz, 0, P_FUZZ);
+    BREW_FS("Feather (%)", 0, 100, 0, 100, D.feather, 0, P_FEATHER);
+    CHECK("Soft edges as dots", D.dots, P_DOTS);
+    BREW_ENDTOPIC(T_DTF_END);
+  } break;
+  case T_PFX_START: {  // Print FX
+    BREW_TOPIC("Print FX", T_PFX_START, true);
+    CHECK("Dot gain", D.gainOn, P_GAIN_ON);
+    BREW_FS("Dot gain (px)", -4, 4, -4, 4, D.gainAmount, 0, P_GAIN);
+    CHECK("Misregistration", D.misregOn, P_MIS_ON);
+    BREW_FS("Misregistration (px)", 1, 12, 1, 12, D.misregAmount, 0, P_MIS);
+    CHECK("Remove specks", D.cleanOn, P_CLEAN_ON);
+    BREW_FS("Smallest dot (mm)", 0.1, 3, 0.1, 3, D.cleanMm, 1, P_CLEAN);
+    CHECK("Distress", D.distressOn, P_DIS_ON);
+    BREW_FS("Distress (%)", 0, 100, 0, 100, D.distressAmount, 0, P_DIS);
+    POPUP("Background", 2, 1, BGS, P_BG);
+    BREW_ENDTOPIC(T_PFX_END);
+  } break;
+  case T_INK_START: {  // Inks
+    BREW_TOPIC("Inks", T_INK_START, false);
+    POPUP("Colour mode", 5, D.mode + 1, MODES, P_MODE);
+    COLOR("Mono ink", D.monoInk, P_MONO_INK);
+    CHECK("Mono paper", !D.monoPaper.empty(), P_MONO_PAPER_ON);
+    COLOR("Mono paper colour", D.monoPaper.empty() ? std::string("#FFFFFF") : D.monoPaper, P_MONO_PAPER);
+    BREW_ENDTOPIC(T_INK_END);
+  } break;
+  case T_TON_START: {  // Tonal inks
+    BREW_TOPIC("Tonal inks", T_TON_START, true);
+    POPUP("Inks", MAX_TONAL, iclamp((int)D.tonalInks.size(), 1, MAX_TONAL), TONAL_COUNTS, P_TN_COUNT);
+    for (int k = 0; k < MAX_TONAL; k++) {
+      char cn[24], an[24]; snprintf(cn, sizeof cn, "Ink %d", k + 1); snprintf(an, sizeof an, "Ink %d angle", k + 1);
+      COLOR(cn, k < (int)D.tonalInks.size() ? D.tonalInks[k] : std::string("#808080"), P_TN1 + k * 2);
+      AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, k < (int)D.tonalAngles.size() ? D.tonalAngles[k] : 45, P_TA1 + k * 2);
+    }
+    CHECK("Tonal paper", !D.tonalPaper.empty(), P_TN_PAPER_ON);
+    COLOR("Tonal paper colour", D.tonalPaper.empty() ? std::string("#FFFFFF") : D.tonalPaper, P_TN_PAPER);
+    BREW_ENDTOPIC(T_TON_END);
+  } break;
+  case T_PAL_START: {  // Palette
+    BREW_TOPIC("Palette", T_PAL_START, true);
+    POPUP("Colours", MAX_PAL - 1, iclamp((int)D.gradeColors.size(), 2, MAX_PAL) - 1, PAL_COUNTS, P_PAL_COUNT);
+    for (int k = 0; k < MAX_PAL; k++) {
+      char cn[24]; snprintf(cn, sizeof cn, "Colour %d", k + 1);
+      COLOR(cn, k < (int)D.gradeColors.size() ? D.gradeColors[k] : std::string("#808080"), P_PC1 + k);
+    }
+    BREW_FS("Dither spread (%)", 0, 100, 0, 100, D.gradeSpread, 0, P_SPREAD);
+    CHECK("Leave lightest as paper", D.skipLightest, P_SKIP);
+    BREW_ENDTOPIC(T_PAL_END);
+  } break;
+  case T_CMYK_START: {  // CMYK
+    BREW_TOPIC("CMYK", T_CMYK_START, true);
+    const char* cmy[4] = { "Cyan", "Magenta", "Yellow", "Black" };
+    for (int k = 0; k < 4; k++) {
+      char on[24], an[24]; snprintf(on, sizeof on, "%s", cmy[k]); snprintf(an, sizeof an, "%s angle", cmy[k]);
+      CHECK(on, D.cmykOn[k], P_C_ON + k * 2);
+      AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, D.cmykAngles[k], P_C_ANG + k * 2);
+    }
+    BREW_FS("Black generation (%)", 0, 100, 0, 100, D.gcr, 0, P_GCR);
+    BREW_ENDTOPIC(T_CMYK_END);
+  } break;
+  case T_RGB_START: {  // RGB split
+    BREW_TOPIC("RGB split", T_RGB_START, true);
+    const char* rgbn[3] = { "Red", "Green", "Blue" };
+    for (int k = 0; k < 3; k++) {
+      char on[24], an[24], sn[24]; snprintf(on, sizeof on, "%s", rgbn[k]); snprintf(an, sizeof an, "%s angle", rgbn[k]); snprintf(sn, sizeof sn, "%s strength (%%)", rgbn[k]);
+      CHECK(on, D.rgbOn[k], P_R_ON + k * 3);
+      AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, D.rgbAngles[k], P_R_ANG + k * 3);
+      BREW_FS(sn, 0, 200, 0, 200, D.rgbStrength[k], 0, P_R_STR + k * 3);
+    }
+    BREW_ENDTOPIC(T_RGB_END);
+  } break;
+  default: break;
   }
-  CHECK("Tonal paper", !D.tonalPaper.empty(), P_TN_PAPER_ON);
-  COLOR("Tonal paper colour", D.tonalPaper.empty() ? std::string("#FFFFFF") : D.tonalPaper, P_TN_PAPER);
-  BREW_ENDTOPIC(T_TON_END);
-
-  BREW_TOPIC("Palette", T_PAL_START, true);
-  POPUP("Colours", MAX_PAL - 1, iclamp((int)D.gradeColors.size(), 2, MAX_PAL) - 1, PAL_COUNTS, P_PAL_COUNT);
-  for (int k = 0; k < MAX_PAL; k++) {
-    char cn[24]; snprintf(cn, sizeof cn, "Colour %d", k + 1);
-    COLOR(cn, k < (int)D.gradeColors.size() ? D.gradeColors[k] : std::string("#808080"), P_PC1 + k);
-  }
-  BREW_FS("Dither spread (%)", 0, 100, 0, 100, D.gradeSpread, 0, P_SPREAD);
-  CHECK("Leave lightest as paper", D.skipLightest, P_SKIP);
-  BREW_ENDTOPIC(T_PAL_END);
-
-  BREW_TOPIC("CMYK", T_CMYK_START, true);
-  const char* cmy[4] = { "Cyan", "Magenta", "Yellow", "Black" };
-  for (int k = 0; k < 4; k++) {
-    char on[24], an[24]; snprintf(on, sizeof on, "%s", cmy[k]); snprintf(an, sizeof an, "%s angle", cmy[k]);
-    CHECK(on, D.cmykOn[k], P_C_ON + k * 2);
-    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, D.cmykAngles[k], P_C_ANG + k * 2);
-  }
-  BREW_FS("Black generation (%)", 0, 100, 0, 100, D.gcr, 0, P_GCR);
-  BREW_ENDTOPIC(T_CMYK_END);
-
-  BREW_TOPIC("RGB split", T_RGB_START, true);
-  const char* rgbn[3] = { "Red", "Green", "Blue" };
-  for (int k = 0; k < 3; k++) {
-    char on[24], an[24], sn[24]; snprintf(on, sizeof on, "%s", rgbn[k]); snprintf(an, sizeof an, "%s angle", rgbn[k]); snprintf(sn, sizeof sn, "%s strength (%%)", rgbn[k]);
-    CHECK(on, D.rgbOn[k], P_R_ON + k * 3);
-    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE(an, D.rgbAngles[k], P_R_ANG + k * 3);
-    BREW_FS(sn, 0, 200, 0, 200, D.rgbStrength[k], 0, P_R_STR + k * 3);
-  }
-  BREW_ENDTOPIC(T_RGB_END);
-
-  BREW_TOPIC("Image", T_IMG_START, true);
-  CHECK("Adjust image", D.preOn, P_PRE_ON);
-  BREW_FS("Brightness", -100, 100, -100, 100, D.brightness, 0, P_BRIGHT);
-  BREW_FS("Contrast", -100, 100, -100, 100, D.contrast, 0, P_CONTRAST);
-  BREW_FS("Gamma", 0.1, 4, 0.2, 3, D.gamma, 2, P_GAMMA);
-  BREW_FS("Black point", 0, 250, 0, 250, D.black, 0, P_BLACK);
-  BREW_FS("White point", 1, 255, 1, 255, D.white, 0, P_WHITE);
-  BREW_FS("Blur (px)", 0, 8, 0, 8, D.blur, 1, P_BLUR);
-  BREW_FS("Sharpen (%)", 0, 200, 0, 200, D.sharpen, 0, P_SHARPEN);
-  BREW_FS("Sharpen radius (px)", 0.5, 30, 0.5, 30, D.radius, 1, P_RADIUS);
-  BREW_FS("Noise -/+", -100, 100, -100, 100, D.noise, 0, P_NOISE);
-  BREW_FS("Haze (%)", 0, 100, 0, 100, D.haze, 0, P_HAZE);
-  BREW_FS("Invert (%)", 0, 100, 0, 100, D.invert, 0, P_INVERT);
-  CHECK("Edge lines", D.edgesOn, P_EDGE_ON);
-  BREW_FS("Edge strength (%)", 0, 100, 0, 100, D.edgeStrength, 0, P_EDGE_STR);
-  BREW_FS("Edge thickness (px)", 1, 6, 1, 6, D.edgeThick, 0, P_EDGE_THICK);
-  BREW_ENDTOPIC(T_IMG_END);
-
-  BREW_TOPIC("DTF knock-out", T_DTF_START, true);
-  CHECK("Knock out garment", D.dtfOn, P_DTF_ON);
-  COLOR("Garment colour", D.garment, P_GARMENT);
-  BREW_FS("Fuzziness (%)", 0, 100, 0, 100, D.fuzz, 0, P_FUZZ);
-  BREW_FS("Feather (%)", 0, 100, 0, 100, D.feather, 0, P_FEATHER);
-  CHECK("Soft edges as dots", D.dots, P_DOTS);
-  BREW_ENDTOPIC(T_DTF_END);
-
-  BREW_TOPIC("Print FX", T_PFX_START, true);
-  CHECK("Dot gain", D.gainOn, P_GAIN_ON);
-  BREW_FS("Dot gain (px)", -4, 4, -4, 4, D.gainAmount, 0, P_GAIN);
-  CHECK("Misregistration", D.misregOn, P_MIS_ON);
-  BREW_FS("Misregistration (px)", 1, 12, 1, 12, D.misregAmount, 0, P_MIS);
-  CHECK("Remove specks", D.cleanOn, P_CLEAN_ON);
-  BREW_FS("Smallest dot (mm)", 0.1, 3, 0.1, 3, D.cleanMm, 1, P_CLEAN);
-  CHECK("Distress", D.distressOn, P_DIS_ON);
-  BREW_FS("Distress (%)", 0, 100, 0, 100, D.distressAmount, 0, P_DIS);
-  POPUP("Background", 2, 1, BGS, P_BG);
-  BREW_ENDTOPIC(T_PFX_END);
-
-  if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: screen angle (deg/s)", "Drift X: pattern scroll (px/s)", "Drift Y: pattern scroll (px/s)");
-
-  BREW_TOPIC("Dither motion", T_DM_START, false);
-  BREW_FS("Screen breathe (%)", 0, 100, 0, 100, 0, 0, P_DM_BREATHE);
-  BREW_FS("Breathe rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_BREATHER);
-  BREW_FS("Tone sweep (%)", 0, 100, 0, 100, 0, 0, P_DM_TONE);
-  BREW_FS("Tone rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_TONER);
-  BREW_ENDTOPIC(T_DM_END);
 
   out_data->num_params = P_NUM;
   return err;
@@ -267,7 +290,7 @@ static void applyLook(PF_ParamDef* p[], int idx) {
   setB(p, P_CLEAN_ON, P.cleanOn); setF(p, P_CLEAN, P.cleanMm); setB(p, P_DIS_ON, P.distressOn); setF(p, P_DIS, P.distressAmount);
 }
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -291,20 +314,21 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's Dithers Brew", "com.franks.dithers.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Dithers Lab", "com.franks.dithers.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }

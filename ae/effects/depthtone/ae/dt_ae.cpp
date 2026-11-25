@@ -13,6 +13,7 @@
 #include "../dt_motion.h"
 #include "../dt_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 
 using namespace brew;
 using namespace brewae;
@@ -33,7 +34,7 @@ enum {
 static const char* STYLES = "Contour lines|Terraces|Relief";
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEP-03  Frank's Brew suite\rBrightness as depth: contours, terraces, relief + motion.", "Frank's Depthtone Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEP-03  Lab suite\rBrightness as depth: contours, terraces, relief + motion.", "Depth Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
@@ -41,68 +42,84 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
   return PF_Err_NONE;
 }
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { P_MO_BASE, T_DM_START, T_LOOK_START, T_DEPTH_START, T_STYLE_START, T_LINES_START, T_LIGHT_START, T_COL_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   dt::Params D; dt::parseParams(D, dt::LOOKS[0].text);
   static std::string looks = lookMenu(dt::LOOKS, dt::LOOK_COUNT, false), looksB = lookMenu(dt::LOOKS, dt::LOOK_COUNT, true);
 
-  BREW_TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", dt::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", dt::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  BREW_ENDTOPIC(T_LOOK_END);
-
-  BREW_TOPIC("Depth", T_DEPTH_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Invert (dark is near)", D.invert, 0, P_INVERT);
-  BREW_FS("Smooth (px)", 0, 20, 0, 20, D.smooth, 0, P_SMOOTH);
-  BREW_FS("Near (%)", 1, 100, 1, 100, D.near_, 0, P_NEAR);
-  BREW_FS("Far (%)", 0, 99, 0, 99, D.far_, 0, P_FAR);
-  BREW_FS("Levels", 2, 64, 2, 64, D.levels, 0, P_LEVELS);
-  BREW_ENDTOPIC(T_DEPTH_END);
-
-  BREW_TOPIC("Style", T_STYLE_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Style", 3, D.style + 1, STYLES, P_STYLE);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Show original underneath", 0, 0, P_OVER);
-  BREW_ENDTOPIC(T_STYLE_END);
-
-  BREW_TOPIC("Colour", T_COL_START, true);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Gradient stops", 4, (int)std::max<size_t>(2, std::min<size_t>(MAX_STOPS, D.stops.size())) - 1, "2|3|4|5", P_STOPS);
-  for (int s = 0; s < MAX_STOPS; s++) {
-    RGB c = { 0, 0, 0 }; double p = s * 100.0 / (MAX_STOPS - 1);
-    if (s < (int)D.stops.size()) { c = hexToRgb(D.stops[s].c); p = D.stops[s].p; }
-    char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour (far)", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
-    if (s > 0) snprintf(cn, sizeof cn, s == MAX_STOPS - 1 ? "Stop %d colour (near)" : "Stop %d colour", s + 1);
-    AEFX_CLR_STRUCT(def); PF_ADD_COLOR(cn, (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_SC1 + s * 2);
-    BREW_FS(pn, 0, 100, 0, 100, p, 0, P_SP1 + s * 2);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case P_MO_BASE: {  // Motion
+    if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: light orbit (deg/s)", "Drift X: depth slide (px/s)", "Drift Y: depth slide (px/s)");
+  } break;
+  case T_DM_START: {  // Depth motion
+    BREW_TOPIC("Depth motion", T_DM_START, false);
+    BREW_FS("Level flow (levels/s)", -20, 20, -5, 5, 0, 2, P_DM_FLOW);
+    BREW_FS("Fog breathe (%)", 0, 100, 0, 100, 0, 0, P_DM_FOGB);
+    BREW_FS("Fog breathe rate (Hz)", 0, 10, 0, 2, 0.25, 2, P_DM_FOGR);
+    BREW_FS("Depth sweep (%)", 0, 100, 0, 100, 0, 0, P_DM_RANGE);
+    BREW_FS("Depth sweep rate (Hz)", 0, 10, 0, 2, 0.25, 2, P_DM_RANGER);
+    BREW_ENDTOPIC(T_DM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    BREW_TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", dt::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", dt::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    BREW_ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_DEPTH_START: {  // Depth
+    BREW_TOPIC("Depth", T_DEPTH_START, false);
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Invert (dark is near)", D.invert, 0, P_INVERT);
+    BREW_FS("Smooth (px)", 0, 20, 0, 20, D.smooth, 0, P_SMOOTH);
+    BREW_FS("Near (%)", 1, 100, 1, 100, D.near_, 0, P_NEAR);
+    BREW_FS("Far (%)", 0, 99, 0, 99, D.far_, 0, P_FAR);
+    BREW_FS("Levels", 2, 64, 2, 64, D.levels, 0, P_LEVELS);
+    BREW_ENDTOPIC(T_DEPTH_END);
+  } break;
+  case T_STYLE_START: {  // Style
+    BREW_TOPIC("Style", T_STYLE_START, false);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Style", 3, D.style + 1, STYLES, P_STYLE);
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Show original underneath", 0, 0, P_OVER);
+    BREW_ENDTOPIC(T_STYLE_END);
+  } break;
+  case T_LINES_START: {  // Contour lines
+    BREW_TOPIC("Contour lines", T_LINES_START, true);
+    BREW_FS("Width (px)", 1, 12, 1, 12, D.lineWidth, 0, P_LWIDTH);
+    BREW_FS("Every Nth level", 1, 8, 1, 8, D.every, 0, P_EVERY);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Colour by", 2, D.colorByDepth ? 2 : 1, "One colour|Depth gradient", P_COLORBY);
+    { RGB c = hexToRgb(D.lineColor); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Line colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_LCOLOR); }
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Fill bands with gradient", D.fill, 0, P_FILL);
+    BREW_ENDTOPIC(T_LINES_END);
+  } break;
+  case T_LIGHT_START: {  // Light (terraces, relief)
+    BREW_TOPIC("Light (terraces, relief)", T_LIGHT_START, true);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Light angle", D.lightAngle, P_LANGLE);
+    BREW_FS("Shadow length (px)", 1, 40, 1, 40, D.shadow, 0, P_SHADOW);
+    BREW_FS("Strength (%)", 0, 100, 0, 100, D.lightStrength, 0, P_LSTR);
+    BREW_ENDTOPIC(T_LIGHT_END);
+  } break;
+  case T_COL_START: {  // Colour
+    BREW_TOPIC("Colour", T_COL_START, true);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Gradient stops", 4, (int)std::max<size_t>(2, std::min<size_t>(MAX_STOPS, D.stops.size())) - 1, "2|3|4|5", P_STOPS);
+    for (int s = 0; s < MAX_STOPS; s++) {
+      RGB c = { 0, 0, 0 }; double p = s * 100.0 / (MAX_STOPS - 1);
+      if (s < (int)D.stops.size()) { c = hexToRgb(D.stops[s].c); p = D.stops[s].p; }
+      char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour (far)", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
+      if (s > 0) snprintf(cn, sizeof cn, s == MAX_STOPS - 1 ? "Stop %d colour (near)" : "Stop %d colour", s + 1);
+      AEFX_CLR_STRUCT(def); PF_ADD_COLOR(cn, (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_SC1 + s * 2);
+      BREW_FS(pn, 0, 100, 0, 100, p, 0, P_SP1 + s * 2);
+    }
+    BREW_FS("Fog (%)", 0, 100, 0, 100, D.fog, 0, P_FOG);
+    { RGB c = hexToRgb(D.fogColor); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Fog colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_FOGCOL); }
+    BREW_ENDTOPIC(T_COL_END);
+  } break;
+  default: break;
   }
-  BREW_FS("Fog (%)", 0, 100, 0, 100, D.fog, 0, P_FOG);
-  { RGB c = hexToRgb(D.fogColor); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Fog colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_FOGCOL); }
-  BREW_ENDTOPIC(T_COL_END);
-
-  BREW_TOPIC("Contour lines", T_LINES_START, true);
-  BREW_FS("Width (px)", 1, 12, 1, 12, D.lineWidth, 0, P_LWIDTH);
-  BREW_FS("Every Nth level", 1, 8, 1, 8, D.every, 0, P_EVERY);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Colour by", 2, D.colorByDepth ? 2 : 1, "One colour|Depth gradient", P_COLORBY);
-  { RGB c = hexToRgb(D.lineColor); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Line colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_LCOLOR); }
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Fill bands with gradient", D.fill, 0, P_FILL);
-  BREW_ENDTOPIC(T_LINES_END);
-
-  BREW_TOPIC("Light (terraces, relief)", T_LIGHT_START, true);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Light angle", D.lightAngle, P_LANGLE);
-  BREW_FS("Shadow length (px)", 1, 40, 1, 40, D.shadow, 0, P_SHADOW);
-  BREW_FS("Strength (%)", 0, 100, 0, 100, D.lightStrength, 0, P_LSTR);
-  BREW_ENDTOPIC(T_LIGHT_END);
-
-  if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: light orbit (deg/s)", "Drift X: depth slide (px/s)", "Drift Y: depth slide (px/s)");
-
-  BREW_TOPIC("Depth motion", T_DM_START, false);
-  BREW_FS("Level flow (levels/s)", -20, 20, -5, 5, 0, 2, P_DM_FLOW);
-  BREW_FS("Fog breathe (%)", 0, 100, 0, 100, 0, 0, P_DM_FOGB);
-  BREW_FS("Fog breathe rate (Hz)", 0, 10, 0, 2, 0.25, 2, P_DM_FOGR);
-  BREW_FS("Depth sweep (%)", 0, 100, 0, 100, 0, 0, P_DM_RANGE);
-  BREW_FS("Depth sweep rate (Hz)", 0, 10, 0, 2, 0.25, 2, P_DM_RANGER);
-  BREW_ENDTOPIC(T_DM_END);
 
   out_data->num_params = P_NUM;
   return err;
@@ -131,7 +148,7 @@ static void applyLook(PF_ParamDef* p[], int idx) {
   setA(p, P_LANGLE, P.lightAngle); setF(p, P_SHADOW, P.shadow); setF(p, P_LSTR, P.lightStrength);
 }
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -156,20 +173,21 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's Depthtone Brew", "com.franks.depthtone.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Depth Lab", "com.franks.depthtone.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }

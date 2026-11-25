@@ -60,6 +60,15 @@ async function renderPhase(src, P, hooks) {
   for (let i = 0; i < n; i++) L[i] = (0.2126 * R[i] + 0.7152 * G[i] + 0.0722 * B[i]) / 255 * (A[i] / 255);
   const Ld = M.boxBlur(L.slice(), w, h, Math.max(1, sp * 0.5 * (1.2 - Q.detail / 100)), 2);
   const Ls = M.boxBlur(L.slice(), w, h, Math.max(1, sp * (0.6 + 3 * Q.smooth / 100)), 3);
+  // Background calm (3.0): local texture (brick, foliage) thins the lines there; 0 = off
+  let CALM = null;
+  if ((Q.calm || 0) > 0) {
+    const lo = M.boxBlur(L.slice(), w, h, Math.max(2, sp * 1.5), 2);
+    const det = new Float32Array(n); for (let i = 0; i < n; i++) det[i] = Math.abs(L[i] - lo[i]);
+    const dm = M.boxBlur(det, w, h, Math.max(2, sp * 2.5), 2), srt = Float32Array.from(dm).sort(), ref = Math.max(1e-3, srt[(n * 0.95) | 0]);
+    const c = Q.calm / 100; CALM = new Float32Array(n);
+    for (let i = 0; i < n; i++) CALM[i] = 1 - c * clamp((dm[i] / ref - 0.35) / 0.65, 0, 1) * 0.85;
+  }
   await yieldFn();
 
   // 2. the field
@@ -151,7 +160,8 @@ async function renderPhase(src, P, hooks) {
         const dp = 0.5 + 0.5 * Math.cos(2 * Math.PI * along);
         k *= 1 - dots * Math.pow(1 - v, 0.6) * (1 - dp * dp);
       }
-      I[i] = k; core[i] = Math.pow(prof, 5) * v * v;
+      if (CALM) { k *= CALM[i]; }
+      I[i] = k; core[i] = Math.pow(prof, 5) * v * v * (CALM ? CALM[i] : 1);
     }
     if ((y & 63) === 0) await yieldFn();
   }
@@ -203,8 +213,17 @@ async function renderPhase(src, P, hooks) {
   if (Q.flare > 0) {
     FL = new Float32Array(n * 3);
     const rnd = M.rng((Q.seed | 0) * 97 + 5), count = 1 + Math.round(Q.flare / 100 * 2), mn = Math.min(w, h);
+    // Flare at (3.0): "random" spots (1.x) or "bright" = the brightest highlights, kept apart from each other
+    let spots = null;
+    if (Q.flareAt === "bright") {
+      spots = []; const cand = [], st = Math.max(2, Math.round(mn / 40));
+      for (let y = st; y < h - st; y += st) for (let x = st; x < w - st; x += st) cand.push([Ls[y * w + x] * 0.6 + L[y * w + x] * 0.4, x, y]);
+      cand.sort((a, b) => b[0] - a[0]);
+      for (const c of cand) { if (spots.length >= count) break; if (spots.every((q) => Math.hypot(q[0] - c[1], q[1] - c[2]) > mn * 0.22)) spots.push([c[1], c[2]]); }
+    }
     for (let s = 0; s < count; s++) {
-      const cx = (0.1 + 0.8 * rnd()) * w, cy = (0.1 + 0.8 * rnd()) * h, a = (-35 - 40 * rnd()) * Math.PI / 180;
+      let cx = (0.1 + 0.8 * rnd()) * w, cy = (0.1 + 0.8 * rnd()) * h; const a = (-35 - 40 * rnd()) * Math.PI / 180;
+      if (spots) { if (!spots[s]) break; cx = spots[s][0]; cy = spots[s][1]; }
       const len = mn * (0.07 + 0.08 * rnd()), wid = len * 0.16, ux = Math.cos(a), uy = Math.sin(a), str = Q.flare / 100 * 255;
       const x0 = Math.max(0, (cx - len) | 0), x1 = Math.min(w - 1, (cx + len) | 0), y0 = Math.max(0, (cy - len) | 0), y1 = Math.min(h - 1, (cy + len) | 0);
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -230,6 +249,9 @@ async function renderPhase(src, P, hooks) {
   const oBase = split ? new Uint8Array(n * 4) : null, oLines = split ? new Uint8Array(n * 4) : null, oGlow = split && GR ? new Uint8Array(n * 4) : null;
   const oGrid = split ? new Uint8Array(n * 4) : null, oFlare = split && FL ? new Uint8Array(n * 4) : null, out = split ? null : new Uint8Array(n * 4);
   const fin = (c) => clamp((c - 128) * con + 128 + (bri - 1) * 128, 0, 255);
+  // Photo mix (3.0): the (toned) photo screened under the lines so the subject stays readable; 0 = off
+  const pm = clamp((Q.photo || 0) / 100, 0, 1);
+  const ph3 = (px, py, ch) => (ch === 0 ? sample(R, w, h, px, py) : ch === 1 ? sample(G, w, h, px, py) : sample(B, w, h, px, py)) * pm;
   // straight (un-premultiplied) colour from an additive value on black, for transparent layers
   const putAdd = (buf, i, r, g, b) => {
     r = clamp(r, 0, 255); g = clamp(g, 0, 255); b = clamp(b, 0, 255);
@@ -287,7 +309,8 @@ async function renderPhase(src, P, hooks) {
       const gn = grain ? M.hashNoise(Math.round(x / Math.max(sc, 0.35)), Math.round(y / Math.max(sc, 0.35)), (Q.seed | 0) + 3) * grain : 0;
       const fl = FL ? [sample3(FL, w, h, px, py, 0), sample3(FL, w, h, px, py, 1), sample3(FL, w, h, px, py, 2)] : null;
       if (split) {
-        const br = Math.max(0, base[0] + gn * 0.6 + 6) * k, bg = Math.max(0, base[1] + gn * 0.6 + 4) * k, bb = Math.max(0, base[2] + gn * 0.6 + 3) * k;
+        let br = Math.max(0, base[0] + gn * 0.6 + 6) * k, bg = Math.max(0, base[1] + gn * 0.6 + 4) * k, bb = Math.max(0, base[2] + gn * 0.6 + 3) * k;
+        if (pm > 0) { const sc3 = (b0, c) => 255 - (255 - clamp(b0, 0, 255)) * (255 - c * k) / 255; br = sc3(br, ph3(px, py, 0)); bg = sc3(bg, ph3(px, py, 1)); bb = sc3(bb, ph3(px, py, 2)); }
         oBase[i * 4] = clamp(br, 0, 255); oBase[i * 4 + 1] = clamp(bg, 0, 255); oBase[i * 4 + 2] = clamp(bb, 0, 255); oBase[i * 4 + 3] = 255;
         putAdd(oLines, i, fin(lr * k), fin(lg * k), fin(lb * k));
         if (oGlow) putAdd(oGlow, i, gr * k, gg * k, gb * k);
@@ -296,6 +319,7 @@ async function renderPhase(src, P, hooks) {
       } else {
         // merged: base + lines + glow, through the mask, flare screened on top
         let r = base[0] + gn * 0.6 + 6 + lr + gr, g = base[1] + gn * 0.6 + 4 + lg + gg, b = base[2] + gn * 0.6 + 3 + lb + gb;
+        if (pm > 0) { const p0 = ph3(px, py, 0), p1 = ph3(px, py, 1), p2 = ph3(px, py, 2); r += p0 * (1 - clamp(r, 0, 255) / 255); g += p1 * (1 - clamp(g, 0, 255) / 255); b += p2 * (1 - clamp(b, 0, 255) / 255); }
         r = fin(r * mr * k); g = fin(g * mg * k); b = fin(b * mb * k);
         if (fl) { r = 255 - (255 - r) * (255 - clamp(fl[0] * k, 0, 255)) / 255; g = 255 - (255 - g) * (255 - clamp(fl[1] * k, 0, 255)) / 255; b = 255 - (255 - b) * (255 - clamp(fl[2] * k, 0, 255)) / 255; }
         out[i * 4] = r; out[i * 4 + 1] = g; out[i * 4 + 2] = b; out[i * 4 + 3] = 255;

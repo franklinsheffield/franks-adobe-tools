@@ -96,7 +96,7 @@ function createControls(env, selection) {
       if (txt === last && sel === lastSel) return;
       last = txt; lastSel = sel;
       const t = PF.text(txt, { font: "lcd", color: sel ? "#ffffff" : glow() });
-      img.src = t.url; img.style.width = t.w + "px"; img.style.height = t.h + "px";
+      if (img.__u !== t.url) { img.__u = t.url; img.src = t.url; } img.style.width = t.w + "px"; img.style.height = t.h + "px";
     };
     input.addEventListener("focus", () => node.classList.add("typing"));
     input.addEventListener("blur", () => node.classList.remove("typing"));
@@ -262,7 +262,7 @@ function createControls(env, selection) {
     const img = el("img", { class: "adial" });
     min = min == null ? 0 : min; max = max == null ? 360 : max; step = step || 1;
     me = numeric({ label, path, min, max, step, unit: "°", kind: "angle", cls: "angle dial",
-      visual: () => ({ node: img, draw: (v, sel) => { img.src = angleImage(v, glow(), sel); } }) });
+      visual: () => ({ node: img, draw: (v, sel) => { const u = angleImage(v, glow(), sel); if (img.__u !== u) { img.__u = u; img.src = u; } } }) });
     dragOn(img, me, (e, d) => {
       let r = null; try { r = img.getBoundingClientRect(); } catch (err) { r = null; }
       if (!r || !r.width) return d.v + (d.y - e.clientY);

@@ -41,8 +41,8 @@ cat > "$B/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>$NAME</string>
   <key>CFBundlePackageType</key><string>eFKT</string>
   <key>CFBundleSignature</key><string>FXTC</string>
-  <key>CFBundleShortVersionString</key><string>1.0.0</string>
-  <key>CFBundleVersion</key><string>1.0.0</string>
+  <key>CFBundleShortVersionString</key><string>3.0.0</string>
+  <key>CFBundleVersion</key><string>3.0.0</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
 </dict></plist>
 PLIST

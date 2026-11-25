@@ -1,11 +1,14 @@
 # Look browser sample picture -> plugins/<tool>/look-sample.js
 #   python3 tools/make_look_sample.py tools/look-samples/<tool>.png plugins/<tool>/look-sample.js
 # The picture is centre-cropped to 4:3 (or kept whole with --whole) and stored as raw RGB in base64 (320x240, or 200x150 for small sources).
-# Sources in tools/look-samples/ are free images Frank picked (2026-11-22).
+# Sources in tools/look-samples/ are free images Frank picked (2026-11-22); 2026-11-25 Frank sent 13 photos, one picked per plugin (--square).
 import sys, base64
 from PIL import Image, ImageOps
 im = Image.open(sys.argv[1]).convert("RGB")
-if "--whole" in sys.argv:   # keep the whole picture, any shape, long side 200 px, the look-thumbnail size (Frank's suite photo, 2026-11-22)
+if "--square" in sys.argv:   # 200 x 200, crop biased up so faces stay in (Frank's look photos, 2026-11-25)
+    size = (200, 200)
+    im = ImageOps.fit(im, size, Image.LANCZOS, centering=(0.5, 0.3))
+elif "--whole" in sys.argv:   # keep the whole picture, any shape, long side 200 px, the look-thumbnail size (Frank's suite photo, 2026-11-22)
     im.thumbnail((200, 200), Image.LANCZOS); size = im.size
 else:
     size = (320, 240) if im.width >= 320 and im.height >= 240 else (200, 150)

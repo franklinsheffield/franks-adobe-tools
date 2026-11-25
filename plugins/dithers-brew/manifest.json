@@ -1,8 +1,8 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.dithersbrew",
-  "name": "Frank's Dithers Brew",
-  "version": "1.1.1",
+  "name": "Dithers Lab",
+  "version": "3.0.1",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -13,20 +13,77 @@
       "type": "panel",
       "id": "franksBrewPanel",
       "label": {
-        "default": "Frank's Dithers Brew"
+        "default": "Dithers Lab"
       },
-      "minimumSize": { "width": 300, "height": 400 },
-      "maximumSize": { "width": 900, "height": 2400 },
-      "preferredDockedSize": { "width": 340, "height": 820 },
-      "preferredFloatingSize": { "width": 380, "height": 820 },
+      "minimumSize": {
+        "width": 300,
+        "height": 400
+      },
+      "maximumSize": {
+        "width": 900,
+        "height": 2400
+      },
+      "preferredDockedSize": {
+        "width": 340,
+        "height": 820
+      },
+      "preferredFloatingSize": {
+        "width": 380,
+        "height": 820
+      },
       "icons": [
-        { "width": 23, "height": 23, "path": "icons/icon_D.png", "scale": [1, 2], "theme": ["darkest", "dark", "medium"], "species": ["generic"] },
-        { "width": 23, "height": 23, "path": "icons/icon_N.png", "scale": [1, 2], "theme": ["lightest", "light"], "species": ["generic"] }
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_D.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium"
+          ],
+          "species": [
+            "generic"
+          ]
+        },
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_N.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "lightest",
+            "light"
+          ],
+          "species": [
+            "generic"
+          ]
+        }
       ]
     }
   ],
   "icons": [
-    { "width": 48, "height": 48, "path": "icons/plugin.png", "scale": [1, 2], "theme": ["all"], "species": ["pluginList"] }
+    {
+      "width": 48,
+      "height": 48,
+      "path": "icons/plugin.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "all"
+      ],
+      "species": [
+        "pluginList"
+      ]
+    }
   ],
   "requiredPermissions": {
     "localFileSystem": "request"

@@ -5,7 +5,11 @@
 // ======================================================================
 const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
+const BRAND = require("./brand.js");
+const HELP = require("./help.js");
+const { SUITE } = require("./core/brand.js");
 const { createToolPanel } = require("./core/toolpanel.js");
+const DS = require("./core/depth.js");
 
 // how far glow / extrusion can reach past the artwork (document px)
 function reach(s) {
@@ -22,11 +26,17 @@ function reach(s) {
   return Math.min(1500, Math.ceil(r));
 }
 
-let panel = null;
+let panel = null, subjectForce = false;
 // Active-layer sources are read at the layer's bounds; widen them (inside the
 // document) so glow and extrusion aren't cut off at the layer's edge.
-async function prepareSource(doc, r) {
+async function prepareSource(doc, r, phase) {
   const s = panel ? panel._test.state : DEFAULTS;
+  // 3.0 Subject cut-out: Photoshop's Select Subject (shared with Depth Lab) gives the shape
+  if (s && s.surface && s.surface.from === "subject") {
+    try { await DS.addSubject(doc, r, phase, BRAND.NAME, subjectForce); subjectForce = false; }
+    catch (e) { console.warn("Select Subject failed: " + (e && e.message)); }
+    return;
+  }
   if (!s || (s.view && s.view.kind === "detail")) return;
   const pad = reach(s);
   if (!pad) return;
@@ -52,10 +62,11 @@ async function prepareSource(doc, r) {
 }
 
 panel = createToolPanel({
-  code: "CT-02", glow: "#00e5ff",
-  appName: "Frank's Chrometone Brew", title: "Frank's Chrometone Brew", sub: "liquid chrome  /  retro chrome  /  3D  /  glow", panelId: "chrometonePanel",
+  code: "CT-02", glow: "#00e5ff", ui3: true, help: HELP, version: "3.0",
+  autoTone: { on: true },
+  appName: BRAND.NAME, title: BRAND.NAME, storeKey: BRAND.LEGACY, sub: "liquid chrome  /  retro chrome  /  3D  /  glow", panelId: "chrometonePanel",
   presetFile: "presets.json", exportName: "chrometone-looks.json",
-  footer: "Frank's Chrometone Brew 1.1  -  Frank's Brew suite",
+  footer: BRAND.NAME + " 3.0  -  " + SUITE,
   Engine, DEFAULTS, PRESETS, merge, clone,
   prepareSource,
   costFactor: (s) => 1 + (s.extrude && s.extrude.on ? 0.5 : 0) + 0.6 * ((s.glow && s.glow.modules) || []).filter((m) => m && m.on).length,
@@ -63,45 +74,55 @@ panel = createToolPanel({
     ui.selectRow("Layers", "out.layers", [{ v: "split", l: "Separate layers (Colour, Shine, FX)" }, { v: "merged", l: "One merged layer" }])
   ],
   cards: (ui, kit) => {
-    const { card, sliderRow, selectRow, checkRow, segGroup, el, showIf } = ui;
+    const { card, sliderRow, fader, stepper, angle, selectRow, checkRow, segGroup, el, showIf } = ui;
     const st = () => kit.state;
     const when = (node, fn) => { showIf(node, fn); return node; };
-    const outlineMode = () => st().surface.from !== "brightness";
+    const outlineMode = () => !["brightness", "photo"].includes(st().surface.from);
+    const photoMode = () => st().surface.from === "photo";
+    const refind = el("button", { class: "btn small", text: "Find subject again" });
+    refind.addEventListener("click", () => { DS.clearCache(); subjectForce = true; kit.touch(); });
 
     // Surface (1.1)
-    const horizonOn = () => outlineMode() && st().surface.reflect === "horizon";
+    const horizonOn = () => (outlineMode() || photoMode()) && st().surface.reflect === "horizon";
     const surface = card("Surface", [
-      segGroup("surface.from", [{ v: "auto", l: "Auto", t: "Outline when the layer has transparency or sits on black, else Brightness" }, { v: "outline", l: "Outline" }, { v: "brightness", l: "Brightness" }]),
-      when(sliderRow("Key out dark", "surface.key", 0, 100, 1, "%"), outlineMode),
+      segGroup("surface.from", [{ v: "auto", l: "Auto", t: "Outline when the layer has transparency or sits on black, else Brightness" }, { v: "outline", l: "Outline" }, { v: "brightness", l: "Brightness" },
+        { v: "photo", l: "Photo", t: "The photo becomes embossed metal reflecting a sky and ground" }, { v: "subject", l: "Subject", t: "Select Subject gives the shape: bevel, rim and extrusion wrap the people" }]),
+      when(el("div", { class: "row wrap" }, [refind]), () => st().surface.from === "subject"),
+      when(sliderRow("Key out dark", "surface.key", 0, 100, 1, "%"), () => outlineMode() && st().surface.from !== "subject"),
       when(sliderRow("Bevel width", "surface.bevel", 0, 200, 1, " px"), outlineMode),
       when(segGroup("surface.profile", [{ v: "chamfer", l: "Chamfer" }, { v: "round", l: "Round" }, { v: "rim", l: "Rim + flat" }]), outlineMode),
-      when(segGroup("surface.reflect", [{ v: "gradient", l: "Gradient", t: "Metal gradient from the Look card, top to bottom" }, { v: "horizon", l: "Horizon", t: "Sky, wavy horizon, ground" }]), outlineMode),
-      when(sliderRow("Horizon height", "surface.horizon", 0, 100, 1, "%"), horizonOn),
+      when(segGroup("surface.reflect", [{ v: "gradient", l: "Gradient", t: "Metal gradient from the Look card, top to bottom" }, { v: "horizon", l: "Horizon", t: "Sky, wavy horizon, ground" }]), () => outlineMode() || photoMode()),
+      // 3.0 desert chrome (Frank's reference video 2026-11-25): horizon shape, bend, own bevel gradient
+      when(segGroup("surface.hshape", [{ v: "hills", l: "Hills" }, { v: "mountains", l: "Mountains" }, { v: "angled", l: "Angled" }, { v: "curtain", l: "Curtain" }, { v: "flat", l: "Flat" }]), horizonOn),
+      when(fader("Horizon height", "surface.horizon", 0, 100, 1, "%"), horizonOn),
       when(sliderRow("Horizon wave", "surface.wave", 0, 100, 1, "%"), horizonOn),
       when(sliderRow("Wave size", "surface.waveSize", 0, 100, 1, "%"), horizonOn),
+      when(sliderRow("Bend to shape", "surface.bend", 0, 100, 1, "%"), horizonOn),
       when(el("div", { class: "lbl3", text: "Sky" }), horizonOn), when(kit.gradientEditor("surface.sky"), horizonOn),
-      when(el("div", { class: "lbl3", text: "Ground" }), horizonOn), when(kit.gradientEditor("surface.ground"), horizonOn)
+      when(el("div", { class: "lbl3", text: "Ground" }), horizonOn), when(kit.gradientEditor("surface.ground"), horizonOn),
+      when(checkRow("Bevel gradient", "surface.bevelOn"), horizonOn),
+      when(kit.gradientEditor("surface.bevelStops"), () => horizonOn() && st().surface.bevelOn)
     ]);
 
     const look = card("Look", [kit.gradientEditor("look.stops"), checkRow("Invert (dark becomes bright)", "look.invert")], { section: "colour" });
     const tone = card("Tone", [
       sliderRow("Smooth", "tone.blur", 0, 20, 1, " px"),
       sliderRow("Contrast", "tone.contrast", 20, 300, 5, "%"),
-      sliderRow("Midpoint", "tone.mid", 0, 100, 1, "%")
+      fader("Midpoint", "tone.mid", 0, 100, 1, "%")
     ]);
     const bands = card("Bands", [
-      sliderRow("Count", "bands.count", 0, 12, 1, ""),
-      sliderRow("Phase", "bands.phase", 0, 360, 5, "°"),
+      stepper("Count", "bands.count", 0, 12, 1, ""),
+      angle("Phase", "bands.phase", 0, 360, 5),
       selectRow("Shape", "bands.shape", [{ v: "sine", l: "Smooth (sine)" }, { v: "triangle", l: "Sharp (triangle)" }, { v: "hard", l: "Hard steps" }]),
       sliderRow("Softness", "bands.soft", 0, 100, 1, "%"),
-      sliderRow("Strength", "bands.mix", 0, 100, 1, "%")
+      fader("Strength", "bands.mix", 0, 100, 1, "%")
     ], { bypass: { "bands.mix": 0 } });
     const relief = card("Relief", [
       sliderRow("Depth", "relief.depth", 0, 100, 1, "%"),
-      sliderRow("Light angle", "relief.angle", 0, 360, 5, "°"),
+      angle("Light angle", "relief.angle", 0, 360, 5),
       sliderRow("Gloss", "relief.gloss", 0, 100, 1, "%"),
       sliderRow("Shine", "relief.spec", 0, 100, 1, "%"),
-      sliderRow("Bevel size", "relief.soft", 1, 20, 1, " px")
+      stepper("Bevel size", "relief.soft", 1, 20, 1, " px")
     ]);
 
     // Extrusion (1.1)
@@ -109,7 +130,7 @@ panel = createToolPanel({
     const extrusion = card("3D Extrusion", [
       checkRow("Extrude", "extrude.on"),
       when(sliderRow("Depth", "extrude.depth", 0, 400, 1, " px"), exOn),
-      when(sliderRow("Angle", "extrude.angle", 0, 360, 5, "°"), exOn),
+      when(angle("Angle", "extrude.angle", 0, 360, 5), exOn),
       when(sliderRow("Perspective", "extrude.persp", 0, 100, 1, "%"), exOn),
       when(el("div", { class: "lbl3", text: "Side colours (front to back)" }), exOn), when(kit.gradientEditor("extrude.stops"), exOn),
       when(sliderRow("Side shading", "extrude.shade", 0, 100, 1, "%"), exOn),
@@ -117,46 +138,51 @@ panel = createToolPanel({
       when(sliderRow("Long shadow", "extrude.shadow", 0, 100, 1, "%"), exOn)
     ], { bypass: { "extrude.on": false } });
 
-    // Glow stack (1.1): 4 modules
+    // Glow stack (1.1): 4 modules. 3.0 rule 11: glows 1-2 up front, 3-4 in Advanced
     const glowRows = [];
     for (let i = 0; i < 4; i++) {
       const base = "glow.modules." + i + ".", on = () => !!(st().glow.modules[i] && st().glow.modules[i].on);
-      glowRows.push(
+      glowRows.push([
         checkRow("Glow " + (i + 1), base + "on"),
         when(selectRow("Type", base + "type", [{ v: "dreamy", l: "Dreamy" }, { v: "halo", l: "Halo" }, { v: "neon", l: "Neon edge" }, { v: "inner", l: "Inner" }, { v: "bloom", l: "Bloom (highlights)" }]), on),
         when(kit.colourRow("Colour", base + "color"), on),
         when(sliderRow("Size", base + "size", 1, 300, 1, " px"), on),
-        when(sliderRow("Strength", base + "strength", 0, 100, 1, "%"), on)
-      );
+        when(fader("Strength", base + "strength", 0, 100, 1, "%"), on)
+      ]);
     }
-    const glow = card("Glow", glowRows, { bypass: { "glow.modules.0.on": false, "glow.modules.1.on": false, "glow.modules.2.on": false, "glow.modules.3.on": false } });
+    const glow = card("Glow", glowRows[0].concat(glowRows[1]), { advanced: glowRows[2].concat(glowRows[3]), advancedTitle: "Glows 3 and 4", bypass: { "glow.modules.0.on": false, "glow.modules.1.on": false, "glow.modules.2.on": false, "glow.modules.3.on": false } });
 
     // Shine FX (1.1)
     const g = () => st().shine;
     const shine = card("Shine FX", [
       checkRow("Star glints", "shine.glints.on"),
-      when(sliderRow("Count", "shine.glints.count", 1, 20, 1, ""), () => g().glints.on),
+      when(stepper("Count", "shine.glints.count", 1, 20, 1, ""), () => g().glints.on),
       when(sliderRow("Size", "shine.glints.size", 4, 400, 1, " px"), () => g().glints.on),
       when(segGroup("shine.glints.rays", [{ v: 4, l: "4 rays" }, { v: 6, l: "6" }, { v: 8, l: "8" }]), () => g().glints.on),
-      when(sliderRow("Rotation", "shine.glints.rot", 0, 90, 1, "°"), () => g().glints.on),
       checkRow("Sweep streak", "shine.sweep.on"),
-      when(sliderRow("Angle", "shine.sweep.angle", 0, 180, 5, "°"), () => g().sweep.on),
-      when(sliderRow("Position", "shine.sweep.pos", 0, 100, 1, "%"), () => g().sweep.on),
-      when(sliderRow("Width", "shine.sweep.width", 1, 100, 1, "%"), () => g().sweep.on),
-      when(sliderRow("Strength", "shine.sweep.strength", 0, 100, 1, "%"), () => g().sweep.on),
-      checkRow("Rim light", "shine.rim.on"),
-      when(kit.colourRow("Colour", "shine.rim.color"), () => g().rim.on),
-      when(sliderRow("Width", "shine.rim.width", 1, 60, 1, " px"), () => g().rim.on),
-      checkRow("Electric arcs", "shine.arcs.on"),
-      when(sliderRow("Count", "shine.arcs.count", 1, 12, 1, ""), () => g().arcs.on),
-      when(kit.colourRow("Colour", "shine.arcs.color"), () => g().arcs.on),
-      when(sliderRow("Spread", "shine.arcs.spread", 0, 100, 1, "%"), () => g().arcs.on)
-    ], { bypass: { "shine.glints.on": false, "shine.sweep.on": false, "shine.rim.on": false, "shine.arcs.on": false } });
+      when(angle("Angle", "shine.sweep.angle", 0, 180, 5), () => g().sweep.on),
+      when(fader("Position", "shine.sweep.pos", 0, 100, 1, "%"), () => g().sweep.on),
+      when(fader("Strength", "shine.sweep.strength", 0, 100, 1, "%"), () => g().sweep.on)
+    ], {
+      advanced: [
+        when(angle("Glint rotation", "shine.glints.rot", 0, 90, 1), () => g().glints.on),
+        when(sliderRow("Streak width", "shine.sweep.width", 1, 100, 1, "%"), () => g().sweep.on),
+        checkRow("Rim light", "shine.rim.on"),
+        when(kit.colourRow("Rim colour", "shine.rim.color"), () => g().rim.on),
+        when(stepper("Rim width", "shine.rim.width", 1, 60, 1, " px"), () => g().rim.on),
+        checkRow("Electric arcs", "shine.arcs.on"),
+        when(stepper("Arc count", "shine.arcs.count", 1, 12, 1, ""), () => g().arcs.on),
+        when(kit.colourRow("Arc colour", "shine.arcs.color"), () => g().arcs.on),
+        when(sliderRow("Arc spread", "shine.arcs.spread", 0, 100, 1, "%"), () => g().arcs.on)
+      ],
+      advancedTitle: "Rim, arcs and more",
+      bypass: { "shine.glints.on": false, "shine.sweep.on": false, "shine.rim.on": false, "shine.arcs.on": false }
+    });
 
     const finish = card("Finish", [
       sliderRow("Grain", "finish.grain", 0, 100, 1, "%"),
       sliderRow("Bloom", "finish.bloom", 0, 100, 1, "%"),
-      sliderRow("Original mix", "finish.mix", 0, 100, 1, "%")
+      fader("Original mix", "finish.mix", 0, 100, 1, "%")
     ]);
     return [surface, look, tone, bands, relief, extrusion, glow, shine, finish];
   }

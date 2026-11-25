@@ -2,7 +2,7 @@
 // ======================================================================
 // Frank's Batch Mock Brew - batch Smart Object mockups.
 // Pick a Mockups, Artwork and Export folder, choose placement, format and
-// naming, press Brew Batch: every artwork goes into every mockup's target
+// naming, press Run Batch: every artwork goes into every mockup's target
 // Smart Objects and the results are exported. Settings and folders are
 // remembered. Mockup files on disk are never changed.
 // ======================================================================
@@ -18,14 +18,16 @@ const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 const { createBatch, formatLog } = require("./core/batch.js");
 
-const TITLE = "Frank's Batch Mock Brew";
+const BRAND = require("./brand.js");
+const { SUITE } = require("./core/brand.js");
+const TITLE = BRAND.NAME;
 const SETTINGS_FILE = "settings.json";
 PS.configure({ appName: TITLE, presetFile: "setups.json", exportName: "batch-mock-setups.json" });
 
 let state = clone(DEFAULTS);
 // folders: { mockups|artwork|export: { token, path } }; entries resolved lazily
-const folders = { mockups: null, artwork: null, export: null };
-const entries = { mockups: null, artwork: null, export: null };
+const folders = { mockups: null, artwork: null, export: null, csv: null };
+const entries = { mockups: null, artwork: null, export: null, csv: null };
 const lists = { mockups: [], artwork: [] };
 const refs = {};
 let built = false, saveT = null, lib = null;
@@ -33,7 +35,7 @@ let built = false, saveT = null, lib = null;
 let lookBase = clone(state);
 const KEYS_IDLE = QW.keysIdle("the batch after the current job");
 
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: "Frank's Batch Mock Brew",
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#fe5e4f", storeKey: BRAND.LEGACY,
   getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
 const { el, card, row, segGroup, selectRow, checkRow, sliderRow, textRow, showIf, refreshAll, bind, hexField } = ui;
 
@@ -75,6 +77,21 @@ async function chooseFolder(kind) {
     await rescan();
   } catch (e) { setStatus("Could not use that folder: " + e.message, true); }
 }
+// 3.0 text from CSV: a .csv file whose "artwork" column names the artwork, other columns name text layers
+async function chooseCsv() {
+  try {
+    const { storage } = require("uxp");
+    const f = await storage.localFileSystem.getFileForOpening({ types: ["csv", "txt"] });
+    if (!f) return;
+    entries.csv = f;
+    folders.csv = { token: await PSM.tokenFor(f), path: PSM.pathOf(f) };
+    state.csv.on = true; touch();
+  } catch (e) { setStatus("Could not use that CSV file: " + e.message, true); }
+}
+async function readCsv() {
+  if (!state.csv.on || !entries.csv) return null;
+  return Plan.parseCSV(await entries.csv.read());
+}
 async function rescan() {
   const deep = !!state.folders.subfolders;
   lists.mockups = entries.mockups ? await PSM.listFiles(entries.mockups, deep, Plan.isMockup) : [];
@@ -110,19 +127,28 @@ const batch = createBatch({
   }
 });
 
+// mode: undefined = full run, true = test first job, "sheet" = preview sheet, "failed" = re-run last failures
 async function brew(testOnly) {
   if (batch.running) return;
-  if (!entries.mockups || !entries.artwork || (!testOnly && !entries.export)) { setStatus("Choose the Mockups, Artwork and Export folders first.", true); return; }
+  const sheet = testOnly === "sheet", failedOnly = testOnly === "failed";
+  if (sheet || failedOnly) testOnly = false;
+  if (!entries.mockups || !entries.artwork || (!testOnly && !sheet && !entries.export)) { setStatus("Choose the Mockups, Artwork and Export folders first.", true); return; }
   await rescan();
   let list = jobs();
-  if (!list.length) { setStatus("Nothing to do: no .psd mockups or no artwork files in those folders.", true); return; }
+  if (failedOnly) list = Plan.onlyKeys(list, state.last.failed);
+  if (!list.length) { setStatus(failedOnly ? "No failed jobs from the last run." : "Nothing to do: no .psd mockups or no artwork files in those folders.", true); return; }
   if (testOnly) list = list.slice(0, 1);
   const S = clone(state);
+  let csv = null;
+  try { csv = await readCsv(); } catch (e) { setStatus("Could not read the CSV file: " + e.message, true); return; }
+  const sizes = S.sizes.on ? Plan.parseSizes(S.sizes.list) : [];
+  const thumbs = [];
+  if (!testOnly && !sheet) recordRun();   // a step in the Action being recorded, if any
   scheduleSave();   // remember the setup that was run
   let cur = null;   // { key, doc, targets, dirty }
   const dirCache = {};
   setRunning(true);
-  setStatus(testOnly ? "Test: first job only, the result stays open in Photoshop." : "Brewing " + list.length + " mockups...");
+  setStatus(testOnly ? "Test: first job only, the result stays open in Photoshop." : "Running " + list.length + " mockups...");
   // one mockup job per modal; the watchdog ends a job that never finishes instead of leaving a stuck Progress window
   const modal = (fn, name) => runModal(TITLE + ": " + name, fn, { timeoutMs: 10 * 60000 });
   const closeCur = async () => { if (cur) { const d = cur.doc; cur = null; await modal(() => PSM.closeDoc(d), "close mockup"); } };
@@ -148,32 +174,69 @@ async function brew(testOnly) {
       cur.dirty = true; n++;
     }
     if (!n) return "skipped: no artwork for any slot";
+    const notes = [];
+    if (job.variant && !(await PSM.applyVariant(cur.doc, S.variants.layer, job.variant.hex))) notes.push("no Solid Color layer named \"" + S.variants.layer + "\"");
+    if (csv) {
+      const row = Plan.csvRowFor(csv, job.set.name);
+      if (!row) notes.push("no CSV row for " + job.set.name);
+      else { const miss = await PSM.applyTexts(cur.doc, Plan.csvTexts(csv, row)); if (miss.length) notes.push("no text layer " + miss.join(", ")); }
+    }
     if (testOnly) return "ok";
+    if (sheet) { const t = await PSM.thumbnail(cur.doc, S.sheet.cell); t.name = job.name; thumbs.push(t); return "ok"; }
     const folder = await PSM.subFolder(entries.export, job.dir, dirCache);
     let name = job.name;
     if (await PSM.exists(folder, name)) {
       if (S.export.skipExisting) return "skipped: " + name + " already exists";
       name = await PSM.freeName(folder, name);
     }
-    await PSM.exportDoc(cur.doc, folder, name, S.export);
-    return "ok";
+    if (!sizes.length || S.sizes.keepFull) await PSM.exportDoc(cur.doc, folder, name, S.export);
+    for (const sz of sizes) {
+      let nm = Plan.sizedName(name, sz, S.naming.delim, S.export.format);
+      if (await PSM.exists(folder, nm)) { if (S.export.skipExisting) continue; nm = await PSM.freeName(folder, nm); }
+      await PSM.exportSized(cur.doc, folder, nm, sz, S.export);
+    }
+    return notes.length ? "ok (" + notes.join("; ") + ")" : "ok";
   }, "job"));
+  if (sheet && thumbs.length && !summary.cancelled) {
+    try { await closeCur(); await modal(() => PSM.makeSheet(thumbs, S.sheet.cell), "preview sheet"); }
+    catch (e) { setStatus("Preview sheet failed: " + e.message, true); }
+  }
+  if (!testOnly && !sheet) { state.last.failed = summary.results.filter((r) => r.status === "failed").map((r) => Plan.jobKey(r.job)); scheduleSave(); }
 
   if (!testOnly || summary.failed || summary.cancelled) await closeCur();
-  if (!testOnly) {
+  if (!testOnly && !sheet) {
     try { await PSM.writeText(entries.export, "batch-mock-brew-log.txt", formatLog(TITLE, summary, (j) => (j.dir ? j.dir + "/" : "") + j.name + "  <=  " + j.mockup.name + " + " + j.set.name)); } catch (e) { console.error(e); }
   }
   setRunning(false);
   const firstFail = summary.results.find((r) => r.status !== "ok");
-  const msg = (summary.cancelled ? "Cancelled. " : testOnly ? "Test done, check the open document, then close it without saving. " : "Done. ") +
+  const msg = (summary.cancelled ? "Cancelled. " : testOnly ? "Test done, check the open document, then close it without saving. " : sheet ? "Preview sheet ready (" + thumbs.length + " jobs): check it, then close it without saving. " : "Done. ") +
     summary.done + " made, " + summary.skipped + " skipped, " + summary.failed + " failed." + (firstFail ? "  First problem: " + firstFail.why : "") +
-    (testOnly ? "" : "  Log: batch-mock-brew-log.txt in the Export folder.");
+    (testOnly || sheet ? "" : "  Log: batch-mock-brew-log.txt in the Export folder.") + (state.last.failed.length && !testOnly && !sheet ? "  Re-run failed jobs to try them again." : "");
   setStatus(msg, summary.failed > 0);
   refs.summary.textContent = summary.results.filter((r) => r.status !== "ok").slice(0, 8).map((r) => r.status + ": " + r.job.mockup.name + " + " + r.job.set.name + " - " + r.why).join("\n");
 }
+// 3.0 Record as Action: while the Actions panel is recording, Run Batch adds one step that replays this setup
+function recordRun() {
+  try { require("photoshop").action.recordAction({ name: TITLE + ": Run Batch", methodName: "batchMockReplay" }, { v: 1, state: clone(state), folders: clone(folders) }); }
+  catch (e) { /* not recording, or an older Photoshop */ }
+}
+async function replay(ctx, info) {
+  if (!info || !info.state) return;
+  if (!built) await init();
+  const keep = clone(state.last);
+  state = merge(DEFAULTS, info.state); state.last = keep;
+  for (const k of Object.keys(folders)) {
+    folders[k] = info.folders && info.folders[k] ? info.folders[k] : folders[k];
+    if (folders[k]) { try { entries[k] = await PSM.folderFromToken(folders[k].token); } catch (e) { entries[k] = null; } }
+  }
+  touch();
+  await brew(false);
+}
+try { globalThis.batchMockReplay = replay; } catch (e) { /* ignore */ }
+
 function setRunning(on) {
-  [refs.brew, refs.test].forEach((b) => { if (on) b.setAttribute("disabled", "true"); else b.removeAttribute("disabled"); });
-  refs.brew.textContent = on ? "Brewing..." : "Brew Batch";
+  [refs.brew, refs.test, refs.sheetBtn, refs.failedBtn].forEach((b) => { if (on) b.setAttribute("disabled", "true"); else b.removeAttribute("disabled"); });
+  refs.brew.textContent = on ? "Running..." : "Run Batch";
   if (refs.led) refs.led.set(on ? "busy" : "ready");
   refs.cancel.style.display = on ? "" : "none";
   if (!on) refs.job.textContent = "";
@@ -188,10 +251,15 @@ function build(root) {
   root.classList.add("brand-console");
   refs.led = ui.brand.header({ title: TITLE, code: "BM-07" });
   lay.pinned.appendChild(refs.led.node);
-  refs.brew = el("button", { class: "apply", text: "Brew Batch" });
+  refs.brew = el("button", { class: "apply", text: "Run Batch" });
   refs.brew.addEventListener("click", () => brew(false));
   refs.test = el("button", { class: "btn small", text: "Test first job", title: "Runs only the first job and leaves the result open, without exporting" });
   refs.test.addEventListener("click", () => brew(true));
+  refs.sheetBtn = el("button", { class: "btn small", text: "Preview sheet", title: "Runs every job small into one contact sheet document, without exporting" });
+  refs.sheetBtn.addEventListener("click", () => brew("sheet"));
+  refs.failedBtn = el("button", { class: "btn small", text: "Re-run failed", title: "Runs only the jobs that failed last time" });
+  refs.failedBtn.addEventListener("click", () => brew("failed"));
+  bind(() => { refs.failedBtn.style.display = state.last.failed.length ? "" : "none"; refs.failedBtn.textContent = "Re-run failed (" + state.last.failed.length + ")"; });
   refs.cancel = el("button", { class: "btn small", text: "Cancel", title: "Stops after the current job" });
   refs.cancel.addEventListener("click", () => { batch.cancel(); setStatus("Cancelling after this job..."); });
   refs.cancel.style.display = "none";
@@ -200,7 +268,7 @@ function build(root) {
   refs.status = el("div", { class: "status", text: "Choose your folders to start." });
   refs.summary = el("div", { class: "info" });
   refs.counts = el("div", { class: "info counts" });
-  lay.pinned.appendChild(card("Brew", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row" }, [refs.test, refs.cancel]), refs.job, refs.status, (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })), refs.summary], { fold: false }));
+  lay.pinned.appendChild(card("Run", [refs.counts, refs.brew, el("div", { class: "bar" }, [refs.bar]), el("div", { class: "row wrap" }, [refs.test, refs.sheetBtn, refs.failedBtn, refs.cancel]), el("div", { class: "hint", text: "Record as Action: start recording in the Actions panel, then press Run Batch." }), refs.job, refs.status, (refs.keys = el("div", { class: "keys", text: KEYS_IDLE })), refs.summary], { fold: false }));
 
   const s = lay.scroller;
   // organized panel (Frank, 2026-11-22): A Look / B Setup / D Output (no colour section in this tool)
@@ -224,6 +292,19 @@ function build(root) {
     numbered
   ], { hint: "Copies of one Smart Object update together. Linked-file Smart Objects are left alone." }));
 
+  // 3.0 colour variants + text from CSV
+  const vOn = () => state.variants.on, csvLine = el("div", { class: "info path" });
+  bind(() => { csvLine.textContent = folders.csv ? folders.csv.path : "No CSV file chosen."; });
+  const csvBtn = el("button", { class: "btn small", text: "Choose CSV" });
+  csvBtn.addEventListener("click", () => chooseCsv());
+  const vLayer = textRow("Fill layer", "variants.layer", "Colour"), vList = textRow("Colours", "variants.list", "Black #111111, Red #C8102E");
+  showIf(vLayer, vOn); showIf(vList, vOn);
+  const csvRow = row("CSV file", csvBtn); showIf(csvRow, () => state.csv.on); showIf(csvLine, () => state.csv.on);
+  s.appendChild(card("Variants and text", [
+    checkRow("Colour variants (one export per colour)", "variants.on"), vLayer, vList,
+    checkRow("Text from CSV (one row per artwork)", "csv.on"), csvRow, csvLine
+  ], { hint: "Variants fill every Solid Color layer with that name. CSV: the artwork column names the artwork file, every other column names a text layer." }));
+
   const bgRow = row("Gaps", segGroup("place.bg", [{ v: "transparent", l: "None" }, { v: "white", l: "White" }, { v: "black", l: "Black" }, { v: "custom", l: "Colour" }]));
   const bgHex = row("Colour", hexField(() => state.place.bgHex, (v) => { state.place.bgHex = v; }));
   showIf(bgRow, () => state.place.mode === "fit" || state.place.mode === "center");
@@ -239,10 +320,13 @@ function build(root) {
   showIf(q, () => state.export.format === "jpg");
   showIf(alpha, () => state.export.format === "png");
   showIf(mp4, () => state.export.format === "mp4");
+  const sizesRow = textRow("Sizes", "sizes.list", "1080x1080, 1920x1080"), keepFull = checkRow("Also export full size", "sizes.keepFull");
+  showIf(sizesRow, () => state.sizes.on); showIf(keepFull, () => state.sizes.on);
   sec("D", "OUTPUT", "output");
   s.appendChild(card("Export", [
-    segGroup("export.format", [{ v: "jpg", l: "JPG" }, { v: "png", l: "PNG" }, { v: "psd", l: "PSD" }, { v: "mp4", l: "MP4" }]),
+    segGroup("export.format", [{ v: "jpg", l: "JPG" }, { v: "png", l: "PNG" }, { v: "webp", l: "WebP" }, { v: "psd", l: "PSD" }, { v: "mp4", l: "MP4" }]),
     q, alpha, mp4,
+    checkRow("Extra sizes", "sizes.on"), sizesRow, keepFull,
     selectRow("Organise", "export.organise", [{ v: "mockup", l: "A folder per mockup" }, { v: "artwork", l: "A folder per artwork" }, { v: "one", l: "All in one folder" }]),
     checkRow("Skip files that already exist", "export.skipExisting")
   ]));
@@ -255,7 +339,8 @@ function build(root) {
     refs.example
   ]));
   lay.pinned.appendChild(ui.jumpStrip(secs, s));
-  s.appendChild(el("div", { class: "foot", text: TITLE + " 1.0  -  Frank's Brew suite" }));
+  s.appendChild(el("div", { class: "foot", text: TITLE + " 3.0  -  " + SUITE }));
+  ui.evenRows(document.getElementById("app") || s);   // 3.0 button rule
   refreshAll(); updateCounts();
 }
 
@@ -277,6 +362,7 @@ try {
     menuItems: [
       { id: "resetLook", label: "Reset settings to this setup" },
       { id: "test", label: "Test first job" },
+      { id: "sheet", label: "Preview sheet" },
       { id: "foldAll", label: "Fold or open all cards" },
       "-",
       { id: "about", label: "About " + TITLE }
@@ -289,8 +375,9 @@ QW.onEscape(() => { if (busyNow()) { batch.cancel(); setStatus("Cancelling after
 function menuAction(id) {
   if (id === "resetLook") { const keep = clone(state.folders); state = clone(lookBase); state.folders = keep; touch(); setStatus("Settings reset to the last loaded setup."); }
   else if (id === "test") { if (!busyNow()) brew(true); }
+  else if (id === "sheet") { if (!busyNow()) brew("sheet"); }
   else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
-  else if (id === "about") setStatus(TITLE + "  |  BM-07  |  Frank's Brew suite. Hover any control for help.");
+  else if (id === "about") setStatus(TITLE + "  |  BM-07  |  " + SUITE + ". Hover any control for help.");
 }
 setTimeout(() => { init(); }, 0);
 

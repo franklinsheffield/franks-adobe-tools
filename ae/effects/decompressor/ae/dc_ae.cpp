@@ -13,6 +13,7 @@
 #include "../dc_motion.h"
 #include "../dc_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 
 using namespace brew;
 using namespace brewae;
@@ -33,7 +34,7 @@ static const char* CHROMAS = "4:4:4 (no bleed)|4:2:0 (JPEG)|4:1:1 (video smear)"
 static const int MAX_HOLD = 48;          // frames the temporal datamosh looks back (render cost)
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEC-05  Frank's Brew suite\rDigital decay + real temporal datamosh.", "Frank's Decompressor Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEC-05  Lab suite\rDigital decay + real temporal datamosh.", "Decompressor Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
@@ -41,55 +42,71 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
   return PF_Err_NONE;
 }
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { P_MO_BASE, T_DM_START, T_LOOK_START, T_JPEG_START, T_CRUSH_START, T_MOSH_START, T_GL_START, T_FIN_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   dc::Params D; dc::parseParams(D, dc::LOOKS[0].text);
   static std::string looks = lookMenu(dc::LOOKS, dc::LOOK_COUNT, false), looksB = lookMenu(dc::LOOKS, dc::LOOK_COUNT, true);
 
-  BREW_TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", dc::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", dc::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  BREW_ENDTOPIC(T_LOOK_END);
-
-  BREW_TOPIC("JPEG", T_JPEG_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Compress", D.jpegOn, 0, P_JPEG_ON);
-  BREW_FS("Quality", 1, 100, 1, 100, D.quality, 0, P_QUALITY);
-  BREW_FS("Generations", 1, 20, 1, 20, D.generations, 0, P_GENS);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Chroma", 3, D.chroma + 1, CHROMAS, P_CHROMA);
-  BREW_ENDTOPIC(T_JPEG_END);
-
-  BREW_TOPIC("Bit crush", T_CRUSH_START, false);
-  BREW_FS("Bits per channel", 1, 8, 1, 8, D.bits, 0, P_BITS);
-  BREW_ENDTOPIC(T_CRUSH_END);
-
-  BREW_TOPIC("Block mosh", T_MOSH_START, false);
-  BREW_FS("Amount (%)", 0, 100, 0, 100, D.moshAmount, 0, P_MOSH_AMT);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Direction", D.moshDir, P_MOSH_DIR);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Block", 2, D.moshBlock <= 8 ? 1 : 2, "8 px|16 px", P_MOSH_BLOCK);
-  BREW_ENDTOPIC(T_MOSH_END);
-
-  BREW_TOPIC("Glitch slices", T_GL_START, false);
-  BREW_FS("Slices", 0, 40, 0, 40, D.slices, 0, P_SLICES);
-  BREW_FS("Max offset (px)", 0, 300, 0, 300, D.offset, 0, P_OFFSET);
-  BREW_FS("Seed", 1, 99, 1, 99, D.seed, 0, P_GSEED);
-  BREW_ENDTOPIC(T_GL_END);
-
-  BREW_TOPIC("Finish", T_FIN_START, false);
-  BREW_FS("Effect mix (%)", 0, 100, 0, 100, D.mix, 0, P_MIX);
-  BREW_ENDTOPIC(T_FIN_END);
-
-  if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: mosh direction (deg/s)", "Drift X: block crawl (px/s)", "Drift Y: block crawl (px/s)");
-
-  BREW_TOPIC("Decay motion", T_DM_START, false);
-  BREW_FS("Datamosh I-frame every (fr)", 0, MAX_HOLD, 0, MAX_HOLD, 0, 0, P_DM_IEVERY);
-  BREW_FS("Datamosh bleed (%)", 0, 100, 0, 50, 0, 0, P_DM_BLEED);
-  BREW_FS("Datamosh search (px)", 4, 64, 4, 32, 16, 0, P_DM_SEARCH);
-  BREW_FS("Quality wave (%)", 0, 100, 0, 100, 0, 0, P_DM_QWAVE);
-  BREW_FS("Quality wave rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_QRATE);
-  BREW_FS("Slice roll (px/s)", -1000, 1000, -300, 300, 0, 0, P_DM_ROLL);
-  BREW_ENDTOPIC(T_DM_END);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case P_MO_BASE: {  // Motion
+    if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: mosh direction (deg/s)", "Drift X: block crawl (px/s)", "Drift Y: block crawl (px/s)");
+  } break;
+  case T_DM_START: {  // Decay motion
+    BREW_TOPIC("Decay motion", T_DM_START, false);
+    BREW_FS("Datamosh I-frame every (fr)", 0, MAX_HOLD, 0, MAX_HOLD, 0, 0, P_DM_IEVERY);
+    BREW_FS("Datamosh bleed (%)", 0, 100, 0, 50, 0, 0, P_DM_BLEED);
+    BREW_FS("Datamosh search (px)", 4, 64, 4, 32, 16, 0, P_DM_SEARCH);
+    BREW_FS("Quality wave (%)", 0, 100, 0, 100, 0, 0, P_DM_QWAVE);
+    BREW_FS("Quality wave rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_DM_QRATE);
+    BREW_FS("Slice roll (px/s)", -1000, 1000, -300, 300, 0, 0, P_DM_ROLL);
+    BREW_ENDTOPIC(T_DM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    BREW_TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", dc::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", dc::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    BREW_ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_JPEG_START: {  // JPEG
+    BREW_TOPIC("JPEG", T_JPEG_START, false);
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Compress", D.jpegOn, 0, P_JPEG_ON);
+    BREW_FS("Quality", 1, 100, 1, 100, D.quality, 0, P_QUALITY);
+    BREW_FS("Generations", 1, 20, 1, 20, D.generations, 0, P_GENS);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Chroma", 3, D.chroma + 1, CHROMAS, P_CHROMA);
+    BREW_ENDTOPIC(T_JPEG_END);
+  } break;
+  case T_CRUSH_START: {  // Bit crush
+    BREW_TOPIC("Bit crush", T_CRUSH_START, false);
+    BREW_FS("Bits per channel", 1, 8, 1, 8, D.bits, 0, P_BITS);
+    BREW_ENDTOPIC(T_CRUSH_END);
+  } break;
+  case T_MOSH_START: {  // Block mosh
+    BREW_TOPIC("Block mosh", T_MOSH_START, false);
+    BREW_FS("Amount (%)", 0, 100, 0, 100, D.moshAmount, 0, P_MOSH_AMT);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Direction", D.moshDir, P_MOSH_DIR);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Block", 2, D.moshBlock <= 8 ? 1 : 2, "8 px|16 px", P_MOSH_BLOCK);
+    BREW_ENDTOPIC(T_MOSH_END);
+  } break;
+  case T_GL_START: {  // Glitch slices
+    BREW_TOPIC("Glitch slices", T_GL_START, false);
+    BREW_FS("Slices", 0, 40, 0, 40, D.slices, 0, P_SLICES);
+    BREW_FS("Max offset (px)", 0, 300, 0, 300, D.offset, 0, P_OFFSET);
+    BREW_FS("Seed", 1, 99, 1, 99, D.seed, 0, P_GSEED);
+    BREW_ENDTOPIC(T_GL_END);
+  } break;
+  case T_FIN_START: {  // Finish
+    BREW_TOPIC("Finish", T_FIN_START, false);
+    BREW_FS("Effect mix (%)", 0, 100, 0, 100, D.mix, 0, P_MIX);
+    BREW_ENDTOPIC(T_FIN_END);
+  } break;
+  default: break;
+  }
 
   out_data->num_params = P_NUM;
   return err;
@@ -113,7 +130,7 @@ static void applyLook(PF_ParamDef* p[], int idx) {
   setF(p, P_MIX, P.mix);
 }
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -164,20 +181,21 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's Decompressor Brew", "com.franks.decompressor.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Decompressor Lab", "com.franks.decompressor.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }

@@ -97,7 +97,8 @@ function brew_applyLook(match, whichJSON, index, addNew) {
       if (!fx) continue;
       var lookId = which.look;
       var p = brewParam(fx, match, lookId);
-      if (p) { brewSet(p, index); n++; }
+      // Look B menu is None, separator, then the looks, so look i sits at i + 2
+      if (p) { brewSet(p, which.morph ? index + 2 : index); n++; }
       if (which.morph) { var mp = brewParam(fx, match, which.morph); if (mp && mp.numKeys === 0 && mp.value === 0) brewSet(mp, 50); }
     }
     app.endUndoGroup();

@@ -7,7 +7,10 @@ const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 const DS = require("./core/depth.js");
 
-const APP = "Frank's Depthtone Brew";
+const BRAND = require("./brand.js");
+const HELP = require("./help.js");
+const { SUITE } = require("./core/brand.js");
+const APP = BRAND.NAME;
 let panel = null;
 const st = () => (panel ? panel._test.state : DEFAULTS);
 
@@ -15,10 +18,10 @@ const st = () => (panel ? panel._test.state : DEFAULTS);
 const prepareSource = (doc, r, phase) => DS.prepareSourceFor(st, APP)(doc, r, phase);
 
 panel = createToolPanel({
-  code: "DT-03", glow: "#f5ff3b",
-  appName: APP, title: APP, sub: "smart depth  /  contours  /  ridges  /  relief", panelId: "depthtonePanel",
+  code: "DT-03", glow: "#f5ff3b", ui3: true, help: HELP, version: "3.0",
+  appName: APP, title: APP, storeKey: BRAND.LEGACY, sub: "smart depth  /  contours  /  ridges  /  relief", panelId: "depthtonePanel",
   presetFile: "presets.json", exportName: "depthtone-looks.json",
-  footer: "Frank's Depthtone Brew 2.0  -  Frank's Brew suite",
+  footer: APP + " 3.0  -  " + SUITE,
   Engine, DEFAULTS, PRESETS, merge, clone,
   prepareSource,
   // the suite sample photo plus its subject mask, so look thumbnails use Smart depth too
@@ -26,7 +29,7 @@ panel = createToolPanel({
   keepOnLook: ["depth.source", "depth.layerId", "depth.layerName", "depth.layerDoc"],
   outputRows: (ui) => [ui.checkRow("Also add the depth map as a hidden layer", "out.depthLayer")],
   cards: (ui, kit) => {
-    const { card, sliderRow, selectRow, checkRow, segGroup, el, showIf, row } = ui;
+    const { card, sliderRow, fader, stepper, angle, selectRow, checkRow, segGroup, el, showIf, row } = ui;
     const s = () => kit.state;
     const when = (node, fn) => { showIf(node, fn); return node; };
     const is = (...v) => () => v.includes(s().style);
@@ -37,36 +40,40 @@ panel = createToolPanel({
       checkRow("Auto range", "depth.auto"),
       sliderRow("Smooth", "depth.smooth", 0, 20, 1, " px"),
       checkRow("Invert (far comes forward)", "depth.invert"),
-      when(sliderRow("Levels", "depth.levels", 2, 64, 1, ""), is("contours", "terraces")),
-      when(sliderRow("Near", "depth.near", 1, 100, 1, "%"), () => s().depth.auto === false),
-      when(sliderRow("Far", "depth.far", 0, 99, 1, "%"), () => s().depth.auto === false)
+      when(stepper("Levels", "depth.levels", 2, 64, 1, ""), is("contours", "terraces")),
+      when(fader("Near", "depth.near", 1, 100, 1, "%"), () => s().depth.auto === false),
+      when(fader("Far", "depth.far", 0, 99, 1, "%"), () => s().depth.auto === false)
     ]);
     const style = card("Style", [
       segGroup("style", [{ v: "contours", l: "Contours" }, { v: "terraces", l: "Terraces" }, { v: "relief", l: "Relief" }, { v: "ridges", l: "Ridges" }], "big"),
       segGroup("style", [{ v: "heat", l: "Heat" }, { v: "anaglyph", l: "Anaglyph" }, { v: "haze", l: "Haze" }], "big"),
-      when(sliderRow("Photo mix", "photo", 0, 100, 1, "%"), () => !["anaglyph", "haze"].includes(s().style))
+      when(fader("Photo mix", "photo", 0, 100, 1, "%"), () => !["anaglyph", "haze"].includes(s().style))
     ]);
     const colour = when(card("Colour (far to near)", [
       kit.gradientEditor("look.stops"),
-      sliderRow("Fog", "look.fog", 0, 100, 1, "%"),
+      fader("Fog", "look.fog", 0, 100, 1, "%"),
       kit.colourRow("Fog colour", "look.fogColor")
     ], { section: "colour" }), () => s().style !== "anaglyph");
     const lines = when(card("Lines", [
-      sliderRow("Width", "lines.width", 1, 12, 1, " px"),
-      when(sliderRow("Every Nth level", "lines.every", 1, 8, 1, ""), is("contours")),
+      stepper("Width", "lines.width", 1, 12, 1, " px"),
+      when(stepper("Every Nth level", "lines.every", 1, 8, 1, ""), is("contours")),
       when(checkRow("Heavier line every 5th level", "lines.index"), is("contours")),
       when(selectRow("Colour by", "lines.colorBy", [{ v: "solid", l: "One colour" }, { v: "depth", l: "Depth gradient" }]), is("contours")),
       when(kit.colourRow("Line colour", "lines.color"), is("contours")),
       when(checkRow("Fill bands with the depth gradient", "lines.fill"), is("contours"))
     ]), is("contours", "ridges"));
+    // Depth waves (3.0, from Frank's scan video): rows or columns, tilt, depth contrast, line glow
     const ridges = when(card("Ridges", [
-      sliderRow("Line spacing", "ridges.spacing", 3, 24, 1, " px"),
+      segGroup("ridges.dir", [{ v: "rows", l: "Rows" }, { v: "cols", l: "Columns" }]),
+      stepper("Line spacing", "ridges.spacing", 3, 24, 1, " px"),
       sliderRow("Lift", "ridges.lift", 0, 100, 1, "%"),
+      sliderRow("Tilt back", "ridges.tilt", 0, 100, 1, "%"),
+      fader("Line glow", "ridges.glow", 0, 100, 1, "%"),
       selectRow("Line colour", "ridges.colorBy", [{ v: "depth", l: "Depth gradient" }, { v: "photo", l: "Photo colours" }]),
       kit.colourRow("Background", "ridges.bg")
-    ]), is("ridges"));
+    ], { advanced: [sliderRow("Depth contrast", "ridges.contrast", 0, 100, 1, "%")], advancedTitle: "Depth prep" }), is("ridges"));
     const light = when(card("Light and shadow", [
-      sliderRow("Light angle", "light.angle", 0, 360, 5, "°"),
+      angle("Light angle", "light.angle", 0, 360, 5),
       when(sliderRow("Shadow length", "light.shadow", 1, 40, 1, " px"), is("terraces")),
       sliderRow("Strength", "light.strength", 0, 100, 1, "%"),
       when(sliderRow("Shine", "light.shine", 0, 100, 1, "%"), is("relief")),

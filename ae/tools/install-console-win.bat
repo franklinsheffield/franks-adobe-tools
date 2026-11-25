@@ -1,5 +1,5 @@
 @echo off
-rem Frank's Brew Console (After Effects panel) - free Windows installer. No admin needed.
+rem Lab Console (After Effects panel) - free Windows installer. No admin needed.
 rem Copies the panel to your CEP extensions folder and turns on PlayerDebugMode so the unsigned panel loads.
 set "SRC=%~dp0console"
 if not exist "%SRC%" set "SRC=%~dp0..\console"
@@ -8,6 +8,6 @@ if exist "%DEST%" rmdir /s /q "%DEST%"
 xcopy "%SRC%" "%DEST%\" /e /i /q /y >nul
 reg add "HKCU\Software\Adobe\CSXS.11" /v PlayerDebugMode /t REG_SZ /d 1 /f >nul
 reg add "HKCU\Software\Adobe\CSXS.12" /v PlayerDebugMode /t REG_SZ /d 1 /f >nul
-echo Installed Frank's Brew Console to %DEST%
-echo Restart After Effects, then open Window ^> Extensions ^> Frank's Brew Console.
+echo Installed Lab Console to %DEST%
+echo Restart After Effects, then open Window ^> Extensions ^> Lab Console.
 pause

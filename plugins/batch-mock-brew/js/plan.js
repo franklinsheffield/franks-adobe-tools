@@ -7,7 +7,7 @@
 
 const MOCKUP_EXT = ["psd", "psb"];
 const ART_EXT = ["jpg", "jpeg", "png", "psd", "psb", "pdf", "tif", "tiff", "gif", "bmp"];
-const OUT_EXT = { jpg: "jpg", png: "png", psd: "psd", mp4: "mp4" };
+const OUT_EXT = { jpg: "jpg", png: "png", psd: "psd", mp4: "mp4", webp: "webp" };
 const DELIMS = { "_": "_", "-": "-", ".": ".", " ": " " };
 
 function splitName(fileName) {
@@ -93,19 +93,91 @@ function outputDir(organise, mockup, artwork) {
 function buildJobs(mockups, artworks, S) {
   const ms = mockups.filter((m) => isMockup(m.name)).sort(byName);
   const sets = artworkSets(artworks.filter((a) => isArtwork(a.name)), S.so.numbered, S.naming.delim);
+  // 3.0 colour variants: every job runs once per colour, the colour name joins the artwork name
+  const V = S.variants || {}, colours = V.on ? parseColours(V.list) : [];
+  const variants = colours.length ? colours : [null];
   const jobs = [];
   const taken = new Map();   // dir -> Set(lower-case names)
   for (const m of ms) {
     for (const set of sets) {
-      const mockup = splitName(m.name).base;
-      const dir = outputDir(S.export.organise, mockup, set.name);
-      if (!taken.has(dir)) taken.set(dir, new Set());
-      const name = uniqueName(outputName({ order: S.naming.order, delim: S.naming.delim, mockup, artwork: set.name, suffix: S.naming.suffix, format: S.export.format }), taken.get(dir));
-      taken.get(dir).add(name.toLowerCase());
-      jobs.push({ mockup: m, set, dir, name });
+      for (const variant of variants) {
+        const mockup = splitName(m.name).base, art = variant ? set.name + S.naming.delim + variant.name : set.name;
+        const dir = outputDir(S.export.organise, mockup, set.name);
+        if (!taken.has(dir)) taken.set(dir, new Set());
+        const name = uniqueName(outputName({ order: S.naming.order, delim: S.naming.delim, mockup, artwork: art, suffix: S.naming.suffix, format: S.export.format }), taken.get(dir));
+        taken.get(dir).add(name.toLowerCase());
+        jobs.push({ mockup: m, set, dir, name, variant });
+      }
     }
   }
   return jobs;
+}
+// a stable id for a job (resume failed jobs from the last run)
+function jobKey(j) { return (j.mockup.rel || j.mockup.name) + "|" + j.set.name + "|" + (j.variant ? j.variant.name : ""); }
+function onlyKeys(jobs, keys) { const k = new Set(keys || []); return jobs.filter((j) => k.has(jobKey(j))); }
+
+// ---- 3.0 colour variants -------------------------------------------------------
+// "Red #FF0000", "#00FF00 Green", "navy=#001F5B", "#ABC" ... one per line or comma; unnamed colours are named by hex
+function parseColours(text) {
+  const out = [], seen = new Set();
+  for (const part of String(text || "").split(/[\n,;]+/)) {
+    const m = /#?([0-9a-f]{6}|[0-9a-f]{3})\b/i.exec(part);
+    if (!m || !/#|^[0-9a-f]{3,6}$/i.test(part.trim()) && part.indexOf("#") < 0) continue;
+    let hex = m[1].toUpperCase(); if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    const name = cleanName(part.replace(m[0], "").replace(/[=:]/g, " ").trim() || hex);
+    if (seen.has(name.toLowerCase())) continue; seen.add(name.toLowerCase());
+    out.push({ name, hex: "#" + hex });
+  }
+  return out;
+}
+
+// ---- 3.0 text from CSV ---------------------------------------------------------
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false; const s = String(text || "").replace(/^\uFEFF/, "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { if (c === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === "," || c === ";" || c === "\t") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && s[i + 1] === "\n") i++; row.push(cell); cell = ""; if (row.some((x) => x.trim() !== "")) rows.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some((x) => x.trim() !== "")) rows.push(row);
+  const headers = (rows.shift() || []).map((h) => h.trim());
+  return { headers, rows: rows.map((r) => { const o = {}; headers.forEach((h, i) => { o[h] = (r[i] == null ? "" : r[i]).trim(); }); return o; }) };
+}
+// the row for an artwork set: the "artwork" (or "file") column matches its name, else the first column
+function csvRowFor(csv, setName) {
+  if (!csv || !csv.headers.length) return null;
+  const key = csv.headers.find((h) => /^(artwork|file|name)$/i.test(h)) || csv.headers[0], want = String(setName).trim().toLowerCase();
+  return csv.rows.find((r) => splitName(String(r[key] || "")).base.trim().toLowerCase() === want || String(r[key] || "").trim().toLowerCase() === want) || null;
+}
+// text layer name -> new text for one row (the key column is left out)
+function csvTexts(csv, row) {
+  if (!row) return {};
+  const key = csv.headers.find((h) => /^(artwork|file|name)$/i.test(h)) || csv.headers[0], out = {};
+  for (const h of csv.headers) if (h && h !== key) out[h] = row[h];
+  return out;
+}
+
+// ---- 3.0 multi-size export ----------------------------------------------------
+// "1080x1080, 1920x1080" -> [{ w, h, label }]
+function parseSizes(text) {
+  const out = [];
+  for (const m of String(text || "").matchAll(/(\d{2,5})\s*[x×*]\s*(\d{2,5})/gi)) {
+    const w = +m[1], h = +m[2]; if (w > 0 && h > 0 && !out.some((o) => o.w === w && o.h === h)) out.push({ w, h, label: w + "x" + h });
+  }
+  return out;
+}
+function sizedName(name, size, delim, format) { const b = splitName(name).base; return b + delim + size.label + "." + (OUT_EXT[format] || splitName(name).ext); }
+// fit the image inside the box, centred (the rest of the box is filled)
+function fitBox(w, h, W, H) { const k = Math.min(W / w, H / h); const nw = Math.max(1, Math.round(w * k)), nh = Math.max(1, Math.round(h * k)); return { w: nw, h: nh, left: Math.round((W - nw) / 2), top: Math.round((H - nh) / 2) }; }
+
+// ---- 3.0 preview sheet --------------------------------------------------------
+// contact-sheet grid for n thumbnails of cell px, at most maxCols wide
+function sheetGrid(n, cell, maxCols, gap) {
+  const g = gap == null ? 8 : gap, cols = Math.max(1, Math.min(maxCols || 6, Math.ceil(Math.sqrt(n * 1.5)))), rows = Math.max(1, Math.ceil(n / cols));
+  return { cols, rows, W: cols * cell + (cols + 1) * g, H: rows * (cell + 18) + (rows + 1) * g, pos: (i) => ({ left: g + (i % cols) * (cell + g), top: g + Math.floor(i / cols) * (cell + 18 + g) }) };
 }
 
 // Artwork for one Smart Object of a job (null = leave that SO unchanged).
@@ -136,5 +208,6 @@ function leavesGaps(mode, art, can) {
 module.exports = {
   MOCKUP_EXT, ART_EXT, DELIMS, splitName, isMockup, isArtwork, cleanName,
   matchesTarget, slotOf, artworkSets, outputName, uniqueName, outputDir,
-  buildJobs, artworkForSlot, placeRect, leavesGaps
+  buildJobs, artworkForSlot, placeRect, leavesGaps,
+  jobKey, onlyKeys, parseColours, parseCSV, csvRowFor, csvTexts, parseSizes, sizedName, fitBox, sheetGrid
 };

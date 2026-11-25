@@ -90,7 +90,7 @@ async function t(name, fn) {
     const seg = [...d.querySelectorAll(".segbtn")].find((b) => b.textContent === "Dither");
     seg.dispatchEvent(new P.window.Event("click"));
     await P.settle(800);
-    assert.strictEqual(d.querySelectorAll(".algostrip .thumb").length, 28, "dither thumbs incl. Line Art");
+    assert.strictEqual(d.querySelectorAll(".algostrip .thumb").length, 43, "dither thumbs incl. Line Art + 3.0 Modulation and Pattern (15)");
     assert.ok(d.getElementById("app").classList.contains("brand-console") && d.querySelector(".rack .led"), "Hardware Console header");
     const dial = [...d.querySelectorAll(".dial")].find((n) => /Threshold/.test(n.querySelector(".dlabel").textContent));
     const knob = dial.querySelector("img.knob");
@@ -108,8 +108,8 @@ async function t(name, fn) {
     assert.strictEqual(lb.textContent, "Hide looks", "look previews show by default");
     await P.settle(2500);
     const imgs = d.querySelectorAll(".lookgrid img");
-    assert.strictEqual(imgs.length, 40);
-    assert.ok([...imgs].filter((i) => /^data:image\/png/.test(i.src)).length >= 20, "look thumbnails render");
+    assert.strictEqual(imgs.length, 52);   // 40 + 12 Dithers 3.0 looks
+    assert.ok([...imgs].filter((i) => /^data:image\/png/.test(i.getAttribute("src"))).length >= 20, "look thumbnails render");
     imgs[32].parentNode.dispatchEvent(new P.window.Event("click"));
     assert.strictEqual(st().algo.dither, "wavescan");
   });
@@ -168,7 +168,7 @@ async function t(name, fn) {
     assert.strictEqual(a1.layers.length, 2); assert.strictEqual(a1.layers[1].blend, "SCREEN");
   });
 
-  await t("Chrometone panel matches its golden fingerprint (UI, 24 presets, Apply)", () => {
+  await t("Chrometone panel matches its golden fingerprint (UI, 35 presets, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins/chrometone")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "chrometone.golden.json"), "utf8"));
     assert.deepStrictEqual(got, want);
@@ -183,7 +183,7 @@ async function t(name, fn) {
     assert.ok(P.glow.modules.length === 4 && P.glow.modules.every((m) => !m.on));
     const res = await E.render(E.demoImage(80, 60), P);
     assert.deepStrictEqual(res.layers.map((l) => l.name), ["Chrome colour", "Chrome shine"]);
-    assert.strictEqual(PRESETS.length, 24); assert.strictEqual(PRESETS.filter((p) => p.cat === "Retro chrome").length, 16);
+    assert.strictEqual(PRESETS.length, 35); assert.strictEqual(PRESETS.filter((p) => p.cat === "Retro chrome").length, 16);   // 8 classic + 16 retro + 6 desert + 5 photo (3.0)
     const short = merge(DEFAULTS, { glow: { modules: [{ on: true, type: "halo" }] } });
     assert.strictEqual(short.glow.modules.length, 4); assert.strictEqual(short.glow.modules[0].size, DEFAULTS.glow.modules[0].size);
   });
@@ -324,6 +324,11 @@ async function t(name, fn) {
   await require("./brew3.js")(t);
   await require("./colour3.js")(t);
   await require("./modal-guard.js")(t);
+  await require("./brand.js")(t);
+  await require("./upgrades3.js")(t);
+  await require("./ascii3.js")(t);
+  await require("./premiere-console.js")(t);
+  await require("./ae-uxp-console.js")(t);
 
   console.log(failed ? "\n" + failed + " failed" : "\nall passed");
   process.exit(failed ? 1 : 0);

@@ -6,7 +6,7 @@ const assert = require("assert");
 const path = require("path");
 const fs = require("fs");
 const ROOT = path.join(__dirname, "..");
-const UI3 = ["crt-phaser"];
+const UI3 = ["crt-phaser", "chrometone", "decompressor", "depthtone", "mobglow", "paint-brew"];
 
 module.exports = async function (t) {
   const { loadPanel } = require("./harness.js");
@@ -174,7 +174,7 @@ module.exports = async function (t) {
     P.host.calls.length = 0;
     await T.applyNow();
     const g = P.host.calls.find((c) => c[0] === "createLayerGroup");
-    assert.ok(g && /^Frank's CRT Phaser Brew - /.test(g[1]), "new group made: " + (g && g[1]));
+    assert.ok(g && /^Scanline Lab - /.test(g[1]), "new group made: " + (g && g[1]));
     assert.strictEqual(prev.visible, false, "previous result hidden, not deleted");
     assert.ok(P.host.calls.some((c) => c[0] === "move" && c[1] === 77 && c[2] === "before"), "new group moved out of and above the previous group");
     assert.ok(!P.host.calls.some((c) => c[0] === "getPixels" && /"layerID":77/.test(c.join())), "group not read by id");
@@ -182,7 +182,7 @@ module.exports = async function (t) {
     await ready(P2);
     P2.mod._test.state.out.source = "prev";
     await P2.mod._test.applyNow();
-    assert.ok(/No earlier Brew result/.test(P2.document.querySelector(".status").textContent), "plain message when nothing to chain");
+    assert.ok(/No earlier Lab result/.test(P2.document.querySelector(".status").textContent), "plain message when nothing to chain");
   });
 
   await t("3.0 quick wins kept: Before/After button, flyout menu, plain errors, Apply blocked without a document, double-press reset", async () => {
@@ -190,7 +190,7 @@ module.exports = async function (t) {
       const P = await loadPanel(path.join(ROOT, "plugins", tool), { withDoc: false });
       await ready(P);
       const D = P.document, T = P.mod._test;
-      const ba = Array.from(D.querySelectorAll(".tbtn")).find((b) => /Before \/ After/.test(b.textContent));
+      const ba = Array.from(D.querySelectorAll(".tbtn")).find((b) => /^Split$/.test(b.textContent.trim()) && b.__help && b.__help.name === "Before / After");   // 3.0 button rule: short label, help still names it
       assert.ok(ba, tool + " Before/After button");
       const ep = P.host.uxp.entrypoints.last, panel = ep.panels[Object.keys(ep.panels)[0]];
       assert.ok(panel.menuItems.some((m) => m.id === "resetLook") && panel.menuItems.some((m) => m.id === "assist"), tool + " flyout menu has Reset look and Assistance");

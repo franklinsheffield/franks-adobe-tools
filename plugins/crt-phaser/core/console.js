@@ -85,7 +85,7 @@ function createConsoleKit(env) {
     const node = el("div", { class: "rack" }, [
       screw("tl"), screw("tr", true), screw("bl", true), screw("br"),
       el("div", { class: "rackl" }, [
-        el("div", { class: "sub rackcode", text: (env.lcd ? "FRANK'S " : "FRANK'S  -  ") + (cfg.code || "BREW") }),
+        el("div", { class: "sub rackcode", text: (env.lcd ? "LAB " : "LAB  -  ") + (cfg.code || "") }),
         el("div", { class: "title", text: name })
       ]),
       el("div", { class: "rackr" }, [env.help ? env.help.switchNode() : null, led, ledTxt])
@@ -116,7 +116,7 @@ function createConsoleKit(env) {
     let me = null;
     const img = el("img", { class: "knob" });
     me = C.numeric({ label, path, min, max, step, unit, kind: "knob", cls: "dial",
-      visual: () => ({ node: img, draw: (v, sel) => { img.src = dialImage((v - min) / (max - min || 1), glow(), sel); } }) });
+      visual: () => ({ node: img, draw: (v, sel) => { const u = dialImage((v - min) / (max - min || 1), glow(), sel); if (img.__u !== u) { img.__u = u; img.src = u; } } }) });
     // pressing the knob selects it and focuses its box so the arrow keys reach it
     const focusBox = () => { const i = me.node.querySelector(".dialval"); try { if (document.activeElement !== i) i.focus(); } catch (e) { /* host without focus() */ } };
     let drag = null, lastTap = 0;

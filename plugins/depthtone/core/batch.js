@@ -31,7 +31,7 @@ function createBatch(o) {
           const out = await runJob(job, i);
           const s = typeof out === "string" ? out : "ok";
           if (/^skipped/.test(s)) r = { job, status: "skipped", why: s.replace(/^skipped:?\s*/, "") };
-          else r = { job, status: "ok", why: "" };
+          else r = { job, status: "ok", why: s === "ok" ? "" : s.replace(/^ok\s*\(?/, "").replace(/\)$/, "") };   // "ok (note)" keeps its note for the log
         } catch (e) {
           r = { job, status: "failed", why: (e && e.message) ? e.message : String(e) };
         }

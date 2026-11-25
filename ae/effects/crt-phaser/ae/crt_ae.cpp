@@ -13,6 +13,7 @@
 #include "../crt_motion.h"
 #include "../crt_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 #include <string>
 #include <cstring>
 
@@ -61,8 +62,8 @@ static std::string lookMenu(bool withNone) {
 #define ENDTOPIC(ID) AEFX_CLR_STRUCT(def); PF_END_TOPIC(ID);
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCRT-06  Frank's Brew suite\rScanlines, phosphor, tube, Phase FX + motion.",
-             "Frank's CRT Phaser Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCRT-06  Lab suite\rScanlines, phosphor, tube, Phase FX + motion.",
+             "Scanline Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 
@@ -73,6 +74,10 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
   return PF_Err_NONE;
 }
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { T_MO_START, T_CM_START, T_LOOK_START, T_SCREEN_START, T_TUBE_START, T_PHASE_START, T_PHLOOK_START, T_PHCOL_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE;
   PF_ParamDef def;
@@ -80,104 +85,116 @@ static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   crt::parseParams(D, crt::LOOKS[0].text);
   static std::string looks = lookMenu(false), looksB = lookMenu(true);
 
-  TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", crt::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", crt::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  ENDTOPIC(T_LOOK_END);
-
-  TOPIC("Phase FX", T_PHASE_START, true);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Mode", 5, D.phaseMode + 1, MODES, P_PH_MODE);
-  FS("Lines (full image)", 20, 600, 20, 600, D.phLines, 0, P_PH_LINES);
-  FS("Bend", 0, 100, 0, 100, D.phAmp, 0, P_PH_AMP);
-  FS("Smoothness", 0, 100, 0, 100, D.phSmooth, 0, P_PH_SMOOTH);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Line angle", D.phAngle, P_PH_ANGLE);
-  FS("Flow warp", 0, 100, 0, 100, D.phWarp, 0, P_PH_WARP);
-  FS("Detail", 0, 100, 0, 100, D.phDetail, 0, P_PH_DETAIL);
-  FS("Beam width", 5, 100, 5, 100, D.phWidth, 0, P_PH_WIDTH);
-  FS("Threshold", 0, 90, 0, 90, D.phThreshold, 0, P_PH_THRESH);
-  FS("Dot break-up / size", 0, 100, 0, 100, D.phDots, 0, P_PH_DOTS);
-  ENDTOPIC(T_PHASE_END);
-
-  TOPIC("Phase look", T_PHLOOK_START, true);
-  FS("Glow", 0, 100, 0, 100, D.phGlow, 0, P_PH_GLOW);
-  FS("Colour fringe", 0, 100, 0, 100, D.phFringe, 0, P_PH_FRINGE);
-  FS("Signal debris", 0, 100, 0, 100, D.phDebris, 0, P_PH_DEBRIS);
-  FS("Prism flare", 0, 100, 0, 100, D.phFlare, 0, P_PH_FLARE);
-  FS("Grain", 0, 100, 0, 100, D.phGrain, 0, P_PH_GRAIN);
-  FS("Seed", 1, 99, 1, 99, D.phSeed, 0, P_PH_SEED);
-  ENDTOPIC(T_PHLOOK_END);
-
-  TOPIC("Phase colour", T_PHCOL_START, true);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Colour", 2, D.phColorFull ? 2 : 1, "Phosphor ramp|Photo's own colours", P_PH_COLOR);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Ramp stops", 6, 4, "2|3|4|5|6|7", P_PH_STOPS);
-  for (int s = 0; s < 7; s++) {
-    RGB c = { 0, 0, 0 }; double p = s * 100.0 / 6;
-    if (s < (int)D.phRamp.size()) { c = hexToRgb(D.phRamp[s].c); p = D.phRamp[s].p; }
-    char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
-    AEFX_CLR_STRUCT(def); PF_ADD_COLOR(cn, (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_RC1 + s * 2);
-    FS(pn, 0, 100, 0, 100, p, 0, P_RP1 + s * 2);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case T_MO_START: {  // Motion
+    TOPIC("Motion", T_MO_START, false);
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", 0, 0, P_MO_ANIMATE);
+    FS("Speed (%)", 0, 400, 0, 400, 100, 0, P_MO_SPEED);
+    FS("Loop (frames, 0 = endless)", 0, 600, 0, 600, 0, 0, P_MO_LOOP);
+    FS("Seed", 0, 9999, 0, 999, 0, 0, P_MO_SEED);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Boil", 7, 1, BOILS, P_MO_BOIL);
+    FS("Drift X (px/s)", -500, 500, -200, 200, 0, 1, P_MO_DRIFTX);
+    FS("Drift Y (px/s)", -500, 500, -200, 200, 0, 1, P_MO_DRIFTY);
+    FS("Spin (deg/s)", -360, 360, -90, 90, 0, 1, P_MO_SPIN);
+    FS("Pulse (%)", 0, 100, 0, 100, 0, 0, P_MO_PULSE);
+    FS("Pulse rate (Hz)", 0, 10, 0, 4, 1, 2, P_MO_PULSER);
+    FS("Flicker (%)", 0, 100, 0, 100, 0, 0, P_MO_FLICK);
+    FS("Flicker rate (Hz)", 0, 30, 0, 30, 12, 1, P_MO_FLICKR);
+    FS("Jitter (px)", 0, 50, 0, 20, 0, 1, P_MO_JIT);
+    FS("Jitter rate (Hz)", 0, 30, 0, 30, 12, 1, P_MO_JITR);
+    FS("Reveal (%)", 0, 100, 0, 100, 100, 1, P_MO_REVEAL);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Reveal mode", 4, 1, REVEALS, P_MO_REVMODE);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Wipe angle", 0, P_MO_REVANG);
+    ENDTOPIC(T_MO_END);
+  } break;
+  case T_CM_START: {  // CRT motion
+    TOPIC("CRT motion", T_CM_START, false);
+    FS("Scanline roll (lines/s)", -60, 60, -20, 20, 0, 1, P_CM_ROLL);
+    FS("Vertical hold (screens/s)", -4, 4, -1, 1, 0, 2, P_CM_HOLD);
+    FS("Signal snow (%)", 0, 100, 0, 100, 0, 0, P_CM_SNOW);
+    FS("Tube flicker (%)", 0, 100, 0, 100, 0, 0, P_CM_FLICK);
+    FS("Channel glitch (bursts/s)", 0, 5, 0, 2, 0, 2, P_CM_GRATE);
+    FS("Glitch length (frames)", 1, 30, 1, 12, 6, 0, P_CM_GLEN);
+    FS("Glitch amount (%)", 0, 100, 0, 100, 60, 0, P_CM_GAMT);
+    FS("Convergence wobble (px)", 0, 10, 0, 5, 0, 1, P_CM_WOBBLE);
+    FS("Phase flow (lines/s)", -10, 10, -2, 2, 0, 2, P_CM_FLOW);
+    FS("Warp drift (px/s)", -500, 500, -200, 200, 0, 1, P_CM_WARP);
+    ENDTOPIC(T_CM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", crt::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", crt::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_SCREEN_START: {  // Screen
+    TOPIC("Screen", T_SCREEN_START, false);
+    FS("Lines (full image)", 60, 1200, 60, 1200, D.screenLines, 0, P_SCREEN_LINES);
+    FS("Red / blue shift X", -10, 10, -10, 10, D.convX, 1, P_CONV_X);
+    FS("Red / blue shift Y", -10, 10, -10, 10, D.convY, 1, P_CONV_Y);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Phosphor mask", 5, D.maskType + 1, MASKS, P_MASK_TYPE);
+    FS("Mask scale", 1, 8, 1, 8, D.maskScale, 0, P_MASK_SCALE);
+    FS("Mask strength", 0, 100, 0, 100, D.maskStrength, 0, P_MASK_STR);
+    FS("Scanline strength", 0, 100, 0, 100, D.scanStrength, 0, P_SCAN_STR);
+    FS("Scanline beam width", 10, 100, 10, 100, D.scanWidth, 0, P_SCAN_W);
+    ENDTOPIC(T_SCREEN_END);
+  } break;
+  case T_TUBE_START: {  // Tube and finish
+    TOPIC("Tube and finish", T_TUBE_START, false);
+    FS("Bloom", 0, 100, 0, 100, D.bloom, 0, P_BLOOM);
+    FS("Curvature", 0, 100, 0, 100, D.curve, 0, P_CURVE);
+    FS("Corner radius", 0, 100, 0, 100, D.corner, 0, P_CORNER);
+    FS("Vignette", 0, 100, 0, 100, D.vignette, 0, P_VIGNETTE);
+    FS("Noise", 0, 100, 0, 100, D.noise, 0, P_NOISE);
+    FS("Roll band position", 0, 100, 0, 100, D.roll, 0, P_ROLL);
+    FS("Roll band strength", 0, 100, 0, 100, D.rollStrength, 0, P_ROLL_STR);
+    FS("Brightness", 50, 200, 50, 200, D.brightness, 0, P_BRIGHT);
+    FS("Contrast", 50, 200, 50, 200, D.contrast, 0, P_CONTRAST);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Phosphor colour", 4, D.tint + 1, TINTS_S, P_TINT);
+    ENDTOPIC(T_TUBE_END);
+  } break;
+  case T_PHASE_START: {  // Phase FX
+    TOPIC("Phase FX", T_PHASE_START, true);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Mode", 5, D.phaseMode + 1, MODES, P_PH_MODE);
+    FS("Lines (full image)", 20, 600, 20, 600, D.phLines, 0, P_PH_LINES);
+    FS("Bend", 0, 100, 0, 100, D.phAmp, 0, P_PH_AMP);
+    FS("Smoothness", 0, 100, 0, 100, D.phSmooth, 0, P_PH_SMOOTH);
+    AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Line angle", D.phAngle, P_PH_ANGLE);
+    FS("Flow warp", 0, 100, 0, 100, D.phWarp, 0, P_PH_WARP);
+    FS("Detail", 0, 100, 0, 100, D.phDetail, 0, P_PH_DETAIL);
+    FS("Beam width", 5, 100, 5, 100, D.phWidth, 0, P_PH_WIDTH);
+    FS("Threshold", 0, 90, 0, 90, D.phThreshold, 0, P_PH_THRESH);
+    FS("Dot break-up / size", 0, 100, 0, 100, D.phDots, 0, P_PH_DOTS);
+    ENDTOPIC(T_PHASE_END);
+  } break;
+  case T_PHLOOK_START: {  // Phase look
+    TOPIC("Phase look", T_PHLOOK_START, true);
+    FS("Glow", 0, 100, 0, 100, D.phGlow, 0, P_PH_GLOW);
+    FS("Colour fringe", 0, 100, 0, 100, D.phFringe, 0, P_PH_FRINGE);
+    FS("Signal debris", 0, 100, 0, 100, D.phDebris, 0, P_PH_DEBRIS);
+    FS("Prism flare", 0, 100, 0, 100, D.phFlare, 0, P_PH_FLARE);
+    FS("Grain", 0, 100, 0, 100, D.phGrain, 0, P_PH_GRAIN);
+    FS("Seed", 1, 99, 1, 99, D.phSeed, 0, P_PH_SEED);
+    ENDTOPIC(T_PHLOOK_END);
+  } break;
+  case T_PHCOL_START: {  // Phase colour
+    TOPIC("Phase colour", T_PHCOL_START, true);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Colour", 2, D.phColorFull ? 2 : 1, "Phosphor ramp|Photo's own colours", P_PH_COLOR);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Ramp stops", 6, 4, "2|3|4|5|6|7", P_PH_STOPS);
+    for (int s = 0; s < 7; s++) {
+      RGB c = { 0, 0, 0 }; double p = s * 100.0 / 6;
+      if (s < (int)D.phRamp.size()) { c = hexToRgb(D.phRamp[s].c); p = D.phRamp[s].p; }
+      char cn[32], pn[32]; snprintf(cn, sizeof cn, "Stop %d colour", s + 1); snprintf(pn, sizeof pn, "Stop %d position", s + 1);
+      AEFX_CLR_STRUCT(def); PF_ADD_COLOR(cn, (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_RC1 + s * 2);
+      FS(pn, 0, 100, 0, 100, p, 0, P_RP1 + s * 2);
+    }
+    { RGB b = hexToRgb(D.phBase); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Screen base", (A_u_char)b.r, (A_u_char)b.g, (A_u_char)b.b, P_PH_BASE); }
+    ENDTOPIC(T_PHCOL_END);
+  } break;
+  default: break;
   }
-  { RGB b = hexToRgb(D.phBase); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Screen base", (A_u_char)b.r, (A_u_char)b.g, (A_u_char)b.b, P_PH_BASE); }
-  ENDTOPIC(T_PHCOL_END);
-
-  TOPIC("Screen", T_SCREEN_START, false);
-  FS("Lines (full image)", 60, 1200, 60, 1200, D.screenLines, 0, P_SCREEN_LINES);
-  FS("Red / blue shift X", -10, 10, -10, 10, D.convX, 1, P_CONV_X);
-  FS("Red / blue shift Y", -10, 10, -10, 10, D.convY, 1, P_CONV_Y);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Phosphor mask", 5, D.maskType + 1, MASKS, P_MASK_TYPE);
-  FS("Mask scale", 1, 8, 1, 8, D.maskScale, 0, P_MASK_SCALE);
-  FS("Mask strength", 0, 100, 0, 100, D.maskStrength, 0, P_MASK_STR);
-  FS("Scanline strength", 0, 100, 0, 100, D.scanStrength, 0, P_SCAN_STR);
-  FS("Scanline beam width", 10, 100, 10, 100, D.scanWidth, 0, P_SCAN_W);
-  ENDTOPIC(T_SCREEN_END);
-
-  TOPIC("Tube and finish", T_TUBE_START, false);
-  FS("Bloom", 0, 100, 0, 100, D.bloom, 0, P_BLOOM);
-  FS("Curvature", 0, 100, 0, 100, D.curve, 0, P_CURVE);
-  FS("Corner radius", 0, 100, 0, 100, D.corner, 0, P_CORNER);
-  FS("Vignette", 0, 100, 0, 100, D.vignette, 0, P_VIGNETTE);
-  FS("Noise", 0, 100, 0, 100, D.noise, 0, P_NOISE);
-  FS("Roll band position", 0, 100, 0, 100, D.roll, 0, P_ROLL);
-  FS("Roll band strength", 0, 100, 0, 100, D.rollStrength, 0, P_ROLL_STR);
-  FS("Brightness", 50, 200, 50, 200, D.brightness, 0, P_BRIGHT);
-  FS("Contrast", 50, 200, 50, 200, D.contrast, 0, P_CONTRAST);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Phosphor colour", 4, D.tint + 1, TINTS_S, P_TINT);
-  ENDTOPIC(T_TUBE_END);
-
-  TOPIC("Motion", T_MO_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Animate", 0, 0, P_MO_ANIMATE);
-  FS("Speed (%)", 0, 400, 0, 400, 100, 0, P_MO_SPEED);
-  FS("Loop (frames, 0 = endless)", 0, 600, 0, 600, 0, 0, P_MO_LOOP);
-  FS("Seed", 0, 9999, 0, 999, 0, 0, P_MO_SEED);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Boil", 7, 1, BOILS, P_MO_BOIL);
-  FS("Drift X (px/s)", -500, 500, -200, 200, 0, 1, P_MO_DRIFTX);
-  FS("Drift Y (px/s)", -500, 500, -200, 200, 0, 1, P_MO_DRIFTY);
-  FS("Spin (deg/s)", -360, 360, -90, 90, 0, 1, P_MO_SPIN);
-  FS("Pulse (%)", 0, 100, 0, 100, 0, 0, P_MO_PULSE);
-  FS("Pulse rate (Hz)", 0, 10, 0, 4, 1, 2, P_MO_PULSER);
-  FS("Flicker (%)", 0, 100, 0, 100, 0, 0, P_MO_FLICK);
-  FS("Flicker rate (Hz)", 0, 30, 0, 30, 12, 1, P_MO_FLICKR);
-  FS("Jitter (px)", 0, 50, 0, 20, 0, 1, P_MO_JIT);
-  FS("Jitter rate (Hz)", 0, 30, 0, 30, 12, 1, P_MO_JITR);
-  FS("Reveal (%)", 0, 100, 0, 100, 100, 1, P_MO_REVEAL);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Reveal mode", 4, 1, REVEALS, P_MO_REVMODE);
-  AEFX_CLR_STRUCT(def); PF_ADD_ANGLE("Wipe angle", 0, P_MO_REVANG);
-  ENDTOPIC(T_MO_END);
-
-  TOPIC("CRT motion", T_CM_START, false);
-  FS("Scanline roll (lines/s)", -60, 60, -20, 20, 0, 1, P_CM_ROLL);
-  FS("Vertical hold (screens/s)", -4, 4, -1, 1, 0, 2, P_CM_HOLD);
-  FS("Signal snow (%)", 0, 100, 0, 100, 0, 0, P_CM_SNOW);
-  FS("Tube flicker (%)", 0, 100, 0, 100, 0, 0, P_CM_FLICK);
-  FS("Channel glitch (bursts/s)", 0, 5, 0, 2, 0, 2, P_CM_GRATE);
-  FS("Glitch length (frames)", 1, 30, 1, 12, 6, 0, P_CM_GLEN);
-  FS("Glitch amount (%)", 0, 100, 0, 100, 60, 0, P_CM_GAMT);
-  FS("Convergence wobble (px)", 0, 10, 0, 5, 0, 1, P_CM_WOBBLE);
-  FS("Phase flow (lines/s)", -10, 10, -2, 2, 0, 2, P_CM_FLOW);
-  FS("Warp drift (px/s)", -500, 500, -200, 200, 0, 1, P_CM_WARP);
-  ENDTOPIC(T_CM_END);
 
   out_data->num_params = P_NUM;
   return err;
@@ -263,7 +280,7 @@ static void applyLook(PF_ParamDef* p[], int lookIndex) {
 }
 
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -330,20 +347,21 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;               // the SDK macro assigns `result`
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's CRT Phaser Brew", "com.franks.crtphaser.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Scanline Lab", "com.franks.crtphaser.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }
