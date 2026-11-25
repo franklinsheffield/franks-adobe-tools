@@ -60,8 +60,8 @@ for (const t of B.tools) {
   const pos = positions(order, ids.P_NUM);
   const kinds = {}, names = {};
   // literal-named params, plus loop-added ones (kinds only: their names are built at run time)
-  const KIND = { BREW_FS: "num", FS: "num", PF_ADD_FLOAT_SLIDERX: "num", PF_ADD_POPUP: "popup", PF_ADD_CHECKBOXX: "bool", PF_ADD_COLOR: "color", PF_ADD_ANGLE: "angle", BREW_TOPIC: "topic", TOPIC: "topic", PF_ADD_TOPIC: "topic", BREW_ENDTOPIC: "end", ENDTOPIC: "end", PF_END_TOPIC: "end" };
-  const re = /\b(BREW_FS|FS|PF_ADD_FLOAT_SLIDERX|PF_ADD_POPUP|PF_ADD_CHECKBOXX|PF_ADD_COLOR|PF_ADD_ANGLE|BREW_TOPIC|TOPIC|PF_ADD_TOPIC|BREW_ENDTOPIC|ENDTOPIC|PF_END_TOPIC)\(([^;]*)\);/g;
+  const KIND = { BREW_FS: "num", FS: "num", PF_ADD_FLOAT_SLIDERX: "num", PF_ADD_POPUP: "popup", PF_ADD_CHECKBOXX: "bool", PF_ADD_COLOR: "color", PF_ADD_ANGLE: "angle", BREW_TOPIC: "topic", TOPIC: "topic", PF_ADD_TOPIC: "topic", BREW_ENDTOPIC: "end", ENDTOPIC: "end", PF_END_TOPIC: "end", POPUP: "popup", CHECK: "bool", COLOR: "color" };
+  const re = /\b(BREW_FS|FS|PF_ADD_FLOAT_SLIDERX|PF_ADD_POPUP|PF_ADD_CHECKBOXX|PF_ADD_COLOR|PF_ADD_ANGLE|BREW_TOPIC|TOPIC|PF_ADD_TOPIC|BREW_ENDTOPIC|ENDTOPIC|PF_END_TOPIC|POPUP|CHECK|COLOR)\(([^;]*)\);/g;
   let m;
   while ((m = re.exec(src))) {
     const args = m[2], kind = KIND[m[1]];
@@ -82,6 +82,15 @@ for (const t of B.tools) {
     }
   }
   if (ids.P_MO_BASE !== undefined) MO.forEach((k, i) => { const id = ids.P_MO_BASE + i; kinds[id] = MO_KINDS[i]; if (MO_NAMES[i]) names[pos[id]] = MO_NAMES[i]; });
+  // brewmap.js knows the kind of every look key; fill what the C++ parse missed (gradient stops, colour lists)
+  for (const e of Object.values(t.keys)) {
+    const put = (id, k) => { if (id != null && id < ids.P_NUM && !kinds[id]) kinds[id] = k; };
+    if (e.kind === "num" || e.kind === "bool" || e.kind === "color" || e.kind === "popup") put(e.id, e.kind);
+    else if (e.kind === "stops") { put(e.stops, "popup"); for (let s = 0; s < e.max; s++) { put(e.c + (e.stride || 2) * s, "color"); if (e.p != null) put(e.p + (e.stride || 2) * s, "num"); } }
+    else if (e.kind === "list") { put(e.count, "popup"); for (let s = 0; s < e.max; s++) put(e.c + e.stride * s, "color"); }
+    else if (e.kind === "optcolor") { put(e.on, "bool"); put(e.id, "color"); }
+  }
+  if (ids.P_LOOKB !== undefined && !kinds[ids.P_LOOKB]) kinds[ids.P_LOOKB] = "popup";
   const missing = Object.keys(t.params).filter((id) => !kinds[id]);
   if (missing.length) console.warn(`  ${t.id}: ${missing.length} params without a parsed kind (inferred from the value at run time)`);
   const st = require(path.join(root, `plugins/${t.id}/js/state.js`));

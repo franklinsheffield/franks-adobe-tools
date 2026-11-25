@@ -74,6 +74,17 @@ module.exports = async function (t) {
     assert.ok(Object.keys(m.lookVals[0]).length > 40, "a look sets the whole effect");
   });
 
+  await t("Premiere console: every Lab effect param has a kind (popups must be known: Premiere counts them from 0)", () => {
+    const sb = { window: {} }; require("vm").runInNewContext(fs.readFileSync(path.join(D, "js/ppro-map.js"), "utf8"), sb);
+    const bm = { window: {} }; require("vm").runInNewContext(fs.readFileSync(path.join(D, "js/brewmap.js"), "utf8"), bm);
+    for (const tool of bm.window.BREW.tools) {
+      const m = sb.window.LAB_PPRO[tool.id];
+      const missing = Object.keys(tool.params).filter((id) => !m.kinds[id]);
+      assert.deepStrictEqual(missing, [], tool.id + " params without a kind");
+      for (const e of Object.values(tool.keys)) if (e.kind === "popup") assert.strictEqual(m.kinds[e.id], "popup", tool.id + " popup " + e.id);
+    }
+  });
+
   await t("Premiere console: loads in UXP mode (PR words, audio hidden) and reads the selection", async () => {
     const { w, $ } = await load({});
     await tick();
