@@ -6,6 +6,10 @@
 (function () {
   const B = window.BREW, $ = (id) => document.getElementById(id);
   const CEP = window.__adobe_cep__;
+  // Host adapter: After Effects uses CEP evalScript (jsx/host.jsx); Premiere sets window.LabHost
+  // (premiere/console/js/ppro-host.js) with call(fn, args), app code, words and feature flags.
+  const HOST = window.LabHost || null;
+  const W = Object.assign({ app: "AE", comp: "COMP", layer: "layer", openComp: "Open a composition and select layers", start: "Select layers in a comp, then click a look." }, HOST && HOST.words);
   const MATCHES = B.tools.map((t) => t.match);
 
   // ------------------------------------------------------------ 3.0 hover help + no wheel
@@ -36,7 +40,7 @@
     (kids || []).forEach((c) => { if (c) n.appendChild(c); });
     return n;
   }
-  const help = window.LabHelp.createHelp({ el, storeKey: "aeconsole", lookup: (k) => HELP[k] || "", root: () => $("app") });
+  const help = window.LabHelp.createHelp({ el, storeKey: "aeconsole", lookup: (k) => (HELP[k] || "").replace(/\blayers\b/g, W.layer + "s").replace(/\blayer\b/g, W.layer), root: () => $("app") });
   $("assist").appendChild(help.switchNode());
   document.querySelectorAll("[data-help]").forEach((n) => {
     const k = n.getAttribute("data-help"); n.removeAttribute("data-help");
@@ -53,6 +57,7 @@
   function q(s) { return JSON.stringify(String(s)); }
   function host(fn, ...args) {
     const call = fn + "(" + args.map((a) => typeof a === "number" || typeof a === "boolean" ? String(a) : q(typeof a === "string" ? a : JSON.stringify(a))).join(",") + ")";
+    if (HOST) return Promise.resolve().then(() => HOST.call(fn, args)).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
     return new Promise((res) => {
       if (!CEP) return res(mock(fn, args));
       CEP.evalScript(call, (r) => { try { res(JSON.parse(r)); } catch (e) { res({ ok: false, error: "Host script error: " + r }); } });
@@ -108,7 +113,7 @@
     toolNodes[t.id].classList.add("on");
     document.documentElement.style.setProperty("--tool", t.glow);
     document.querySelector(".title").textContent = shortName(t) + " LAB";
-    document.querySelector(".rackcode").textContent = "LAB · " + t.code + " · AE";
+    document.querySelector(".rackcode").textContent = "LAB · " + t.code + " · " + W.app;
     buildCats(); buildLooks(); buildMotion(); buildAudio(); refillMine();
   }
 
@@ -137,14 +142,14 @@
   function buildLooks() {
     const box = $("looks"); box.innerHTML = "";
     tool.looks.filter((l) => cat === "All" || l.cat === cat).forEach((l) => {
-      const n = document.createElement("div"); n.className = "look"; n.title = l.cat + " - " + l.name + ": click to apply to the selected layers";
+      const n = document.createElement("div"); n.className = "look"; n.title = l.cat + " - " + l.name + ": click to apply to the selected " + W.layer + "s";
       n.innerHTML = `<img loading="lazy" src="thumbs/${tool.id}-${l.i}.jpg"><div class="ln">${l.name.toUpperCase()}</div>`;
       help.attach(n, { key: "look", name: l.name, kind: "button", note: l.cat });
       n.addEventListener("click", async () => {
         flash(n);
         const which = lookMode === "look" ? { look: tool.look } : { look: tool.lookB, morph: tool.morph };
         const r = await run("Applying " + l.name, host("brew_applyLook", tool.match, which, l.i, $("addNew").checked));
-        if (r.ok) status(`${lookMode === "look" ? "Look" : "Look B"}: ${l.name} on ${r.count} layer${r.count === 1 ? "" : "s"}.` + (lookMode === "lookB" ? " Animate 'Morph to Look B' to blend." : ""));
+        if (r.ok) status(`${lookMode === "look" ? "Look" : "Look B"}: ${l.name} on ${r.count} ${W.layer}${r.count === 1 ? "" : "s"}.` + (lookMode === "lookB" ? " Animate 'Morph to Look B' to blend." : ""));
       });
       box.appendChild(n);
     });
@@ -172,7 +177,7 @@
         const vals = {};
         for (const [k, v] of Object.entries(m.v)) vals[k === "morph" ? tool.morph : tool.motion[k]] = v;
         const r = await run("Adding motion", host("brew_setParams", tool.match, vals, [], "motion " + m.name.toLowerCase()));
-        if (r.ok) status(`${m.tip} on ${r.count} layer${r.count === 1 ? "" : "s"}.`);
+        if (r.ok) status(`${m.tip} on ${r.count} ${W.layer}${r.count === 1 ? "" : "s"}.`);
       });
       box.appendChild(b);
     });
@@ -199,73 +204,15 @@
     flash(e.target);
     const id = Number($("audTarget").value), amt = Number($("audAmtN").value) || 0;
     const r = await run("Linking to audio", host("brew_linkAudio", tool.match, id, amt));
-    if (r.ok) status(`${tool.params[id]} now follows "${r.layer}" on ${r.count} layer${r.count === 1 ? "" : "s"}.`);
+    if (r.ok) status(`${tool.params[id]} now follows "${r.layer}" on ${r.count} ${W.layer}${r.count === 1 ? "" : "s"}.`);
   });
   $("audUnlink").addEventListener("click", async () => {
     const r = await run("Unlinking", host("brew_unlinkAudio", tool.match, audioIds()));
     if (r.ok) status(`Removed ${r.count} audio link${r.count === 1 ? "" : "s"}.`);
   });
 
-  // ------------------------------------------------------------ Photoshop look <-> AE values
-  const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
-  function merge(base, patch) {
-    const out = JSON.parse(JSON.stringify(base));
-    (function rec(d, s) { for (const k of Object.keys(s || {})) { if (isObj(s[k]) && isObj(d[k])) rec(d[k], s[k]); else d[k] = JSON.parse(JSON.stringify(s[k])); } })(out, patch);
-    return out;
-  }
-  const getPath = (o, k) => k.split(".").reduce((a, s) => (a == null ? a : a[s]), o);
-  function setPath(o, k, v) {         // numeric parts make arrays ("glow.modules.0.on")
-    const s = k.split("."); let a = o;
-    for (let i = 0; i < s.length - 1; i++) { const nx = /^\d+$/.test(s[i + 1]); if (!(a[s[i]] && typeof a[s[i]] === "object")) a[s[i]] = nx ? [] : {}; a = a[s[i]]; }
-    a[s[s.length - 1]] = v;
-  }
-  function hexToAE(h) { const n = parseInt(String(h || "#000000").replace("#", ""), 16) || 0; return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1]; }
-  function aeToHex(c) { return "#" + c.slice(0, 3).map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, "0")).join("").toUpperCase(); }
-  function psToAE(t, p) {
-    const full = merge(t.defaults, p), out = {};
-    for (const [k, e] of Object.entries(t.keys)) {
-      const v = getPath(full, k); if (v === undefined) continue;
-      if (e.kind === "num") out[e.id] = Number(v);
-      else if (e.kind === "bool") out[e.id] = v === true || v === "true" ? 1 : 0;
-      else if (e.kind === "color") out[e.id] = hexToAE(v);
-      else if (e.kind === "popup") out[e.id] = e.values ? Math.max(1, e.values.indexOf(String(v)) + 1) : (e.map[String(v)] || e.other);
-      else if (e.kind === "stops" && Array.isArray(v)) {
-        const n = Math.max(e.min, Math.min(e.max, v.length)), st = e.stride || 2;
-        if (e.stops != null) out[e.stops] = n - 1;
-        for (let s = 0; s < n && s < v.length; s++) { out[e.c + st * s] = hexToAE(v[s].c); if (e.p != null) out[e.p + st * s] = Number(v[s].p); }
-      } else if (e.kind === "list" && Array.isArray(v)) {         // colour list + count popup
-        const n = Math.max(e.min, Math.min(e.max, v.length));
-        out[e.count] = n - e.countOff;
-        for (let s = 0; s < n && s < v.length; s++) out[e.c + e.stride * s] = hexToAE(v[s]);
-      } else if (e.kind === "optcolor") {                            // "" = none
-        out[e.on] = v ? 1 : 0; if (v) out[e.id] = hexToAE(v);
-      }
-    }
-    return out;
-  }
-  function aeToPS(t, vals) {
-    const p = {};
-    for (const [k, e] of Object.entries(t.keys)) {
-      const id = e.kind === "stops" ? (e.stops != null ? e.stops : e.c) : e.kind === "list" ? e.count : e.kind === "optcolor" ? e.on : e.id, v = vals[id]; if (v === undefined) continue;
-      let o;
-      if (e.kind === "num") o = Math.round(v * 1000) / 1000;
-      else if (e.kind === "bool") o = !!v;
-      else if (e.kind === "color") o = aeToHex(v);
-      else if (e.kind === "popup") {
-        if (e.values) o = e.values[v - 1] || e.values[0];
-        else { o = Object.keys(e.map).find((x) => e.map[x] === v); if (o === undefined) o = getPath(t.defaults, k); if (/^\d+$/.test(o) && typeof getPath(t.defaults, k) === "number") o = Number(o); }
-      } else if (e.kind === "stops") {
-        const st = e.stride || 2, n = e.stops != null ? v + 1 : e.max;
-        o = []; for (let s = 0; s < n; s++) if (vals[e.c + st * s]) o.push({ p: e.p != null ? Math.round(vals[e.p + st * s]) : Math.round(100 * s / Math.max(1, n - 1)), c: aeToHex(vals[e.c + st * s]) });
-      } else if (e.kind === "list") {
-        o = []; for (let s = 0; s < v + e.countOff; s++) if (vals[e.c + e.stride * s]) o.push(aeToHex(vals[e.c + e.stride * s]));
-      } else if (e.kind === "optcolor") {
-        o = v && vals[e.id] ? aeToHex(vals[e.id]) : "";
-      } else continue;
-      setPath(p, k, o);
-    }
-    return p;
-  }
+  // ------------------------------------------------------------ Photoshop look <-> AE values (js/convert.js)
+  const { isObj, psToAE, aeToPS } = window.LabConvert;
   function snapIds(t) { return Object.keys(t.params).map(Number).filter((id) => id !== t.look && id !== t.lookB); }
 
   // ------------------------------------------------------------ my looks (file shared by every project on this computer)
@@ -299,7 +246,7 @@
     if (!m) return status("Choose one of your saved looks first.", "err");
     const vals = m.ae || psToAE(tool, m.p);
     const r = await run("Applying " + m.name, host("brew_setParams", tool.match, vals, [], "look " + m.name));
-    if (r.ok) status(`Applied "${m.name}" to ${r.count} layer${r.count === 1 ? "" : "s"}.` + (r.missing && r.missing.length ? ` (${r.missing.length} controls not found)` : ""));
+    if (r.ok) status(`Applied "${m.name}" to ${r.count} ${W.layer}${r.count === 1 ? "" : "s"}.` + (r.missing && r.missing.length ? ` (${r.missing.length} controls not found)` : ""));
   });
   $("mineDel").addEventListener("click", async () => {
     const name = $("mine").value; if (!name) return status("Choose a saved look to delete.", "err");
@@ -338,10 +285,10 @@
       const r = await host("brew_status", MATCHES);
       if (r.ok) {
         const strip = $("selstrip");
-        if (!r.comp) strip.textContent = "Open a composition and select layers";
+        if (!r.comp) strip.textContent = W.openComp;
         else {
           const n = r.layers.length, on = r.layers.filter((l) => l.fx.indexOf(tool.match) >= 0).length;
-          strip.innerHTML = `COMP <b></b> · ${n ? n + " layer" + (n === 1 ? "" : "s") + " selected" : "no layers selected"}` + (n ? ` · ${shortName(tool)} on ${on}` : "");
+          strip.innerHTML = `${W.comp} <b></b> · ${n ? n + " " + W.layer + (n === 1 ? "" : "s") + " selected" : "no " + W.layer + "s selected"}` + (n ? ` · ${shortName(tool)} on ${on}` : "");
           strip.querySelector("b").textContent = r.comp;
         }
         if (r.installed) for (const t of B.tools) {
@@ -355,6 +302,7 @@
     } finally { polling = false; }
   }
 
+  if (HOST && HOST.noAudio) document.querySelectorAll(".aud").forEach((n) => { n.style.display = "none"; });
   buildTools(); selectTool(tool); loadMine(); poll(); setInterval(poll, 1500);
-  status("Select layers in a comp, then click a look.");
+  status(W.start);
 })();

@@ -1,0 +1,78 @@
+{
+  "manifestVersion": 5,
+  "id": "com.franks.labconsole.ppro",
+  "name": "Lab Console",
+  "version": "3.0.0",
+  "main": "index.html",
+  "host": [
+    {
+      "app": "premierepro",
+      "minVersion": "25.6.0"
+    }
+  ],
+  "requiredPermissions": {
+    "localFileSystem": "request"
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "labConsolePanel",
+      "label": {
+        "default": "Lab Console"
+      },
+      "minimumSize": {
+        "width": 280,
+        "height": 320
+      },
+      "maximumSize": {
+        "width": 900,
+        "height": 2400
+      },
+      "preferredDockedSize": {
+        "width": 320,
+        "height": 760
+      },
+      "preferredFloatingSize": {
+        "width": 340,
+        "height": 760
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/panel.png",
+          "scale": [
+            1
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium",
+            "lightest",
+            "light"
+          ],
+          "species": [
+            "generic"
+          ]
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "width": 23,
+      "height": 23,
+      "path": "icons/panel.png",
+      "scale": [
+        1
+      ],
+      "theme": [
+        "darkest",
+        "dark",
+        "medium",
+        "lightest",
+        "light"
+      ]
+    }
+  ]
+}
