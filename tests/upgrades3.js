@@ -139,6 +139,18 @@ module.exports = async function (t) {
     assert.strictEqual(PRESETS.filter((p) => p.cat === "Desert chrome").length, 6);
   });
 
+  await t("Depth 3.0 depth waves: Columns, Tilt, Depth contrast and Line glow each change the scan; 4 Depth waves looks", async () => {
+    const E = require("../plugins/depthtone/js/engine.js");
+    const S = require("../plugins/depthtone/js/state.js");
+    const w = 120, h = 90, src = E.demoImage(w, h);
+    const run = async (rg) => { const P = S.merge(S.DEFAULTS, { style: "ridges", photo: 0, ridges: rg || {} }); P.scale = 1; return E.composite(await E.render(src, P), { type: "black" }, src); };
+    const diff = (a, b) => { let k = 0; for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 8) k++; return k; };
+    const base = await run();
+    for (const [k, v] of [["dir", "cols"], ["tilt", 70], ["contrast", 80], ["glow", 80]]) assert.ok(diff(await run({ [k]: v }), base) > 100, k + " changes the scan");
+    assert.strictEqual(diff(await run({ tilt: 0, contrast: 0, glow: 0, dir: "rows" }), base), 0, "defaults unchanged");
+    assert.strictEqual(S.PRESETS.filter((p) => p.cat === "Waves").length, 4);
+  });
+
   await t("Looks: no two looks in a plugin share the same settings", () => {
     const fs = require("fs");
     for (const tool of fs.readdirSync(path.join(ROOT, "plugins"))) {

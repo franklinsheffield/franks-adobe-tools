@@ -16,8 +16,8 @@ module.exports = async function (t) {
   const subject = new Float32Array(w * h);
   for (let y = 20; y < 66; y++) for (let x = 40; x < 56; x++) subject[y * w + x] = 1;
 
-  await t("depthtone: 18 looks (10 new + 8 from 1.0), every style used, all render deterministically", async () => {
-    assert.strictEqual(S.PRESETS.length, 18);
+  await t("depthtone: 22 looks (4 Depth waves + 10 2.0 + 8 from 1.0), every style used, all render deterministically", async () => {
+    assert.strictEqual(S.PRESETS.length, 22);
     assert.deepStrictEqual([...new Set(S.PRESETS.map((p) => S.merge(S.DEFAULTS, p.p).style))].sort(), ["anaglyph", "contours", "haze", "heat", "relief", "ridges", "terraces"]);
     for (const pr of S.PRESETS) {
       const P = S.merge(S.DEFAULTS, pr.p); P.scale = 0.4; P.fullH = 180;
@@ -127,7 +127,7 @@ module.exports = async function (t) {
     assert.strictEqual(typeof SD.depthSourceCard, "function");
   });
 
-  await t("depthtone panel matches its golden fingerprint (UI, 18 presets, Apply)", () => {
+  await t("depthtone panel matches its golden fingerprint (UI, 22 presets, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), path.join(ROOT, "plugins", "depthtone")], { encoding: "utf8", env: process.env, timeout: 300000 });
     const got = JSON.parse(outp), want = JSON.parse(fs.readFileSync(path.join(__dirname, "depthtone.golden.json"), "utf8"));
     assert.deepStrictEqual(got, want);

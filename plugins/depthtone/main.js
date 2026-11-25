@@ -62,12 +62,16 @@ panel = createToolPanel({
       when(kit.colourRow("Line colour", "lines.color"), is("contours")),
       when(checkRow("Fill bands with the depth gradient", "lines.fill"), is("contours"))
     ]), is("contours", "ridges"));
+    // Depth waves (3.0, from Frank's scan video): rows or columns, tilt, depth contrast, line glow
     const ridges = when(card("Ridges", [
+      segGroup("ridges.dir", [{ v: "rows", l: "Rows" }, { v: "cols", l: "Columns" }]),
       stepper("Line spacing", "ridges.spacing", 3, 24, 1, " px"),
       sliderRow("Lift", "ridges.lift", 0, 100, 1, "%"),
+      sliderRow("Tilt back", "ridges.tilt", 0, 100, 1, "%"),
+      fader("Line glow", "ridges.glow", 0, 100, 1, "%"),
       selectRow("Line colour", "ridges.colorBy", [{ v: "depth", l: "Depth gradient" }, { v: "photo", l: "Photo colours" }]),
       kit.colourRow("Background", "ridges.bg")
-    ]), is("ridges"));
+    ], { advanced: [sliderRow("Depth contrast", "ridges.contrast", 0, 100, 1, "%")], advancedTitle: "Depth prep" }), is("ridges"));
     const light = when(card("Light and shadow", [
       angle("Light angle", "light.angle", 0, 360, 5),
       when(sliderRow("Shadow length", "light.shadow", 1, 40, 1, " px"), is("terraces")),
