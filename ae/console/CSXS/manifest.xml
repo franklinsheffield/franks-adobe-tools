@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Frank's Brew Console for After Effects (CEP 12, AE 2027). Free install: see ae/tools/install-console-mac.command -->
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.franks.brewconsole" ExtensionBundleVersion="1.0.0" ExtensionBundleName="Lab Console"
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.franks.brewconsole" ExtensionBundleVersion="3.0.0" ExtensionBundleName="Lab Console"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.franks.brewconsole.panel" Version="1.0.0" />
+    <Extension Id="com.franks.brewconsole.panel" Version="3.0.0" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

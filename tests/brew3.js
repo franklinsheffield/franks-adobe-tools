@@ -190,7 +190,7 @@ module.exports = async function (t) {
       const P = await loadPanel(path.join(ROOT, "plugins", tool), { withDoc: false });
       await ready(P);
       const D = P.document, T = P.mod._test;
-      const ba = Array.from(D.querySelectorAll(".tbtn")).find((b) => /Before \/ After/.test(b.textContent));
+      const ba = Array.from(D.querySelectorAll(".tbtn")).find((b) => /^Split$/.test(b.textContent.trim()) && b.__help && b.__help.name === "Before / After");   // 3.0 button rule: short label, help still names it
       assert.ok(ba, tool + " Before/After button");
       const ep = P.host.uxp.entrypoints.last, panel = ep.panels[Object.keys(ep.panels)[0]];
       assert.ok(panel.menuItems.some((m) => m.id === "resetLook") && panel.menuItems.some((m) => m.id === "assist"), tool + " flyout menu has Reset look and Assistance");

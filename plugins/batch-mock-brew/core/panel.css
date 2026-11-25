@@ -577,3 +577,14 @@ input.cdnum { width: 30px; margin-left: 2px; text-align: center; }
 /* 3.0 look badge (e.g. "Shape": the look needs type, a logo or a subject cut-out) */
 .look { position: relative; }
 .look .lookbadge { position: absolute; top: 3px; right: 3px; font-size: 8px; line-height: 10px; padding: 0 3px; border: 1px solid #ffffff; border-radius: 2px; background: #000000; color: #ffffff; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* 3.0 button rule (Frank 2026-11-25): effect buttons on their own bar; every group of
+   buttons is the same size with the same spacing (widths set by ui.evenRows). */
+#app.arcade .fxhead { display: flex; flex-direction: row; align-items: center; margin: 2px 0 3px 0; }
+#app.arcade .fxhead .fxlbl { font-family: var(--arcade); font-size: 8px; letter-spacing: 1px; opacity: 0.7; }
+#app.arcade .fxhead .grow { flex: 1; }
+#app.arcade .fxhead .gobtn { margin: 0; min-width: 36px; justify-content: center; }
+#app.brand-console .tabrow .tabbtn, #app.arcade .tabrow .tabbtn { justify-content: center; overflow: hidden; }
+#app.brand-console .tabbtn .tabtxt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.seg .segbtn, .row > button, .jump .jumpbtn { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.seg { flex-wrap: wrap; }

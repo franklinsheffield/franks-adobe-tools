@@ -905,6 +905,7 @@ function build(root) {
 
   root.addEventListener("input", onDragInput);
   preSig = preKey();
+  ui.evenRows(document.getElementById("app") || root);   // 3.0 button rule: equal buttons, equal spacing
   refreshAll();
   updateInfo();
 }

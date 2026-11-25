@@ -340,6 +340,7 @@ function build(root) {
   ]));
   lay.pinned.appendChild(ui.jumpStrip(secs, s));
   s.appendChild(el("div", { class: "foot", text: TITLE + " 3.0  -  " + SUITE }));
+  ui.evenRows(document.getElementById("app") || s);   // 3.0 button rule
   refreshAll(); updateCounts();
 }
 

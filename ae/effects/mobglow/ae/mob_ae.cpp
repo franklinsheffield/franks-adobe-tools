@@ -13,6 +13,7 @@
 #include "../mob_motion.h"
 #include "../mob_presets.h"
 #include "brew_ae_version.h"
+#include "param_order.h"
 
 using namespace brew;
 using namespace brewae;
@@ -37,44 +38,58 @@ static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
   return PF_Err_NONE;
 }
 
+// Lab 3.0 Effect Controls order: Motion, tool motion, Look + Primary, Advanced, Colour.
+static const int BLOCK_ORDER[] = { P_MO_BASE, T_GM_START, T_LOOK_START, T_GLOW_START, T_FIN_START, T_COL_START };
+static const brew::ParamOrder PO(BLOCK_ORDER, (int)(sizeof BLOCK_ORDER / sizeof BLOCK_ORDER[0]), P_NUM);
+
 static PF_Err ParamsSetup(PF_InData* in_data, PF_OutData* out_data) {
   PF_Err err = PF_Err_NONE; PF_ParamDef def;
   mob::Params D; mob::parseParams(D, mob::LOOKS[0].text);
   static std::string looks = lookMenu(mob::LOOKS, mob::LOOK_COUNT, false), looksB = lookMenu(mob::LOOKS, mob::LOOK_COUNT, true);
 
-  BREW_TOPIC("Look", T_LOOK_START, false);
-  AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
-  PF_ADD_POPUP("Look", mob::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
-  AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", mob::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
-  BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
-  BREW_ENDTOPIC(T_LOOK_END);
-
-  BREW_TOPIC("Glow", T_GLOW_START, false);
-  BREW_FS("Radius (px on 2048)", 1, 1000, 1, 1000, D.radius, 0, P_RADIUS);
-  BREW_FS("Strength", 0, 500, 0, 500, D.strength, 0, P_STRENGTH);
-  BREW_FS("Threshold", 0, 3, 0, 3, D.threshold, 2, P_THRESH);
-  BREW_FS("Gamma", 0.1, 3, 0.1, 3, D.gamma, 2, P_GAMMA);
-  BREW_FS("Saturation", 0, 100, 0, 100, D.sat, 0, P_SAT);
-  BREW_ENDTOPIC(T_GLOW_END);
-
-  BREW_TOPIC("Colour", T_COL_START, false);
-  AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Tint the glow", D.colorOn, 0, P_COL_ON);
-  { RGB c = hexToRgb(D.colorHex); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Glow colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_COL_HEX); }
-  BREW_ENDTOPIC(T_COL_END);
-
-  BREW_TOPIC("Finish", T_FIN_START, false);
-  BREW_FS("Grain (%)", 0, 100, 0, 100, D.grain, 0, P_GRAIN);
-  BREW_FS("Darken background (%)", 0, 100, 0, 100, D.darken, 0, P_DARKEN);
-  BREW_ENDTOPIC(T_FIN_END);
-
-  if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: glow hue (deg/s)", "Drift X: glow trail (px/s)", "Drift Y: glow trail (px/s)");
-
-  BREW_TOPIC("Glow motion", T_GM_START, false);
-  BREW_FS("Breathe (%)", 0, 100, 0, 100, 0, 0, P_GM_BREATHE);
-  BREW_FS("Breathe rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_GM_BREATHER);
-  BREW_FS("Shimmer (%)", 0, 100, 0, 100, 0, 0, P_GM_SHIMMER);
-  BREW_FS("Shimmer rate (Hz)", 0, 30, 0, 30, 8, 1, P_GM_SHIMMERR);
-  BREW_ENDTOPIC(T_GM_END);
+  for (int block : BLOCK_ORDER) switch (block) {
+  case P_MO_BASE: {  // Motion
+    if (!err) err = addMotion(in_data, P_MO_BASE, "Spin: glow hue (deg/s)", "Drift X: glow trail (px/s)", "Drift Y: glow trail (px/s)");
+  } break;
+  case T_GM_START: {  // Glow motion
+    BREW_TOPIC("Glow motion", T_GM_START, false);
+    BREW_FS("Breathe (%)", 0, 100, 0, 100, 0, 0, P_GM_BREATHE);
+    BREW_FS("Breathe rate (Hz)", 0, 10, 0, 4, 0.5, 2, P_GM_BREATHER);
+    BREW_FS("Shimmer (%)", 0, 100, 0, 100, 0, 0, P_GM_SHIMMER);
+    BREW_FS("Shimmer rate (Hz)", 0, 30, 0, 30, 8, 1, P_GM_SHIMMERR);
+    BREW_ENDTOPIC(T_GM_END);
+  } break;
+  case T_LOOK_START: {  // Look
+    BREW_TOPIC("Look", T_LOOK_START, false);
+    AEFX_CLR_STRUCT(def); def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+    PF_ADD_POPUP("Look", mob::LOOK_COUNT, 1, looks.c_str(), P_LOOK);
+    AEFX_CLR_STRUCT(def); PF_ADD_POPUP("Look B (morph to)", mob::LOOK_COUNT + 2, 1, looksB.c_str(), P_LOOKB);
+    BREW_FS("Morph to Look B", 0, 100, 0, 100, 0, 1, P_MORPH);
+    BREW_ENDTOPIC(T_LOOK_END);
+  } break;
+  case T_GLOW_START: {  // Glow
+    BREW_TOPIC("Glow", T_GLOW_START, false);
+    BREW_FS("Radius (px on 2048)", 1, 1000, 1, 1000, D.radius, 0, P_RADIUS);
+    BREW_FS("Strength", 0, 500, 0, 500, D.strength, 0, P_STRENGTH);
+    BREW_FS("Threshold", 0, 3, 0, 3, D.threshold, 2, P_THRESH);
+    BREW_FS("Gamma", 0.1, 3, 0.1, 3, D.gamma, 2, P_GAMMA);
+    BREW_FS("Saturation", 0, 100, 0, 100, D.sat, 0, P_SAT);
+    BREW_ENDTOPIC(T_GLOW_END);
+  } break;
+  case T_FIN_START: {  // Finish
+    BREW_TOPIC("Finish", T_FIN_START, false);
+    BREW_FS("Grain (%)", 0, 100, 0, 100, D.grain, 0, P_GRAIN);
+    BREW_FS("Darken background (%)", 0, 100, 0, 100, D.darken, 0, P_DARKEN);
+    BREW_ENDTOPIC(T_FIN_END);
+  } break;
+  case T_COL_START: {  // Colour
+    BREW_TOPIC("Colour", T_COL_START, false);
+    AEFX_CLR_STRUCT(def); PF_ADD_CHECKBOXX("Tint the glow", D.colorOn, 0, P_COL_ON);
+    { RGB c = hexToRgb(D.colorHex); AEFX_CLR_STRUCT(def); PF_ADD_COLOR("Glow colour", (A_u_char)c.r, (A_u_char)c.g, (A_u_char)c.b, P_COL_HEX); }
+    BREW_ENDTOPIC(T_COL_END);
+  } break;
+  default: break;
+  }
 
   out_data->num_params = P_NUM;
   return err;
@@ -94,7 +109,7 @@ static void applyLook(PF_ParamDef* p[], int idx) {
   setF(p, P_GRAIN, P.grain); setF(p, P_DARKEN, P.darken);
 }
 static PF_Err UserChangedParam(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], const PF_UserChangedParamExtra* which) {
-  if (which->param_index == P_LOOK) applyLook(params, params[P_LOOK]->u.pd.value - 1);
+  if (which->param_index == PO(P_LOOK)) applyLook(params, params[P_LOOK]->u.pd.value - 1);
   return PF_Err_NONE;
 }
 
@@ -125,13 +140,14 @@ extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_
 
 extern "C" DllExport PF_Err EffectMain(PF_Cmd cmd, PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* params[], PF_LayerDef* output, void* extra) {
   PF_Err err = PF_Err_NONE;
+  PF_ParamDef* PB[P_NUM];                     // params by id (see param_order.h)
   try {
     switch (cmd) {
       case PF_Cmd_ABOUT: err = About(in_data, out_data); break;
       case PF_Cmd_GLOBAL_SETUP: err = GlobalSetup(in_data, out_data); break;
       case PF_Cmd_PARAMS_SETUP: err = ParamsSetup(in_data, out_data); break;
-      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, params, (const PF_UserChangedParamExtra*)extra); break;
-      case PF_Cmd_RENDER: err = Render(in_data, out_data, params, output); break;
+      case PF_Cmd_USER_CHANGED_PARAM: err = UserChangedParam(in_data, out_data, PO.byId(params, PB), (const PF_UserChangedParamExtra*)extra); break;
+      case PF_Cmd_RENDER: err = Render(in_data, out_data, PO.byId(params, PB), output); break;
       default: break;
     }
   } catch (PF_Err& thrown) { err = thrown; }

@@ -106,7 +106,8 @@ function createUI(opts) {
   const helpAt = (node, info) => { if (help && node) help.attach(node, info); return node; };
   function bind(fn) { binders.push(fn); fn(); }
   function showIf(node, fn) { rules.push(() => { node.style.display = fn() ? "" : "none"; }); }
-  function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); }
+  let evenRoot = null;
+  function refreshAll() { binders.forEach((f) => f()); rules.forEach((f) => f()); if (evenRoot) evenRows(evenRoot); }
   // Optional "Hardware Console" brand: dials and switches instead of sliders and checkboxes.
   const brand = opts.brand === "console"
     ? require("./console.js").createConsoleKit({ el, bind, getState: S, getPath, setPath, onChange: () => onChange(), onLive: opts.onLive, glow: opts.glow, getDefault: opts.getDefault, onSelect: (i) => { if (opts.onSelect) opts.onSelect(i); }, help, lcd: !!opts.arcade })
@@ -396,6 +397,53 @@ function createUI(opts) {
     return node;
   }
 
+  // 3.0 button rule (Frank 2026-11-25): any time there are several buttons side by side
+  // they are all the same size with the same spacing. Rows made only of buttons share the
+  // row in equal columns (wrapping into equal rows); rows that also hold labels or boxes
+  // give every button the same fixed width. Effect tabs keep their own bar.
+  const EVEN_GAP = 2;   // % between equal columns
+  function isEvenBtn(n) {
+    if (!n || n.nodeType !== 1 || !n.classList) return false;
+    const c = n.classList;
+    if (c.contains("mini") || c.contains("stepb") || c.contains("apply") || c.contains("noeven") || c.contains("pill")) return false;
+    return n.tagName === "BUTTON" || c.contains("ub") || c.contains("tabbtn") || c.contains("jumpbtn") || c.contains("segbtn");
+  }
+  function labelLen(n) { return String((n.__pxStr != null ? n.__pxStr : n.textContent) || "").replace(/\s+/g, " ").trim().length; }
+  function perRowFor(longest) { return longest <= 4 ? 6 : longest <= 7 ? 4 : longest <= 11 ? 3 : 2; }
+  function evenRow(p) {
+    if (!p || !p.children || (p.classList && p.classList.contains("secmenu"))) return;
+    const kids = Array.prototype.slice.call(p.children).filter((k) => k.style.display !== "none");
+    const btns = kids.filter(isEvenBtn);
+    const all = Array.prototype.slice.call(p.children).filter(isEvenBtn);
+    all.forEach((b) => { if (btns.indexOf(b) < 0) { b.style.width = ""; b.style.marginRight = ""; } });
+    if (btns.length < 2) { btns.forEach((b) => { b.style.width = ""; b.style.marginRight = ""; b.style.flex = ""; }); return; }
+    const longest = btns.reduce((m, b) => Math.max(m, labelLen(b)), 1);
+    const pure = btns.length === kids.length;
+    if (pure) {
+      const maxPer = p.classList && p.classList.contains("jump") ? 5 : perRowFor(longest);   // the section strip stays on one line
+      const n = btns.length, rows = Math.ceil(n / maxPer), per = Math.ceil(n / rows);
+      const w = (100 - (per - 1) * EVEN_GAP) / per;
+      p.style.flexWrap = "wrap";
+      btns.forEach((b, i) => {
+        b.style.flex = "none"; b.style.boxSizing = "border-box"; b.style.minWidth = "0";
+        b.style.width = w.toFixed(3) + "%";
+        b.style.marginLeft = "0";
+        b.style.marginRight = (i % per === per - 1 || i === n - 1) ? "0" : EVEN_GAP + "%";
+        b.style.marginBottom = i < Math.floor((n - 1) / per) * per ? "3px" : "0";
+      });
+    } else {
+      const px = Math.max(24, Math.round(longest * 6.5 + 14));
+      btns.forEach((b) => { b.style.flex = "none"; b.style.boxSizing = "border-box"; b.style.minWidth = "0"; b.style.width = px + "px"; b.style.marginLeft = "0"; b.style.marginRight = "4px"; });
+    }
+  }
+  function evenRows(rootNode) {
+    if (!rootNode || !rootNode.querySelectorAll) return;
+    evenRoot = rootNode;
+    const seen = [];
+    rootNode.querySelectorAll("button, .ub, .tabbtn, .jumpbtn, .segbtn").forEach((b) => { const p = b.parentNode; if (p && seen.indexOf(p) < 0) seen.push(p); });
+    seen.forEach(evenRow);
+  }
+
   function sweep(rootNode) {
     if (!help || !rootNode) return;
     const txt = (n) => String((n.__pxStr != null ? n.__pxStr : n.textContent) || "").replace(/\s+/g, " ").trim();
@@ -412,7 +460,7 @@ function createUI(opts) {
   }
 
   return {
-    help, helpAt, sweep,
+    help, helpAt, sweep, evenRows, evenRow,
     el, clear, bind, showIf, refreshAll, getPath, setPath,
     row, sliderRow, fader, stepper, angle, range, grid, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card, brand,
     section, tabs, jumpStrip, foldAll, anyOpen

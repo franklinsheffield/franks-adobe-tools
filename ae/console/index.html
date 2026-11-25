@@ -6,12 +6,12 @@
 <link rel="stylesheet" href="css/console.css">
 </head>
 <body>
-<div id="app">
+<div id="app" class="arcade">
   <div class="rack">
     <div class="screw tl"><div class="slot"></div></div><div class="screw tr"><div class="slot v"></div></div>
     <div class="screw bl"><div class="slot v"></div></div><div class="screw br"><div class="slot"></div></div>
-    <div class="rackl"><div class="rackcode">FRANK'S · BC-AE</div><div class="title">BREW CONSOLE</div></div>
-    <div class="rackr"><div class="led" id="led"></div><span id="ledtxt">READY</span></div>
+    <div class="rackl"><div class="rackcode">LAB · AE CONSOLE</div><div class="title">LAB CONSOLE</div></div>
+    <div class="rackr"><span id="assist"></span><div class="led" id="led"></div><span id="ledtxt">READY</span></div>
   </div>
 
   <div class="strip" id="selstrip">No composition open</div>
@@ -21,11 +21,11 @@
 
   <div class="section"><span class="secl"></span><span class="secn">LOOKS</span><span class="secrule"></span></div>
   <div class="row">
-    <div class="seg" id="lookMode">
+    <div class="seg" id="lookMode" data-help="lookMode">
       <button data-v="look" class="on">CLICK = LOOK</button><button data-v="lookB">CLICK = LOOK B</button>
     </div>
   </div>
-  <div class="row small"><label class="sw"><input type="checkbox" id="addNew"><span class="knobsw"></span>Add as a new effect (stack)</label></div>
+  <div class="row small"><label class="sw" data-help="addNew"><input type="checkbox" id="addNew"><span class="knobsw"></span>Add as a new effect (stack)</label></div>
   <div class="cats" id="cats"></div>
   <div class="lookgrid" id="looks"></div>
 
@@ -34,21 +34,22 @@
   <div class="row small dim">Adds to the selected layers' effect. Reveal keys a 1 s build from the playhead.</div>
 
   <div class="section"><span class="secl"></span><span class="secn">AUDIO</span><span class="secrule"></span></div>
-  <div class="row"><span class="lbl">DRIVE</span><select id="audTarget"></select></div>
-  <div class="row"><span class="lbl">AMOUNT</span><input type="range" id="audAmt" min="0" max="300" value="100"><input class="num" id="audAmtN" value="100"></div>
-  <div class="row btns"><button class="btn key" id="audLink">LINK TO AUDIO</button><button class="btn" id="audUnlink">UNLINK</button></div>
+  <div class="row" data-help="audTarget"><span class="lbl">DRIVE</span><select id="audTarget"></select></div>
+  <div class="row" data-help="audAmt"><span class="lbl">AMOUNT</span><input type="range" id="audAmt" min="0" max="300" value="100"><input class="num" id="audAmtN" value="100"></div>
+  <div class="row btns"><button class="btn key" id="audLink" data-help="audLink">LINK TO AUDIO</button><button class="btn" id="audUnlink" data-help="audUnlink">UNLINK</button></div>
   <div class="row small dim">Select the Lab effect layer (and the music layer, if it has its own). Uses After Effects' Convert Audio to Keyframes.</div>
 
   <div class="section"><span class="secl"></span><span class="secn">MY LOOKS</span><span class="secrule"></span></div>
-  <div class="row"><input type="text" id="saveName" placeholder="Name your look"><button class="btn" id="saveBtn">SAVE</button></div>
-  <div class="row"><select id="mine"></select></div>
-  <div class="row btns"><button class="btn" id="mineApply">APPLY</button><button class="btn" id="mineDel">DELETE</button></div>
-  <div class="row btns"><button class="btn" id="exportBtn">EXPORT</button><button class="btn" id="importBtn">IMPORT</button></div>
+  <div class="row"><input type="text" id="saveName" placeholder="Name your look" data-help="saveName"><button class="btn" id="saveBtn" data-help="saveBtn">SAVE</button></div>
+  <div class="row"><select id="mine" data-help="mine"></select></div>
+  <div class="row btns"><button class="btn" id="mineApply" data-help="mineApply">APPLY</button><button class="btn" id="mineDel" data-help="mineDel">DELETE</button></div>
+  <div class="row btns"><button class="btn" id="exportBtn" data-help="exportBtn">EXPORT</button><button class="btn" id="importBtn" data-help="importBtn">IMPORT</button></div>
   <div class="row small dim">Same look files as the Photoshop Labs: import a Photoshop look file here, or export these for Photoshop and your team.</div>
 
   <div class="status" id="status"></div>
 </div>
 <script src="js/brewmap.js"></script>
+<script src="js/help.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
