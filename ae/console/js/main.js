@@ -1,11 +1,53 @@
 "use strict";
-// Frank's Brew Console for After Effects (CEP panel).
-// Picks a Brew effect, applies its looks to the selected layers, adds motion, links a
-// control to the music, and keeps saved looks in the same file format as the Photoshop Brews.
+// Lab Console for After Effects (CEP panel). Follows the Lab 3.0 rules: no mouse wheel on
+// controls (the wheel always scrolls the panel), hover help (hint 0.6 s, pop-up 5 s, HELP switch).
+// Picks a Lab effect, applies its looks to the selected layers, adds motion, links a
+// control to the music, and keeps saved looks in the same file format as the Photoshop Labs.
 (function () {
   const B = window.BREW, $ = (id) => document.getElementById(id);
   const CEP = window.__adobe_cep__;
   const MATCHES = B.tools.map((t) => t.match);
+
+  // ------------------------------------------------------------ 3.0 hover help + no wheel
+  const HELP = {
+    "tool": "Pick which Lab effect the console drives. Its looks, motion presets and audio targets fill the panel below.",
+    "tool.soon": "This Lab is not in After Effects yet.",
+    "lookMode": "Choose what a look click sets: the effect's Look, or Look B (the look it morphs to when you animate 'Morph to Look B').",
+    "addNew": "On: each look click adds a new copy of the effect on top (a stack). Off: it changes the effect that is already on the layer.",
+    "cat": "Show only the looks in this group.",
+    "look": "Click to put this look on the selected layers' effect. The thumbnail shows the look on a sample photo.",
+    "motion": "Adds this motion to the selected layers' effect (the Motion group at the top of Effect Controls).",
+    "audTarget": "The control the music will drive.",
+    "audAmt": "How hard the music pushes the control, in percent.",
+    "audLink": "Turns the music layer's loudness into keyframes and links the chosen control to it.",
+    "audUnlink": "Removes the music link from the selected layers' effect.",
+    "saveName": "Name for the look you save from the selected layer's current settings.",
+    "saveBtn": "Saves the selected layer's settings as a look. The file is shared with the Photoshop Labs.",
+    "mine": "Your saved looks for this Lab.",
+    "mineApply": "Puts the chosen saved look on the selected layers.",
+    "mineDel": "Deletes the chosen saved look.",
+    "exportBtn": "Saves your looks to a file for Photoshop or your team.",
+    "importBtn": "Loads looks from a file (Photoshop look files work too).",
+    "help.assist": "HELP on: hints after 0.6 s and full help after 5 s when you rest the pointer on a control. Off: no bubbles."
+  };
+  function el(tag, attrs, kids) {
+    const n = document.createElement(tag);
+    for (const k of Object.keys(attrs || {})) { if (k === "text") n.textContent = attrs[k]; else if (k === "class") n.className = attrs[k]; else n.setAttribute(k, attrs[k]); }
+    (kids || []).forEach((c) => { if (c) n.appendChild(c); });
+    return n;
+  }
+  const help = window.LabHelp.createHelp({ el, storeKey: "aeconsole", lookup: (k) => HELP[k] || "", root: () => $("app") });
+  $("assist").appendChild(help.switchNode());
+  document.querySelectorAll("[data-help]").forEach((n) => {
+    const k = n.getAttribute("data-help"); n.removeAttribute("data-help");
+    const lbl = (n.querySelector && n.querySelector(".lbl")) || null;
+    help.attach(n, { key: k, name: (lbl ? lbl.textContent : n.textContent || n.getAttribute("placeholder") || k).trim(), kind: n.tagName === "SELECT" || n.querySelector("select") ? "select" : "button" });
+  });
+  // Rule 1: the wheel never changes a value; it always scrolls the panel.
+  $("app").addEventListener("wheel", (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest("input, select, textarea")) { e.preventDefault(); $("app").scrollTop += e.deltaY; }
+  }, { passive: false, capture: true });
 
   // ------------------------------------------------------------ host bridge
   function q(s) { return JSON.stringify(String(s)); }
@@ -55,6 +97,7 @@
       n.title = t.title + (live ? "" : " - After Effects version coming next");
       n.innerHTML = `<img src="icons/${t.id}.png"><div class="tn">${shortName(t)}</div><div class="tc">${t.code}</div>` + (live ? "" : `<div class="badge">SOON</div>`);
       if (live) n.addEventListener("click", () => selectTool(t));
+      help.attach(n, { key: live ? "tool" : "tool.soon", name: shortName(t) + " LAB", kind: "button" });
       box.appendChild(n); toolNodes[t.id] = n;
     });
   }
@@ -64,8 +107,8 @@
     Object.values(toolNodes).forEach((n) => n.classList.remove("on"));
     toolNodes[t.id].classList.add("on");
     document.documentElement.style.setProperty("--tool", t.glow);
-    document.querySelector(".title").textContent = shortName(t) + " BREW";
-    document.querySelector(".rackcode").textContent = "FRANK'S · " + t.code + " · AE";
+    document.querySelector(".title").textContent = shortName(t) + " LAB";
+    document.querySelector(".rackcode").textContent = "LAB · " + t.code + " · AE";
     buildCats(); buildLooks(); buildMotion(); buildAudio(); refillMine();
   }
 
@@ -83,6 +126,7 @@
     cats.forEach((c) => {
       const b = document.createElement("button"); b.textContent = c.toUpperCase(); if (c === cat) b.className = "on";
       b.addEventListener("click", () => { cat = c; buildCats(); buildLooks(); });
+      help.attach(b, { key: "cat", name: c, kind: "seg" });
       box.appendChild(b);
     });
   }
@@ -91,6 +135,7 @@
     tool.looks.filter((l) => cat === "All" || l.cat === cat).forEach((l) => {
       const n = document.createElement("div"); n.className = "look"; n.title = l.cat + " - " + l.name + ": click to apply to the selected layers";
       n.innerHTML = `<img loading="lazy" src="thumbs/${tool.id}-${l.i}.jpg"><div class="ln">${l.name.toUpperCase()}</div>`;
+      help.attach(n, { key: "look", name: l.name, kind: "button", note: l.cat });
       n.addEventListener("click", async () => {
         flash(n);
         const which = lookMode === "look" ? { look: tool.look } : { look: tool.lookB, morph: tool.morph };
@@ -118,7 +163,7 @@
     MOTION.forEach((m) => {
       const b = document.createElement("button"); b.textContent = m.name;
       const spinName = tool.params[tool.motion.spin];
-      b.title = m.name === "SPIN" ? spinName : m.tip;
+      help.attach(b, { key: "motion", name: m.name, kind: "button", note: m.name === "SPIN" ? spinName : m.tip });
       b.addEventListener("click", async () => {
         const vals = {};
         for (const [k, v] of Object.entries(m.v)) vals[k === "morph" ? tool.morph : tool.motion[k]] = v;

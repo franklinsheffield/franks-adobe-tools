@@ -1,4 +1,4 @@
-/* Frank's Brew Console (AE): Hardware Console style - black, thin white strokes,
+/* Lab Console (AE): Night Arcade style (Lab 3.0) - black, thin white strokes,
    light-blue press glow, Night Machine type for labels (installed font). */
 :root { --glow: #8fd8ff; --tool: #8fd8ff; --stroke: #ffffff; --soft: rgba(255,255,255,0.28); --ink: #000;
   --arcade: "Night Machine", -apple-system, "Helvetica Neue", sans-serif; --ui: -apple-system, "Helvetica Neue", "Segoe UI", sans-serif; }
@@ -77,3 +77,33 @@ input[type=range]:active::-webkit-slider-thumb { border-color: var(--glow); box-
 .motion { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .status { margin-top: 12px; min-height: 16px; font-size: 10px; color: #cfcfcf; }
 .status.err { color: #ff7a6b; }
+
+/* ---- Lab 3.0: Night Arcade palette (tokens: tokens/brew-tokens.json color.arcade.*) ---- */
+#app.arcade {
+  --void: #05040c; --panel: #0b0a18; --press: #5cf2ff; --line: rgba(255, 255, 255, 0.85); --dim: rgba(255, 255, 255, 0.28);
+  --glow: var(--press); --stroke: var(--line); --soft: var(--dim);
+  background-color: var(--void);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  position: relative;
+}
+#app.arcade .rack, #app.arcade .strip, #app.arcade .tool, #app.arcade .look { background: var(--panel); border-radius: 0; box-shadow: 2px 2px 0 #000; }
+#app.arcade button, #app.arcade select, #app.arcade input[type=text], #app.arcade .num { background: var(--panel); border-radius: 0; }
+#app.arcade .led { background: #3dff8b; box-shadow: 0 0 6px #3dff8b; }
+#app.arcade .led.busy { background: #ffc23d; box-shadow: 0 0 6px #ffc23d; } #app.arcade .led.err { background: #ff3d6e; box-shadow: 0 0 6px #ff3d6e; }
+
+/* HELP (Assistance) switch in the rack */
+.assist { display: flex; align-items: center; gap: 4px; margin-right: 10px; padding: 2px 5px; border: 1px solid var(--dim); cursor: pointer; font: 8px var(--arcade); letter-spacing: 1px; }
+.assist .aled { width: 7px; height: 7px; background: #333; }
+.assist.on { border-color: var(--press); color: var(--press); }
+.assist.on .aled { background: var(--press); box-shadow: 0 0 5px var(--press); }
+
+/* hover help bubbles (same look as the Photoshop Labs) */
+.helptip, .helppop { position: absolute; z-index: 50; background: var(--panel); border: 1px solid var(--line); box-shadow: 2px 2px 0 #000; pointer-events: none; }
+.helptip { padding: 3px 6px; font-size: 10px; color: #dcdcec; white-space: nowrap; }
+.helppop { width: 260px; padding: 0 0 7px 0; }
+.helpbar { height: 3px; background: var(--press); margin-bottom: 6px; }
+.helpname { margin: 0 8px 5px 8px; font: 10px var(--arcade); letter-spacing: 1px; color: var(--press); }
+.helptext { margin: 0 8px 5px 8px; font-size: 12px; line-height: 1.35; color: #ffffff; }
+.helptext.note { color: #cfd8ff; }
+.helprange, .helpkeys { margin: 0 8px 3px 8px; font-size: 10px; line-height: 1.35; color: #a9a6c2; }
