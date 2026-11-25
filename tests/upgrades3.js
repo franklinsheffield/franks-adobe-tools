@@ -67,6 +67,33 @@ module.exports = async function (t) {
     assert.ok(at(prot, 4, 4) + at(prot, 90, 60) + at(prot, 10, 50) > 6, "background decayed");
   });
 
+  await t("Halo 3.0: Light Key blooms coloured lights, Key colour keeps one hue, Falloff 50 is unchanged, Streaks run across", async () => {
+    const E = require("../plugins/mobglow/js/engine.js");
+    const { DEFAULTS, merge, clone } = require("../plugins/mobglow/js/state.js");
+    const w = 120, h = 80, d = new Uint8Array(w * h * 4);
+    // grey room, a bright white patch (left), a dimmer violet strip (middle) and a green dot (right)
+    for (let i = 0; i < w * h; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 40; d[i * 4 + 3] = 255; }
+    const put = (x0, y0, x1, y1, c) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * w + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; } };
+    put(8, 30, 20, 50, [235, 225, 215]); put(50, 38, 70, 42, [150, 60, 220]); put(100, 38, 104, 42, [60, 200, 60]);
+    const src = { w, h, c: 4, data: d };
+    const glow = async (patch) => { const o = await E.render(src, merge(clone(DEFAULTS), patch)); return o.layers[o.layers.length - 1].rgba; };
+    const near = (g, x0, x1, y0, y1) => { let s = 0, k = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * w + x) * 4; s += g[i] + g[i + 1] + g[i + 2]; k++; } return s / k; };
+    const base = { glow: { radius: 120, strength: 300, threshold: 1.2 } };
+    const bright = await glow(base), light = await glow(merge(clone(base), { glow: { key: "light" } }));
+    const ratio = (g) => near(g, 50, 70, 28, 36) / Math.max(1, near(g, 8, 20, 22, 28));
+    assert.ok(ratio(light) > ratio(bright) * 1.3, "violet strip blooms more with Light Key: " + ratio(light).toFixed(2) + " vs " + ratio(bright).toFixed(2));
+    const keyed = await glow(merge(clone(base), { glow: { key: "light" }, keycol: { on: true, hex: "#9640DC", range: 30 } }));
+    assert.ok(near(keyed, 52, 68, 30, 37) > 8, "violet glows");
+    assert.ok(near(keyed, 96, 108, 30, 37) < 2 && near(keyed, 6, 22, 22, 29) < 2, "green and white stay dark");
+    const f50 = await glow(merge(clone(base), { glow: { falloff: 50 } }));
+    assert.deepStrictEqual(Array.from(f50.slice(0, 4000)), Array.from(bright.slice(0, 4000)), "falloff 50 = 2.x glow");
+    const spread = async (fo) => { const g = await glow({ glow: { radius: 600, strength: 300, threshold: 1.2, falloff: fo } }); return near(g, 32, 40, 30, 50) / Math.max(1, near(g, 20, 23, 30, 50)); };
+    const tight = await spread(0), wide = await spread(100);
+    assert.ok(wide > tight * 1.2, "high falloff spreads further: " + wide.toFixed(2) + " vs " + tight.toFixed(2));
+    const st = await glow(merge(clone(base), { streak: { on: true, length: 80, strength: 80, dir: "h" } }));
+    assert.ok(near(st, 85, 118, 38, 42) - near(bright, 85, 118, 38, 42) > 3 * Math.max(0.5, near(st, 0, 120, 2, 6) - near(bright, 0, 120, 2, 6)), "streak runs across, not up");
+  });
+
   await t("Looks: no two looks in a plugin share the same settings", () => {
     const fs = require("fs");
     for (const tool of fs.readdirSync(path.join(ROOT, "plugins"))) {
