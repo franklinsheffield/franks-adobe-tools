@@ -27,7 +27,7 @@ The **Lab Console** UXP panel (`premiere/console`) works in Premiere too. It pro
 
 **Milestone 2 (2026-11-25): all 7 effects + Media Encoder**
 
-- Tested on the Mac in Premiere 2027: Depth (Terrace Stack), Halo (Blue Hour), Decompressor (Fax Machine), Chroma (Polished Gold), Dithers (Game Boy) and Paint (Loose Wash). Each was applied from the console, and each render matches its thumbnail.
+- Tested on the Mac in Premiere 2027: Depth (Terrace Stack), Halo (Blue Hour), Decompressor (Fax Machine), Chroma (Polished Gold), Dithers (Game Boy) and Paint (Loose Wash, a watercolour look removed on 2026-11-25). Each was applied from the console, and each render matches its thumbnail.
 - Media Encoder 2027 rendered a Premiere sequence with Paint Lab correctly.
 - Fix: popups, checkboxes and colours on Depth, Halo, Decompressor, Chroma, Dithers and Paint now get the correct kind. Previously some popups were off by one in Premiere.
 - Fix: console looks now use the AE LOOKS tables. Before this, some looks set another look's values, such as Depth Terrace Stack rendering as Topo Map, and Scanline looks from #23 on.

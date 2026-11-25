@@ -3444,96 +3444,81 @@ window.BREW = {
     },
     {
      "i": 6,
-     "cat": "Watercolour",
-     "name": "Loose Wash"
-    },
-    {
-     "i": 7,
-     "cat": "Watercolour",
-     "name": "Ink and Wash"
-    },
-    {
-     "i": 8,
-     "cat": "Watercolour",
-     "name": "Splash Pop"
-    },
-    {
-     "i": 9,
      "cat": "Impressionism",
      "name": "Garden Light"
     },
     {
-     "i": 10,
+     "i": 7,
      "cat": "Impressionism",
      "name": "Harbour Morning"
     },
     {
-     "i": 11,
+     "i": 8,
      "cat": "Impressionism",
      "name": "Broken Colour"
     },
     {
-     "i": 12,
+     "i": 9,
      "cat": "Alcohol Ink",
      "name": "Gold Vein"
     },
     {
-     "i": 13,
+     "i": 10,
      "cat": "Alcohol Ink",
      "name": "Ocean Bloom"
     },
     {
-     "i": 14,
+     "i": 11,
      "cat": "Alcohol Ink",
      "name": "Neon Pour"
     },
     {
-     "i": 15,
+     "i": 12,
      "cat": "Spray Paint",
      "name": "Street Stencil"
     },
     {
-     "i": 16,
+     "i": 13,
      "cat": "Spray Paint",
      "name": "Soft Fade Mural"
     },
     {
-     "i": 17,
+     "i": 14,
      "cat": "Spray Paint",
      "name": "Drip Pop"
     },
     {
-     "i": 18,
+     "i": 15,
      "cat": "Spray Paint",
      "name": "Night Burst"
     },
     {
-     "i": 19,
+     "i": 16,
      "cat": "Spray Paint",
      "name": "Rough Wall"
     },
     {
-     "i": 20,
+     "i": 17,
      "cat": "Spray Paint",
      "name": "Barn Siding"
     },
     {
-     "i": 21,
+     "i": 18,
      "cat": "Spray Paint",
      "name": "Old Fence"
     },
     {
-     "i": 22,
+     "i": 19,
      "cat": "Pastel",
      "name": "Chalk on Grey"
     },
     {
-     "i": 23,
+     "i": 20,
      "cat": "Pastel",
      "name": "Warm Sketch"
     },
     {
-     "i": 24,
+     "i": 21,
      "cat": "Pastel",
      "name": "Oil Pastel"
     }

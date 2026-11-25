@@ -20,8 +20,8 @@ module.exports = async function (t) {
   };
   const run = (src, p, extra) => { const P = S.merge(S.DEFAULTS, p); Object.assign(P, { scale: 0.12, fullH: src.h / 0.12, fullW: src.w / 0.12 }, extra || {}); return E.render(src, P, {}); };
 
-  await t("Paint Brew engine: 24 looks, deterministic, full-size layers, the right stack per style", async () => {
-    assert.strictEqual(S.PRESETS.length, 24);
+  await t("Paint Brew engine: 21 looks, deterministic, full-size layers, the right stack per style", async () => {
+    assert.strictEqual(S.PRESETS.length, 21);   // 3 white-edged watercolour looks removed (Frank 2026-11-25)
     const src = E.demoImage(120, 90);
     const seen = new Set();
     for (const pr of S.PRESETS) {
@@ -31,7 +31,7 @@ module.exports = async function (t) {
       const h = require("crypto").createHash("sha1").update(Buffer.from(E.composite(a, { type: "white" }, src))).digest("hex");
       assert.ok(!seen.has(h), pr.name + ": looks different from the other presets"); seen.add(h);
     }
-    for (const style of Object.keys(LAYERS)) { const pr = S.PRESETS.find((x) => x.p.style === style); assert.deepStrictEqual((await run(src, pr.p)).layers.map((L) => L.name), LAYERS[style], pr.name); }
+    for (const style of Object.keys(LAYERS)) { const pr = S.PRESETS.find((x) => x.p.style === style) || { name: style + " (style, no built-in look)", p: { style } }; assert.deepStrictEqual((await run(src, pr.p)).layers.map((L) => L.name), LAYERS[style], pr.name); }
     const wc = await run(src, { style: "watercolour", water: { paperColour: "#F0E0C0" } });
     assert.deepStrictEqual(wc.paper, [240, 224, 192], "watercolour carries its paper colour");
     const oil = await run(src, { style: "oil" });
@@ -300,7 +300,7 @@ module.exports = async function (t) {
     assert.ok(P.host.calls.some((c) => c[0] === "createLayerGroup" && /Pastel/.test(c[1])), "group named for the style: " + JSON.stringify(P.host.calls.filter((c) => c[0] === "createLayerGroup")));
   });
 
-  await t("Paint Brew panel matches its golden fingerprint (UI, 24 looks, Apply)", () => {
+  await t("Paint Brew panel matches its golden fingerprint (UI, 21 looks, Apply)", () => {
     const outp = execFileSync(process.execPath, [path.join(__dirname, "fingerprint.js"), DIR], { encoding: "utf8", env: process.env, timeout: 600000 });
     const got = JSON.parse(outp), gp = path.join(__dirname, "paint-brew.golden.json");
     if (process.env.UPDATE_GOLDEN || !fs.existsSync(gp)) fs.writeFileSync(gp, JSON.stringify(got, null, 1) + "\n");
