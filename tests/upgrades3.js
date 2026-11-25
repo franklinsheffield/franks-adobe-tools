@@ -161,6 +161,18 @@ module.exports = async function (t) {
     let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]); assert.ok(d / a.length > 20, "Prism Foil no longer matches Holo Foil");
   });
 
+  await t("Paint 3.0: the watercolour wash centres on the subject (focus mask), Subject focus option in the panel", async () => {
+    const E = require("../plugins/paint-brew/js/engine.js"), S = require("../plugins/paint-brew/js/state.js");
+    const w = 160, h = 90, n = w * h, src = E.demoImage(w, h), focus = new Float32Array(n);
+    for (let y = 20; y < 80; y++) for (let x = 8; x < 40; x++) focus[y * w + x] = 1;          // subject at the far left
+    const P = S.merge(S.DEFAULTS, { style: "watercolour", water: { fade: 80, pencil: 0, splashes: 0 }, focus: { falloff: 10, outside: 100 } }); P.scale = 1;
+    const ink = async (s2) => { const r = await E.render(s2, P, { yield: async () => {} }); const q = r.layers[0].rgba; let L = 0, R = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = 765 - q[(y * w + x) * 4] - q[(y * w + x) * 4 + 1] - q[(y * w + x) * 4 + 2]; if (x < 30) L += v; else if (x > 130) R += v; } return { L, R }; };
+    const a = await ink(src), b = await ink(Object.assign({}, src, { focus }));
+    assert.ok(b.L / Math.max(1, b.R) > a.L / Math.max(1, a.R) * 1.3, "wash moves to the subject: " + JSON.stringify([a, b]));
+    const main = require("fs").readFileSync(path.join(ROOT, "plugins/paint-brew/main.js"), "utf8");
+    assert.ok(/v: "subject", l: "Subject \(Select Subject\)"/.test(main), "Subject focus option");
+  });
+
   await t("Depth 3.0 depth waves: Columns, Tilt, Depth contrast and Line glow each change the scan; 4 Depth waves looks", async () => {
     const E = require("../plugins/depthtone/js/engine.js");
     const S = require("../plugins/depthtone/js/state.js");

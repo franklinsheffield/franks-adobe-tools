@@ -94,7 +94,7 @@ module.exports = {
   "pastel.oil": "Oil pastel: richer, waxier strokes.",
   "tab:Focus": "Focus: keep more detail on the subject, looser paint around it.",
   "card:Focus": "Mark the subject: smaller strokes and more detail there, looser paint and more paper around it.",
-  "out.focus": "Where the subject is: the whole image, the current selection, or the source layer's mask.",
+  "out.focus": "Where the subject is: the whole image, Photoshop's Select Subject (keeps faces sharp and centres the watercolour wash on the people), the current selection, or the source layer's mask.",
   "focus.falloff": "How softly the detail fades from the subject to the rest, in pixels.",
   "focus.outside": "How much detail is kept outside the subject.",
   "out.printCopy": "Small photos are painted on an upscaled print-ready copy, so strokes stay crisp in print. The original stays untouched.",

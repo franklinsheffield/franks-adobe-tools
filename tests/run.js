@@ -108,8 +108,8 @@ async function t(name, fn) {
     assert.strictEqual(lb.textContent, "Hide looks", "look previews show by default");
     await P.settle(2500);
     const imgs = d.querySelectorAll(".lookgrid img");
-    assert.strictEqual(imgs.length, 40);
-    assert.ok([...imgs].filter((i) => /^data:image\/png/.test(i.src)).length >= 20, "look thumbnails render");
+    assert.strictEqual(imgs.length, 52);   // 40 + 12 Dithers 3.0 looks
+    assert.ok([...imgs].filter((i) => /^data:image\/png/.test(i.getAttribute("src"))).length >= 20, "look thumbnails render");
     imgs[32].parentNode.dispatchEvent(new P.window.Event("click"));
     assert.strictEqual(st().algo.dither, "wavescan");
   });

@@ -8,6 +8,13 @@ const { SUITE } = require("./core/brand.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 const PS = require("./core/ps-io.js");
 const PP = require("./js/paintps.js");
+const DS = require("./core/depth.js");
+// 3.0 "Subject" focus: Photoshop's Select Subject (shared with Depth Lab) keeps faces sharp
+async function readFocusAny(doc, mode, layer, r, phase) {
+  if (mode !== "subject") return PP.readFocus(doc, mode, layer, r);
+  await DS.addSubject(doc, r, phase || "preview", BRAND.NAME, false);
+  return r.src.subject || null;
+}
 const M = require("./core/imgmath.js");
 const { WALL_COLOURS } = require("./js/styles2.js");
 const { createPicker } = require("./js/picker.js");
@@ -40,7 +47,7 @@ const panel = createToolPanel({
     if (!s.out.printCopy || !PP.needsCopy(info, minLong())) return doc;
     if (s.out.focus !== "none") {
       try {
-        const m = await PP.readFocus(doc, s.out.focus, sourceLayer(doc), { src: { w: info.w, h: info.h }, scale: 1, origin: { left: 0, top: 0 } });
+        const m = await readFocusAny(doc, s.out.focus, sourceLayer(doc), { src: { w: info.w, h: info.h }, scale: 1, origin: { left: 0, top: 0 } }, "apply");
         if (m) printFocus = { w: info.w, h: info.h, m };
       } catch (e) { console.warn("focus", e); }
     }
@@ -59,7 +66,7 @@ const panel = createToolPanel({
       r.src.focus = out;
       return;
     }
-    try { const m = await PP.readFocus(doc, s.out.focus, sourceLayer(doc), r); if (m) r.src.focus = m; } catch (e) { console.warn("No focus area found: " + (e && e.message)); }
+    try { const m = await readFocusAny(doc, s.out.focus, sourceLayer(doc), r, phase); if (m) r.src.focus = m; } catch (e) { console.warn("No focus area found: " + (e && e.message)); }
   },
   cards: (ui, kit) => {
     const { card, sliderRow, fader, stepper, segGroup, selectRow, checkRow, el, bind, row, getPath, setPath, showIf } = ui;
@@ -184,7 +191,7 @@ const panel = createToolPanel({
       checkRow("Oil pastel", "pastel.oil")
     ], { hint: "Low pressure lets more paper show through." }), is("pastel"));
     const focus = card("Focus", [
-      selectRow("Subject", "out.focus", [{ v: "none", l: "Whole image" }, { v: "selection", l: "Current selection" }, { v: "mask", l: "Source layer mask" }]),
+      selectRow("Subject", "out.focus", [{ v: "none", l: "Whole image" }, { v: "subject", l: "Subject (Select Subject)" }, { v: "selection", l: "Current selection" }, { v: "mask", l: "Source layer mask" }]),
       sliderRow("Edge softness", "focus.falloff", 0, 400, 5, " px"),
       sliderRow("Detail outside", "focus.outside", 0, 100, 1, "%")
     ], { hint: "Mark the subject: smaller strokes and more detail there, looser paint and more paper around it." });

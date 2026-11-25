@@ -490,8 +490,20 @@ async function paintWatercolour(src, P, hooks) {
     for (let i = 0; i < n; i++) F[i] = 1;
   }
   const outside = P.focus.outside / 100;
+  // 3.0 subject-centred wash: with a focus mask the wash centres on the subject and grows to cover all of it
+  let wcx = 0.5, wcy = 0.5, wsx = 1, wsy = 1;
+  if (focus) {
+    let sm = 0, sx = 0, sy = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = focus[y * w + x]; if (v > 0.5) { sm += v; sx += v * x; sy += v * y; } }
+    if (sm > n * 0.002) {
+      wcx = sx / sm / w; wcy = sy / sm / h;
+      let ex = 0, ey = 0;
+      for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (focus[y * w + x] > 0.5) { ex = Math.max(ex, Math.abs(x / w - wcx)); ey = Math.max(ey, Math.abs(y / h - wcy)); }
+      wsx = 0.5 / Math.max(0.5, ex * 1.15); wsy = 0.5 / Math.max(0.5, ey * 1.15);
+    }
+  }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x, nx = (x / w - 0.5) * 2, ny = (y / h - 0.5) * 2;
+    const i = y * w + x, nx = (x / w - wcx) * 2 * wsx, ny = (y / h - wcy) * 2 * wsy;
     const r = Math.sqrt(nx * nx * 0.9 + ny * ny * 0.9) + 0.35 * fbm(x / k / 260, y / k / 260, seed + 3, 4);
     const vig = 1 - clamp((r - (1.15 - fade * 0.75)) / 0.28, 0, 1);
     let f = focus ? (F[i] + (1 - F[i]) * outside) : 1;
