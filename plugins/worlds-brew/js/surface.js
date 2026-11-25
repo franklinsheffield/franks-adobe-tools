@@ -6,7 +6,7 @@
 // (apps/worlds-brew-app/renderer/surfaces.js), so the two agree.
 
 const WRAPS = ["Box", "Cylinder", "Sphere", "Top", "UV"];
-const BLENDS = ["Normal", "Multiply", "Screen", "Overlay", "Add"];
+const BLENDS = ["Normal", "Multiply", "Screen", "Overlay", "Add", "Relief"];   // Relief: the picture only shapes the bump (height maps), no colour
 const MASKS = ["None", "Height", "Slope", "Bitmap"];
 let LID = 1;
 
@@ -67,6 +67,7 @@ function blendCh(mode, b, t) {
   if (mode === "Screen") return 1 - (1 - b) * (1 - t);
   if (mode === "Overlay") return b < 0.5 ? 2 * b * t : 1 - 2 * (1 - b) * (1 - t);
   if (mode === "Add") return Math.min(1, b + t);
+  if (mode === "Relief") return b;
   return t;
 }
 

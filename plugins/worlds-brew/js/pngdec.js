@@ -88,21 +88,32 @@ function decodePNG(bytes) {
     else if (type === "IEND") break;
     p += 12 + len;
   }
-  if (depth !== 8 || inter) throw new Error("only 8-bit, non-interlaced PNG textures are read");
+  if ((depth !== 8 && depth !== 16) || inter || (depth === 16 && ctype === 3)) throw new Error("only 8-bit or 16-bit, non-interlaced PNG images are read");
   const ch = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ctype]; if (!ch) throw new Error("unsupported PNG colour type");
   let total = 0; idat.forEach((d) => { total += d.length; });
   const z = new Uint8Array(total); let o = 0; idat.forEach((d) => { z.set(d, o); o += d.length; });
-  const raw = inflate(z.subarray(2)), stride = w * ch, px = new Uint8Array(h * stride);
+  const B = depth >> 3, bpp = ch * B;   // 16-bit (heightmaps): two bytes per channel, big-endian
+  const raw = inflate(z.subarray(2)), stride = w * bpp, px = new Uint8Array(h * stride);
   for (let y = 0; y < h; y++) {
     const f = raw[y * (stride + 1)], row = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)), cur = px.subarray(y * stride, (y + 1) * stride), prev = y ? px.subarray((y - 1) * stride, y * stride) : null;
     for (let x = 0; x < stride; x++) {
-      const a = x >= ch ? cur[x - ch] : 0, b = prev ? prev[x] : 0, c = prev && x >= ch ? prev[x - ch] : 0;
+      const a = x >= bpp ? cur[x - bpp] : 0, b = prev ? prev[x] : 0, c = prev && x >= bpp ? prev[x - bpp] : 0;
       let v = row[x];
       if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
       else if (f === 4) { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
       cur[x] = v & 255;
     }
   }
+  if (B === 2) {   // keep the full 16-bit grey (luma) for heightmaps; rgba gets the high bytes
+    const gray16 = new Uint16Array(w * h);
+    for (let i = 0; i < w * h; i++) { const s = i * bpp, v = (k) => (px[s + k * 2] << 8) | px[s + k * 2 + 1];
+      gray16[i] = ch >= 3 ? Math.round(0.2126 * v(0) + 0.7152 * v(1) + 0.0722 * v(2)) : v(0); }
+    const p8 = new Uint8Array(w * h * ch); for (let i = 0; i < w * h * ch; i++) p8[i] = px[i * 2];
+    return { w, h, depth, gray16, rgba: toRGBA(p8, w, h, ch, ctype, pal, trns) };
+  }
+  return { w, h, depth, rgba: toRGBA(px, w, h, ch, ctype, pal, trns) };
+}
+function toRGBA(px, w, h, ch, ctype, pal, trns) {
   const rgba = new Uint8Array(w * h * 4);
   for (let i = 0; i < w * h; i++) {
     const q = i * 4, s = i * ch;
@@ -110,7 +121,7 @@ function decodePNG(bytes) {
     else if (ch <= 2) { rgba[q] = rgba[q + 1] = rgba[q + 2] = px[s]; rgba[q + 3] = ch === 2 ? px[s + 1] : 255; }
     else { rgba[q] = px[s]; rgba[q + 1] = px[s + 1]; rgba[q + 2] = px[s + 2]; rgba[q + 3] = ch === 4 ? px[s + 3] : 255; }
   }
-  return { w, h, rgba };
+  return rgba;
 }
 
 module.exports = { inflate, decodePNG };

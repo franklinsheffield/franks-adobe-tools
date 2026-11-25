@@ -208,7 +208,7 @@ const T = {
   "lay.rot": "Turns the picture on the surface.",
   "lay.ox": "Slides the picture sideways.",
   "lay.oy": "Slides the picture up or down.",
-  "lay.blend": "How the layer mixes with what's below, as in Photoshop: Normal, Multiply, Screen, Overlay or Add.",
+  "lay.blend": "How the layer mixes with what's below, as in Photoshop: Normal, Multiply, Screen, Overlay or Add. Relief uses the picture only as a height map for the bump and leaves the colour alone (imported material height maps use it).",
   "lay.opacity": "How see-through the layer is.",
   "lay.mask": "Where the layer shows: everywhere (None), by height (snow on peaks), by slope (moss on flats), or by a black and white bitmap.",
   "lay.lo": "Where the mask starts (height or slope).",

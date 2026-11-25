@@ -25,13 +25,33 @@ const HM_N = 96, hmCache = new Map();
 function edgeMask(p) { const N = HM_N, u = (p % N) / (N - 1) * 2 - 1, v = Math.floor(p / N) / (N - 1) * 2 - 1, rr = clamp((Math.hypot(u, v) - 0.5) / 0.45, 0, 1); return 1 - rr * rr * (3 - 2 * rr); }
 // the brush can reach the whole square footprint except a thin border, so the edges stay sealed
 function sculptMask(p) { const N = HM_N, u = Math.abs((p % N) / (N - 1) * 2 - 1), v = Math.abs(Math.floor(p / N) / (N - 1) * 2 - 1), t = clamp((Math.max(u, v) - 0.9) / 0.08, 0, 1); return 1 - t * t * (3 - 2 * t); }
+// imported heightmaps (0.10): a grey picture (8 or 16-bit) resampled to the HM_N grid, 0..1, white = high
+let HMID = 1;
+function heightFromGrey(w, h, get, name) {
+  const N = HM_N, d = new Float32Array(N * N); let lo = Infinity, hi = -Infinity;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = i / (N - 1) * (w - 1), y = j / (N - 1) * (h - 1), x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(w - 1, x0 + 1), y1 = Math.min(h - 1, y0 + 1), fx = x - x0, fy = y - y0;
+    const v = (get(x0, y0) * (1 - fx) + get(x1, y0) * fx) * (1 - fy) + (get(x0, y1) * (1 - fx) + get(x1, y1) * fx) * fy;
+    d[j * N + i] = v; if (v < lo) lo = v; if (v > hi) hi = v;
+  }
+  const span = hi - lo || 1; for (let p = 0; p < N * N; p++) d[p] = (d[p] - lo) / span;   // stretch to the full range; Height sets the real size
+  return { id: "h" + Date.now().toString(36) + (HMID++), name: String(name || "Heightmap"), d };
+}
+// pic: { w, h, rgba } or { w, h, gray16 } (pngdec) or { w, h, d } (app pictures, RGBA bytes)
+function heightFromPic(pic, name) {
+  const { w, h } = pic;
+  if (pic.gray16) return heightFromGrey(w, h, (x, y) => pic.gray16[y * w + x] / 65535, name);
+  const px = pic.rgba || pic.d;
+  return heightFromGrey(w, h, (x, y) => { const q = (y * w + x) * 4; return (0.2126 * px[q] + 0.7152 * px[q + 1] + 0.0722 * px[q + 2]) / 255; }, name);
+}
 function baseHeightmap(o) {
-  const key = [o.seed, o.rough, o.erosion, o.terrace, o.plateau || 0, o.sharp || 1, o.crater ? 1 : 0].join("|");
+  const key = (o.hmap ? ["map", o.hmap.id] : [o.seed, o.rough]).concat([o.erosion, o.terrace, o.plateau || 0, o.sharp || 1, o.crater ? 1 : 0]).join("|");
   if (hmCache.has(key)) return hmCache.get(key);
   if (hmCache.size > 60) hmCache.clear();   // dials make a new shape per value; keep memory bounded
   const N = HM_N, a = new Float32Array(N * N);
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const u = i / (N - 1) * 2 - 1, v = j / (N - 1) * 2 - 1;
+    if (o.hmap) { a[j * N + i] = 0.12 + 0.88 * o.hmap.d[j * N + i]; continue; }   // black sits at ground level
     let h = fbm(u * 2.2 + o.seed * 7.31, v * 2.2 + o.seed * 3.17, 6, o.rough);
     const r = Math.sqrt(u * u + v * v), t = clamp((r - 0.45) / 0.55, 0, 1), fall = 1 - t * t * (3 - 2 * t);
     a[j * N + i] = Math.pow(clamp(h, 0, 1), 1.35) * fall * 1.6 - 0.12;
@@ -41,7 +61,7 @@ function baseHeightmap(o) {
   const sharp = o.sharp || 1, pl = clamp(o.plateau || 0, 0, 0.9);
   for (let p = 0; p < N * N; p++) {
     // edge mask after erosion, so the footprint's border and corners sink below ground/water (no flat square skirt)
-    const em = edgeMask(p);
+    const em = o.hmap ? sculptMask(p) : edgeMask(p);   // imported maps keep their square edges
     let n = ((a[p] / (mx || 1)) - 0.12) / 0.88;                  // lowlands stay below 0 (under the ground), as before
     if (n > 0 && sharp !== 1) n = Math.pow(n, sharp);              // >1 = sharper peaks, <1 = rounder hills
     if (n > 0 && pl > 0) n = Math.min(n, 1 - pl) / (1 - pl);       // flat-topped mesas
@@ -143,6 +163,7 @@ function toJSON(scene) {
   return JSON.stringify(Object.assign({}, scene, { objs: scene.objs.map((o) => { const c = Object.assign({}, o); delete c._mk; delete c._mv; delete c._hm; delete c._hmKey; delete c._undo;
     if (o.sculpt) c.sculpt = b64u8(new Uint8Array(o.sculpt.buffer, o.sculpt.byteOffset, o.sculpt.byteLength));
     if (o.mesh) c.mesh = MOD.meshToJSON(o.mesh);
+    if (o.hmap) c.hmap = { id: o.hmap.id, name: o.hmap.name, d: b64u8(new Uint8Array(o.hmap.d.buffer, o.hmap.d.byteOffset, o.hmap.d.byteLength)) };
     if (o.img) c.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: b64u8(o.img.d) };
     if (o.layers) c.layers = o.layers.map((L) => Object.assign({}, L, { img: pic(L.img), mimg: pic(L.mimg) }));
     return c; }) }));
@@ -155,9 +176,10 @@ function fromJSON(text) {
   s.objs = s.objs.map((o) => { o.id = UID++; if (o.mesh) o.mesh = MOD.meshFromJSON(o.mesh);
     if (o.img) { const raw = typeof atob === "function" ? atob(o.img.d) : Buffer.from(o.img.d, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.img = { w: o.img.w, h: o.img.h, name: o.img.name, d: u }; }
     if (o.layers) o.layers = o.layers.map((L) => Object.assign({}, L, { img: unpic(L.img), mimg: unpic(L.mimg) }));
+    if (o.hmap && typeof o.hmap.d === "string") { const raw = typeof atob === "function" ? atob(o.hmap.d) : Buffer.from(o.hmap.d, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.hmap = { id: o.hmap.id, name: o.hmap.name, d: new Float32Array(u.buffer) }; }
     if (typeof o.sculpt === "string") { const raw = typeof atob === "function" ? atob(o.sculpt) : Buffer.from(o.sculpt, "base64").toString("binary"), u = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i); o.sculpt = new Float32Array(u.buffer); }
     return o; });
   return withDefaults(s);
 }
 
-module.exports = { MATS, SKIES, heightmap, baseHeightmap, edgeMask, hmAt, light, DEFAULTS, withDefaults, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N, pic, unpic };
+module.exports = { MATS, SKIES, heightmap, baseHeightmap, heightFromPic, heightFromGrey, edgeMask, hmAt, light, DEFAULTS, withDefaults, camBasis, obj, meshObj, PRESETS, loadPreset, toJSON, fromJSON, HM_N, pic, unpic };

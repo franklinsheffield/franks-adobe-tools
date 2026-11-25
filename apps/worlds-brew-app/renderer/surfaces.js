@@ -6,7 +6,7 @@
 import * as THREE from "three";
 
 const SF = window.require("../engine/surface.js");
-const WRAP_I = { Box: 0, Cylinder: 1, Sphere: 2, Top: 3, UV: 4 }, BLEND_I = { Normal: 0, Multiply: 1, Screen: 2, Overlay: 3, Add: 4 }, MASK_I = { None: 0, Height: 1, Slope: 2, Bitmap: 3 };
+const WRAP_I = { Box: 0, Cylinder: 1, Sphere: 2, Top: 3, UV: 4 }, BLEND_I = { Normal: 0, Multiply: 1, Screen: 2, Overlay: 3, Add: 4, Relief: 5 }, MASK_I = { None: 0, Height: 1, Slope: 2, Bitmap: 3 };
 
 // pictures -> textures, cached per picture object (colour pictures decode sRGB; masks stay raw like the ray tracer)
 const cache = new WeakMap();
@@ -46,7 +46,7 @@ vec4 wbSample(sampler2D T, vec4 P, float wrap, vec3 q, vec3 n) {
 float wbBand(vec4 K, float x) { float s = max(0.001, K.w); float k = K.y <= 0.0 ? 1.0 : smoothstep(K.y - s, K.y + s, x); if (K.z < 1.0) k *= 1.0 - smoothstep(K.z - s, K.z + s, x); return k; }
 vec3 wbBlend(float m, vec3 b, vec3 t) {
   if (m < 0.5) return t; if (m < 1.5) return b * t; if (m < 2.5) return 1.0 - (1.0 - b) * (1.0 - t);
-  if (m < 3.5) return mix(2.0 * b * t, 1.0 - 2.0 * (1.0 - b) * (1.0 - t), step(0.5, b)); return min(vec3(1.0), b + t);
+  if (m < 3.5) return mix(2.0 * b * t, 1.0 - 2.0 * (1.0 - b) * (1.0 - t), step(0.5, b)); if (m < 4.5) return min(vec3(1.0), b + t); return b;
 }
 float wbLum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 vec3 wbRelief(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDir) {   // bump from a height in metres (unnormalised screen derivatives keep it to scale)
