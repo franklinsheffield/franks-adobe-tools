@@ -5,6 +5,7 @@ import { Viewport, snapshot } from "./view3d.js";
 import { axisGizmo, palette } from "./ux.js";
 import { renderGPU, passPictures } from "./gpurender.js";
 import * as BR from "./bridge-app.js";
+import * as LIB from "./library-app.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -20,7 +21,7 @@ const HELP = req("./help-app.js");   // hover help text for the app's own contro
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 
-const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.9.0";
+const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.10.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -28,7 +29,7 @@ const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 
 const NONE = S.obj("sphere", 0, 0, 0, 1, "Matte");
 const st = {
   scene: S.loadPreset("Chrome Garden"), sel: NONE,
-  view: { gizmo: "move", step: "med", stick: true, camLock: false, libPack: "Classic", addPack: "Shapes", brush: "raise", bsize: 0.12, bpow: 0.5, lockScale: true, realH: 1.8, matchId: 0 },
+  view: { gizmo: "move", step: "med", stick: true, camLock: false, libPack: "Classic", addPack: "Shapes", myKind: "Textures", brush: "raise", bsize: 0.12, bpow: 0.5, lockScale: true, realH: 1.8, matchId: 0 },
   out: { quality: "final", engine: "gpu", w: 1920, h: 1080, autoSend: false }
 };
 const hasSel = () => st.sel !== NONE && st.scene.objs.includes(st.sel);
@@ -73,6 +74,7 @@ function select(o) { st.sel = o || NONE; lastStretch = hasSel() ? { sx: st.sel.s
 function edited() { // a committed Inspector edit
   if (hasSel() && st.view.lockScale && lastStretch && SC.applyLock(st.sel, lastStretch)) { /* spread W / H / D */ }
   if (hasSel()) lastStretch = { sx: st.sel.sx || 1, sy: st.sel.sy || 1, sz: st.sel.sz || 1 };
+  if (hasLay() && st.lay.shader && (st.lay.shader.bt !== st.lay.shader.t || st.lay.shader.bs !== st.lay.shader.size)) { try { LIB.rebake(st.lay); } catch (err) { setStatus(String(err.message || err), true); } }   // shader Time / Detail changed: bake again
   commit(); changed("val");
 }
 function loadScene(sc, path) { st.scene = sc; st.sel = NONE; filePath = path || null; dirty = false; homeCam = CT.camCopy(sc.cam); resetHistory(); changed("scene"); title(); }
@@ -212,7 +214,7 @@ function addThing(key, at) {
   else if (o.type !== "terrain" && o.type !== "light") CT.rest(sc, o);
   select(o); commit(); setStatus("Added " + ED.label(o).toLowerCase().replace(/#\d+/, "").trim()); return o;
 }
-let dragKey = null;
+let dragKey = null, dragLib = null;
 vpwrap.addEventListener("dragover", (e) => {
   e.preventDefault(); vpwrap.classList.add("drop");
   const m = document.getElementById("dropmark"), r = vpwrap.getBoundingClientRect(); m.style.display = "block"; m.style.left = (e.clientX - r.left) + "px"; m.style.top = (e.clientY - r.top) + "px";
@@ -223,12 +225,63 @@ vpwrap.addEventListener("drop", async (e) => {
   const at = CT.groundHit(st.scene, vp.rayAt(e.clientX, e.clientY), null);
   const key = e.dataTransfer.getData("text/wb-asset") || dragKey; dragKey = null;
   if (key) { addThing(key, at); return; }
+  if (dragLib) { const it = dragLib, h = vp.pick(e.clientX, e.clientY); dragLib = null; applyLibItem(it, h ? h.obj : null, it.kind === "Terrains" && !(h && h.obj.type === "terrain") ? at : null); return; }
+  const shaderFiles = Array.from(e.dataTransfer.files || []).filter((f) => /\.(glsl|frag|fs|shader)$/i.test(f.name) && f.path);
+  if (shaderFiles.length) {   // shader files dropped from Finder / Explorer: into the library, and onto the object under the pointer
+    const r = await importPathsToLibrary("Shaders", shaderFiles.map((f) => f.path)); if (!r || !r.added.length) return;
+    const it = LIB.list("Shaders").find((x) => x.name === r.added[0]), h = vp.pick(e.clientX, e.clientY); if (it && (h || hasSel())) applyLibItem(it, h ? h.obj : null, null); return;
+  }
   for (const f of Array.from(e.dataTransfer.files || [])) {   // model files or images dropped from Finder / Explorer
     const ext = f.name.split(".").pop().toLowerCase(), buf = await f.arrayBuffer();
     if (["obj", "stl", "glb", "gltf"].includes(ext)) importModelData(f.name, buf, at);
     else if (["png", "jpg", "jpeg", "webp"].includes(ext)) { const h = vp.pick(e.clientX, e.clientY), o = h ? h.obj : hasSel() ? st.sel : null; if (o && o.type !== "light") { o.img = await decodeImage(f.name, buf); select(o); commit(); setStatus("Surface image on " + ED.label(o).toLowerCase()); } else setStatus("Drop the image onto an object to wrap it.", true); }
   }
 });
+
+// ---- your library (0.10): textures, terrains and shaders in Documents/Worlds Lab/Library
+// it = a LIB.list() entry; target = the object under the pointer (drag) or null (click: the selection); at = ground point
+async function applyLibItem(it, target, at) {
+  try {
+    if (it.kind === "Terrains") {
+      const hm = await LIB.loadTerrain(it, decodeImage);
+      let o = target && target.type === "terrain" ? target : hasSel() && st.sel.type === "terrain" && !at ? st.sel : null;
+      if (!o) { o = ED.addObject(st.scene, "terrain"); if (!o) return; if (at) { o.x = +at.x.toFixed(2); o.z = +at.z.toFixed(2); } }
+      o.hmap = hm; o.sculpt = null; o.sculptV = (o.sculptV || 0) + 1; select(o); commit(); changed("val"); setStatus("Terrain from the library: " + it.name); return o;
+    }
+    const o = target || (hasSel() ? st.sel : null);
+    if (!o || o.type === "light") { setStatus("Select an object first, or drag the " + (it.kind === "Textures" ? "texture" : "shader") + " onto one.", true); return null; }
+    if (o !== st.sel) select(o);
+    if (it.kind === "Textures") refs.layOps.add([SF.layer({ name: it.name.slice(0, 30), img: await LIB.picture(it.path, decodeImage, 1024), wrap: o.type === "mesh" && o.mesh.uv ? "UV" : "Box" })]);
+    else refs.layOps.add(await LIB.shaderLayers(it, decodeImage, o));
+    setStatus((it.kind === "Textures" ? "Texture " : "Shader ") + it.name + " on " + ED.label(o).toLowerCase().replace(/#\d+/, "").trim() + " (Surfaces tab)"); return o;
+  } catch (err) { setStatus(String(err.message || err), true); return null; }
+}
+async function importToLibrary(kind, dirs) {
+  const exts = { Textures: ["png", "jpg", "jpeg", "webp"], Terrains: ["png", "jpg", "jpeg", "wbterrain"], Shaders: ["glsl", "frag", "fs", "shader"] }[kind];
+  const p = await ipcRenderer.invoke("dlg:open", { title: "Import " + kind.toLowerCase() + (dirs ? " (folders)" : ""), multi: true, dirs, filters: dirs ? undefined : [{ name: kind, extensions: exts }] }); if (!p) return;
+  return importPathsToLibrary(kind, p);
+}
+async function importPathsToLibrary(kind, paths) {
+  try {
+    const r = await LIB.importPaths(kind, paths); st.view.myKind = kind; await refs.drawMyLib();
+    setStatus(r.added.length ? "Imported " + r.added.length + " into " + kind + (r.skipped.length ? " (skipped " + r.skipped.join(", ") + ")" : "") + ". Click one to use it, or drag it onto an object." : "Nothing to import" + (r.skipped.length ? ": " + r.skipped.join(", ") : ""), !r.added.length);
+    return r;
+  } catch (err) { setStatus(String(err.message || err), true); return null; }
+}
+async function importHeightmap() {
+  if (!hasSel() || st.sel.type !== "terrain") return;
+  const p = await ipcRenderer.invoke("dlg:open", { title: "Import heightmap (white = high)", filters: [{ name: "Heightmaps", extensions: ["png", "jpg", "jpeg", "wbterrain"] }] }); if (!p) return;
+  const path = req("path"), it = { kind: "Terrains", type: /\.wbterrain$/i.test(p[0]) ? "terrain" : "heightmap", name: path.basename(p[0]).replace(/\.[^.]+$/, ""), path: p[0] };
+  return applyLibItem(it, st.sel);
+}
+async function saveTerrainToLibrary() {
+  if (!hasSel() || st.sel.type !== "terrain") return;
+  try { const n = await LIB.saveTerrain(st.sel, st.scene.name + " terrain"); st.view.myKind = "Terrains"; await refs.drawMyLib(); setStatus("Saved to your library: Terrains / " + n); } catch (err) { setStatus(String(err.message || err), true); }
+}
+function rebakeShader() {
+  if (!hasLay() || !st.lay.shader) return;
+  try { LIB.rebake(st.lay); edited(); setStatus("Shader baked at " + st.lay.shader.t + " s, " + st.lay.shader.size + " px"); } catch (err) { setStatus(String(err.message || err), true); }
+}
 
 // ---- files
 async function importModelData(name, buf, at) {
@@ -404,6 +457,29 @@ function buildLibrary(ui) {
   refs.tiles = tiles;
   const count = el("div", { class: "hint" }); bind(() => { count.textContent = tiles.filter((t) => t.__pack === st.view.addPack).length + " items. Drag one into the view, or click it."; });
   lib.appendChild(card("Add", [row("", segGroup("view.addPack", [{ v: "Shapes", l: "Shapes" }].concat(PK.PACKS.map((p) => ({ v: p, l: p }))))), count, grid]));
+  // your own library: Textures / Terrains / Shaders (Documents/Worlds Lab/Library)
+  const myGrid = el("div", { class: "wbtiles wbmylib" }), myCount = el("div", { class: "hint" });
+  let myItems = [];
+  const drawMyLib = async () => {
+    const kind = st.view.myKind; myItems = LIB.root() ? LIB.list(kind) : []; clear(myGrid);
+    myItems.forEach((it, i) => {
+      const img = el("img", {}), lab = el("div", { text: it.name.slice(0, 18) }), t = el("div", { class: "wbtile wblibitem", draggable: "true", "data-lib": kind + ":" + it.name, title: it.name + ": click to use on the selection, or drag it onto an object" }, [img, lab]);
+      if (it.thumb) img.src = it.thumb;
+      else if (it.type === "terrain") LIB.loadTerrain(it, decodeImage).then((hm) => { img.src = LIB.terrainThumb(hm); }).catch(() => {});
+      else if (it.type === "glsl") req("fs").promises.readFile(it.path, "utf8").then((code) => { img.src = LIB.picURL(LIB.bakeGLSL(code, 96, 0, it.name)); }).catch((err) => { t.classList.add("bad"); lab.textContent = "! " + it.name.slice(0, 16); t.title = it.name + ": this shader doesn't compile (click to see why)"; t.dataset.err = String(err.message || err); });
+      t.addEventListener("dragstart", (e) => { dragLib = it; e.dataTransfer.setData("text/wb-lib", String(i)); e.dataTransfer.effectAllowed = "copy"; try { e.dataTransfer.setDragImage(img, 28, 28); } catch (err) { /* ok */ } });
+      t.addEventListener("click", () => applyLibItem(it, null, null));
+      myGrid.appendChild(t);
+    });
+    myCount.textContent = myItems.length ? myItems.length + " " + kind.toLowerCase() + ". Click one to use it on the selection, or drag it onto an object." : "No " + kind.toLowerCase() + " yet. Import files or a whole folder.";
+  };
+  refs.drawMyLib = drawMyLib; refs.myLibItems = () => myItems;
+  const kindSeg = segGroup("view.myKind", [{ v: "Textures", l: "Textures" }, { v: "Terrains", l: "Terrains" }, { v: "Shaders", l: "Shaders" }]);
+  kindSeg.addEventListener("click", () => setTimeout(drawMyLib, 0));
+  lib.appendChild(card("My library", [row("", kindSeg), el("div", { class: "row wrap" }, [
+    btn("Import files...", () => importToLibrary(st.view.myKind, false), "Copy pictures, heightmaps or shader files into your library"),
+    btn("Import folder...", () => importToLibrary(st.view.myKind, true), "Copy every usable file in a folder (and its sub-folders); a folder of material maps becomes one shader"),
+    btn("Show folder", () => { if (LIB.root()) ipcRenderer.invoke("app:reveal", LIB.dir(st.view.myKind)); }, "Open the library folder in Finder / Explorer")]), myCount, myGrid]));
   refs.objList = el("div", { class: "wbobjs" });
   lib.appendChild(card("Objects", [refs.objList, el("div", { class: "hint", text: "Click to select. Tab / Shift-Tab steps through, Esc deselects, Delete removes." })]));
 }
@@ -529,6 +605,11 @@ function buildInspector(ui) {
     el("div", { class: "row wrap" }, [sliderRow("Shape", "sel.seed", 0, 99, 1, "")]),
     checkRow("Crater (bowl with a rim)", "sel.crater"),
     el("div", { class: "row wrap" }, [btn("New shape", () => { st.sel.seed = Math.floor(Math.random() * 100); edited(); }), btn("Undo stroke", () => { if (st.sel._undo !== undefined) { st.sel.sculpt = st.sel._undo; st.sel._undo = undefined; st.sel.sculptV++; edited(); } }), btn("Clear sculpting", () => { ED.clearSculpt(st.sel); edited(); })]),
+    el("div", { class: "lbl3", text: "HEIGHTMAP" }),
+    (() => { const n = el("span", { class: "lbl2" }); bind(() => { n.textContent = is("terrain")() && st.sel.hmap ? "MAP  " + String(st.sel.hmap.name).slice(0, 22).toUpperCase() : "GENERATED  SHAPE " + (is("terrain")() ? st.sel.seed : ""); }); return n; })(),
+    el("div", { class: "row wrap" }, [btn("Import heightmap...", () => importHeightmap(), "Grey picture, white = high: PNG (16-bit keeps every step), JPG, or a saved terrain"),
+      only(btn("Use generated shape", () => { delete st.sel.hmap; st.sel.sculpt = null; st.sel.sculptV = (st.sel.sculptV || 0) + 1; edited(); }), () => is("terrain")() && !!st.sel.hmap),
+      btn("Save to library", () => saveTerrainToLibrary(), "Keep this terrain (shape + sculpting) in My library / Terrains")]),
     el("div", { class: "lbl3", text: "BRUSH" }),
     el("div", { class: "row wrap" }, [segGroup("view.brush", ED.BRUSHES.map(([v, l]) => ({ v, l })))]),
     el("div", { class: "row wrap" }, [sliderRow("Brush size", "view.bsize", 0.03, 0.4, 0.01, ""), sliderRow("Strength", "view.bpow", 0.05, 1, 0.05, "")]),
@@ -611,6 +692,8 @@ function buildInspector(ui) {
     only(el("div", { class: "row wrap" }, [btn("Up", () => layOps.move(1), "Move the layer up the stack"), btn("Down", () => layOps.move(-1)), btn("Duplicate", () => layOps.dup()), btn("Delete", () => layOps.remove())]), () => canLayer() && hasLay()),
     lay(row("Name", nameIn)),
     lay(el("div", { class: "row wrap" }, [picName, btn("Change picture...", () => loadLayerPicture(false))])),
+    only(el("div", { class: "lbl3", text: "SHADER" }), () => hasLay() && !!st.lay.shader),
+    only(el("div", { class: "row wrap" }, [sliderRow("Time", "lay.shader.t", 0, 60, 0.1, " s"), (() => { const sz = el("select", { "data-key": "lay.shader.size" }); [256, 512, 1024, 2048].forEach((v) => sz.appendChild(el("option", { value: v, text: v + " px" }))); bind(() => { if (hasLay() && st.lay.shader) sz.value = String(st.lay.shader.size || 512); }); sz.addEventListener("change", () => { if (hasLay() && st.lay.shader) { st.lay.shader.size = +sz.value; edited(); } }); return row("Detail", sz); })(), btn("Bake", () => rebakeShader(), "Draw the shader again at this time and detail")]), () => hasLay() && !!st.lay.shader),
     lay(el("div", { class: "lbl3", text: "WRAP" })), lay(row("", laySeg("lay.wrap", SF.WRAPS))),
     lay(el("div", { class: "row wrap" }, [sliderRow("Tile", "lay.tile", 0.1, 20, 0.05, "x"), sliderRow("Turn", "lay.rot", 0, 359, 1, " deg"), sliderRow("Offset X", "lay.ox", -1, 1, 0.01, ""), sliderRow("Offset Y", "lay.oy", -1, 1, 0.01, "")])),
     lay(el("div", { class: "lbl3", text: "BLEND" })), lay(row("", laySeg("lay.blend", SF.BLENDS))),
@@ -736,7 +819,7 @@ ui.help.onChange((on) => { if (lui.help.on !== on) lui.help.setOn(on); }); lui.h
 let sweepT = null; const sweepAll = () => { clearTimeout(sweepT); sweepT = setTimeout(() => { ui.sweep(document.getElementById("insp")); ["top", "lib", "centre", "bar"].forEach((id) => lui.sweep(document.getElementById(id)));
   root.querySelectorAll("#insp .tabbtn").forEach((n) => { if (n.__help && n.__help.kind === "tab") n.__help.kind = "seg"; });   // the app's tabs have no on/off dot
   root.querySelectorAll(".wbcell, .wbtile, .wbobj").forEach((n) => { if (n.__help) return; const u = n.closest("#insp") ? ui : lui, nm = (n.textContent || "").trim().slice(0, 40);
-    u.helpAt(n, n.classList.contains("wbcell") ? { key: "lib.scene", name: nm, kind: "grid" } : n.classList.contains("wbtile") ? { key: "lib.add", name: nm, kind: "grid" } : n.closest(".wblayers") ? { key: "lay.row", name: nm, kind: "info" } : { key: "lib.obj", name: nm, kind: "info" }); }); }, 60); };
+    u.helpAt(n, n.classList.contains("wbcell") ? { key: "lib.scene", name: nm, kind: "grid" } : n.classList.contains("wblibitem") ? { key: "lib.my", name: nm, kind: "grid" } : n.classList.contains("wbtile") ? { key: "lib.add", name: nm, kind: "grid" } : n.closest(".wblayers") ? { key: "lay.row", name: nm, kind: "info" } : { key: "lib.obj", name: nm, kind: "info" }); }); }, 60); };
 new MutationObserver(sweepAll).observe(root, { childList: true, subtree: true });   // panes that redraw (layers, objects) get their help too
 buildTop(lui); buildLibrary(lui); buildToolbar(lui); buildPads(lui); buildInspector(ui); buildBar(lui);
 refs.axes = axisGizmo(vpwrap, () => st.scene.cam, {   // the view ball: drag to orbit, snap to axes, ZOOM / PAN / FRAME / HOME
@@ -750,8 +833,9 @@ setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.")
 setTimeout(() => drawLibrary().catch((err) => console.error(err)), 50);
 ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder + watching for the panel's requests
   BR.setRoot(window.__wbBridgeRoot || info.docs);
+  try { LIB.setRoot(window.__wbLibDocs || info.docs); refs.drawMyLib(); } catch (err) { console.error(err); }
   refs.bridgeWatch = BR.watch({ docSize: applyDocSize, picture: (p) => { refs.psPic = p; uis.forEach((u) => u.refreshAll()); setStatus("Photoshop sent a picture: " + p.name + " (Surfaces tab)"); } });
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

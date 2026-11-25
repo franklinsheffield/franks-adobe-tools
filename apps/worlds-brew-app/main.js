@@ -41,7 +41,7 @@ ipcMain.handle("dlg:save", async (e, o) => {
   return r.canceled ? null : r.filePath;
 });
 ipcMain.handle("dlg:open", async (e, o) => {
-  const r = await dialog.showOpenDialog(win, { title: o.title || "Open", properties: ["openFile"].concat(o.multi ? ["multiSelections"] : []), filters: o.filters || SCENE_FILTER });
+  const r = await dialog.showOpenDialog(win, { title: o.title || "Open", properties: (o.dirs ? ["openDirectory"] : ["openFile"]).concat(o.multi ? ["multiSelections"] : []), filters: o.filters || SCENE_FILTER });
   return r.canceled ? null : r.filePaths;
 });
 ipcMain.handle("dlg:ask", async (e, o) => {

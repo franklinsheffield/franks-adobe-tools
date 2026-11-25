@@ -112,16 +112,19 @@ function gl() {
 // Shadertoy code (mainImage) runs as GLSL ES 3.00; GLSL-sandbox code (void main + gl_FragColor) as GLSL ES 1.00
 export function wrapGLSL(code) {
   const src = String(code).replace(/^\s*#version.*$/m, "").replace(/^\s*precision\s+\w+\s+float\s*;/m, "");
+  // uniforms the wrapper already declares: drop the shader's own copies (GLSL refuses a second declaration)
+  const OWN = ["iResolution", "iTime", "iTimeDelta", "iFrame", "iMouse", "iDate", "time", "resolution", "mouse", "surfaceSize"];
+  const clean = (t) => t.replace(/\buniform\s+(?:(?:lowp|mediump|highp)\s+)?\w+\s+(\w+)\s*;/g, (m, n) => (OWN.includes(n) ? "" : m)).replace(/\bvarying\s+(?:(?:lowp|mediump|highp)\s+)?vec2\s+surfacePosition\s*;/g, "");
   if (/void\s+mainImage\s*\(/.test(src)) return { es3: true, frag: `#version 300 es
 precision highp float; precision highp int;
 uniform vec3 iResolution; uniform float iTime; uniform float iTimeDelta; uniform int iFrame; uniform vec4 iMouse; uniform vec4 iDate;
 out vec4 wbOut;
-${src}
+${clean(src)}
 void main() { vec4 c = vec4(0.0, 0.0, 0.0, 1.0); mainImage(c, gl_FragCoord.xy); wbOut = vec4(clamp(c.rgb, 0.0, 1.0), 1.0); }` };
   if (/void\s+main\s*\(/.test(src)) return { es3: false, frag: `precision highp float;
 uniform float time; uniform vec2 resolution; uniform vec2 mouse; uniform vec2 surfaceSize;
 varying vec2 surfacePosition;
-${src}` };
+${clean(src)}` };
   throw new Error("No mainImage() or main() found. Worlds Lab reads Shadertoy-style shaders (mainImage) and GLSL-sandbox shaders (main + gl_FragColor).");
 }
 function program(code) {
@@ -158,7 +161,7 @@ export async function shaderLayers(entry, decode, o) {
   const wrap = o && o.type === "mesh" && o.mesh && o.mesh.uv ? "UV" : "Box";
   if (entry.type === "glsl") {
     const code = await fsp.readFile(entry.path, "utf8"), img = bakeGLSL(code, 512, 0, entry.name);
-    return [SF.layer({ name: entry.name.slice(0, 30), img, wrap, shader: { name: entry.name, code, t: 0, size: 512 } })];
+    return [SF.layer({ name: entry.name.slice(0, 30), img, wrap, shader: { name: entry.name, code, t: 0, size: 512, bt: 0, bs: 512 } })];
   }
   // PBR folder: colour layer (+ average roughness / metal as its shine) and a Relief layer from the height map
   const m = entry.maps || pbrMaps(entry.path), out = [];
@@ -172,6 +175,6 @@ export async function shaderLayers(entry, decode, o) {
 // bake a layer's shader again (another time or size), keeping everything else
 export function rebake(L, t, size) {
   if (!L || !L.shader) return L;
-  L.shader.t = t == null ? L.shader.t : t; L.shader.size = size || L.shader.size || 512;
-  L.img = bakeGLSL(L.shader.code, L.shader.size, L.shader.t, L.shader.name); return L;
+  const sh = L.shader; sh.t = t == null ? sh.t || 0 : t; sh.size = size || sh.size || 512;
+  L.img = bakeGLSL(sh.code, sh.size, sh.t, sh.name); sh.bt = sh.t; sh.bs = sh.size; return L;
 }

@@ -271,6 +271,84 @@ async function uiTests() {
       assert.deepStrictEqual(n, [1, "Brick wall", 8]);
     } finally { await W(() => { const w = window.__wb; w.refs.bridgeWatch && w.refs.bridgeWatch.stop(); }); fs.rmSync(root, { recursive: true, force: true }); }
   });
+  await t("app: My library: import texture / heightmap / shader files and folders, GLSL bakes the same everywhere, PBR folder, 16-bit heightmap, save terrain", async () => {
+    const zlib = require("zlib"), PNGE = require("../engine/kit/png.js");
+    const crc = (b) => PNGE.crc32(b, 0, b.length), chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]), c = Buffer.alloc(4); c.writeUInt32BE(crc(td) >>> 0); return Buffer.concat([len, td, c]); };
+    const png16 = (w, h, f) => { const ih = Buffer.alloc(13); ih.writeUInt32BE(w, 0); ih.writeUInt32BE(h, 4); ih[8] = 16; ih[9] = 0; const raw = Buffer.alloc(h * (w * 2 + 1));
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw.writeUInt16BE(f(x, y), y * (w * 2 + 1) + 1 + x * 2);
+      return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ih), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]); };
+    const png8 = (w, h, f) => { const px = new Uint8Array(w * h * 4); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) px.set(f(x, y).concat([255]), (y * w + x) * 4); return Buffer.from(PNGE.encodePNG(px, w, h, 4)); };
+    const docs = fs.mkdtempSync(path.join(os.tmpdir(), "wblib-")), src = fs.mkdtempSync(path.join(os.tmpdir(), "wbsrc-"));
+    fs.mkdirSync(path.join(src, "pics", "more"), { recursive: true });
+    fs.writeFileSync(path.join(src, "pics", "red.png"), png8(8, 8, () => [255, 0, 0]));
+    fs.writeFileSync(path.join(src, "pics", "more", "checker.png"), png8(8, 8, (x, y) => ((x + y) & 1 ? [255, 255, 255] : [0, 0, 0])));
+    fs.writeFileSync(path.join(src, "pics", "notes.txt"), "not a picture");
+    fs.writeFileSync(path.join(src, "dune16.png"), png16(64, 64, (x, y) => Math.round(65535 * Math.sin(x / 63 * Math.PI) * Math.sin(y / 63 * Math.PI))));
+    fs.writeFileSync(path.join(src, "gradient.frag"), "void mainImage(out vec4 fragColor, in vec2 fragCoord) { vec2 uv = fragCoord / iResolution.xy; fragColor = vec4(uv.x, 0.25 + 0.5 * sin(iTime), 0.8, 1.0); }\n");
+    fs.writeFileSync(path.join(src, "sandbox.glsl"), "uniform float time; uniform vec2 resolution; void main() { gl_FragColor = vec4(gl_FragCoord.y / resolution.y, 0.0, 0.0, 1.0); }\n");
+    fs.writeFileSync(path.join(src, "broken.glsl"), "void mainImage(out vec4 c, in vec2 p) { c = nothingHere; }\n");
+    fs.mkdirSync(path.join(src, "Brick set"));
+    fs.writeFileSync(path.join(src, "Brick set", "brick_basecolor.png"), png8(16, 16, () => [180, 70, 50]));
+    fs.writeFileSync(path.join(src, "Brick set", "brick_height.png"), png8(16, 16, (x, y) => (y % 4 === 0 ? [0, 0, 0] : [255, 255, 255])));
+    fs.writeFileSync(path.join(src, "Brick set", "brick_roughness.png"), png8(16, 16, () => [204, 204, 204]));
+    fs.writeFileSync(path.join(src, "Brick set", "brick_normal.png"), png8(16, 16, () => [128, 128, 255]));
+    await W((d) => { const w = window.__wb; w.LIB.setRoot(d); }, docs);
+    await W(() => { const w = window.__wb; w.loadScene(w.S.loadPreset("Chrome Garden")); });
+    const lib = path.join(docs, "Worlds Lab", "Library");
+    assert.ok(["Textures", "Terrains", "Shaders"].every((k) => fs.existsSync(path.join(lib, k))), "library folders made");
+    // import: a folder of pictures (sub-folder flattened, text file skipped), shaders (files + a material folder), a heightmap
+    const r1 = await W((p) => window.__wb.importPathsToLibrary("Textures", [p]), path.join(src, "pics"));
+    assert.deepStrictEqual(r1.added.sort(), ["checker", "red"]); assert.deepStrictEqual(r1.skipped, []);
+    const r2 = await W((ps) => window.__wb.importPathsToLibrary("Shaders", ps), [path.join(src, "gradient.frag"), path.join(src, "sandbox.glsl"), path.join(src, "broken.glsl"), path.join(src, "Brick set")]);
+    assert.strictEqual(r2.added.length, 4);
+    const r3 = await W((p) => window.__wb.importPathsToLibrary("Terrains", [p]), path.join(src, "dune16.png")); assert.deepStrictEqual(r3.added, ["dune16"]);
+    const again = await W((p) => window.__wb.importPathsToLibrary("Textures", [p]), path.join(src, "pics", "red.png")); assert.deepStrictEqual(again.added, ["red 2"], "never overwrites");
+    // the grid shows them; a shader that doesn't compile is marked
+    await W(() => { const w = window.__wb; w.st.view.myKind = "Shaders"; w.uis.forEach((u) => u.refreshAll()); return w.refs.drawMyLib(); });
+    await win.waitForTimeout(300);
+    assert.strictEqual(await win.locator(".wbmylib .wblibitem").count(), 4);
+    assert.strictEqual(await win.locator(".wbmylib .wblibitem.bad").count(), 1, "broken shader marked: " + JSON.stringify(await W(() => Array.from(document.querySelectorAll(".wbmylib .wblibitem.bad")).map((n) => n.dataset.lib + " " + n.dataset.err))));
+    // a texture on the selected sphere (a surface layer)
+    const it = (kind, name) => W(([k, n]) => window.__wb.LIB.list(k).find((x) => x.name === n), [kind, name]);
+    await W(() => { const w = window.__wb; w.select(w.st.scene.objs.find((o) => o.type === "sphere")); });
+    const tex = await it("Textures", "red"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, tex);
+    assert.deepStrictEqual(await W(() => { const L = window.__wb.st.lay; return [L.name, L.img.w, L.img.d[0], L.img.d[1]]; }), ["red", 8, 255, 0]);
+    // GLSL (Shadertoy): baked to a picture, red runs left to right; Time re-bakes; undo keeps the code
+    const gl = await it("Shaders", "gradient"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, gl);
+    const px = await W(() => { const L = window.__wb.st.lay, d = L.img.d, w = L.img.w; return [L.img.w, !!L.shader, d[0], d[(w - 1) * 4], d[1]]; });
+    assert.strictEqual(px[0], 512); assert.ok(px[1], "code kept on the layer"); assert.ok(px[2] < 8 && px[3] > 247, "red ramps left to right: " + px);
+    assert.ok(Math.abs(px[4] - 64) < 4, "iTime 0: green 0.25");
+    await W(() => { const w = window.__wb; w.st.lay.shader.t = 1.5708; w.uis.forEach((u) => u.refreshAll()); });
+    await W(() => { const w = window.__wb; w.rebakeShader(); });
+    assert.ok(Math.abs(await W(() => window.__wb.st.lay.img.d[1]) - 191) < 4, "iTime pi/2: green 0.75");
+    // GLSL-sandbox style
+    const sb = await it("Shaders", "sandbox"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, sb);
+    const sbp = await W(() => { const L = window.__wb.st.lay, d = L.img.d, w = L.img.w, h = L.img.h; return [d[0], d[((h - 1) * w) * 4]]; }); assert.ok(sbp[0] > 247 && sbp[1] < 8, "top row bright, bottom row dark: " + sbp);
+    // a broken shader: nothing added, the error is in the status bar
+    const nL = await W(() => window.__wb.st.sel.layers.length);
+    const bad = await it("Shaders", "broken"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, bad);
+    assert.strictEqual(await W(() => window.__wb.st.sel.layers.length), nL); assert.ok(/Shader error/.test(await win.locator(".status").textContent()));
+    // PBR folder: colour layer with shine from the roughness map + a Relief layer from the height map
+    const pbr = await it("Shaders", "Brick set"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, pbr);
+    const pl = await W(() => window.__wb.st.sel.layers.slice(-2).map((L) => [L.blend, L.shine, L.rough, L.bump]));
+    assert.deepStrictEqual(pl, [["Normal", true, 0.8, 0], ["Relief", false, 0.5, 1]]);
+    // Relief leaves colour alone (ray tracer maths)
+    const SFm = require("../engine/surface.js"); assert.strictEqual(SFm.BLENDS.includes("Relief"), true);
+    // 16-bit heightmap on the selected terrain: smooth steps survive
+    await W(() => { const w = window.__wb; w.select(w.st.scene.objs.find((o) => o.type === "terrain")); });
+    const dune = await it("Terrains", "dune16"); await W(async (x) => { await window.__wb.applyLibItem(x, null, null); }, dune);
+    const hm = await W(() => { const o = window.__wb.st.sel, d = o.hmap.d, set = new Set(); for (const v of d) set.add(Math.round(v * 65535)); return [o.hmap.name, set.size, window.__wb.S.heightmap(o).top > 0.3]; });
+    assert.strictEqual(hm[0], "dune16"); assert.ok(hm[1] > 300, "more than 256 levels: " + hm[1]); assert.ok(hm[2], "it has height");
+    // save it (scene file keeps the map), and to the library
+    const back = await W(() => { const w = window.__wb, sc = w.S.fromJSON(w.S.toJSON(w.st.scene)), t = sc.objs.find((o) => o.hmap); return t && t.hmap.d.length; }); assert.strictEqual(back, 96 * 96);
+    await W(async () => { const w = window.__wb; const n = await w.LIB.saveTerrain(w.st.sel, "My dune"); return n; });
+    assert.ok(fs.existsSync(path.join(lib, "Terrains", "My dune.wbterrain")));
+    const saved = await it("Terrains", "My dune"); await W(async (x) => { await window.__wb.applyLibItem(x, null, { x: 6, y: 0, z: 2 }); }, saved);
+    assert.deepStrictEqual(await W(() => { const o = window.__wb.st.sel; return [o.type, o.hmap.name, o.x, o.z]; }), ["terrain", "My dune", 6, 2], "a new terrain where it was dropped");
+    await W(() => { const w = window.__wb; w.st.view.myKind = "Textures"; w.uis.forEach((u) => u.refreshAll()); return w.refs.drawMyLib(); });
+    await W(() => { const w = window.__wb; w.select(w.st.scene.objs.find((o) => o.type === "sphere")); w.CT.frame(w.st.scene, w.st.sel); w.changed("view"); });
+    await win.waitForTimeout(400); await win.screenshot({ path: path.join(OUT, "app-my-library.png") });
+  });
   await t("app: 3.0 interface like the plugins: Night Arcade style, pixel type, LCD boxes, one HELP switch, help text on every control", async () => {
     const r = await W(async () => {
       const w = window.__wb, root = document.getElementById("app");

@@ -158,3 +158,7 @@ input.num.wide { width: 70px; }
 #app.arcade #insp .dlabel { font-size: 9px; margin-top: 2px; }
 /* help bubbles sit above the viewport and the render result */
 #app.arcade .helptip, #app.arcade .helppop { z-index: 80; }
+
+/* 0.10 My library */
+.wbmylib .wblibitem.bad { border-color: #fe5e4f; }
+.wbmylib .wblibitem.bad div { color: #fe5e4f; }
