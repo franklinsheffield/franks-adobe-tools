@@ -3,12 +3,15 @@
 // Frank's Dithers Brew - panel UI
 // ======================================================================
 const Engine = require("./js/engine.js");
-const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
+const { DEFAULTS, PRESETS, merge, clone, normAscii } = require("./js/state.js");
+const ASCII3 = require("./js/ascii3.js");
 const { PALETTES, TONEMAPS } = require("./js/palettes.js");
 const ASCII = require("./js/ascii.js");
 // shared suite core (synced from /shared by tools/sync-core.js)
 const PNG = require("./core/png.js");
 const PS = require("./core/ps-io.js");
+const BRAND = require("./brand.js");
+const { SUITE } = require("./core/brand.js");
 const { createUI, getPath } = require("./core/ui.js");
 const QW = require("./core/quickwins.js");
 const IM = require("./core/imgmath.js");
@@ -16,11 +19,13 @@ const { createPreviewLoop, tick } = require("./core/preview.js");
 const { splitLayout } = require("./core/layout.js");
 const { createLibrary } = require("./core/library.js");
 const Colour = require("./core/colour.js");
+const Blend = require("./core/blend.js");
 const { createColourDeck, applyDeckPreview, addDeckLayer, recolourInks } = require("./core/colourdeck.js");
 
-PS.configure({ appName: "Frank's Dithers Brew", presetFile: "presets.json", exportName: "franks-brew-presets.json" });
+PS.configure({ appName: BRAND.NAME, presetFile: "presets.json", exportName: "franks-brew-presets.json" });
 
-let state = clone(DEFAULTS);
+if (!DEFAULTS.blend) DEFAULTS.blend = clone(Blend.DEFAULT);   // Blending (all plugins), saved with the look
+let state = normAscii(clone(DEFAULTS));
 // values of the look loaded last: double-clicking a knob goes back to them (quick win ID-02)
 let lookBase = clone(state);
 let docCache = { ppi: 300, name: "", w: 0, h: 0, demo: true };
@@ -35,14 +40,29 @@ let deck = null;
 // Colour Deck state (shared suite colour control); states set from outside may lack it
 const D = () => (state.deck && typeof state.deck === "object" ? state.deck : (state.deck = Colour.normalize(state.deck)));
 // ink layers recoloured, or one Colour Deck layer read from the print on white paper
+// ASCII glyph colour modes that take their colours FROM the deck (the deck is then not laid on top)
+const DECK_FEEDS = ["match", "tone", "across", "bands", "overlap"];
+const deckFeedsGlyphs = () => state.engine === "ascii" && state.ascii && DECK_FEEDS.includes(state.ascii.glyph);
+// the deck's colours as a ramp for the ASCII colour modes: gradient stops at their positions,
+// any other mode's colours dark -> light, evenly spaced. null = deck off (engine uses the inks).
+function deckRamp() {
+  const C = D();
+  if (!Colour.active(C)) return null;
+  if (C.mode === "gradient" && C.grad && C.grad.stops) return C.grad.stops.map((x) => ({ c: Colour.hexToRgb(x.c), p: (+x.p || 0) / 100 }));
+  const cs = Colour.colours(C).map(Colour.hexToRgb).sort((a, b) => (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114) - (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114));
+  return cs.map((c, k) => ({ c, p: cs.length > 1 ? k / (cs.length - 1) : 0 }));
+}
+const withRamp = (P) => (P.engine === "ascii" && DECK_FEEDS.includes(P.ascii && P.ascii.glyph) ? Object.assign(P, { ascii: Object.assign({}, P.ascii, { ramp: deckRamp() }) }) : P);
 function withDeck(res) {
   const C = D();
-  if (!Colour.active(C)) return res;
-  return C.inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
+  if (!Colour.active(C) || deckFeedsGlyphs()) return res;
+  // ASCII 3.0 Glyph colour "Colour Deck": the deck recolours the glyph ink layers
+  const inks = C.inks || (state.engine === "ascii" && state.ascii && state.ascii.glyph === "deck");
+  return inks ? recolourInks(res, C) : addDeckLayer(res, C, Engine, null, "white");
 }
 
 const refs = {};
-const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: "Frank's Dithers Brew",
+const ui = createUI({ getState: () => state, onChange: () => touch(), pickColor: (hex) => PS.pickColor(hex), brand: "console", glow: "#ff9f1c", onLive: () => liveFrame(), storeKey: BRAND.LEGACY,
   getDefault: (path) => getPath(lookBase, path), onSelect: (i) => { if (refs.keys) refs.keys.textContent = i ? QW.keysFor(i) : KEYS_IDLE; } });
 const KEYS_IDLE = QW.keysIdle("");
 const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow, segGroup, pill, textRow, numInput, hexField, card } = ui;
@@ -52,6 +72,7 @@ const { el, clear, bind, showIf, refreshAll, row, sliderRow, selectRow, checkRow
 let preSig = "";
 const preKey = () => { const p = Object.assign({}, state.fx.pre); delete p.on; return JSON.stringify(p); };
 function touch() {
+  if (!state.blend) state.blend = clone(Blend.DEFAULT);   // older saved looks have no blend
   quickNext = false;
   const k = preKey();
   if (k !== preSig) { if (preSig && !state.fx.pre.on) state.fx.pre.on = true; preSig = k; }
@@ -87,7 +108,7 @@ function setStatus(msg, isErr) {
   if (isErr) msg = QW.plainError(msg);
   refs.status.textContent = msg;
   refs.status.className = "status" + (isErr ? " err" : "");
-  if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Brewing)/.test(msg) ? "busy" : "ready"));
+  if (refs.led) refs.led.set(isErr ? "err" : (/^(Rendering|Reading|Writing|Applying)/.test(msg) ? "busy" : "ready"));
 }
 
 // ---------------------------------------------------------------- palette widgets
@@ -166,6 +187,23 @@ function sphereSrc(n) {
   return { w: n, h: n, c: 4, data };
 }
 const thumbCache = {};
+// ASCII 3.0 algorithm tiles: each one a live sample of that algorithm on the sphere
+function asciiTile(id) {
+  return () => {
+    const key = "a3:" + id;
+    if (thumbCache[key] == null) {
+      try {
+        const N = 64, src = sphereSrc(N), n = N * N, lum = new Uint8Array(n), demand = new Uint8Array(n);
+        for (let i = 0; i < n; i++) { const p = i * 4; lum[i] = Math.round(0.299 * src.data[p] + 0.587 * src.data[p + 1] + 0.114 * src.data[p + 2]); demand[i] = 255 - lum[i]; }
+        const m = ASCII3.render(demand, N, N, { algo: id, font: "classic", cell: 8, set: "classic", text: id === "weight" ? "O" : "FRANK", seed: 1, lum, edgeAmt: id === "edge" ? 0.7 : 0 });
+        const rgb = new Uint8Array(n * 3);
+        for (let i = 0; i < n; i++) rgb[i * 3] = rgb[i * 3 + 1] = rgb[i * 3 + 2] = m[i] ? 10 : 245;
+        thumbCache[key] = PNG.dataURL(rgb, N, N, 3);
+      } catch (e) { thumbCache[key] = ""; }
+    }
+    return thumbCache[key];
+  };
+}
 function algoList(engine) {
   if (engine === "halftone") return Engine.SCREENS;
   if (engine === "ascii") return ASCII.ASCII_SETS;
@@ -378,14 +416,16 @@ async function previewOnce() {
 
 async function previewFrame(src, scale, ppi, quick) {
   const t0 = Date.now();
-  const P = Object.assign({}, state, { ppi: effPpi(ppi), scale });
+  const P = withRamp(Object.assign({}, state, { ppi: effPpi(ppi), scale }));
   const res = await Engine.render(src, P, { yield: tick });
   const dtf = state.fx.dtf;
   const bgType = state.view.bg;
   const bg = (dtf.on && dtf.view === "garment") ? { type: "garment", color: Engine.hexToRgb(dtf.garment) } : { type: bgType };
   let rgb;
-  if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
+  if (deckFeedsGlyphs()) rgb = Engine.composite(res, bg);
+  else if (D().inks && Colour.active(D())) rgb = Engine.composite(withDeck(res), bg);
   else { rgb = Engine.composite(res, bg); applyDeckPreview(rgb, res, D(), Engine, null, bgType, "white"); }
+  if (Blend.active(state.blend)) rgb = Blend.preview(Engine, withDeck(res), src, state.blend);   // as the group will look over the picture
   lastShown = { rgb, w: res.w, h: res.h, before: IM.composite({ w: res.w, h: res.h, layers: [], overSource: true }, { type: bgType }, src) };
   paintPreview();
   const avail = (refs.previewBox.clientWidth || 320) - 4;
@@ -457,13 +497,13 @@ async function applyNow() {
     confirmArmed = false;
     var tStart = Date.now();
     refs.meter.run();
-    btn.textContent = "Brewing...";
+    btn.textContent = "Applying...";
     btn.setAttribute("disabled", "true");
     let done = 0;
     for (const t of targets) {
       setStatus("Reading pixels " + (done + 1) + "/" + targets.length + "...");
       const r = await PS.readSource(doc, t, { kind: "full" });
-      const P = Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 });
+      const P = withRamp(Object.assign({}, state, { ppi: effPpi(r.ppi), scale: 1 }));
       const res0 = await Engine.render(r.src, P, {
         yield: tick,
         progress: (i, n, name) => setStatus("Rendering " + (done + 1) + "/" + targets.length + ": " + name + " (" + (i + 1) + "/" + n + ")...")
@@ -476,10 +516,11 @@ async function applyNow() {
       const base = t.kind === "layer" ? (t.layer.name + " - ") : "";
       const warnings = await PS.writeResult(doc, res, {
         origin: r.origin,
-        groupName: base + "Brew - " + label + (state.engine === "halftone" ? " " + state.lpi + " LPI" : ""),
-        hideSource: state.out.hide,
+        groupName: base + BRAND.NAME + " - " + label + (state.engine === "halftone" ? " " + state.lpi + " LPI" : ""),
+        hideSource: state.out.hide && !Blend.active(state.blend),   // a blended group needs its source visible
         hideLayers: t.kind === "layer" ? [t.layer] : null,
-        paperLayer: state.out.paper
+        paperLayer: state.out.paper,
+        blend: state.blend
       });
       done++;
       if (warnings && warnings.length) setStatus(warnings.join(" | "), true);
@@ -500,7 +541,7 @@ async function applyNow() {
 // ---------------------------------------------------------------- presets
 function applyPatch(p) {
   const keepOut = clone(state.out), keepView = clone(state.view), keepDeck = state.deck;
-  state = merge(DEFAULTS, p);
+  state = normAscii(merge(DEFAULTS, p));
   state.out = keepOut; state.view = keepView;
   state.deck = p && p.deck ? Colour.normalize(p.deck) : keepDeck;   // looks without colour keep the current deck
   // 1.0 looks stored invert as true/false; 1.1 uses a 0-100 amount (same pixels)
@@ -524,7 +565,7 @@ function build(root) {
 
   // header
   root.classList.add("brand-console");
-  refs.led = ui.brand.header({ title: "Frank's Dithers Brew", code: "DB-01" });
+  refs.led = ui.brand.header({ title: BRAND.NAME, code: "DB-01" });
   top.appendChild(refs.led.node);
 
   // ---- preview card
@@ -621,7 +662,8 @@ function build(root) {
   showIf(htBox, () => state.engine === "halftone");
   const diBox = el("div", {}, [
     selectRow("Algorithm", "algo.dither", Engine.DITHERS.map((s) => ({ v: s.id, l: s.name }))),
-    sliderRow("Scale", "pixel", 1, 16, 1, "x")
+    sliderRow("Scale", "pixel", 1, 16, 1, "x"),
+    (function () { const r = segGroup("resample", [{ v: "pixel", l: "Pixel edges" }, { v: "smooth", l: "Smooth edges" }]); const w = row("Resample", r); showIf(w, () => (state.pixel || 1) > 1); return w; })()
   ]);
   showIf(diBox, () => state.engine === "dither");
   const customRow = textRow("Characters", "ascii.custom", "e.g. FRANK 01");
@@ -629,15 +671,44 @@ function build(root) {
   const keepRow = checkRow("Keep my order (light to dark)", "ascii.keepOrder");
   showIf(keepRow, () => state.algo.ascii === "custom");
   const textRowEl = textRow("Text", "ascii.text", "text to tile");
-  showIf(textRowEl, () => state.ascii.textMode);
-  const asBox = el("div", {}, [
+  showIf(textRowEl, () => ["text", "weight"].indexOf(state.ascii.algo) >= 0);
+  // ASCII 3.0: 20 algorithms in 4 groups of 5 (live sample tiles), font, size, spacing, invert, glyph colour
+  const algoGrids = ASCII3.GROUPS.map((g) => {
+    const opts = ASCII3.ALGOS.filter((a) => a.g === g).map((a) => ({ v: a.id, l: a.n, img: asciiTile(a.id) }));
+    return el("div", { class: "agroup" }, [el("div", { class: "lbl3", text: g }),
+      ui.grid("ascii.algo", opts, { cls: "ascii20", after: (v) => { state.ascii.textMode = v === "text"; } })]);
+  });
+  const edgeRow = sliderRow("Edge glyphs", "ascii.edge", 0, 100, 1, "%");
+  showIf(edgeRow, () => ["luma", "equal", "ordered", "bluenoise", "glitch", "edge"].indexOf(state.ascii.algo) >= 0);
+  const seedRow = ui.stepper("Seed", "ascii.seed", 1, 9999, 1, "");
+  showIf(seedRow, () => ["bluenoise", "glitch", "rain"].indexOf(state.ascii.algo) >= 0);
+  // Glyph colour (Frank 2026-11-24): colour is part of every algorithm. Palette match / Gradient by tone /
+  // Gradient across / Tone bands take their colours from the Colour Deck (palette, gradient, tone map, inks).
+  const glyphRow = selectRow("Glyph colour", "ascii.glyph", [
+    { v: "ink", l: "Ink" }, { v: "cell", l: "Cell colour (photo)" }, { v: "match", l: "Palette match" },
+    { v: "tone", l: "Gradient by tone" }, { v: "across", l: "Gradient across" }, { v: "bands", l: "Tone bands (layer per colour)" }, { v: "overlap", l: "Gradient bands (overlapping)" },
+    { v: "deck", l: "Colour Deck on top" }]);
+  const gangleRow = ui.angle("Gradient angle", "ascii.gangle", 0, 360, 1);
+  showIf(gangleRow, () => state.ascii.glyph === "across");
+  const revRow = checkRow("Reverse gradient", "ascii.reverse");
+  showIf(revRow, () => state.ascii.glyph === "overlap");
+  const glyphNote = el("div", { class: "hint" });
+  bind(() => {
+    const feeds = DECK_FEEDS.indexOf(state.ascii.glyph) >= 0;
+    glyphNote.style.display = feeds ? "" : "none";
+    glyphNote.textContent = Colour.active(D()) ? "Colours come from the Colour Deck (" + Colour.label(D()) + ")." : "Colours come from the inks. Turn on the Colour Deck to use a palette or gradient.";
+  });
+  const asBox = el("div", {}, algoGrids.concat([
+    selectRow("Font", "ascii.font", ASCII3.FONTS.map((f) => ({ v: f.id, l: f.name }))),
+    ui.stepper("Size", "ascii.cell", 4, 96, 1, "px"),
     selectRow("Character set", "algo.ascii", ASCII.ASCII_SETS.map((s) => ({ v: s.id, l: s.name }))),
     customRow, keepRow,
-    sliderRow("Scale", "ascii.size", 1, 16, 1, "x"),
-    sliderRow("Edge glyphs", "ascii.edge", 0, 100, 1, "%"),
-    checkRow("Text halftone (tile my own words)", "ascii.textMode"),
+    ui.stepper("Spacing", "ascii.spacing", 0, 8, 1, "px"),
+    edgeRow, seedRow,
+    checkRow("Invert (light glyphs on dark)", "ascii.invert"),
+    glyphRow, gangleRow, revRow, glyphNote,
     textRowEl
-  ]);
+  ]));
   showIf(asBox, () => state.engine === "ascii");
   const printRow = el("div", { class: "row wrap" }, [
     el("span", { class: "lbl", text: "Print" }),
@@ -659,13 +730,13 @@ function build(root) {
   const dirWrap = row("Direction", dirRow);
   showIf(dirWrap, () => isLine() && ["wavescan", "waveamp", "lineweight"].indexOf(state.algo.dither) >= 0);
   const strRow = sliderRow("Strength", "tune.strength", 0, 100, 1, "%");
-  showIf(strRow, () => state.engine === "dither" && (curDither().t === "ed" || curDither().t === "ord" || (isLine() && (lineInfo().bend || state.algo.dither === "contour"))));
+  showIf(strRow, () => state.engine === "dither" && (curDither().t === "ed" || curDither().t === "ord" || curDither().t === "pat" || (isLine() && (lineInfo().bend || state.algo.dither === "contour"))));
   const spRow = sliderRow("Spacing", "tune.spacing", 2, 24, 1, " px");
-  showIf(spRow, () => isLine() && state.algo.dither !== "stipple");
+  showIf(spRow, () => (isLine() && state.algo.dither !== "stipple") || (state.engine === "dither" && curDither().t === "pat"));
   const wtRow = sliderRow("Weight", "tune.weight", 1, 8, 1);
   showIf(wtRow, () => isLine() && (lineInfo().bend || state.algo.dither === "contour"));
   const jitRow = sliderRow("Jitter", "tune.jitter", 0, 100, 1, "%");
-  showIf(jitRow, () => state.engine === "dither" && curDither().t === "ord");
+  showIf(jitRow, () => state.engine === "dither" && (curDither().t === "ord" || curDither().t === "pat"));
   const thrRow = sliderRow("Threshold", "tune.threshold", 0, 100, 1);
   showIf(thrRow, () => state.mode !== "grade");
   const tuneHint = el("div", { class: "hint" });
@@ -773,6 +844,7 @@ function build(root) {
     levelsWidget(),
     sliderRow("Sharpen", "fx.pre.sharpen", 0, 200, 1, "%"),
     radRow,
+    sliderRow("Denoise", "fx.pre.denoise", 0, 100, 1, "%"),
     sliderRow("Noise -/+", "fx.pre.noise", -100, 100, 1),
     sliderRow("Haze", "fx.pre.haze", 0, 100, 1, "%"),
     sliderRow("Invert", "fx.pre.invert", 0, 100, 1, "%"),
@@ -805,7 +877,7 @@ function build(root) {
   }));
   sec("C", "COLOUR", "colour");
   root.appendChild(colourCard);
-  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true });
+  deck = createColourDeck(ui, { getC: D, touch, getSource: () => lastSrc, io: PS, setStatus, inkTool: true, v3: true });
   root.appendChild(deck.card);
 
   // ---- output
@@ -813,6 +885,12 @@ function build(root) {
   refs.meter = ui.brand.meter(12);
   refs.apply = el("button", { class: "apply", text: "Apply to document" });
   refs.apply.addEventListener("click", applyNow);
+  root.appendChild(card("Colour in view", [
+    checkRow("Original colours on top", "colorView.on"),
+    (function () { const r = segGroup("colorView.blend", [{ v: "auto", l: "Auto" }, { v: "multiply", l: "Multiply" }, { v: "color", l: "Color" }]); const w = row("Blend", r); showIf(w, () => state.colorView.on); return w; })(),
+    (function () { const r = sliderRow("Opacity", "colorView.opacity", 0, 100, 1, "%"); showIf(r, () => state.colorView.on); return r; })()
+  ]));
+  root.appendChild(Blend.card(ui, () => state));
   root.appendChild(card("Output", [
     selectRow("Source", "out.source", [{ v: "flat", l: "Flattened document" }, { v: "layer", l: "Active layer" }, { v: "each", l: "Each selected layer (batch)" }], () => { confirmArmed = false; }),
     checkRow("Hide source artwork afterwards", "out.hide"),
@@ -823,7 +901,7 @@ function build(root) {
   ]));
 
   top.appendChild(ui.jumpStrip(secs, layout.scroller));
-  root.appendChild(el("div", { class: "foot", text: "Frank's Dithers Brew 1.1  -  your artwork is never changed; results land in new layers." }));
+  root.appendChild(el("div", { class: "foot", text: BRAND.NAME + " 1.1  -  your artwork is never changed; results land in new layers." }));
 
   root.addEventListener("input", onDragInput);
   preSig = preKey();
@@ -841,7 +919,7 @@ function menuAction(id) {
   else if (id === "foldAll") { if (ui.foldAll) ui.foldAll(!ui.anyOpen()); }
   else if (id === "about") {
     let v = ""; try { v = require("./manifest.json").version; } catch (e) { /* no manifest in tests */ }
-    setStatus("Frank's Dithers Brew " + v + "  |  DB-01  |  Frank's Brew suite. Hover any control for help.");
+    setStatus(BRAND.NAME + " " + v + "  |  DB-01  |  " + SUITE + ". Hover any control for help.");
   }
 }
 
@@ -867,7 +945,7 @@ try {
           { id: "split", label: "Before / After split" },
           { id: "foldAll", label: "Fold or open all cards" },
           "-",
-          { id: "about", label: "About Frank's Dithers Brew" }
+          { id: "about", label: "About " + BRAND.NAME }
         ],
         invokeMenu(id) { menuAction(id); }
       }

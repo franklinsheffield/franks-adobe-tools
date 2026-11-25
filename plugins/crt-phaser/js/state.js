@@ -11,7 +11,7 @@ const DEFAULTS = {
   // 1.1 Phase FX: "off" keeps the classic tube render exactly as in 1.0
   phase: {
     mode: "off", lines: 150, amp: 40, smooth: 40, width: 45, threshold: 10, angle: 0, warp: 15, detail: 50,
-    dots: 35, glow: 55, fringe: 30, debris: 0, flare: 0, grain: 25, seed: 7,
+    dots: 35, drop: 30, unstable: 0, chaos: 50, glow: 55, fringe: 30, debris: 0, flare: 0, flareAt: "random", photo: 0, calm: 0, grain: 25, seed: 7,
     color: "ramp", ramp: [{ p: 0, c: "#000000" }, { p: 20, c: "#3A0A00" }, { p: 50, c: "#D2400C" }, { p: 75, c: "#FF9A2E" }, { p: 100, c: "#FFF3D6" }], base: "#000000"
   },
   view: { kind: "whole", bg: "black", size: 360 },
@@ -29,7 +29,8 @@ const RAMPS = {
   sunset: R([0, "#000000"], [15, "#2B0020"], [45, "#D0186F"], [75, "#FF7A2A"], [100, "#FFE6C0"]),
   heat: R([0, "#000000"], [10, "#1A0040"], [25, "#6A00A8"], [45, "#D0103A"], [65, "#FF7A00"], [85, "#FFE14A"], [100, "#FFFFFF"]),
   plasma: R([0, "#000000"], [15, "#2A0030"], [45, "#FF2FA0"], [65, "#8A5CFF"], [85, "#2FE6FF"], [100, "#FFFFFF"]),
-  teal: R([0, "#000000"], [15, "#00241E"], [45, "#0FA08A"], [75, "#3DFF9A"], [100, "#E8FFF2"])
+  teal: R([0, "#000000"], [15, "#00241E"], [45, "#0FA08A"], [75, "#3DFF9A"], [100, "#E8FFF2"]),
+  spectrum: R([0, "#000000"], [10, "#30123B"], [28, "#4669DB"], [45, "#1AE4B6"], [62, "#A2FC3C"], [78, "#FBB938"], [92, "#E4460A"], [100, "#7A0403"])
 };
 // shared screen dressing for the Phase looks (on top of DEFAULTS)
 function phaseLook(phase, extra) {
@@ -64,11 +65,12 @@ const PRESETS = [
   { cat: "Flux", name: "Contour Map", p: phaseLook({ mode: "flux", lines: 90, amp: 80, warp: 5, detail: 30, width: 30, threshold: 4, dots: 0, glow: 25, fringe: 0, grain: 10, ramp: RAMPS.white }, { mask: { type: "none" }, scan: { strength: 0 } }) },
   { cat: "Flux", name: "Plasma Bend", p: phaseLook({ mode: "flux", lines: 150, amp: 60, warp: 70, detail: 45, width: 50, threshold: 6, dots: 25, glow: 80, fringe: 40, grain: 30, ramp: RAMPS.plasma, base: "#07020A" }) },
   { cat: "Flux", name: "Bent Signal", p: phaseLook({ mode: "flux", lines: 170, amp: 50, warp: 30, detail: 60, width: 45, threshold: 10, dots: 45, glow: 60, fringe: 35, debris: 80, grain: 25, ramp: RAMPS.teal, base: "#010605" }) },
-  // ---- Flux Dots (Frank, 2026-11-22): the Flux contours as round phosphor dots
-  { cat: "Flux Dots", name: "Dot Flux Ice", p: phaseLook({ mode: "fluxdots", lines: 170, amp: 50, warp: 20, detail: 50, width: 55, threshold: 8, dots: 30, glow: 65, fringe: 40, debris: 25, grain: 20, ramp: RAMPS.ice, base: "#01040A" }, { mask: { type: "none" } }) },
-  { cat: "Flux Dots", name: "Dot Flux Ember", p: phaseLook({ mode: "fluxdots", lines: 150, amp: 55, warp: 15, detail: 55, width: 60, threshold: 6, dots: 40, glow: 75, fringe: 35, grain: 30, ramp: RAMPS.ember, base: "#0E0503" }, { mask: { type: "none" } }) },
-  { cat: "Flux Dots", name: "Dot Flux Matrix", p: phaseLook({ mode: "fluxdots", lines: 190, amp: 45, warp: 30, detail: 60, width: 50, threshold: 10, dots: 20, glow: 55, fringe: 25, debris: 30, grain: 20, ramp: RAMPS.scope }, { mask: { type: "none" } }) },
-  { cat: "Flux Dots", name: "Dot Flux Plasma", p: phaseLook({ mode: "fluxdots", lines: 140, amp: 60, warp: 60, detail: 45, width: 60, threshold: 6, dots: 45, glow: 80, fringe: 45, flare: 40, grain: 25, ramp: RAMPS.plasma, base: "#07020A" }, { mask: { type: "none" } }) },
-  { cat: "Flux Dots", name: "Dot Flux Heat", p: phaseLook({ mode: "fluxdots", lines: 160, amp: 55, warp: 15, detail: 55, width: 55, threshold: 6, dots: 35, glow: 70, fringe: 30, grain: 25, ramp: RAMPS.heat }, { mask: { type: "none" } }) }
+  // ---- 3.0 Lidar (Frank, 2026-11-24; replaces Flux Dots): dots on scan rings bent by depth,
+  // sparser, smaller and dropping out with distance. Colour by distance or by return intensity.
+  { cat: "Lidar", name: "Lidar Ice", p: phaseLook({ mode: "lidar", lines: 120, amp: 45, width: 55, threshold: 4, dots: 30, drop: 30, glow: 60, fringe: 20, grain: 15, color: "depth", ramp: RAMPS.ice, base: "#01040A" }, { mask: { type: "none" }, scan: { strength: 0 } }) },
+  { cat: "Lidar", name: "Lidar Spectrum", p: phaseLook({ mode: "lidar", lines: 130, amp: 45, width: 55, threshold: 4, dots: 25, drop: 25, glow: 55, fringe: 15, grain: 10, color: "depth", ramp: RAMPS.spectrum, base: "#020206" }, { mask: { type: "none" }, scan: { strength: 0 } }) },
+  { cat: "Lidar", name: "Lidar Scope", p: phaseLook({ mode: "lidar", lines: 110, amp: 40, width: 50, threshold: 6, dots: 35, drop: 35, glow: 50, fringe: 0, grain: 15, color: "ramp", ramp: RAMPS.scope }, { mask: { type: "grille", strength: 25 }, conv: { x: 0 } }) },
+  { cat: "Lidar", name: "Lidar Ember", p: phaseLook({ mode: "lidar", lines: 120, amp: 50, width: 60, threshold: 4, dots: 30, drop: 30, glow: 70, fringe: 30, grain: 25, color: "depth", ramp: RAMPS.ember, base: "#0E0503" }, { mask: { type: "none" } }) },
+  { cat: "Lidar", name: "Lidar Survey", p: phaseLook({ mode: "lidar", lines: 160, amp: 35, width: 40, threshold: 3, dots: 20, drop: 15, glow: 35, fringe: 0, grain: 0, color: "depth", ramp: RAMPS.white, base: "#000000" }, { mask: { type: "none" }, scan: { strength: 0 }, tube: { vignette: 15 } }) }
 ];
 module.exports = { DEFAULTS, PRESETS, RAMPS, clone, merge };

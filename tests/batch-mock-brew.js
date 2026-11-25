@@ -41,6 +41,11 @@ function extendHost(host, fsRoots, mockupSpec, log) {
     d.closeWithoutSaving = async () => { log.push("close " + name); docs.splice(docs.indexOf(d), 1); active = docs[docs.length - 1] || null; };
     const save = (fmt) => async (entry, o, asCopy) => { log.push("save" + fmt + " " + entry.nativePath + (o && o.quality ? " q" + o.quality : "") + (asCopy ? "" : " NOT-A-COPY")); entry.text = fmt + ":" + d.layers.map((l) => l.art || "").join("+"); };
     d.saveAs = { jpg: save("jpg"), png: save("png"), psd: save("psd") };
+    // 3.0 multi-size: duplicate, flatten, resize
+    d.duplicate = async (nm) => { log.push("dup " + nm); const c = makeDoc(nm, d.width, d.height); c.layers = d.layers.slice(); return c; };
+    d.flatten = async () => {};
+    d.resizeImage = async (w, h) => { log.push("resize " + name + " " + w + "x" + h); d.width = w; d.height = h; };
+    d.resizeCanvas = async (w, h) => { log.push("canvas " + name + " " + w + "x" + h); d.width = w; d.height = h; };
     docs.push(d); active = d;
     return d;
   }
@@ -51,7 +56,7 @@ function extendHost(host, fsRoots, mockupSpec, log) {
       log.push("open " + entry.name);
       const d = makeDoc(entry.name, 2000, 1500);
       d.timeline = !!mockupSpec[entry.name + "#timeline"];
-      (mockupSpec[entry.name] || []).forEach((s) => d.layers.push(layer(d, s.name, { kind: "smartObject", linked: !!s.linked, soId: s.soId || ("so" + nextId), content: null })));
+      (mockupSpec[entry.name] || []).forEach((s) => d.layers.push(s.text ? layer(d, s.name, { kind: "text", textItem: { set contents(v) { log.push("text " + s.name + " = " + v); } } }) : s.fill ? layer(d, s.name, { kind: "solidColor" }) : layer(d, s.name, { kind: "smartObject", linked: !!s.linked, soId: s.soId || ("so" + nextId), content: null })));
       return d;
     }
   };
@@ -83,6 +88,8 @@ function extendHost(host, fsRoots, mockupSpec, log) {
       const A = d.layers.find((l) => l.art); if (A) { const b = A.bounds; log.push("geom " + [b.left, b.top, b.right, b.bottom].map(Math.round).join(",")); }
       docs.splice(docs.indexOf(d), 1); active = p.doc; return {};
     }
+    if (c._obj === "set" && c._target[0]._ref === "contentLayer") { const c0 = c.to.color; log.push("fill " + [c0.red, c0.grain, c0.blue].join(",")); return {}; }
+    if (c._obj === "save" && c.as && c.as._obj === "WebPFormat") { log.push("savewebp " + c.in._path + " q" + c.as.quality); return {}; }
     if (c._obj === "export") { log.push("video " + c.using.name); return d.timeline ? {} : { _obj: "error", message: "no timeline" }; }
     return {};
   });
@@ -157,8 +164,8 @@ module.exports = async function run(t) {
     const F = setup(SPEC);
     const P = await loadPanel(DIR, { withDoc: false, extend: F.extend });
     const d = P.document;
-    assert.ok(d.querySelector(".rack .title").textContent === "BATCH MOCK BREW" && d.querySelector("#app.brand-console"), "console rack header");
-    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Brew", "Library", "Folders", "Smart Objects", "Placement", "Export", "Naming"]);
+    assert.ok(d.querySelector(".rack .title").textContent === "BATCH MOCK LAB" && d.querySelector("#app.brand-console"), "console rack header");
+    assert.deepStrictEqual([...d.querySelectorAll(".ctitle")].map((e) => e.textContent), ["Run", "Library", "Folders", "Smart Objects", "Variants and text", "Placement", "Export", "Naming"]);
     await choose(P);
     assert.strictEqual(d.querySelector(".counts").textContent, "2 mockups, 2 artworks = 4 jobs");
     assert.strictEqual(d.querySelector(".example").textContent, "Example: tee-front/tee-front_logo-red.jpg");
@@ -235,5 +242,32 @@ module.exports = async function run(t) {
     assert.deepStrictEqual(F.log.filter((x) => /^video /.test(x)), ["video Box_logo.mp4"], F.log.join("\n"));
     assert.ok(/1 skipped/.test(d.querySelector(".status").textContent) && /Video Timeline/.test(d.querySelector(".status").textContent));
     assert.ok(!F.log.includes("edit artwork 2"), "Tee skipped before any edit");
+  });
+  await t("Batch Mock 3.0: colour variants, text from CSV, extra sizes + WebP, re-run failed, preview sheet button", async () => {
+    const F = setup({ "Tee.psd": [{ name: "artwork" }, { name: "Colour", fill: true }, { name: "Title", text: true }], "Box.psd": [] });
+    F.mock.kids = [file("Tee.psd")]; F.art.kids = [file("logo.png")];
+    const P = await loadPanel(DIR, { withDoc: false, extend: F.extend });
+    const m = P.mod._test, d = P.document;
+    Object.assign(m.state.variants, { on: true, layer: "Colour", list: "Red #FF0000, Navy #001F5B" });
+    m.state.csv.on = true;
+    m.state.export.format = "webp";
+    Object.assign(m.state.sizes, { on: true, list: "1080x1080", keepFull: true });
+    await choose(P);
+    m.entries.csv = file("texts.csv", "artwork,Title\nlogo.png,\"Hello, Lab\"\n");
+    assert.strictEqual(d.querySelector(".counts").textContent, "1 mockup, 1 artwork = 2 jobs");
+    await clickAndWait(P, d.querySelector(".apply"), () => /^(Done|Cancelled)/.test(d.querySelector(".status").textContent));
+    const L = F.log;
+    assert.deepStrictEqual(L.filter((x) => /^fill /.test(x)), ["fill 255,0,0", "fill 0,31,91"], "each variant fills the Colour layer");
+    assert.deepStrictEqual(L.filter((x) => /^text /.test(x)), ["text Title = Hello, Lab", "text Title = Hello, Lab"], "CSV text per job");
+    assert.deepStrictEqual(L.filter((x) => /^savewebp/.test(x)), ["savewebp Tee_logo_Red.webp q85", "savewebp Tee_logo_Red_1080x1080.webp q85", "savewebp Tee_logo_Navy.webp q85", "savewebp Tee_logo_Navy_1080x1080.webp q85"]);
+    assert.ok(L.includes("canvas Tee_logo_Red_1080x1080 1080x1080"), "fitted into the extra size");
+    assert.ok(/^Done\. 2 made/.test(d.querySelector(".status").textContent), d.querySelector(".status").textContent);
+    // resume: pretend the Navy job failed last time
+    m.state.last.failed = ["Tee.psd|logo|Navy"]; m.state.sizes.on = false; L.length = 0;
+    const again = [...d.querySelectorAll(".btn")].find((b) => /^Re-run failed/.test(b.textContent));
+    P.mod._test.init && (await P.settle(10));
+    await clickAndWait(P, again, () => /^(Done|Cancelled)/.test(d.querySelector(".status").textContent) && L.length > 0);
+    assert.deepStrictEqual(L.filter((x) => /^savewebp/.test(x)), ["savewebp Tee_logo_Navy (2).webp q85"], "only the failed job runs again (the first file is kept)");
+    assert.ok([...d.querySelectorAll(".btn")].some((b) => b.textContent === "Preview sheet"), "Preview sheet button");
   });
 };

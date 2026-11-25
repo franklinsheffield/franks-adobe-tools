@@ -139,4 +139,4 @@ function lineThr(id, T, w, h, lsc) {
   return (x, y) => tri(ax(x + 0.5, y + 0.5)[1] / P);
 }
 
-module.exports = { LINE_ART, TUNE_DEFAULTS, lineInk, lineThr, blueNoise, tri };
+module.exports = { LINE_ART, TUNE_DEFAULTS, lineInk, lineThr, blueNoise, tri, blurPlane };

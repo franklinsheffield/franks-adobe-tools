@@ -6,13 +6,15 @@ const assert = require("assert");
 const path = require("path");
 
 const TOOLS = ["chrometone", "crt-phaser", "decompressor", "depthtone", "mobglow", "paint-brew"];
+// Tools on the 3.0 layout are checked by tests/brew3.js instead of the panel system 2 section layout.
+const LAYOUT2 = TOOLS.filter((x) => !require("./brew3.js").UI3.includes(x));
 
 module.exports = async function (t) {
   const { loadPanel } = require("./harness.js");
   const ready = async (P) => { for (let i = 0; i < 200 && !/^Preview /.test(P.document.querySelector(".status").textContent); i++) await P.settle(50); };
 
   await t("Panel system: every toolpanel plugin has sections in order, a jump strip, one Effects tab card and foldable cards", async () => {
-    for (const tool of TOOLS) {
+    for (const tool of LAYOUT2) {
       const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
       const D = P.document;
       const ids = Array.from(D.querySelectorAll(".section")).map((s) => s.id);
@@ -33,7 +35,7 @@ module.exports = async function (t) {
     }
   });
 
-  await t("Look browser: top of every plugin, shown by default, every plugin uses the suite sample photo, click loads a look", async () => {
+  await t("Look browser: top of every plugin, shown by default, every plugin has its own look photo, click loads a look", async () => {
     const seen = [];
     for (const tool of TOOLS) {
       const P = await loadPanel(path.join(__dirname, "..", "plugins", tool), { withDoc: false });
@@ -42,18 +44,20 @@ module.exports = async function (t) {
       const lb = T.lookBrowser;
       assert.ok(lb, tool + " has a look browser");
       assert.ok(D.querySelector(".lookgrid").style.display !== "none", tool + " previews shown by default");
-      for (let i = 0; i < 400 && lb._test.cells.some((c) => !c.img.src); i++) await P.settle(50);
+      for (let i = 0; i < 400 && lb._test.cells.some((c) => !c.img.getAttribute("src")); i++) await P.settle(50);
       if (tool !== "font-brew") {
         assert.ok(lb._test.onSample, tool + " looks start on the sample picture");
         assert.strictEqual(lb._test.srcBtns.length, 2, tool + " Sample / My image switch");
         const fs = require("fs");
         const own = fs.readFileSync(path.join(__dirname, "..", "plugins", tool, "look-sample.js"), "utf8");
-        seen.forEach((o) => assert.strictEqual(o, own, tool + " uses the same suite photo as the other plugins (Frank, 2026-11-22)"));
+        // Frank 2026-11-25: one of his 13 look photos per plugin, the best fit for the effect (no longer one shared photo)
+        assert.ok(/w: 200, h: 200/.test(own), tool + " look photo is 200 x 200");
+        seen.forEach((o) => assert.notStrictEqual(o, own, tool + " has its own look photo"));
         seen.push(own);
       }
       const cells = Array.from(D.querySelectorAll(".lookgrid .look"));
       assert.ok(cells.length >= 4, tool + " looks: " + cells.length);
-      assert.ok(lb._test.cells.every((c) => /^data:image\/png/.test(c.img.src)), tool + " every look rendered");
+      assert.ok(lb._test.cells.every((c) => /^data:image\/png/.test(c.img.getAttribute("src"))), tool + " every look rendered");
       const pick = cells[cells.length - 1], name = pick.querySelector(".lookname").textContent;
       pick.dispatchEvent(new P.window.Event("click"));
       assert.ok(pick.classList.contains("on"), tool + " picked look lights");
@@ -105,10 +109,10 @@ module.exports = async function (t) {
     const P = await loadPanel(DIR, { withDoc: false });
     const D = P.document, T = P.mod._test;
     await ready(P);
-    const card = D.querySelector(".tabcard");
+    const card = D.querySelector(".tabcard") || D.querySelector(".fxzone").parentNode.parentNode;   // 3.0: effects bar pinned, panes in the scroller
     const btn = (name) => Array.from(card.querySelectorAll(".tabbtn")).find((b) => b.textContent.includes(name));
     btn("Datamosh").dispatchEvent(new P.window.Event("click"));
-    const vis = Array.from(card.querySelectorAll(".tabpane")).filter((p) => p.style.display !== "none");
+    const vis = Array.from(D.querySelectorAll(".tabpane")).filter((p) => p.style.display !== "none");
     assert.strictEqual(vis.length, 1);
     assert.ok(vis[0].textContent.includes("Amount"), "Datamosh pane shown");
     assert.ok(btn("Datamosh").classList.contains("cur"));
@@ -118,7 +122,9 @@ module.exports = async function (t) {
     const withFx = img.src;
     btn("Datamosh").querySelector(".tabdot").dispatchEvent(new P.window.MouseEvent("click", { bubbles: true }));
     assert.ok(!btn("Datamosh").classList.contains("live"), "dot off");
-    assert.ok(/Stack: .*JPEG decay.*Glitch slices/.test(card.querySelector(".stackline").textContent) && !/Datamosh/.test(card.querySelector(".stackline").textContent), card.querySelector(".stackline").textContent);
+    const sl = D.querySelector(".stackline");   // 2.x stack line; the 3.0 effects bar shows it with the dots instead
+    if (sl) assert.ok(/Stack: .*JPEG decay.*Glitch slices/.test(sl.textContent) && !/Datamosh/.test(sl.textContent), sl.textContent);
+    else assert.ok(btn("JPEG decay").classList.contains("live") && btn("Glitch slices").classList.contains("live"), "other effects stay on");
     await P.settle(400); await ready(P);
     assert.notStrictEqual(img.src, withFx, "preview changes when Datamosh is off");
     assert.strictEqual(T.state.mosh.amount, 60, "the user's value is kept");
@@ -129,13 +135,13 @@ module.exports = async function (t) {
     assert.ok(!btn("Finish").querySelector(".tabdot"), "Finish has no on/off dot");
   });
 
-  await t("Knobs: value box beside the knob; click selects (white), arrows step (Shift x10), wheel turns, only one selected", async () => {
+  await t("Knobs: value box beside the knob; click selects (white), arrows step (Shift x10), wheel never turns it (3.0 rule 1)", async () => {
     const DIR = path.join(__dirname, "..", "plugins", "decompressor");
     const P = await loadPanel(DIR, { withDoc: false });
     const D = P.document, T = P.mod._test;
     await ready(P);
     const dial = (label) => Array.from(D.querySelectorAll(".dial")).find((d) => d.querySelector(".dlabel").textContent === label);
-    const q = dial("Quality"), g = dial("Generations");
+    const q = dial("Quality"), g = dial("Generations") || q;   // 3.0: Generations is a stepper; the wheel rule is checked on a knob
     const qi = q.querySelector(".dialval");
     const q0 = T.state.jpeg.quality;
     const before = q.querySelector(".knob").src;
@@ -149,25 +155,17 @@ module.exports = async function (t) {
     key("ArrowDown"); key("ArrowDown"); assert.strictEqual(T.state.jpeg.quality, q0 - 1);
     key("ArrowDown", true); assert.strictEqual(T.state.jpeg.quality, Math.max(1, q0 - 11), "Shift = 10 steps");
     assert.strictEqual(qi.value, String(T.state.jpeg.quality), "box shows the value");
-    const g0 = T.state.jpeg.generations;
+    // Brew 3.0 rule 1 (Frank, 2026-11-24): the wheel never changes a value; it always scrolls the panel
+    const gk = g === q ? "quality" : "generations", g0 = T.state.jpeg[gk];
     g.querySelector(".knob").dispatchEvent(new P.window.WheelEvent("wheel", { deltaY: -100, bubbles: true }));
-    assert.ok(T.state.jpeg.generations > g0, "wheel up turns it up");
-    assert.ok(g.classList.contains("sel") && !q.classList.contains("sel"), "wheel selects; one knob selected at a time");
-    // UXP sends no wheel events: a scroll of the panel while the pointer is on a knob turns the knob and the panel stays put
+    assert.strictEqual(T.state.jpeg[gk], g0, "wheel over a knob does not turn it");
     const sc = D.querySelector(".scroller");
     Object.defineProperty(sc, "scrollHeight", { configurable: true, get: () => 5000 });
     sc.scrollTop = 100; sc.dispatchEvent(new P.window.Event("scroll"));
     g.dispatchEvent(new P.window.MouseEvent("mouseover", { bubbles: true }));
-    const g1 = T.state.jpeg.generations;
-    sc.scrollTop = 97; sc.dispatchEvent(new P.window.Event("scroll"));
-    assert.ok(T.state.jpeg.generations > g1, "scroll up over a knob turns it up");
-    assert.strictEqual(sc.scrollTop, 100, "panel scroll put back");
-    sc.dispatchEvent(new P.window.Event("scroll"));            // the host's echo of the reset
-    g.dispatchEvent(new P.window.MouseEvent("mouseout", { bubbles: true, relatedTarget: D.body }));
-    const g2 = T.state.jpeg.generations;
     sc.scrollTop = 140; sc.dispatchEvent(new P.window.Event("scroll"));
-    assert.strictEqual(T.state.jpeg.generations, g2, "off the knob the panel just scrolls");
-    assert.strictEqual(sc.scrollTop, 140);
+    assert.strictEqual(T.state.jpeg[gk], g0, "scrolling over a knob leaves it alone");
+    assert.strictEqual(sc.scrollTop, 140, "the panel scrolls");
     qi.value = "500"; qi.dispatchEvent(new P.window.Event("change"));
     assert.strictEqual(T.state.jpeg.quality, 100, "typed value clamps");
   });

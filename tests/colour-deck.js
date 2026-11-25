@@ -57,11 +57,15 @@ module.exports = async function (t) {
       const P = await loadPanel(path.join(ROOT, "plugins", tool), { withDoc: true });
       const d = P.document, T = P.mod._test, img = d.querySelector("img.preview");
       for (let i = 0; i < 200 && !img.src; i++) await P.settle(50);
-      const deckCard = [...d.querySelectorAll(".card")].find((c) => c.querySelector(".ctitle").textContent === "Colour Deck");
+      // 2.x: "Colour Deck" card with segment buttons; 3.0: "Colour" card with a mode tile grid
+      // a tool may have its own "Colour" card (inks), so take the one that holds the deck's mode buttons
+      const deckCard = [...d.querySelectorAll(".card")].find((c) => /^Colour( Deck)?$/.test(c.querySelector(".ctitle").textContent.trim())
+        && [...c.querySelectorAll(".segbtn, .tile")].some((b) => /^(Tone|Tone Map)$/.test(b.textContent.trim())));
+      const modeBtn = (v) => [...deckCard.querySelectorAll(".segbtn, .tile")].find((b) => b.textContent.trim() === v || (v === "Tone Map" && b.textContent.trim() === "Tone"));
       assert.ok(deckCard, "card present");
       const wait = async () => { await P.settle(300); for (let i = 0; i < 200 && /^Rendering/.test(d.querySelector(".status").textContent); i++) await P.settle(50); };
       const off = img.src;
-      [...deckCard.querySelectorAll(".segbtn")].find((b) => b.textContent === "Tone Map").dispatchEvent(new P.window.Event("click"));
+      modeBtn("Tone Map").dispatchEvent(new P.window.Event("click"));
       await wait();
       assert.strictEqual(T.state.deck.mode, "tone");
       assert.notStrictEqual(img.src, off, "tone map changes the preview");
@@ -74,7 +78,7 @@ module.exports = async function (t) {
       assert.strictEqual(made[made.length - 1], "Colour Deck - Tone Map", "deck layer is the top layer");
       const L = P.host.doc.layers.find((x) => x.name === "Colour Deck - Tone Map");
       if (L) assert.strictEqual(L.opacity, 60);   // Paint Brew writes into a print-ready copy instead
-      [...deckCard.querySelectorAll(".segbtn")].find((b) => b.textContent === "Off").dispatchEvent(new P.window.Event("click"));
+      modeBtn("Off").dispatchEvent(new P.window.Event("click"));
       await wait();
       assert.strictEqual(img.src, off, "Off gives back the exact preview");
     });

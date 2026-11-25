@@ -33,7 +33,7 @@ enum {
 static const char* STYLES = "Contour lines|Terraces|Relief";
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEP-03  Frank's Brew suite\rBrightness as depth: contours, terraces, relief + motion.", "Frank's Depthtone Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rDEP-03  Lab suite\rBrightness as depth: contours, terraces, relief + motion.", "Depth Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 static PF_Err GlobalSetup(PF_InData* in_data, PF_OutData* out_data) {
@@ -156,8 +156,8 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's Depthtone Brew", "com.franks.depthtone.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Depth Lab", "com.franks.depthtone.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 

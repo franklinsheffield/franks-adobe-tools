@@ -15,9 +15,9 @@ function createLibrary(ui, o) {
   const { el, clear } = ui;
   let userPresets = [];
 
-  const presetSel = el("select", {});
-  const userSel = el("select", {});
-  const nameIn = el("input", { type: "text", placeholder: "Name your look" });
+  const presetSel = el("select", { "data-key": "lib.builtin" });
+  const userSel = el("select", { "data-key": "lib.user" });
+  const nameIn = el("input", { type: "text", placeholder: "Name your look", "data-key": "lib.name" });
 
   function allPresets() {
     return o.builtins.map((p) => ({ label: p.cat + " - " + p.name, p: p.p, user: false }))

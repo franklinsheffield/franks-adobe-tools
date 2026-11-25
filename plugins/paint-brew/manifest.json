@@ -1,7 +1,7 @@
 {
   "manifestVersion": 5,
   "id": "com.franks.paintbrew",
-  "name": "Frank's Paint Brew",
+  "name": "Paint Lab",
   "version": "1.1.1",
   "main": "index.html",
   "host": {
@@ -13,7 +13,7 @@
       "type": "panel",
       "id": "paintPanel",
       "label": {
-        "default": "Frank's Paint Brew"
+        "default": "Paint Lab"
       },
       "minimumSize": {
         "width": 300,

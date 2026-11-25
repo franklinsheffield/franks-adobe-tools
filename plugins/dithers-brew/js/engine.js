@@ -10,6 +10,8 @@
 // Every layer = { name, color:[r,g,b], mask:Uint8Array(0..255 ink), blend }
 // ======================================================================
 const ASCII = require("./ascii.js");
+const ASCII3 = require("./ascii3.js");
+const PAT = require("./patterns.js");
 const LA = require("./lineart.js");
 
 const PI = Math.PI;
@@ -84,7 +86,9 @@ const DITHERS = [
   { id: "ign",     name: "Gradient Noise (stochastic)", t: "ign" },
   { id: "white",   name: "White Noise (grain)",       t: "white" },
   { id: "thr",     name: "Hard Threshold",            t: "thr" }
-].concat(LA.LINE_ART.map((l) => ({ id: l.id, name: l.name, t: "line" })));
+].concat(LA.LINE_ART.map((l) => ({ id: l.id, name: l.name, t: "line" })))
+  // 3.0 (Frank's reference video 2026-11-25): Modulation and Pattern families
+  .concat(PAT.PATTERNS.map((q) => ({ id: q.id, name: q.name, t: "pat", group: q.group })));
 const DITHER_BY_ID = {};
 DITHERS.forEach((d) => { DITHER_BY_ID[d.id] = d; });
 
@@ -190,6 +194,23 @@ function downBox(src, w, h, w2, h2) {
   }
   return out;
 }
+// 3.0 Smooth resample ("preserve details" in Frank's reference): bilinear enlarge, soften, re-threshold
+function upSmooth(src, w2, h2, w, h, ps) {
+  const f = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const fy = clamp((y + 0.5) * h2 / h - 0.5, 0, h2 - 1), y0 = fy | 0, y1 = Math.min(h2 - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < w; x++) {
+      const fx = clamp((x + 0.5) * w2 / w - 0.5, 0, w2 - 1), x0 = fx | 0, x1 = Math.min(w2 - 1, x0 + 1), tx = fx - x0;
+      const a = src[y0 * w2 + x0] + (src[y0 * w2 + x1] - src[y0 * w2 + x0]) * tx, b = src[y1 * w2 + x0] + (src[y1 * w2 + x1] - src[y1 * w2 + x0]) * tx;
+      f[y * w + x] = a + (b - a) * ty;
+    }
+  }
+  const r = Math.max(1, Math.round(ps * 0.5));
+  const bl = LA.blurPlane(Uint8Array.from(f, (v) => v), w, h, r), out = new Uint8Array(w * h);
+  for (let i = 0; i < out.length; i++) out[i] = bl[i] >= 0.5 ? 255 : 0;
+  return out;
+}
+
 function upNearest(src, w2, h2, w, h) {
   const out = new Uint8Array(w * h);
   const sx = new Int32Array(w);
@@ -265,6 +286,20 @@ function ditherInk(demand, w, h, D, phase, T, lsc) {
   const st = T && T.strength != null ? clamp(T.strength, 0, 100) / 100 : 1;
   if (D.t === "line") return LA.lineInk(demand, w, h, D.id, T, lsc);
   if (D.t === "ed") return diffuseMono(demand, w, h, KERNELS[D.k], D.jit || 0, 11 + ox, st);
+  if (D.t === "pat") {
+    const M = PAT.tile(D.id, ((T && T.spacing) || 6) * (lsc || 1)), sz = M.n;
+    const jit = T && T.jitter ? clamp(T.jitter, 0, 100) / 100 : 0;
+    for (let y = 0; y < h; y++) {
+      const ry = ((y + oy) % sz) * sz;
+      for (let x = 0; x < w; x++) {
+        let t = M.m[ry + ((x + ox) % sz)];
+        if (st !== 1) t = 0.5 + (t - 0.5) * st;
+        if (jit) t += (hash2(x, y, 23 + ox) - 0.5) * jit;
+        if (demand[y * w + x] / 255 > t) out[y * w + x] = 255;
+      }
+    }
+    return out;
+  }
   if (D.t === "ord") {
     const M = mapFor(D), sz = M.n;
     const jit = T && T.jitter ? clamp(T.jitter, 0, 100) / 100 : 0;
@@ -316,6 +351,10 @@ function makeThr(E, angle) {
     const M = mapFor(D), sz = M.n;
     return (x, y) => M.m[(y % sz) * sz + (x % sz)];
   }
+  if (D.t === "pat") {
+    const M = PAT.tile(D.id, ((E.tune && E.tune.spacing) || 6) * (E.lsc || 1)), sz = M.n;
+    return (x, y) => M.m[(y % sz) * sz + (x % sz)];
+  }
   if (D.t === "ign") return (x, y) => { let f = 0.06711056 * x + 0.00583715 * y; f -= Math.floor(f); const r = 52.9829189 * f; return r - Math.floor(r); };
   if (D.t === "white") return (x, y) => hash2(x, y, 5);
   return () => 0.5;
@@ -329,12 +368,13 @@ function inkFromPlane(demand, w, h, E, angle, phase, asc) {
     demand = d2;
   }
   if (E.engine === "halftone") return screenInk(demand, w, h, E.algo, E.cellPx, angle, E.aa, phase);
-  if (E.engine === "ascii") return ASCII.asciiInk(demand, w, h, asc);
+  if (E.engine === "ascii") return ASCII3.render(demand, w, h, asc);
   const D = DITHER_BY_ID[E.algo] || DITHERS[0];
   if (E.ps > 1.01) {
     const w2 = Math.max(2, Math.round(w / E.ps)), h2 = Math.max(2, Math.round(h / E.ps));
     const small = downBox(demand, w, h, w2, h2);
-    return upNearest(ditherInk(small, w2, h2, D, phase, E.tune, E.lsc), w2, h2, w, h);
+    const ink = ditherInk(small, w2, h2, D, phase, E.tune, E.lsc);
+    return E.resample === "smooth" ? upSmooth(ink, w2, h2, w, h, E.ps) : upNearest(ink, w2, h2, w, h);
   }
   return ditherInk(demand, w, h, D, phase, E.tune, E.lsc);
 }
@@ -396,6 +436,14 @@ function preprocess(rgb, w, h, pre, s) {
     const bl = boxBlurRGB(work, w, h, Math.max(1, Math.round((pre.radius || 1.5) * s)));
     const amt = pre.sharpen / 100 * 2;
     for (let i = 0; i < work.length; i++) work[i] = clamp(work[i] + amt * (work[i] - bl[i]), 0, 255);
+  }
+  if (pre.denoise > 0) {   // 3.0: edge-keeping smoothing (smooth tones, keep outlines)
+    const a = Math.min(100, pre.denoise) / 100, bl = boxBlurRGB(work, w, h, Math.max(1, Math.round((1 + 3 * a) * s)));
+    for (let i = 0, p = 0; i < w * h; i++, p += 3) {
+      const dd = Math.abs(work[p] - bl[p]) + Math.abs(work[p + 1] - bl[p + 1]) + Math.abs(work[p + 2] - bl[p + 2]);
+      const k = a * Math.exp(-dd * dd / 9000);
+      for (let c = 0; c < 3; c++) work[p + c] = work[p + c] + (bl[p + c] - work[p + c]) * k;
+    }
   }
   if (pre.noise < 0) {
     const a = Math.min(100, -pre.noise) / 100, bl = boxBlurRGB(work, w, h, Math.max(1, Math.round(2 * s)));
@@ -683,7 +731,7 @@ function gradeThreshold(rgb, w, h, pal, thr, spread) {
 function gradeAscii(rgb, w, h, pal, asc) {
   const near = nearestFn(pal);
   const masks = pal.map(() => new Uint8Array(w * h));
-  const k = Math.max(1, Math.round(asc.k)), cw = 6 * k, ch = 8 * k;
+  const G = ASCII3.geom(asc), cw = G.cw, ch = G.ch;
   const cols = Math.ceil(w / cw), rows = Math.ceil(h / ch);
   const idx = new Int16Array(cols * rows);
   for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
@@ -696,7 +744,7 @@ function gradeAscii(rgb, w, h, pal, asc) {
   const demand = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) demand[i] = 255 - asc.lum[i];
   const asc2 = Object.assign({}, asc, { cellMask: (cx, cy) => masks[idx[cy * cols + cx]] });
-  ASCII.asciiInk(demand, w, h, asc2);
+  ASCII3.render(demand, w, h, asc2);
   return masks;
 }
 
@@ -752,6 +800,8 @@ async function render(src, P, hooks) {
   let alphaF = null;
   if (dtf.on || anyA) alphaF = dtf.on ? knockout(rgb, alpha, w, h, dtf) : alpha;
 
+  const CV = P.colorView || {};
+  const orig = CV.on ? Uint8Array.from(rgb) : null;   // 3.0 Colour in view: the original picture on top
   // 3. shape the image
   if (P.fx.pre.on) preprocess(rgb, w, h, P.fx.pre, s);
   const lum = lumPlane(rgb, n);
@@ -763,18 +813,28 @@ async function render(src, P, hooks) {
     cellPx: (ppi / clamp(P.lpi || 35, 3, 300)) * s,
     ps: Math.max(1, (P.pixel || 1) * s),
     aa: !!P.aa,
+    resample: P.resample === "smooth" ? "smooth" : "pixel",   // 3.0: Smooth rounds the enlarged pixels into blobs
     tune: P.tune || null,
     w: w, h: h
   };
   E.lsc = ((P.pixel || 1) * s) / (E.ps > 1.01 ? E.ps : 1);
   if (E.engine === "halftone" && E.cellPx < 3) notes.push("Cells are under 3 px; raise the document PPI or lower the LPI.");
+  // ASCII 3.0: algorithm, font, cell height in px (2.x looks keep Scale x 8 px), spacing, invert, seed
+  const cellPx = P.ascii.cell || (P.ascii.size || 4) * 8;
   const asc = {
-    k: Math.max(1, Math.round((P.ascii.size || 4) * s)),
-    ramp: ASCII.buildRamp(P.algo.ascii, P.ascii.custom, P.ascii.keepOrder),
+    algo: P.ascii.algo || (P.ascii.textMode ? "text" : "luma"),
+    font: P.ascii.font || "classic",
+    cell: cellPx * s,
+    spacing: (P.ascii.spacing || 0) * s,
+    invert: !!P.ascii.invert,
+    seed: P.ascii.seed | 0,
+    set: P.algo.ascii, custom: P.ascii.custom, keepOrder: P.ascii.keepOrder,
     lum: lum,
     edgeAmt: (P.ascii.edge || 0) / 100,
     textMode: !!P.ascii.textMode,
-    text: P.ascii.text
+    text: P.ascii.text,
+    // colour glyph modes sit on black paper: dense glyphs where the picture is bright
+    bright: ["cell", "match", "tone", "across", "bands", "overlap"].indexOf(P.ascii.glyph) >= 0
   };
   const edgeD = P.fx.edges.on ? edgeDemand(lum, w, h, P.fx.edges, s) : null;
 
@@ -923,8 +983,122 @@ async function render(src, P, hooks) {
     notes.push(pal.length + " colours" + (skip >= 0 ? " (lightest left as paper)" : ""));
   }
 
+  // ASCII 3.0 Glyph colour (Frank 2026-11-24: "I want color a part of the algorithms").
+  //   cell   every glyph takes its cell's average picture colour
+  //   match  every glyph takes the ramp colour nearest its cell's colour
+  //   tone   cell brightness picks a point on the ramp (dark end -> light end)
+  //   across the ramp sweeps over the frame at P.ascii.gangle degrees
+  //   bands  cell brightness splits glyphs into one layer per ramp colour
+  // The ramp is P.ascii.ramp ([{ c:[r,g,b], p:0..1 }], from the Colour Deck), else the ink colours dark -> light.
+  const GMODE = P.ascii.glyph;
+  if (E.engine === "ascii" && ASCII_COLOUR_MODES.includes(GMODE) && layers.length && layers.every((L) => L.mask)) {
+    const G = ASCII3.geom(asc), cols = Math.ceil(w / G.cw), rows = Math.ceil(h / G.ch), nc = cols * rows;
+    const cc = new Float32Array(nc * 3), cn = new Float32Array(nc);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw), p = (y * w + x) * 3;
+      cc[j * 3] += rgb[p]; cc[j * 3 + 1] += rgb[p + 1]; cc[j * 3 + 2] += rgb[p + 2]; cn[j]++;
+    }
+    for (let j = 0; j < nc; j++) { const c = cn[j] || 1; cc[j * 3] /= c; cc[j * 3 + 1] /= c; cc[j * 3 + 2] /= c; }
+    const ramp = asciiRamp(P.ascii.ramp, layers);
+    const glyphA = new Uint8Array(n);
+    for (const L of layers) for (let i = 0; i < n; i++) if (L.mask[i] > glyphA[i]) glyphA[i] = L.mask[i];
+    // cell tones stretched 2nd..98th percentile so a dark photo still reaches both ends of the ramp
+    const tv = new Float32Array(nc); for (let j = 0; j < nc; j++) tv[j] = luma([cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]]) / 255;
+    const ts = Array.from(tv).sort((p, q) => p - q), tlo = ts[Math.floor(nc * 0.02)] || 0, thi = ts[Math.min(nc - 1, Math.floor(nc * 0.98))] || 1;
+    const tone = (j) => (thi - tlo > 0.03 ? clamp((tv[j] - tlo) / (thi - tlo), 0, 1) : tv[j]);
+    layers.length = 0;
+    if (GMODE === "overlap") {
+      // 3.0 ASCII gradient map (Frank's reference video 2026-11-25): every ramp colour renders its own glyph
+      // pass over the tones around it; neighbouring passes overlap, so a mid tone is two or three glyphs in
+      // two or three colours stacked, which reads as a smooth gradient. One editable layer per colour.
+      const N = ramp.length, hist = new Uint32Array(256);
+      for (let i = 0; i < n; i++) hist[lum[i]]++;
+      let lo = 0, hi = 255, acc = 0;
+      for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= n * 0.02) { lo = v; break; } }
+      acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= n * 0.02) { hi = v; break; } }
+      const span = Math.max(8, hi - lo), wid = N > 1 ? 1.35 / (N - 1) : 1;
+      const rev = !!P.ascii.reverse;
+      for (let k = 0; k < N; k++) {
+        const ck = N > 1 ? k / (N - 1) : 0.5, inv = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+          let t = clamp((lum[i] - lo) / span, 0, 1); if (rev) t = 1 - t;
+          const wgt = Math.max(0, 1 - Math.abs(t - ck) / wid);
+          inv[i] = Math.round(Math.min(1, wgt * (0.45 + 0.75 * t)) * 255);
+        }
+        const m = ASCII3.render(inv, w, h, Object.assign({}, asc, { invert: false, bright: false, seed: (asc.seed | 0) + k * 7 }));
+        if (m.some((v) => v)) layers.push({ name: "ASCII gradient " + (k + 1) + " " + rgbToHex(ramp[k].c), color: ramp[k].c, mask: m, blend: rev ? "NORMAL" : "LIGHTEN" });
+      }
+    } else if (GMODE === "bands") {
+      // one editable layer per ramp colour; band k owns tones [k/N, (k+1)/N)
+      const N = ramp.length, bandOf = new Uint8Array(nc);
+      for (let j = 0; j < nc; j++) bandOf[j] = Math.min(N - 1, Math.floor(tone(j) * N));
+      const ms = ramp.map(() => new Uint8Array(n));
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x; if (!glyphA[i]) continue;
+        ms[bandOf[Math.floor(y / G.ch) * cols + Math.floor(x / G.cw)]][i] = glyphA[i];
+      }
+      ramp.forEach((r, k) => { if (ms[k].some((v) => v)) layers.push({ name: "ASCII band " + (k + 1) + " " + rgbToHex(r.c), color: r.c, mask: ms[k], blend: "NORMAL" }); });
+    } else {
+      const col = new Uint8Array(nc * 3);
+      const ang = ((P.ascii.gangle == null ? 0 : P.ascii.gangle) * Math.PI) / 180, ux = Math.cos(ang), uy = Math.sin(ang);
+      const span = Math.abs(ux) * w + Math.abs(uy) * h || 1, x0 = Math.min(0, ux * w) + Math.min(0, uy * h);
+      for (let j = 0; j < nc; j++) {
+        let c;
+        if (GMODE === "cell") c = [cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]];
+        else if (GMODE === "match") c = nearestRamp(ramp, cc[j * 3], cc[j * 3 + 1], cc[j * 3 + 2]);
+        else if (GMODE === "tone") c = sampleRamp(ramp, tone(j));
+        else { const cx = ((j % cols) + 0.5) * G.cw, cy = (Math.floor(j / cols) + 0.5) * G.ch; c = sampleRamp(ramp, (cx * ux + cy * uy - x0) / span); }
+        col[j * 3] = c[0]; col[j * 3 + 1] = c[1]; col[j * 3 + 2] = c[2];
+      }
+      const rgba = new Uint8Array(n * 4);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x, a = glyphA[i]; if (!a) continue;
+        const j = Math.floor(y / G.ch) * cols + Math.floor(x / G.cw);
+        rgba[i * 4] = col[j * 3]; rgba[i * 4 + 1] = col[j * 3 + 1]; rgba[i * 4 + 2] = col[j * 3 + 2]; rgba[i * 4 + 3] = a;
+      }
+      layers.push({ name: "ASCII " + ASCII_COLOUR_NAMES[GMODE].toLowerCase(), rgba, blend: "NORMAL" });
+    }
+    if (!paper) paper = [0, 0, 0];
+  }
+
   progress(1, 1, "done");
+  if (orig) {
+    const rgba = new Uint8Array(n * 4), inks = layers.filter((L) => L.color).length;
+    const blend = CV.blend === "multiply" || CV.blend === "color" ? CV.blend.toUpperCase() : (inks >= 3 ? "COLOR" : "MULTIPLY");
+    for (let i = 0; i < n; i++) { rgba[i * 4] = orig[i * 3]; rgba[i * 4 + 1] = orig[i * 3 + 1]; rgba[i * 4 + 2] = orig[i * 3 + 2]; rgba[i * 4 + 3] = alpha[i]; }
+    layers.push({ name: "Colour in view", rgba, blend, opacity: CV.opacity == null ? 100 : clamp(CV.opacity, 0, 100) });
+    notes.push("Colour in view: original on top as " + (blend === "COLOR" ? "Color" : "Multiply"));
+  }
   return { w, h, layers, paper, notes, E };
+}
+
+
+// ---- ASCII glyph colour helpers
+const ASCII_COLOUR_MODES = ["cell", "match", "tone", "across", "bands", "overlap"];
+const ASCII_COLOUR_NAMES = { cell: "Cell colour", match: "Palette match", tone: "Gradient by tone", across: "Gradient across", bands: "Tone bands", overlap: "Gradient bands (overlap)" };
+// ramp stops sorted by position; fallback: the result's ink colours, dark -> light, evenly spaced
+function asciiRamp(ramp, layers) {
+  let r = Array.isArray(ramp) ? ramp.filter((x) => x && Array.isArray(x.c)).map((x) => ({ c: x.c.slice(0, 3), p: clamp(+x.p || 0, 0, 1) })) : [];
+  if (r.length < 2) {
+    const cs = layers.map((L) => L.color).filter(Boolean).slice().sort((a, b) => luma(a) - luma(b));
+    const base = cs.length >= 2 ? cs : [[0, 40, 0], [120, 255, 140]];
+    r = base.map((c, k) => ({ c, p: base.length > 1 ? k / (base.length - 1) : 0 }));
+  }
+  return r.sort((a, b) => a.p - b.p);
+}
+function sampleRamp(r, t) {
+  t = clamp(t, 0, 1);
+  if (t <= r[0].p) return r[0].c;
+  for (let k = 1; k < r.length; k++) if (t <= r[k].p) {
+    const a = r[k - 1], b = r[k], u = b.p > a.p ? (t - a.p) / (b.p - a.p) : 1;
+    return [a.c[0] + (b.c[0] - a.c[0]) * u, a.c[1] + (b.c[1] - a.c[1]) * u, a.c[2] + (b.c[2] - a.c[2]) * u];
+  }
+  return r[r.length - 1].c;
+}
+function nearestRamp(r, R, G, B) {
+  let best = r[0].c, bd = Infinity;
+  for (const x of r) { const dr = x.c[0] - R, dg = x.c[1] - G, db = x.c[2] - B, d = 0.3 * dr * dr + 0.59 * dg * dg + 0.11 * db * db; if (d < bd) { bd = d; best = x.c; } }
+  return best;
 }
 
 // ----------------------------------------------------------------------
@@ -946,6 +1120,23 @@ function composite(result, bg) {
     }
   }
   for (const L of result.layers) {
+    if (L.rgba) {   // full-colour layer (ASCII cell colour, Colour in view)
+      const q = L.rgba, op = L.opacity == null ? 1 : L.opacity / 100;
+      for (let i = 0, p = 0; i < n; i++, p += 3) {
+        const t = q[i * 4 + 3] / 255 * op; if (!t) continue;
+        let r = q[i * 4], g = q[i * 4 + 1], b = q[i * 4 + 2];
+        if (L.blend === "MULTIPLY") { r = out[p] * r / 255; g = out[p + 1] * g / 255; b = out[p + 2] * b / 255; }
+        else if (L.blend === "COLOR") {   // hue + saturation of the layer, luminosity of what is under it
+          const lb = 0.3 * out[p] + 0.59 * out[p + 1] + 0.11 * out[p + 2], ll = 0.3 * r + 0.59 * g + 0.11 * b, dl = lb - ll;
+          r += dl; g += dl; b += dl;
+          const l = 0.3 * r + 0.59 * g + 0.11 * b, mn = Math.min(r, g, b), mx = Math.max(r, g, b);
+          if (mn < 0) { r = l + (r - l) * l / (l - mn); g = l + (g - l) * l / (l - mn); b = l + (b - l) * l / (l - mn); }
+          if (mx > 255) { r = l + (r - l) * (255 - l) / (mx - l); g = l + (g - l) * (255 - l) / (mx - l); b = l + (b - l) * (255 - l) / (mx - l); }
+        }
+        out[p] = out[p] * (1 - t) + r * t; out[p + 1] = out[p + 1] * (1 - t) + g * t; out[p + 2] = out[p + 2] * (1 - t) + b * t;
+      }
+      continue;
+    }
     const m = L.mask, c = L.color;
     for (let i = 0, p = 0; i < n; i++, p += 3) {
       const a = m[i];
@@ -953,6 +1144,8 @@ function composite(result, bg) {
       const t = a / 255;
       if (L.blend === "MULTIPLY") {
         out[p] = out[p] * (1 - t + t * c[0] / 255); out[p + 1] = out[p + 1] * (1 - t + t * c[1] / 255); out[p + 2] = out[p + 2] * (1 - t + t * c[2] / 255);
+      } else if (L.blend === "LIGHTEN") {
+        out[p] = out[p] * (1 - t) + Math.max(out[p], c[0]) * t; out[p + 1] = out[p + 1] * (1 - t) + Math.max(out[p + 1], c[1]) * t; out[p + 2] = out[p + 2] * (1 - t) + Math.max(out[p + 2], c[2]) * t;
       } else if (L.blend === "LINEARDODGE") {
         out[p] = Math.min(255, out[p] + c[0] * t); out[p + 1] = Math.min(255, out[p + 1] + c[1] * t); out[p + 2] = Math.min(255, out[p + 2] + c[2] * t);
       } else {
@@ -964,6 +1157,7 @@ function composite(result, bg) {
 }
 
 module.exports = {
+  ASCII_COLOUR_MODES, ASCII_COLOUR_NAMES,
   SCREENS, DITHERS, KERNELS, SPOTS, ASCII_SETS: ASCII.ASCII_SETS,
   render, composite, demoImage, paletteFromImage, mergeClosest,
   hexToRgb, rgbToHex, isHex, luma, clamp,

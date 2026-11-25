@@ -7,8 +7,12 @@ const Engine = require("./js/engine.js");
 const { DEFAULTS, PRESETS, merge, clone } = require("./js/state.js");
 const { createToolPanel } = require("./core/toolpanel.js");
 const PNG = require("./core/png.js");
+const { runModal } = require("./core/modal.js");
 
-const GROUP = "Frank's Mobglow Brew";
+const BRAND = require("./brand.js");
+const HELP = require("./help.js");
+const { SUITE } = require("./core/brand.js");
+const GROUP = BRAND.NAME;
 
 // ---- icons: white line glyphs drawn in code (UXP's SVG support is patchy)
 function icon(kind) {
@@ -47,7 +51,7 @@ async function maskGlowAndBrush() {
   const group = Array.from(doc.layers || []).find((L) => String(L.name).indexOf(GROUP) === 0 && L.layers);
   const glow = group && Array.from(group.layers).find((L) => L.name === "Glow");
   if (!glow) throw new Error("Render first: no Mobglow group in this document.");
-  await ps.core.executeAsModal(async () => {
+  await runModal(GROUP + " - mask", async () => {
     const bp = ps.action.batchPlay;
     await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: glow.id }], makeVisible: false }], {});
     const info = await bp([{ _obj: "get", _target: [{ _ref: "layer", _id: glow.id }] }], {});
@@ -56,22 +60,24 @@ async function maskGlowAndBrush() {
     }
     await bp([{ _obj: "set", _target: [{ _ref: "color", _property: "foregroundColor" }], to: { _obj: "RGBColor", red: 0, grain: 0, blue: 0 } }], {});
     await bp([{ _obj: "select", _target: [{ _ref: "paintbrushTool" }] }], {});
-  }, { commandName: GROUP + " - mask" });
+  }, { docId: doc.id, timeoutMs: 30000 });
 }
 
 const panel = createToolPanel({
-  code: "MG-04", glow: "#ff2fd6",
-  appName: GROUP, title: GROUP, sub: "one-click realistic, dreamy glow", panelId: "mobglowPanel",
+  code: "MG-04", glow: "#ff2fd6", ui3: true, help: HELP, version: "3.0",
+  autoTone: { on: false },
+  appName: GROUP, title: GROUP, storeKey: BRAND.LEGACY, sub: "one-click realistic, dreamy glow", panelId: "mobglowPanel",
   presetFile: "presets.json", exportName: "mobglow-looks.json",
   applyLabel: "Render", split: true,
-  footer: GROUP + " 2.0  -  Frank's Brew suite",
+  footer: GROUP + " 3.0  -  " + SUITE,
   Engine, DEFAULTS, PRESETS, merge, clone,
   cards: (ui, kit) => {
-    const { card, sliderRow, checkRow, el, showIf, bind } = ui;
+    const { card, sliderRow, checkRow, segGroup, el, showIf, bind } = ui;   // 3.0: knobs for character, Render key on the Glow card
     let picking = false;
     const key = (kind, title, onClick) => {
       const b = el("button", { class: "btn mgkey", title }, [el("img", { class: "mgico", src: icon(kind) })]);
       b.addEventListener("click", onClick);
+      if (ui.helpAt) ui.helpAt(b, { key: "key:" + kind, name: title.split(":")[0], kind: "button" });
       return b;
     };
     const srcKey = key("image", "Glow source: flattened image or the active layer (click to switch)", () => {
@@ -108,6 +114,7 @@ const panel = createToolPanel({
     });
     const render = el("button", { class: "btn mgrender", text: "Render", title: "Apply the glow to the document (same as the Render key under Output)" });
     render.addEventListener("click", () => kit.applyNow());
+    const when = (node, fn) => { showIf(node, fn); return node; };
     const colourOn = checkRow("Color", "color.on");
     const colourHex = kit.colourRow("Glow colour", "color.hex");
     showIf(colourHex, () => kit.state.color.on);
@@ -120,8 +127,23 @@ const panel = createToolPanel({
         sliderRow("Threshold", "glow.threshold", 0, 3, 0.01, ""),
         sliderRow("Gamma", "glow.gamma", 0.1, 3, 0.01, ""),
         sliderRow("Saturation", "glow.sat", 0, 100, 1, ""),
+        sliderRow("Falloff", "glow.falloff", 0, 100, 1, ""),
         colourOn, colourHex
       ], { section: "controls" }),
+      // 3.0 (approved 2026-11-24): Light Key, key colour, streaks
+      card("Light Key", [
+        segGroup("glow.key", [{ v: "bright", l: "Brightness", t: "Bright areas glow (skin, white shirts, lamps)" }, { v: "light", l: "Light colour", t: "Coloured lights glow in their own colour (LED strips, neon), even when they are not the brightest thing" }]),
+        checkRow("Key colour", "keycol.on"),
+        when(kit.colourRow("Key colour", "keycol.hex"), () => kit.state.keycol.on),
+        when(sliderRow("Hue range", "keycol.range", 5, 180, 1, "\u00b0"), () => kit.state.keycol.on)
+      ], { section: "controls", bypass: { "glow.key": "bright", "keycol.on": false } }),
+      card("Streaks", [
+        checkRow("Streaks", "streak.on"),
+        when(sliderRow("Length", "streak.length", 1, 100, 1, "%"), () => kit.state.streak.on),
+        when(sliderRow("Strength", "streak.strength", 0, 100, 1, "%"), () => kit.state.streak.on),
+        when(segGroup("streak.dir", [{ v: "h", l: "Across" }, { v: "v", l: "Up and down" }, { v: "x", l: "Cross" }]), () => kit.state.streak.on),
+        when(segGroup("streak.color", [{ v: "blue", l: "Anamorphic blue" }, { v: "own", l: "Light colour" }]), () => kit.state.streak.on)
+      ], { section: "controls", bypass: { "streak.on": false } }),
       card("Finish", [
         sliderRow("Grain", "finish.grain", 0, 100, 1, "%"),
         sliderRow("Darken background", "finish.darken", 0, 100, 1, "%")

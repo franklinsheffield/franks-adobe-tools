@@ -1,18 +1,22 @@
 {
  "cards": [
-  "Preview",
-  "Look browser",
-  "Library",
-  "Effects",
   "JPEG decay",
   "Bit crush",
+  "Pixel sort",
   "Datamosh",
   "Glitch slices",
+  "Protect",
   "Finish",
-  "Colour Deck",
+  "Colour",
+  "Colour grade",
+  "Advanced",
+  "Look browser",
+  "Library",
+  "Auto Tone",
+  "Blend",
   "Output"
  ],
- "controls": "input:34 select:6 button:42 textarea:0",
+ "controls": "input:118 select:13 button:129 textarea:0",
  "previewDefault": "ceb72603998b",
  "presets": [
   "JPEG - Crunchy JPEG = ceb72603998b",
@@ -22,17 +26,21 @@
   "Glitch - VHS Rip = 3743aed63f80",
   "Retro - 8-bit Crush = 5040dea5980f",
   "Glitch - Broken Stream = 17cc75c702f7",
-  "Retro - Fax Machine = 3829b3ac4d35"
+  "Retro - Fax Machine = 8276a51406b1",
+  "JPEG - Shared 30 Times = 53faca0301d2",
+  "JPEG - Deep Fried Real = 5095ecd80f41",
+  "Sort - Pixel Sort Melt = c947aef71814",
+  "Sort - Sorted Highlights = cc78792a7726"
  ],
  "statusAfterPresets": "Preview 360 x 270 in N ms  |  1 layer",
  "applyCalls": [
-  "executeAsModal|Frank's Decompressor Brew: reading pixels",
+  "executeAsModal|Decompressor Lab: reading pixels",
   "getPixels|{\"left\":0,\"top\":0,\"right\":400,\"bottom\":300}|null",
-  "executeAsModal|Frank's Decompressor Brew",
-  "suspendHistory|Frank's Decompressor Brew",
+  "executeAsModal|Decompressor Lab",
+  "suspendHistory|Decompressor Lab",
   "createPixelLayer|Decompressed",
   "putPixels|100|4|480000",
-  "createLayerGroup|Frank's Decompressor Brew - Crunchy JPEG|1",
+  "createLayerGroup|Decompressor Lab - Crunchy JPEG|1",
   "resumeHistory"
  ],
  "applyStatus": "Done. 1 group added. Undo with one Ctrl/Cmd+Z."

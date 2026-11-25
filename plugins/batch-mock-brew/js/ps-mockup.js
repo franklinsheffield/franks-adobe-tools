@@ -177,11 +177,39 @@ async function replaceContents(doc, target, art, P) {
   }
 }
 
+// ---- 3.0 colour variants and text from CSV ------------------------------------
+function findByName(doc, name) {
+  const want = String(name || "").trim().toLowerCase(), out = [];
+  if (!want) return out;
+  walkLayers(doc.layers, (L) => { if (String(L.name).trim().toLowerCase() === want) out.push(L); });
+  return out;
+}
+// every Solid Color fill layer with this name takes the colour; returns how many changed
+async function applyVariant(doc, layerName, hex) {
+  const hits = findByName(doc, layerName);
+  for (const L of hits) await play({ _obj: "set", _target: [{ _ref: "contentLayer", _id: L.id }, { _ref: "document", _id: doc.id }], to: { _obj: "solidColorLayer", color: hexRGB(hex) } });
+  return hits.length;
+}
+// texts: { "<text layer name>": "new text" }; returns the layer names that were not found
+async function applyTexts(doc, texts) {
+  const missing = [];
+  for (const [name, value] of Object.entries(texts || {})) {
+    const hits = findByName(doc, name).filter((L) => L.textItem || String(L.kind).toLowerCase() === "text");
+    if (!hits.length) { missing.push(name); continue; }
+    for (const L of hits) L.textItem.contents = String(value);
+  }
+  return missing;
+}
+
 // ---- export ------------------------------------------------------------------
 async function exportDoc(doc, folder, name, E) {
   const fmt = E.format;
   if (fmt === "mp4") return renderVideo(doc, folder, name);
   const file = await folder.createFile(name, { overwrite: true });
+  if (fmt === "webp") {
+    const token = await fsys.createSessionToken(file);
+    return play({ _obj: "save", as: { _obj: "WebPFormat", compression: { _enum: "WebPCompression", _value: "compressionLossy" }, quality: Math.max(1, Math.min(100, Math.round(E.webpQuality || 85))), includeXMPData: false, includeEXIFData: false, includePsExtras: false }, in: { _path: token, _kind: "local" }, copy: true, lowerCase: true });
+  }
   if (fmt === "jpg") return doc.saveAs.jpg(file, { quality: Math.max(1, Math.min(12, Math.round(E.quality))) }, true);
   if (fmt === "psd") return doc.saveAs.psd(file, { maximizeCompatibility: true }, true);
   if (fmt === "png") {
@@ -195,6 +223,43 @@ async function exportDoc(doc, folder, name, E) {
     finally { if (fill) { try { await fill.delete(); } catch (e) { /* ignore */ } } }
   }
   throw new Error("Unknown format " + fmt);
+}
+
+// 3.0 multi-size: a flattened copy fitted into W x H (centred, the rest filled), exported, closed
+async function exportSized(doc, folder, name, size, E) {
+  const dup = await doc.duplicate(Plan.splitName(name).base, true);
+  try {
+    try { await dup.flatten(); } catch (e) { /* single layer */ }
+    const r = Plan.fitBox(num(dup.width, 1), num(dup.height, 1), size.w, size.h);
+    await dup.resizeImage(r.w, r.h);
+    if (r.w !== size.w || r.h !== size.h) await dup.resizeCanvas(size.w, size.h, constants.AnchorPosition ? constants.AnchorPosition.MIDDLECENTER : undefined);
+    await exportDoc(dup, folder, name, E);
+  } finally { try { await dup.closeWithoutSaving(); } catch (e) { /* ignore */ } }
+}
+
+// 3.0 preview sheet: a small RGBA thumbnail of a document, then one sheet document with every thumbnail as a named layer
+async function thumbnail(doc, cell) {
+  const { imaging } = photoshop;
+  const W = num(doc.width, 1), H = num(doc.height, 1), k = Math.min(1, cell / Math.max(W, H));
+  const res = await imaging.getPixels({ documentID: doc.id, targetSize: { width: Math.max(1, Math.round(W * k)), height: Math.max(1, Math.round(H * k)) }, componentSize: 8, applyAlpha: true });
+  const d = await res.imageData.getData(), w = res.imageData.width, h = res.imageData.height, c = res.imageData.components;
+  try { res.imageData.dispose(); } catch (e) { /* ignore */ }
+  const rgb = new Uint8Array(w * h * 3);
+  for (let i = 0; i < w * h; i++) { rgb[i * 3] = d[i * c]; rgb[i * 3 + 1] = d[i * c + (c > 1 ? 1 : 0)]; rgb[i * 3 + 2] = d[i * c + (c > 2 ? 2 : 0)]; }
+  return { w, h, rgb };
+}
+async function makeSheet(thumbs, cell) {
+  const { imaging } = photoshop;
+  const g = Plan.sheetGrid(thumbs.length, cell, 6);
+  const doc = await app.documents.add({ width: g.W, height: g.H, resolution: 72, mode: "RGBColorMode", fill: "white", name: "Batch Mock preview sheet" });
+  for (let i = 0; i < thumbs.length; i++) {
+    const t = thumbs[i], p = g.pos(i);
+    const L = await doc.createLayer({ name: t.name || "job " + (i + 1) });
+    const img = await imaging.createImageDataFromBuffer(t.rgb, { width: t.w, height: t.h, components: 3, colorSpace: "RGB" });
+    await imaging.putPixels({ documentID: doc.id, layerID: L.id, imageData: img, targetBounds: { left: p.left + Math.round((cell - t.w) / 2), top: p.top + Math.round((cell - t.h) / 2) } });
+    try { img.dispose(); } catch (e) { /* ignore */ }
+  }
+  return doc;
 }
 
 // Does the active document have a Video Timeline with more than one frame?
@@ -225,5 +290,6 @@ async function renderVideo(doc, folder, name) {
 
 module.exports = {
   pickFolder, tokenFor, folderFromToken, pathOf, listFiles, subFolder, exists, freeName, writeText,
-  loadSettings, saveSettings, openDoc, closeDoc, findTargets, replaceContents, exportDoc, renderVideo, hasTimeline
+  loadSettings, saveSettings, openDoc, closeDoc, findTargets, replaceContents, exportDoc, renderVideo, hasTimeline,
+  applyVariant, applyTexts, exportSized, thumbnail, makeSheet
 };

@@ -7,10 +7,10 @@ const ROOT = path.resolve(__dirname, "..");
 module.exports = async function (t) {
   const E = require("../plugins/crt-phaser/js/engine.js"), S = require("../plugins/crt-phaser/js/state.js");
 
-  await t("crt-phaser 1.1: 20 Phase looks, 5 per mode (incl. Flux Dots), all different", async () => {
+  await t("crt-phaser 3.0: 20 Phase looks, 5 per mode (Lidar replaced Flux Dots), all different", async () => {
     const ph = S.PRESETS.filter((p) => p.p.phase && p.p.phase.mode);
     assert.strictEqual(ph.length, 20);
-    for (const m of ["waveform", "linear", "flux", "fluxdots"]) assert.strictEqual(ph.filter((p) => p.p.phase.mode === m).length, 5, m);
+    for (const m of ["waveform", "linear", "flux", "lidar"]) assert.strictEqual(ph.filter((p) => p.p.phase.mode === m).length, 5, m);
     assert.strictEqual(S.DEFAULTS.phase.mode, "off", "Phase off by default keeps 1.0 looks");
     const src = E.demoImage(80, 60), seen = new Set();
     for (const pr of ph) {
@@ -53,7 +53,7 @@ module.exports = async function (t) {
     const { loadPanel } = require("./harness.js");
     const P = await loadPanel(path.join(ROOT, "plugins", "crt-phaser"), { withDoc: true });
     const T = P.mod._test, d = P.document;
-    const pick = d.querySelector(".card select"), idx = [...pick.options].findIndex((o) => /Thermal Flux/.test(o.text));
+    const pick = d.querySelector("select[data-key=\"lib.builtin\"]"), idx = [...pick.options].findIndex((o) => /Thermal Flux/.test(o.text));
     pick.selectedIndex = idx; pick.value = pick.options[idx].value; pick.dispatchEvent(new P.window.Event("change"));
     await P.settle(300);
     const bg = { id: 1, name: "Background", visible: true, kind: "pixel" };
@@ -84,5 +84,29 @@ module.exports = async function (t) {
     P.host.doc.activeLayers = [{ name: "Background" }];
     await P.mod._test.reEditNow();
     assert.ok(/Select a group made by/.test(P.document.querySelector(".status").textContent));
+  });
+
+  await t("crt-phaser 3.0: Unstable 0 changes nothing; Unstable wobbles the lines; Lidar renders dots and uses a depth map when given", async () => {
+    const src = E.demoImage(120, 90);
+    const run = async (patch) => { const P = S.merge(S.DEFAULTS, S.merge(S.PRESETS.find((p) => p.name === "Ember Trace").p, patch)); P.scale = 1; P.fullH = 90; const r = await E.render(src, P); return Buffer.from(r.layers[0].rgba).toString("base64"); };
+    assert.strictEqual(await run({ phase: { unstable: 0, chaos: 90 } }), await run({}), "Unstable 0 = the 1.1 render");
+    assert.notStrictEqual(await run({ phase: { unstable: 60 } }), await run({}), "Unstable 60 differs");
+    const lid = S.PRESETS.find((p) => p.name === "Lidar Ice").p;
+    const P = S.merge(S.DEFAULTS, lid); P.scale = 1; P.fullH = 90;
+    const a = await E.render(src, P);
+    const dep = new Float32Array(120 * 90).map((_, i) => (i % 120) / 120);
+    const P2 = S.merge(S.DEFAULTS, lid); P2.scale = 1; P2.fullH = 90; P2.depthMap = dep;
+    const b = await E.render(src, P2);
+    assert.notStrictEqual(Buffer.from(a.layers[0].rgba).toString("base64"), Buffer.from(b.layers[0].rgba).toString("base64"), "depth map changes the scan");
+  });
+  await t("crt-phaser 3.0: Photo mix, Background calm and Flare at Highlights change the render; 0 / Random keep it as before", async () => {
+    const src = E.demoImage(160, 120);
+    const run = async (patch) => { const P = S.merge(S.DEFAULTS, S.merge(S.PRESETS.find((p) => p.name === "Ember Trace").p, patch)); P.scale = 1; P.fullH = 120; const r = await E.render(src, P); return Buffer.from(r.layers[0].rgba); };
+    const base = await run({});
+    assert.ok(base.equals(await run({ phase: { photo: 0, calm: 0, flareAt: "random" } })), "defaults unchanged");
+    const lum = (b) => { let s = 0; for (let i = 0; i < b.length; i += 4) s += b[i] + b[i + 1] + b[i + 2]; return s; };
+    assert.ok(lum(await run({ phase: { photo: 60 } })) > lum(base) * 1.05, "Photo mix brightens the dark areas");
+    assert.ok(lum(await run({ phase: { calm: 100 } })) < lum(base), "Background calm thins lines");
+    assert.ok(!(await run({ phase: { flare: 80, flareAt: "bright" } })).equals(await run({ phase: { flare: 80 } })), "flares move to the highlights");
   });
 };

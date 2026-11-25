@@ -7,8 +7,8 @@
 resource 'PiPL' (16000) {
   {
     Kind { AEEffect },
-    Name { "Frank's CRT Phaser Brew" },
-    Category { "Frank's Brew" },
+    Name { "Scanline Lab" },
+    Category { "Lab" },
 #ifdef AE_OS_WIN
   #if defined(AE_PROC_ARM64)
     CodeWinARM64 { "EffectMain" },

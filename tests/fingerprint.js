@@ -30,7 +30,7 @@ const h = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 12);
   const img = d.querySelector("img.preview");
   for (let i = 0; i < 200 && !img.src; i++) await P.settle(50);   // first preview (panels with many dials take longer to build)
   out.previewDefault = h(img.src);
-  const sel = d.querySelector(".card select"); // first select = built-in presets
+  const sel = d.querySelector("select[data-key=\"lib.builtin\"]") || d.querySelector(".card select"); // the Library's built-in presets
   out.presets = [];
   for (let i = 1; i < sel.options.length; i++) {
     sel.selectedIndex = i; sel.value = sel.options[i].value;

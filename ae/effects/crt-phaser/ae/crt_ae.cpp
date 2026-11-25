@@ -61,8 +61,8 @@ static std::string lookMenu(bool withNone) {
 #define ENDTOPIC(ID) AEFX_CLR_STRUCT(def); PF_END_TOPIC(ID);
 
 static PF_Err About(PF_InData* in_data, PF_OutData* out_data) {
-  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCRT-06  Frank's Brew suite\rScanlines, phosphor, tube, Phase FX + motion.",
-             "Frank's CRT Phaser Brew", BREW_MAJOR, BREW_MINOR);
+  PF_SPRINTF(out_data->return_msg, "%s v%d.%d\rCRT-06  Lab suite\rScanlines, phosphor, tube, Phase FX + motion.",
+             "Scanline Lab", BREW_MAJOR, BREW_MINOR);
   return PF_Err_NONE;
 }
 
@@ -330,8 +330,8 @@ static PF_Err Render(PF_InData* in_data, PF_OutData* out_data, PF_ParamDef* para
 extern "C" DllExport PF_Err PluginDataEntryFunction2(PF_PluginDataPtr inPtr, PF_PluginDataCB2 inPluginDataCallBackPtr,
     SPBasicSuite* inSPBasicSuitePtr, const char* inHostName, const char* inHostVersion) {
   PF_Err result = PF_Err_NONE;               // the SDK macro assigns `result`
-  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Frank's CRT Phaser Brew", "com.franks.crtphaser.ae",
-                          "Frank's Brew", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
+  PF_REGISTER_EFFECT_EXT2(inPtr, inPluginDataCallBackPtr, "Scanline Lab", "com.franks.crtphaser.ae",
+                          "Lab", AE_RESERVED_INFO, "EffectMain", "https://github.com/franklinsheffield/franks-adobe-tools");
   return result;
 }
 

@@ -2,17 +2,21 @@
 // ----------------------------------------------------------------------
 // Shared Photoshop / UXP I/O for every tool in the suite. Everything that
 // touches the host lives here so each tool's engine stays pure and testable.
+//   every modal call goes through modal.js runModal (watchdog + Cancel)
 //   reading : executeAsModal + imaging.getPixels (PS 28 needs the modal scope)
 //   writing : executeAsModal + createPixelLayer + imaging.putPixels
 // ----------------------------------------------------------------------
 const photoshop = require("photoshop");
 const { app, core, imaging, constants, action } = photoshop;
 const { storage } = require("uxp");
+const Blend = require("./blend.js");
+const { runModal } = require("./modal.js");
+const Brand = require("./brand.js");
 const fsys = storage.localFileSystem;
 
 // Per-tool names: call configure() once from the tool's main.js.
 const CFG = {
-  appName: "Frank's Tools",          // history step + modal command name
+  appName: "Lab",                  // history step + modal command name
   presetFile: "presets.json",        // in the plugin's private data folder
   exportName: "presets.json"         // default file name for Export all
 };
@@ -57,8 +61,20 @@ function isGroup(layer) {
 }
 
 // Which things should we process?  [{ kind:"flat" } | { kind:"layer", layer }]
+// Brew 3.0 chaining (Frank, 2026-11-24): "prev" = the topmost Brew result group in the document
+// (any plugin's "<layer> - Frank's <Tool> Brew - <look>" group), so one plugin runs on another's result.
+function findPrevBrew(doc) {
+  let top = [];
+  try { top = Array.from(doc.layers || []); } catch (e) { top = []; }
+  return top.find((l) => { try { return l.visible !== false && Brand.isResult(l.name); } catch (e) { return false; } }) || null;
+}
 function collectTargets(doc, source) {
   if (source === "flat") return [{ kind: "flat" }];
+  if (source === "prev") {
+    const g = findPrevBrew(doc);
+    if (!g) throw new Error("No earlier Lab result in this document. Apply another Lab plugin first, or set Source to Flattened document.");
+    return [{ kind: "layer", layer: g, prev: true }];
+  }
   let layers = [];
   try { layers = Array.from(doc.activeLayers || []); } catch (e) { layers = []; }
   layers = layers.filter((l) => !isGroup(l));
@@ -68,6 +84,7 @@ function collectTargets(doc, source) {
 }
 
 const READ_TIMEOUT_MS = 60000;
+const WRITE_TIMEOUT_MS = 5 * 60000;   // big documents; the watchdog only has to end a modal that never settles
 function withTimeout(p, ms) {
   let t = null;
   const stop = new Promise((_, rej) => { t = setTimeout(() => rej(new Error("Photoshop did not answer the pixel read in " + Math.round(ms / 1000) + " s. Try again.")), ms); });
@@ -87,7 +104,7 @@ async function getPixels(doc, layerId, bounds, targetSize) {
   if (targetSize) opts.targetSize = targetSize;
   // Photoshop 2027 (28.x) refuses imaging.getPixels outside a modal scope,
   // so reads go through executeAsModal too (found in the first real test).
-  return core.executeAsModal(async () => {
+  return runModal(CFG.appName + ": reading pixels", async () => {
     // a read that never answers must not hold Photoshop's modal state forever
     const r = await withTimeout(imaging.getPixels(opts), READ_TIMEOUT_MS);
     const img = r.imageData;
@@ -98,7 +115,7 @@ async function getPixels(doc, layerId, bounds, targetSize) {
     if (!c) c = Math.round(data.length / (w * h));
     try { img.dispose(); } catch (e) { /* ignore */ }
     return { w, h, c, data };
-  }, { commandName: CFG.appName + ": reading pixels" });
+  }, { docId: doc.id, timeoutMs: READ_TIMEOUT_MS * 2 + 5000 });
 }
 
 // view = { kind:"detail"|"whole"|"full", size }
@@ -107,7 +124,9 @@ async function readSource(doc, target, view) {
   let bounds = { left: 0, top: 0, right: info.w, bottom: info.h };
   let layerId = null;
   if (target.kind === "layer") {
-    layerId = target.layer.id;
+    // a Brew result group can't be read by layer id ("Unsupported layer type" in PS 28, found on the
+    // Mac 2026-11-24): chaining reads the visible composite inside the group's bounds instead
+    layerId = target.prev ? null : target.layer.id;
     bounds = layerBounds(target.layer, info.w, info.h);
   }
   const bw = bounds.right - bounds.left, bh = bounds.bottom - bounds.top;
@@ -118,6 +137,14 @@ async function readSource(doc, target, view) {
     const cw = Math.min(bw, size), ch = Math.min(bh, size);
     const l = bounds.left + Math.floor((bw - cw) / 2), t = bounds.top + Math.floor((bh - ch) / 2);
     src = await getPixels(doc, layerId, { left: l, top: t, right: l + cw, bottom: t + ch });
+    origin = { left: l, top: t };
+  } else if (view.kind === "region") {
+    // Brew 3.0 zoom: a rect of the source (relative to the layer bounds), read at view.scale (<= 1)
+    const r = view.rect, sc = Math.min(1, view.scale || 1);
+    const l = bounds.left + r.l, t = bounds.top + r.t;
+    const rb = { left: l, top: t, right: l + r.w, bottom: t + r.h };
+    src = sc < 1 ? await getPixels(doc, layerId, rb, { width: Math.max(1, Math.round(r.w * sc)), height: Math.max(1, Math.round(r.h * sc)) }) : await getPixels(doc, layerId, rb);
+    scale = src.w / r.w;
     origin = { left: l, top: t };
   } else if (view.kind === "whole") {
     const size = view.size || 360;
@@ -169,12 +196,13 @@ async function putLayerPixels(doc, layer, buf, w, h, components, origin) {
   }
 }
 
-// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds }
+// res = engine result; opts = { origin, groupName, hideSource, hideLayers, paperLayer, hiddenIds, blend }
+// blend (optional) = { mode, opacity }: set on the result group (shared/blend.js)
 // hiddenIds (optional array) receives the ids of the source layers this call hid
 async function writeResult(doc, res, opts) {
   const n = res.w * res.h;
   const warnings = [];
-  await core.executeAsModal(async (ctl) => {
+  await runModal(CFG.appName, async (ctl) => {
     let hid = null;
     try { hid = await ctl.hostControl.suspendHistory({ documentID: doc.id, name: CFG.appName }); } catch (e) { hid = null; }
     try {
@@ -213,12 +241,19 @@ async function writeResult(doc, res, opts) {
         group = await doc.createLayerGroup({ name: opts.groupName });
         for (const pl of made) { try { await pl.move(group, constants.ElementPlacement.PLACEINSIDE); } catch (e2) { warnings.push("Could not move layer into group: " + e2.message); } }
       }
+      // chaining: the active layer sits inside the previous Brew group, so Photoshop made the new
+      // group inside it; move it out, above that group, before the old one is hidden (Mac 2026-11-24)
+      if (opts.placeAbove && group) {
+        try { await group.move(opts.placeAbove, constants.ElementPlacement.PLACEBEFORE); }
+        catch (e) { warnings.push("Could not move the new group above the previous result: " + e.message); }
+      }
+      if (opts.blend && group) Blend.applyToGroup(group, opts.blend, constants);
       for (const pl of toHide) { try { pl.visible = false; } catch (e) { /* ignore */ } }
       for (const L of sourceLayers) { try { if (L.visible) { L.visible = false; if (opts.hiddenIds) opts.hiddenIds.push(L.id); } } catch (e) { /* locked or group */ } }
     } finally {
       if (hid != null) { try { await ctl.hostControl.resumeHistory(hid); } catch (e) { /* ignore */ } }
     }
-  }, { commandName: CFG.appName });
+  }, { docId: doc.id, timeoutMs: WRITE_TIMEOUT_MS });
   return warnings;
 }
 
@@ -227,11 +262,11 @@ async function writeResult(doc, res, opts) {
 async function pickColor(hex, title) {
   const h = String(hex || "#FFFFFF").replace("#", "");
   const start = { red: parseInt(h.slice(0, 2), 16) || 0, grain: parseInt(h.slice(2, 4), 16) || 0, blue: parseInt(h.slice(4, 6), 16) || 0 };
-  const res = await core.executeAsModal(async () => action.batchPlay([{
+  const res = await runModal(CFG.appName + ": pick colour", async () => action.batchPlay([{
     _obj: "showColorPicker",
     context: title || CFG.appName,
     color: { _obj: "RGBColor", red: start.red, grain: start.grain, blue: start.blue }
-  }], {}), { commandName: CFG.appName + ": pick colour" });
+  }], {}), { timeoutMs: 10 * 60000 });   // the user may sit in the picker
   const r = res && res[0];
   if (!r || r.value === false) return null;
   const c = r.RGBFloatColor || r.color || r;
@@ -282,19 +317,52 @@ async function saveData(name, obj) {
 function activeLayer(doc) { try { const a = Array.from(doc.activeLayers || []); return a[0] || null; } catch (e) { return null; } }
 // hide one layer or group in its own modal step
 async function hideLayer(layer) {
-  await core.executeAsModal(async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { commandName: CFG.appName + ": hide old version" });
+  await runModal(CFG.appName + ": hide old version", async () => { try { layer.visible = false; } catch (e) { /* locked */ } }, { timeoutMs: 15000 });
 }
 // re-edit swap in one History step: hide the old group, show the source layers it hid (by id)
 async function swapToSource(doc, group, ids) {
-  await core.executeAsModal(async () => {
+  await runModal(CFG.appName + ": re-edit", async () => {
     const want = new Set(ids || []);
     const walk = (list) => { for (const L of Array.from(list || [])) { if (want.has(L.id)) { try { L.visible = true; } catch (e) { /* locked */ } } if (L.layers) walk(L.layers); } };
     walk(doc.layers);
     try { group.visible = false; } catch (e) { /* locked */ }
-  }, { commandName: CFG.appName + ": re-edit" });
+  }, { timeoutMs: 15000 });
 }
 
+// ---- Colour 3.0: swatch sync + palette files ------------------------------
+// Photoshop's foreground / background colours as "#RRGGBB" (null when unreadable)
+function getFgBg() {
+  const hx = (c) => { try { const h = c && c.rgb && c.rgb.hexValue; return h ? "#" + String(h).toUpperCase() : null; } catch (e) { return null; } };
+  return { fg: hx(app.foregroundColor), bg: hx(app.backgroundColor) };
+}
+// adds each colour to the Swatches panel (named "<name> 1..n"); returns the count added
+async function addSwatches(colors, name) {
+  const list = colors.map((h, i) => {
+    const c = String(h).replace("#", "");
+    return { _obj: "make", _target: [{ _ref: "colors" }], using: { _obj: "colors", name: (name || "Lab") + " " + (i + 1) + " " + h, color: { _obj: "RGBColor", red: parseInt(c.slice(0, 2), 16), grain: parseInt(c.slice(2, 4), 16), blue: parseInt(c.slice(4, 6), 16) } } };
+  });
+  await runModal(CFG.appName + ": add swatches", async () => action.batchPlay(list, {}), { timeoutMs: 30000 });
+  return list.length;
+}
+// open a palette file (.ase .aco .gpl .txt .hex): resolves { name, data } or null
+async function openPaletteFile() {
+  const f = await fsys.getFileForOpening({ types: ["ase", "aco", "gpl", "txt", "hex"] });
+  if (!f) return null;
+  const ext = String(f.name || "").toLowerCase().split(".").pop(), bin = ext === "ase" || ext === "aco";
+  const data = bin ? await f.read({ format: storage.formats.binary }) : await f.read();
+  return { name: f.name, data };
+}
+// save text or bytes (Uint8Array) through the system Save dialog
+async function savePaletteFile(name, data) {
+  const ext = String(name).split(".").pop();
+  const f = await fsys.getFileForSaving(name, { types: [ext] });
+  if (!f) return false;
+  if (typeof data === "string") await f.write(data);
+  else await f.write(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), { format: storage.formats.binary });
+  return true;
+}
 module.exports = {
-  configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult,
+  getFgBg, addSwatches, openPaletteFile, savePaletteFile,
+  findPrevBrew, configure, loadData, saveData, activeLayer, hideLayer, swapToSource, get APP_NAME() { return CFG.appName; }, activeDoc, docInfo, collectTargets, readSource, writeResult, getPixels,
   loadUserPresets, saveUserPresets, exportPresets, importPresets, pickColor
 };
