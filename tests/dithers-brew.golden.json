@@ -15,12 +15,14 @@
   "Clean specks",
   "Distress",
   "Colour",
-  "Colour Deck",
+  "Colour",
+  "Colour grade",
+  "Advanced",
   "Colour in view",
   "Blend",
   "Output"
  ],
- "controls": "input:81 select:14 button:78 textarea:1",
+ "controls": "input:155 select:20 button:148 textarea:1",
  "previewDefault": "2807e930cda1",
  "presets": [
   "Print - Newsprint 45 deg / 35 LPI = 6eb46d7800c8",
