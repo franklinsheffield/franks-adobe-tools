@@ -14,9 +14,12 @@
   try { ppro = require("premierepro"); uxp = require("uxp"); } catch (e) { /* browser preview / tests */ }
   if (window.__LAB_PPRO_FAKE__) { ppro = window.__LAB_PPRO_FAKE__.ppro; uxp = window.__LAB_PPRO_FAKE__.uxp; }
 
-  // Premiere's value for an AE popup item: 1 = same 1-based numbering as After Effects.
-  // Checked on the first look apply (see popupBase()) and kept for the session.
+  // Premiere's value for an AE popup item. Premiere 2027 (27.0) numbers AE popup items from 0
+  // (After Effects from 1), checked on the Mac 2026-11-25. Re-checked on a freshly added effect
+  // (see popupBase()), which always starts on the first item, and kept for the session.
+  const DEFAULT_POPUP_BASE = 0;
   let POPUP_BASE = null;
+  const freshComps = new WeakSet();
   const AE_PREFIX = "AE.";
 
   const ok = (o) => Object.assign({ ok: true }, o || {});
@@ -73,7 +76,9 @@
   }
   async function target(project, clip, match, addNew) {
     if (!addNew) { const { fx } = await labComponents(project, clip, match); if (fx.length) return fx[fx.length - 1]; }
-    return addLab(project, clip, match);
+    const comp = await addLab(project, clip, match);
+    if (comp) freshComps.add(comp);
+    return comp;
   }
 
   // ---------------------------------------------------------------- AE param id -> Premiere param index
@@ -124,7 +129,7 @@
     const k = kindOf(tool, id, v);
     if (k === "color") { const c = Array.isArray(v) ? v : [0, 0, 0, 1]; return new ppro.Color(c[0], c[1], c[2], c.length > 3 ? c[3] : 1); }
     if (k === "bool") return !!v;
-    if (k === "popup") return Number(v) - 1 + (POPUP_BASE == null ? 1 : POPUP_BASE);
+    if (k === "popup") return Number(v) - 1 + (POPUP_BASE == null ? DEFAULT_POPUP_BASE : POPUP_BASE);
     return Number(v);
   }
   function fromPr(tool, id, v) {
@@ -136,7 +141,7 @@
       return [0, 0, 0, 1];
     }
     if (k === "bool") return v ? 1 : 0;
-    if (k === "popup") return Number(v) + 1 - (POPUP_BASE == null ? 1 : POPUP_BASE);
+    if (k === "popup") return Number(v) + 1 - (POPUP_BASE == null ? DEFAULT_POPUP_BASE : POPUP_BASE);
     return Number(v);
   }
   async function clipTime(clip, sequence, dt) {
@@ -148,8 +153,9 @@
     return ppro.TickTime.createWithSeconds(Math.max(0, pos.seconds - start + inPt + (dt || 0)));
   }
   // Learn Premiere's popup numbering from the Look popup: a new effect starts on the first look.
+  // Only a freshly added effect tells us anything: its Look menu sits on the first item.
   async function popupBase(project, tool, comp, map, sequence, clip) {
-    if (POPUP_BASE != null) return POPUP_BASE;
+    if (POPUP_BASE != null || !freshComps.has(comp)) return POPUP_BASE == null ? DEFAULT_POPUP_BASE : POPUP_BASE;
     const i = map.idx[tool.look != null ? tool.look : 2];
     if (i == null) return 1;
     try {
@@ -158,7 +164,7 @@
       const v = Number(r && typeof r === "object" ? r.value : r);
       if (v === 0) POPUP_BASE = 0; else if (v === 1) POPUP_BASE = 1;
     } catch (e) { /* keep default */ }
-    return POPUP_BASE == null ? 1 : POPUP_BASE;
+    return POPUP_BASE == null ? DEFAULT_POPUP_BASE : POPUP_BASE;
   }
 
   // Set many params on one component: values = { aeId: value | { keys: [[seconds from playhead, value], ...] } }

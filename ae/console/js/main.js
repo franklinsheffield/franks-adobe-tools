@@ -41,6 +41,7 @@
     return n;
   }
   const help = window.LabHelp.createHelp({ el, storeKey: "aeconsole", lookup: (k) => (HELP[k] || "").replace(/\blayers\b/g, W.layer + "s").replace(/\blayer\b/g, W.layer), root: () => $("app") });
+  if ($("motionNote")) $("motionNote").textContent = $("motionNote").textContent.replace(/\blayers\b/g, W.layer + "s");
   $("assist").appendChild(help.switchNode());
   document.querySelectorAll("[data-help]").forEach((n) => {
     const k = n.getAttribute("data-help"); n.removeAttribute("data-help");

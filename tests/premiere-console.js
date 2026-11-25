@@ -112,6 +112,18 @@ module.exports = async function (t) {
     });
   }
 
+  await t("Premiere console: an effect already on a later look gets the right look (Premiere 0-based popups)", async () => {
+    const { w, fake } = await load({ popupBase: 0 });
+    const m = w.LAB_PPRO["crt-phaser"];
+    const comp = await fake.ppro.VideoFilterFactory.createComponent("AE." + m.match);
+    comp.params.find((p) => p.id === m.look).value = 3;             // Premiere shows the 4th look
+    fake.clips[0].chain.comps.push(comp);
+    w.document.querySelectorAll(".look")[1].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 120));
+    assert.strictEqual(fake.clips[0].chain.comps.length, 2, "reuses the effect");
+    assert.strictEqual(comp.params.find((p) => p.id === m.look).value, 1, "2nd look = item 1 in Premiere");
+  });
+
   await t("Premiere console: Reveal motion keys a 1 s build from the playhead in clip time", async () => {
     const { w, fake } = await load({});
     w.document.querySelectorAll(".look")[0].dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
