@@ -20,6 +20,7 @@
     "three": "0.180.0"
   },
   "devDependencies": {
+    "@discord/embedded-app-sdk": "^2.5.0",
     "buffer": "^6.0.3",
     "electron": "38.2.0",
     "electron-builder": "26.0.12",
