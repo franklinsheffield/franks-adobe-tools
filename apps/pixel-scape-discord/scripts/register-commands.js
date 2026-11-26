@@ -10,8 +10,13 @@
   const app = await me.json();
   console.log(`bot token belongs to app "${app.name}" (id ${app.id.split("").join(" ")})`);
   if (envId !== app.id) console.warn(`::warning::DISCORD_APP_ID secret (length ${envId.length}) does not match the bot token's app id`);
+  // keep the Activity's entry point command (type 4, made by Discord when Activities are turned on): a bulk PUT
+  // without it would delete it and the Activity could not be launched
+  const cur = await fetch(`https://discord.com/api/v10/applications/${app.id}/commands`, { headers: auth });
+  const keep = cur.ok ? (await cur.json()).filter((c) => c.type === 4).map(({ id, name, description, type, handler, integration_types, contexts }) => ({ id, name, description, type, handler, integration_types, contexts })) : [];
+  if (keep.length) console.log("keeping entry point command:", keep.map((c) => c.name).join(", "));
   const r = await fetch(`https://discord.com/api/v10/applications/${app.id}/commands`, {
-    method: "PUT", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify(COMMANDS),
+    method: "PUT", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify(COMMANDS.concat(keep)),
   });
   console.log("register commands:", r.status); if (!r.ok) { console.error(await r.text()); process.exit(1); }
 })();

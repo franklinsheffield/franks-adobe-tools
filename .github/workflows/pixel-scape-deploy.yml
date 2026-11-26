@@ -3,7 +3,7 @@ name: Pixel Scape bot deploy
 on:
   push:
     branches: [main]
-    paths: ["apps/pixel-scape-discord/**", ".github/workflows/pixel-scape-*.yml"]
+    paths: ["apps/pixel-scape-discord/**", "apps/worlds-brew-app/**", "plugins/worlds-brew/**", "shared/**", ".github/workflows/pixel-scape-*.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,6 +38,24 @@ jobs:
           DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
           DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
           GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+      - name: Build the Pixel Scape web version (Activity)
+        working-directory: apps/worlds-brew-app
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: "1" }
+        run: |
+          npm ci --no-audit --no-fund
+          npm run web
+      - name: Deploy the Activity Worker
+        if: env.HAVE_SECRETS == 'true'
+        id: activity
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/pixel-scape-discord/activity
+          wranglerVersion: "4.150.0"
+          secrets: ${{ secrets.DISCORD_CLIENT_SECRET != '' && 'DISCORD_CLIENT_SECRET' || '' }}
+        env:
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
       - name: Register slash commands
         if: env.HAVE_SECRETS == 'true'
         env:
@@ -49,3 +67,4 @@ jobs:
         run: |
           echo "Paste this into Discord Developer Portal > General Information > Interactions Endpoint URL:" >> "$GITHUB_STEP_SUMMARY"
           echo '${{ steps.wrangler.outputs.deployment-url }}' >> "$GITHUB_STEP_SUMMARY"
+          echo "Activity URL mapping root (/): ${{ steps.activity.outputs.deployment-url }}" >> "$GITHUB_STEP_SUMMARY"
