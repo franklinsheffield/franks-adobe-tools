@@ -26,10 +26,12 @@ export async function verify(req, body, publicKey) {
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 const lastUse = new Map(); // best-effort per-user cooldown (per isolate)
 
-export async function editOriginal(env, token, content) {
-  return fetch(`https://discord.com/api/v10/webhooks/${env.DISCORD_APP_ID}/${token}/messages/@original`, {
+export async function editOriginal(env, token, content, appId) {
+  const r = await fetch(`https://discord.com/api/v10/webhooks/${appId || env.DISCORD_APP_ID}/${token}/messages/@original`, {
     method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content }),
   });
+  if (!r.ok) console.error("edit reply failed", r.status, (await r.text()).slice(0, 200));
+  return r;
 }
 
 export async function dispatch(env, inputs) {
@@ -66,9 +68,11 @@ export default {
     ctx.waitUntil((async () => {
       try {
         await dispatch(env, inputs);
-        await editOriginal(env, it.token, `Building **${inputs.place}** (${inputs.size} km). Real elevation + satellite imagery, ready in about 1 to 3 minutes...`);
+        console.log("dispatched", inputs.place);
+        await editOriginal(env, it.token, `Building **${inputs.place}** (${inputs.size} km). Real elevation + satellite imagery, ready in about 1 to 3 minutes...`, it.application_id);
       } catch (e) {
-        await editOriginal(env, it.token, "Pixel Scape couldn't start the build: " + e.message.slice(0, 300));
+        console.error("build start failed", e.message);
+        await editOriginal(env, it.token, "Pixel Scape couldn't start the build: " + e.message.slice(0, 300), it.application_id);
       }
     })());
     return json({ type: 5 }); // "Pixel Scape is thinking..."
