@@ -1,8 +1,8 @@
 {
   "name": "franks-worlds-brew",
-  "productName": "Worlds Lab",
-  "version": "0.10.0",
-  "description": "Worlds Lab (WB-10): standalone 3D scene builder",
+  "productName": "Pixel Scape",
+  "version": "0.11.0",
+  "description": "Pixel Scape (PX-10): standalone 3D scene builder",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.franks.worldsbrew.app",
-    "productName": "Worlds Lab",
+    "productName": "Pixel Scape",
     "files": [
       "main.js",
       "renderer/**",

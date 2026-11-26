@@ -1,4 +1,4 @@
-// Worlds Lab: hover help text for the app's own controls (Brew 3.0 hover help, same as the plugins).
+// Pixel Scape: hover help text for the app's own controls (Brew 3.0 hover help, same as the plugins).
 // Keys: a state path ("view.step"), "btn:<label>" for buttons, "card:<title>" for cards, "tab:<title>" for tabs.
 // Shared texts (help.assist, help.led, swatch, ...) come from engine/kit/help-text.js. A test fails if any control has none.
 const SW = (what) => "Sets the " + what + " to this colour in one click. Type a hex value in the box above for any other colour.";
@@ -11,8 +11,8 @@ const T = {
   "btn:Import model...": "Adds a 3D model of your own: .glb, .gltf, .obj or .stl. It lands on the ground in front of the camera.",
   "btn:Undo": "Undoes the last change (Cmd/Ctrl+Z).",
   "btn:Redo": "Redoes what you undid (Shift+Cmd/Ctrl+Z).",
-  "btn:Send to Photoshop": "Sends the last render with its Depth, Object mask and Sky mask passes to Photoshop (renders first if there is none). In Photoshop, press Place as layer in the Worlds Lab Bridge panel.",
-  "out.autoSend": "Auto-send: every finished render goes to Photoshop by itself, ready for Place as layer in the Worlds Lab Bridge panel.",
+  "btn:Send to Photoshop": "Sends the last render with its Depth, Object mask and Sky mask passes to Photoshop (renders first if there is none). In Photoshop, press Place as layer in the Pixel Scape Bridge panel.",
+  "out.autoSend": "Auto-send: every finished render goes to Photoshop by itself, ready for Place as layer in the Pixel Scape Bridge panel.",
 
   // library
   "card:Scenes": "Ready-made scenes. Click one to load it (you are asked first if the current scene has unsaved changes).",
@@ -21,7 +21,7 @@ const T = {
   "card:Add": "Shapes and models to add. Drag one into the view to drop it where you let go, or click it to add it in front of the camera.",
   "view.addPack": "Which set to show: plain shapes, Fantasy models or Alien models.",
   "lib.add": "Drag into the view to place it where you let go, standing on the ground. Or click to add it in front of the camera.",
-  "card:My library": "Your own textures, terrains and shaders, kept in Documents/Worlds Lab/Library so every scene can use them. Import files or whole folders, then click an item to use it on the selection or drag it onto an object.",
+  "card:My library": "Your own textures, terrains and shaders, kept in Documents/Pixel Scape/Library so every scene can use them. Import files or whole folders, then click an item to use it on the selection or drag it onto an object.",
   "view.myKind": "Which part of your library to show: Textures (pictures), Terrains (heightmaps and saved terrains) or Shaders (GLSL files and material folders).",
   "lib.my": "Click to use it on the selected object (a terrain makes or reshapes a terrain), or drag it onto an object in the view. Textures and shaders arrive as surface layers.",
   "btn:Import files...": "Copies the files you pick into your library: pictures for Textures; PNG (16-bit too) or JPG heightmaps for Terrains; .glsl / .frag files for Shaders.",
@@ -206,7 +206,7 @@ const T = {
   // surface layers
   "lay.preset": "Adds a ready-made stack of surface layers (snow, moss, rust, neon grid ...) or one you saved.",
   "btn:Picture layer...": "Adds a layer with a picture of your own (PNG or JPG).",
-  "btn:New layer": "Adds the picture Photoshop sent (Send layer to Worlds Lab) as a new layer.",
+  "btn:New layer": "Adds the picture Photoshop sent (Send layer to Pixel Scape) as a new layer.",
   "btn:Use on this layer": "Puts the picture Photoshop sent on the layer selected in the list.",
   "btn:ON": "This layer is showing. Click to hide it.",
   "btn:OFF": "This layer is hidden. Click to show it.",

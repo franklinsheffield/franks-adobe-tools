@@ -1,18 +1,18 @@
 "use strict";
-// Worlds Lab (WB-10) desktop app: Electron main process.
+// Pixel Scape (PX-10) desktop app: Electron main process.
 // One window; file dialogs and file reads / writes for the renderer go over IPC.
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
-const SCENE_FILTER = [{ name: "Worlds Lab scene", extensions: ["wbscene", "json"] }];
+const SCENE_FILTER = [{ name: "Pixel Scape scene", extensions: ["wbscene", "json"] }];
 let win = null;
 let quitting = false;   // Quit (Cmd+Q) was chosen: once the renderer says it may close, the app ends too (macOS would keep it running)
 app.on("before-quit", () => { quitting = true; });
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1500, height: 940, minWidth: 1100, minHeight: 700, backgroundColor: "#000000", title: "Worlds Lab",
+    width: 1500, height: 940, minWidth: 1100, minHeight: 700, backgroundColor: "#000000", title: "Pixel Scape",
     show: false,
     webPreferences: { nodeIntegration: true, contextIsolation: false, sandbox: false, backgroundThrottling: false }
   });
@@ -55,7 +55,17 @@ const presetDir = () => { const d = path.join(app.getPath("userData"), "surface-
 ipcMain.handle("surf:list", () => fs.readdirSync(presetDir()).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort());
 ipcMain.handle("surf:save", (e, name, json) => { const n = String(name).replace(/[^\w\- ]+/g, "").trim().slice(0, 60) || "Preset"; fs.writeFileSync(path.join(presetDir(), n + ".json"), json); return n; });
 ipcMain.handle("surf:load", (e, name) => fs.readFileSync(path.join(presetDir(), String(name).replace(/[^\w\- ]+/g, "") + ".json"), "utf8"));
-ipcMain.handle("app:info", () => ({ version: app.getVersion(), docs: app.getPath("documents"), userData: app.getPath("userData") }));
+// 0.11 rename (Frank 2026-11-26): Worlds Lab -> Pixel Scape. The shared folder moves once, on first launch, with
+// everything in it (Library, Renders, Bridge); if the move fails the old folder is copied instead, so nothing is lost.
+function moveOldFolder(docs) {
+  const oldDir = path.join(docs, "Worlds Lab"), newDir = path.join(docs, "Pixel Scape");
+  try {
+    if (!fs.existsSync(oldDir) || fs.existsSync(newDir)) return null;
+    try { fs.renameSync(oldDir, newDir); } catch (e) { fs.cpSync(oldDir, newDir, { recursive: true }); }
+    return newDir;
+  } catch (e) { return null; }
+}
+ipcMain.handle("app:info", () => { const docs = app.getPath("documents"); return { version: app.getVersion(), docs, moved: moveOldFolder(docs), userData: app.getPath("userData") }; });
 ipcMain.handle("app:reveal", (e, file) => { shell.showItemInFolder(file); return true; });
 ipcMain.on("app:close-ok", () => { if (win) { win.__closeOk = true; win.close(); } if (quitting) app.quit(); });
 ipcMain.on("app:title", (e, t) => { if (win) win.setTitle(t); });

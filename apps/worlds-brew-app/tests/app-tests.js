@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 "use strict";
-// Worlds Lab app tests:  npm test   (Linux CI: runs under xvfb-run when there is no display)
+// Pixel Scape app tests:  npm test   (Linux CI: runs under xvfb-run when there is no display)
 //   1. host-free: engine copy is current, scaling tools, width / height / depth stretch in the ray tracer
 //   2. the real app in Electron: drag-and-drop from the Library, click-select and drag-move, Scale card,
 //      camera pad, undo / redo, save and open a .wbscene, render to PNG; screenshots go to tests/out/
@@ -256,7 +256,7 @@ async function uiTests() {
     try {
       await W((r) => { const w = window.__wb; w.refs.bridgeWatch && w.refs.bridgeWatch.stop(); w.BR.setRoot(r); w.refs.bridgeWatch = w.BR.watch({ every: 200, docSize: (j) => { w.st.out.w = j.w; w.st.out.h = j.h; }, picture: (p) => { w.refs.psPic = p; } }); }, root);
       await W(() => { const w = window.__wb; w.refs.lastPics = null; Object.assign(w.st.out, { engine: "gpu", quality: "draft", w: 160, h: 90 }); return w.sendToPhotoshop(); });
-      const base = path.join(root, "Worlds Lab"), latest = JSON.parse(fs.readFileSync(path.join(base, "Renders/latest.json"), "utf8")), dir = path.join(base, "Renders", latest.folder);
+      const base = path.join(root, "Pixel Scape"), latest = JSON.parse(fs.readFileSync(path.join(base, "Renders/latest.json"), "utf8")), dir = path.join(base, "Renders", latest.folder);
       assert.deepStrictEqual(["depth.png", "info.json", "mask.png", "render.png", "sky.png"], fs.readdirSync(dir).sort());
       const info = JSON.parse(fs.readFileSync(path.join(dir, "info.json"), "utf8")); assert.deepStrictEqual([info.w, info.h, info.engine], [160, 90, "gpu"]);
       await W(() => { document.getElementById("shot").hidden = true; });
@@ -294,7 +294,7 @@ async function uiTests() {
     fs.writeFileSync(path.join(src, "Brick set", "brick_normal.png"), png8(16, 16, () => [128, 128, 255]));
     await W((d) => { const w = window.__wb; w.LIB.setRoot(d); }, docs);
     await W(() => { const w = window.__wb; w.loadScene(w.S.loadPreset("Chrome Garden")); });
-    const lib = path.join(docs, "Worlds Lab", "Library");
+    const lib = path.join(docs, "Pixel Scape", "Library");
     assert.ok(["Textures", "Terrains", "Shaders"].every((k) => fs.existsSync(path.join(lib, k))), "library folders made");
     // import: a folder of pictures (sub-folder flattened, text file skipped), shaders (files + a material folder), a heightmap
     const r1 = await W((p) => window.__wb.importPathsToLibrary("Textures", [p]), path.join(src, "pics"));

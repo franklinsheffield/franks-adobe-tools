@@ -1,5 +1,5 @@
-// Worlds Lab app: your own library (0.10, Frank 2026-11-25: "users add textures, terrain, and shaders",
-// "a shaders importer, same for textures"). Everything lives in Documents/Worlds Lab/Library/:
+// Pixel Scape app: your own library (0.10, Frank 2026-11-25: "users add textures, terrain, and shaders",
+// "a shaders importer, same for textures"). Everything lives in Documents/Pixel Scape/Library/:
 //   Textures/  pictures (png jpg jpeg webp), imported one by one or as whole folders (sub-folders flattened)
 //   Terrains/  heightmaps (png 8/16-bit, jpg) and terrains saved from the app (.wbterrain = { name, d: base64 float32 grid })
 //   Shaders/   GLSL files (.glsl .frag .fs: Shadertoy "mainImage" or GLSL-sandbox "main") and PBR material folders
@@ -17,7 +17,7 @@ const IMG = ["png", "jpg", "jpeg", "webp"], GLSL = ["glsl", "frag", "fs", "shade
 const ext = (f) => path.extname(f).slice(1).toLowerCase();
 let ROOT = null;
 export function setRoot(documentsDir) {
-  ROOT = path.join(documentsDir, "Worlds Lab", "Library");
+  ROOT = path.join(documentsDir, "Pixel Scape", "Library");
   KINDS.forEach((k) => fs.mkdirSync(path.join(ROOT, k), { recursive: true }));
   return ROOT;
 }
@@ -125,7 +125,7 @@ void main() { vec4 c = vec4(0.0, 0.0, 0.0, 1.0); mainImage(c, gl_FragCoord.xy); 
 uniform float time; uniform vec2 resolution; uniform vec2 mouse; uniform vec2 surfaceSize;
 varying vec2 surfacePosition;
 ${clean(src)}` };
-  throw new Error("No mainImage() or main() found. Worlds Lab reads Shadertoy-style shaders (mainImage) and GLSL-sandbox shaders (main + gl_FragColor).");
+  throw new Error("No mainImage() or main() found. Pixel Scape reads Shadertoy-style shaders (mainImage) and GLSL-sandbox shaders (main + gl_FragColor).");
 }
 function program(code) {
   const { g, cache } = gl();

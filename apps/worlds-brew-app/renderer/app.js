@@ -1,4 +1,4 @@
-// Worlds Lab (WB-10) desktop app: the window's UI.
+// Pixel Scape (PX-10) desktop app: the window's UI.
 // Library (scenes, drag-and-drop assets, object list) | live GPU viewport + control pads | Inspector tabs,
 // with a render bar along the bottom. The scene is the same plain data the Photoshop plugin uses.
 import { Viewport, snapshot } from "./view3d.js";
@@ -21,7 +21,7 @@ const HELP = req("./help-app.js");   // hover help text for the app's own contro
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 
-const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.10.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.11.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -238,7 +238,7 @@ vpwrap.addEventListener("drop", async (e) => {
   }
 });
 
-// ---- your library (0.10): textures, terrains and shaders in Documents/Worlds Lab/Library
+// ---- your library (0.10): textures, terrains and shaders in Documents/Pixel Scape/Library
 // it = a LIB.list() entry; target = the object under the pointer (drag) or null (click: the selection); at = ground point
 async function applyLibItem(it, target, at) {
   try {
@@ -367,12 +367,12 @@ async function renderNow() {
   } catch (err) { refs.meter.idle(); setStatus("Render failed: " + (err.message || err), true); }
   finally { rendering = false; vp.paused = false; vp.dirty = true; refs.go.textContent = "Render PNG"; refs.led.set("ready"); }
 }
-// ---- Photoshop bridge: renders go to Documents/Worlds Lab; the Bridge panel in Photoshop places them
+// ---- Photoshop bridge: renders go to Documents/Pixel Scape; the Bridge panel in Photoshop places them
 async function sendToPhotoshop() {
   if (!refs.lastPics) { await renderNow(); if (!refs.lastPics || st.out.autoSend) return; }
   try {
     const r = await BR.sendRender(refs.lastPics, refs.lastMeta); refs.lastSent = r;
-    setStatus("Sent to Photoshop: " + r.info.scene + " (" + r.info.w + " x " + r.info.h + "). In Photoshop, press Place as layer in the Worlds Lab Bridge panel.");
+    setStatus("Sent to Photoshop: " + r.info.scene + " (" + r.info.w + " x " + r.info.h + "). In Photoshop, press Place as layer in the Pixel Scape Bridge panel.");
   } catch (err) { setStatus("Couldn't send to Photoshop: " + (err.message || err), true); }
 }
 function applyDocSize(j) {
@@ -427,7 +427,7 @@ function buildTop(ui) {
   top.appendChild(h.node);
   top.appendChild(el("div", { class: "menu" }, [refs.docName, btn("New", () => newScene()), btn("Open...", () => openScene()), btn("Save", () => save(false)), btn("Save as...", () => save(true)),
     btn("Import model...", () => importModel(), "Add a .glb, .gltf, .obj or .stl model"), btn("Undo", () => undo()), btn("Redo", () => redo()),
-    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Worlds Lab Bridge panel in Photoshop places it as a layer group"),
+    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Pixel Scape Bridge panel in Photoshop places it as a layer group"),
     ui.brand.toggle("Auto-send", "out.autoSend")]));
 }
 
@@ -457,7 +457,7 @@ function buildLibrary(ui) {
   refs.tiles = tiles;
   const count = el("div", { class: "hint" }); bind(() => { count.textContent = tiles.filter((t) => t.__pack === st.view.addPack).length + " items. Drag one into the view, or click it."; });
   lib.appendChild(card("Add", [row("", segGroup("view.addPack", [{ v: "Shapes", l: "Shapes" }].concat(PK.PACKS.map((p) => ({ v: p, l: p }))))), count, grid]));
-  // your own library: Textures / Terrains / Shaders (Documents/Worlds Lab/Library)
+  // your own library: Textures / Terrains / Shaders (Documents/Pixel Scape/Library)
   const myGrid = el("div", { class: "wbtiles wbmylib" }), myCount = el("div", { class: "hint" });
   let myItems = [];
   const drawMyLib = async () => {
@@ -688,7 +688,7 @@ function buildInspector(ui) {
     only(layList, canLayer),
     only(el("div", { class: "row wrap" }, [presetSel, btn("Picture layer...", () => loadLayerPicture(true), "Add a layer with a PNG / JPG of your own")]), canLayer),
     only(el("div", { class: "row wrap" }, [psPicName, btn("New layer", () => usePhotoshopPicture(true), "Add a layer with the picture Photoshop sent"), only(btn("Use on this layer", () => usePhotoshopPicture(false)), hasLay)]), () => canLayer() && !!refs.psPic),
-    only(el("div", { class: "hint", text: "Tip: in Photoshop, the Worlds Lab Bridge panel's Send layer button sends the active layer here as a picture." }), () => canLayer() && !refs.psPic),
+    only(el("div", { class: "hint", text: "Tip: in Photoshop, the Pixel Scape Bridge panel's Send layer button sends the active layer here as a picture." }), () => canLayer() && !refs.psPic),
     only(el("div", { class: "row wrap" }, [btn("Up", () => layOps.move(1), "Move the layer up the stack"), btn("Down", () => layOps.move(-1)), btn("Duplicate", () => layOps.dup()), btn("Delete", () => layOps.remove())]), () => canLayer() && hasLay()),
     lay(row("Name", nameIn)),
     lay(el("div", { class: "row wrap" }, [picName, btn("Change picture...", () => loadLayerPicture(false))])),

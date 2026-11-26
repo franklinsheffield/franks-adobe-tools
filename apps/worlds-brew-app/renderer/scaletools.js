@@ -1,5 +1,5 @@
 "use strict";
-// Worlds Lab app: scaling tools (host-free, used by the Inspector and the tests).
+// Pixel Scape app: scaling tools (host-free, used by the Inspector and the tests).
 // 1 scene unit = 1 metre. Size (o.s) scales everything; Width / Height / Depth (o.sx / sy / sz) stretch one axis.
 const CT = require("../engine/controls.js");
 const M = require("../engine/models.js");

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 "use strict";
-// Copies the shared Worlds Lab engine (plugins/worlds-brew/js) into engine/ and the suite UI kit (shared/) into engine/kit/,
+// Copies the shared Pixel Scape engine (plugins/worlds-brew/js) into engine/ and the suite UI kit (shared/) into engine/kit/,
 // so the app and the Photoshop plugin render the same scenes with the same code.
 //   node tools/sync-engine.js          copy
 //   node tools/sync-engine.js --check  list stale files, exit 1 if any
