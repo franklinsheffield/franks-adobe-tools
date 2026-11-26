@@ -6,7 +6,7 @@
   "private": true,
   "license": "ISC",
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test tests/*.test.js",
     "try": "node scripts/try.js"
   },
   "dependencies": {
