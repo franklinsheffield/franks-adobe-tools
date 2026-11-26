@@ -88,7 +88,8 @@ function normals(pos, idx) {
 }
 
 // ---- binary glTF 2.0 with one textured primitive. image = { bytes, mime } (JPEG or PNG) or null
-function glb(mesh, image, name) {
+// extra.buildings = { pos, nrm, col (sRGB bytes, rgb), idx }: a second node "<name> buildings" with vertex colours
+function glb(mesh, image, name, extra) {
   const parts = [], views = [], acc = [];
   let off = 0;
   const add = (arr, target) => { const b = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength), padN = (4 - (b.length % 4)) % 4; views.push({ buffer: 0, byteOffset: off, byteLength: b.length, ...(target ? { target } : {}) }); parts.push(b); if (padN) parts.push(new Uint8Array(padN)); off += b.length + padN; return views.length - 1; };
@@ -101,6 +102,20 @@ function glb(mesh, image, name) {
   const json = { asset: { version: "2.0", generator: "Pixel Scape Terrain Lab" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name: name || "Terrain" }],
     meshes: [{ name: name || "Terrain", primitives: [{ attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 }, indices: 3, material: 0 }] }],
     materials: [{ name: "Satellite photo", pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0, roughnessFactor: 1 } }], accessors: acc, bufferViews: views };
+  const bl = extra && extra.buildings;
+  if (bl && bl.idx.length) {
+    const n2 = bl.pos.length / 3, a = [Infinity, Infinity, Infinity], z = [-Infinity, -Infinity, -Infinity], lin = new Float32Array(n2 * 3);
+    for (let i = 0; i < bl.pos.length; i += 3) for (let k = 0; k < 3; k++) { a[k] = Math.min(a[k], bl.pos[i + k]); z[k] = Math.max(z[k], bl.pos[i + k]); }
+    for (let i = 0; i < lin.length; i++) { const c = bl.col[i] / 255; lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }   // glTF vertex colours are linear
+    const b0 = acc.length;
+    acc.push({ bufferView: add(bl.pos, 34962), componentType: 5126, count: n2, type: "VEC3", min: a, max: z });
+    acc.push({ bufferView: add(bl.nrm, 34962), componentType: 5126, count: n2, type: "VEC3" });
+    acc.push({ bufferView: add(lin, 34962), componentType: 5126, count: n2, type: "VEC3" });
+    acc.push({ bufferView: add(bl.idx, 34963), componentType: 5125, count: bl.idx.length, type: "SCALAR" });
+    json.scenes[0].nodes.push(1); json.nodes.push({ mesh: 1, name: (name || "Terrain") + " buildings" });
+    json.meshes.push({ name: (name || "Terrain") + " buildings", primitives: [{ attributes: { POSITION: b0, NORMAL: b0 + 1, COLOR_0: b0 + 2 }, indices: b0 + 3, material: 1 }] });
+    json.materials.push({ name: "Buildings", pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0, roughnessFactor: 0.9 } });
+  }
   if (image) {
     const iv = add(image.bytes); json.images = [{ bufferView: iv, mimeType: image.mime || "image/jpeg" }];
     json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 33071, wrapT: 33071 }]; json.textures = [{ source: 0, sampler: 0 }];

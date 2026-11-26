@@ -71,7 +71,7 @@ ipcMain.on("app:close-ok", () => { if (win) { win.__closeOk = true; win.close();
 ipcMain.on("app:title", (e, t) => { if (win) win.setTitle(t); });
 
 // ---- Terrain Lab (0.11): real elevation + Sentinel-2 photos, downloaded here (no browser security limits, one cache)
-const GEO = { P: require("./geo/proj.js"), NET: require("./geo/net.js"), DEM: require("./geo/dem.js"), S2: require("./geo/sentinel.js") };
+const GEO = { P: require("./geo/proj.js"), NET: require("./geo/net.js"), DEM: require("./geo/dem.js"), S2: require("./geo/sentinel.js"), BL: require("./geo/buildings.js") };
 const geoCache = () => GEO.NET.setCache(process.env.PX_GEO_CACHE || path.join(app.getPath("userData"), "terrain-cache"));
 if (process.env.PX_GEO_OFFLINE) GEO.NET.setOffline(true);
 let geoJob = 0;
@@ -84,8 +84,11 @@ ipcMain.handle("geo:fetch", async (e, o) => {
     picks = await GEO.S2.findScenes(box, { months: o.months || 12, season: o.season || "Any", date: o.date || null, progress: (f, m) => send(0.3 + f * 0.4, m) });
     if (picks.length) photo = await GEO.S2.photo(box, picks.slice(0, 3), o.photoPx, { progress: (f, m) => send(0.3 + f * 0.65, m) });
   }
+  // buildings (Overture Maps): a failure here never stops the terrain
+  let buildings = null, bErr = null;
+  if (o.buildings) { try { buildings = await GEO.BL.fetch(box, { progress: (f, m) => send(0.95 + f * 0.05, m) }); } catch (err) { bErr = String(err.message || err); } }
   send(1, "Done");
-  return { dem, photo, picks: picks.map((p) => ({ date: p.scene.date, name: p.scene.name, tile: p.tile.id, cloud: p.cloud, gap: p.gap, sun: p.sun })) };
+  return { dem, photo, buildings, buildingsError: bErr, picks: picks.map((p) => ({ date: p.scene.date, name: p.scene.name, tile: p.tile.id, cloud: p.cloud, gap: p.gap, sun: p.sun })) };
 });
 ipcMain.handle("geo:tile", async (e, z, x, y) => { geoCache(); return GEO.NET.get(GEO.DEM.TERRARIUM(z, x, y)); });
 // place names: OpenStreetMap Nominatim (free, light use: one search per press, with the app named)

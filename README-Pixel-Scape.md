@@ -13,6 +13,19 @@ Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.
 
 ## Update notes
 
+**0.12.0 (2026-11-26): real buildings in Terrain Lab**
+
+- **Buildings card** in Terrain Lab (on by default):
+  - Buildings come from **Overture Maps** (OpenStreetMap, Microsoft and Google open buildings merged). They are read straight from Overture's planet-wide tile archive with byte-range requests, so there is no key and no big download (a 2 x 2 km city box is about 4 tiles).
+  - **Height:** the mapped height where there is one, else floors x 3.2 m, else an estimate from the building type and size. The status line says how many have a real height.
+  - Each building sits on the terrain at the lowest ground under its outline, so none float on slopes. Towers with mapped parts (podium + tower) are built from their parts.
+  - **Colours:** mapped roof / facade colours where known; otherwise the roof is taken from the satellite photo and walls get a light stone palette.
+  - **Building height** 0.5 to 3x (on top of the terrain height scale) and **Smallest** (everything / no sheds / houses up / big buildings only).
+- **Files:** `terrain.glb` gets the buildings as a second node (`<name> buildings`, vertex colours), so Blender, C4D and Unity see them as their own object. Library terrains also save `buildings.json`, and the buildings credit goes into `terrain.json`.
+- **Scene:** Add to scene (and dropping a library terrain) adds the buildings as their own object, lined up with the terrain. It is a separate object, so move or scale it along with the terrain.
+- **Quick picks:** Downtown Phoenix, Midtown Manhattan, San Francisco, Chicago Loop.
+- **Fix:** the Terrain Lab map was blank after the 0.11 sea fix (the map tiles were drawn transparent).
+
 **0.11.0 (2026-11-26): renamed to Pixel Scape; Terrain Lab (real places to 3D terrain); three .glb fixes**
 
 - **Rename:** Worlds Lab is now **Pixel Scape** (app code PX-10; Bridge panel 1.1.0). `Documents/Worlds Lab` moves to `Documents/Pixel Scape` on first start; the Bridge panel still finds the old folder. Internal IDs are unchanged.

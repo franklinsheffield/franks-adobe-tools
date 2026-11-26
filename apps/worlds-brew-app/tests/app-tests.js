@@ -93,6 +93,41 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
       const hp = require("../engine/pngdec.js").decodePNG(PNGX.encodeGray16(dem.n, dem.n, B.heightValues(dem))); assert.ok(hp.gray16 && hp.gray16[dem.n - 1] === 65535 && hp.gray16[0] === 0, "16-bit heightmap, white = highest");
     } finally { NET.get = get0; }
   });
+  await t("Terrain Lab buildings: a PMTiles archive + vector tile decode to outlines with heights, meshes sit on the ground, roofs face up, the .glb carries them", async () => {
+    const NET = require("../geo/net.js"), PM = require("../geo/pmtiles.js"), BL = require("../geo/buildings.js"), P = require("../geo/proj.js"), B = require("../geo/build.js"), M = require("../engine/models.js");
+    // a tiny vector tile: layer "building" with one 40 x 40 unit square (height 30 m) and one 20 x 20 square with 5 floors
+    const vi = (n) => { const o = []; do { let b = n & 0x7f; n = Math.floor(n / 128); if (n) b |= 0x80; o.push(b); } while (n); return o; };
+    const fld = (f, bytes) => [...vi((f << 3) | 2), ...vi(bytes.length), ...bytes], str = (f, s) => fld(f, [...Buffer.from(s)]), zz = (n) => (n << 1) ^ (n >> 31);
+    const box = { lat: 33.4484, lon: -112.074, w: 400, d: 400, turn: 0 }, z = 14, c = P.tileXY(box.lon, box.lat, z), tx = Math.floor(c.x), ty = Math.floor(c.y);
+    const cx = Math.round((c.x - tx) * 4096), cy = Math.round((c.y - ty) * 4096);
+    const square = (x0, y0, s) => { const pts = [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s]]; let px = 0, py = 0; const g = [1 | (1 << 3)];   // plain command / parameter integers (feat() writes them as varints)
+      pts.forEach((p, i) => { if (i === 1) g.push(2 | (3 << 3)); g.push(zz(p[0] - px), zz(p[1] - py)); px = p[0]; py = p[1]; }); g.push(7 | (1 << 3)); return g; };
+    const feat = (tags, geom) => fld(2, [...fld(2, tags.flatMap(vi)), 3 << 3, 3, ...fld(4, geom.flatMap(vi))]);
+    const layer = [15 << 3 | 0, 2, ...str(1, "building"), ...feat([0, 0, 1, 1], square(cx - 20, cy - 20, 40)), ...feat([2, 2], square(cx + 60, cy, 20)),
+      ...str(3, "height"), ...str(3, "roof_color"), ...str(3, "num_floors"), ...fld(4, [3 << 3 | 1, ...new Uint8Array(new Float64Array([30]).buffer)]), ...fld(4, str(1, "#ff0000")), ...fld(4, [4 << 3, 5]), 5 << 3, ...vi(4096)];
+    const tile = Buffer.from(fld(3, layer));
+    // the archive: header, root directory (one entry), the tile; no compression
+    const id = PM.zxyToId(z, tx, ty), dir = Buffer.from([...vi(1), ...vi(id), ...vi(1), ...vi(tile.length), ...vi(1)]), hdr = Buffer.alloc(127);
+    hdr.write("PMTiles", 0, "latin1"); hdr[7] = 3; const w64 = (o, v) => hdr.writeBigUInt64LE(BigInt(v), o);
+    w64(8, 127); w64(16, dir.length); w64(24, 127 + dir.length); w64(32, 0); w64(40, 127 + dir.length); w64(48, 0); w64(56, 127 + dir.length); w64(64, tile.length); hdr[97] = 1; hdr[98] = 1; hdr[99] = 1; hdr[100] = 0; hdr[101] = 14;
+    const arc = Buffer.concat([hdr, dir, tile]), get0 = NET.get; NET.get = async (url, r) => arc.subarray(r[0], Math.min(arc.length, r[1] + 1));
+    try {
+      const L = PM.decodeMVT(tile); assert.strictEqual(L.building.length, 2); assert.deepStrictEqual(L.building[0].props, { height: 30, roof_color: "#ff0000" }); assert.strictEqual(L.building[0].rings[0].length, 5, "closed ring");
+      const r = await BL.fetch(box, { url: "test://b.pmtiles" });
+      assert.strictEqual(r.list.length, 2, "both buildings inside the box"); const [a, b] = r.list;
+      assert.ok(a.foot > 300 && a.foot < 600, "about 20 x 20 m: " + a.foot); assert.deepStrictEqual([a.height, a.known, a.roof], [30, "height", [255, 0, 0]]); assert.deepStrictEqual([b.height, b.known], [5 * 3.2 + 1, "floors"]);
+      assert.strictEqual(BL.heightOf({ class: "garage" }, 20).known, "guess"); assert.deepStrictEqual(BL.colour("#abc"), [170, 187, 204]);
+      // on a slope: 100 m at the west edge up to 140 m at the east
+      const n = 9, h = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 100 + 40 * i / (n - 1);
+      const dem = { n, h, min: 100, max: 140, z, pixelM: 50 }, m = BL.mesh(r.list, dem, box, { lo: 100, exag: 1 }, {});
+      assert.strictEqual(m.count, 2); assert.ok(m.idx.every((i) => i < m.pos.length / 3));
+      let top = -1e9, up = 0, down = 0; for (let i = 1; i < m.pos.length; i += 3) top = Math.max(top, m.pos[i]);
+      for (let k = 0; k < m.idx.length; k += 3) { const ny = m.nrm[m.idx[k] * 3 + 1]; if (ny > 0.99) up++; if (ny < -0.99) down++; }
+      assert.ok(up > 0 && down === 0, "roofs face up, nothing faces down: " + up + "/" + down); assert.ok(top > 30 && top < 30 + 40, "the 30 m tower sits on the slope: " + top);
+      const g = B.glb(B.grid(dem, box, { n, base: "none" }), null, "T", { buildings: m }), back = M.parseGLB(g.buffer.slice(g.byteOffset, g.byteOffset + g.byteLength), "T.glb");
+      assert.strictEqual(back.tris, (n - 1) * (n - 1) * 2 + m.tris, "terrain + buildings in the .glb");
+    } finally { NET.get = get0; }
+  });
   await t(".glb with a JPEG texture: decoded pictures are used, and one texture over the model is handed back", () => {
     const B = require("../geo/build.js"), M = require("../engine/models.js");
     const dem = { n: 3, h: new Float32Array(9), min: 0, max: 0, z: 1, pixelM: 1 }, m = B.grid(dem, { w: 10, d: 10 }, { n: 3, base: "none" });
@@ -396,17 +431,25 @@ async function uiTests() {
     const r = await W(async () => {
       const T = window.__wb.TL(), n = 65, h = new Float32Array(n * n);
       for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const x = i / (n - 1) - 0.5, y = j / (n - 1) - 0.5; h[j * n + i] = 200 + 700 * Math.max(0, 1 - 3 * (x * x + y * y)); }
-      T.tl.name = "Test Dome"; T.tl.base = "skirt";
-      T.st.data = { dem: { n, h, min: 200, max: 900, z: 12, pixelM: 30, source: "test", credit: "test" }, photo: null, picks: [], box: { lat: 36, lon: -112, w: 4000, d: 3000, turn: 0 }, full: true, key: "test" };
-      T.remesh(); const folder = await T.saveToLibrary(); T.st.folder = folder; T.addToScene(); T.close();
-      const o = window.__wb.st.sel; return { folder, tris: T.st.mesh.tris, type: o && o.type, layer: o && o.layers && o.layers[0] && o.layers[0].name, layerH: o && o.layers[0].img.h, s: o && o.s };
+      T.tl.name = "Test Dome"; T.tl.base = "skirt"; T.tl.bld = "on"; T.tl.bMin = 8;
+      // two made-up buildings near the top of the dome: a 60 m tower and a shed (left out by "Smallest")
+      const sq = (x, z, s) => [[[x - s, z - s], [x + s, z - s], [x + s, z + s], [x - s, z + s]]];
+      const buildings = { release: "test", credit: "Buildings: test", list: [{ id: "a", rings: sq(0, 0, 50), seams: null, foot: 10000, height: 60, base: 0, known: "height", roof: null, wall: null, part: false },
+        { id: "b", rings: sq(300, 0, 1), seams: null, foot: 4, height: 3, base: 0, known: "guess", roof: null, wall: null, part: false }] };
+      T.st.data = { dem: { n, h, min: 200, max: 900, z: 12, pixelM: 30, source: "test", credit: "test" }, photo: null, picks: [], box: { lat: 36, lon: -112, w: 4000, d: 3000, turn: 0 }, full: true, key: "test", buildings };
+      T.remesh(); const folder = await T.saveToLibrary(); T.st.folder = folder; const n0 = window.__wb.st.scene.objs.length; T.addToScene(); T.close();
+      const o = window.__wb.st.sel, bo = window.__wb.st.scene.objs[window.__wb.st.scene.objs.length - 1];
+      return { added: window.__wb.st.scene.objs.length - n0, bname: bo.mesh && bo.mesh.name, bcount: T.st.bmesh && T.st.bmesh.count, folder, tris: T.st.mesh.tris, type: o && o.type, layer: o && o.layers && o.layers[0] && o.layers[0].name, layerH: o && o.layers[0].img.h, s: o && o.s };
     });
-    for (const f of ["terrain.glb", "height16.png", "photo.jpg", "thumb.jpg", "terrain.json"]) assert.ok(fs.existsSync(path.join(r.folder, f)), f + " saved");
+    assert.deepStrictEqual([r.added, r.bname, r.bcount], [2, "Test Dome buildings", 1], "terrain + its buildings (the shed is below Smallest)");
+    for (const f of ["terrain.glb", "height16.png", "photo.jpg", "thumb.jpg", "terrain.json", "buildings.json"]) assert.ok(fs.existsSync(path.join(r.folder, f)), f + " saved");
     const j = JSON.parse(fs.readFileSync(path.join(r.folder, "terrain.json"), "utf8")); assert.deepStrictEqual([j.sizeM, j.heightM, j.mesh.base], [{ w: 4000, d: 3000 }, { min: 200, max: 900 }, "skirt"]);
+    assert.strictEqual(j.buildings.count, 1); assert.ok(j.credits.includes("Buildings: test"), "buildings credited");
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(r.folder, "buildings.json"), "utf8")).list.length, 1, "buildings.json keeps what is shown");
     assert.strictEqual(r.type, "mesh"); assert.strictEqual(r.layer, "Satellite photo"); assert.strictEqual(r.s, 20, "shown 40 m wide"); assert.ok(r.tris > 64 * 64 * 2);
     const item = await W(() => window.__wb.LIB.list("Terrains").find((x) => x.type === "geo" && x.name === "Test Dome")); assert.ok(item, "listed in My library / Terrains");
     const n0 = await W(() => window.__wb.st.scene.objs.length); await W(async (x) => { await window.__wb.applyLibItem(x, null, { x: 5, y: 0, z: 5 }); }, item);
-    assert.deepStrictEqual(await W(() => { const w = window.__wb, o = w.st.sel; return [w.st.scene.objs.length, o.type, o.layers[0].name, o.layers[0].img.h > o.layers[0].img.w * 3 / 4]; }), [n0 + 1, "mesh", "Satellite photo", true], "rebuilt from the library with the earth band under the photo");
+    assert.deepStrictEqual(await W(() => { const w = window.__wb, o = w.st.sel; return [w.st.scene.objs.length, o.type, o.layers[0].name, o.layers[0].img.h > o.layers[0].img.w * 3 / 4]; }), [n0 + 2, "mesh", "Satellite photo", true], "rebuilt from the library with the earth band under the photo, and its buildings");
     await win.waitForTimeout(400); await win.screenshot({ path: path.join(OUT, "app-terrain-lab.png") });
   });
   await t("app: the centre (XYZ) scale handle sizes smoothly from the pointer (it used to blow models up)", async () => {

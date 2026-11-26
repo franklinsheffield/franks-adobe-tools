@@ -22,9 +22,9 @@ const HELP = req("./help-app.js");   // hover help text for the app's own contro
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 const MODELS = req("../engine/models.js");
-const GB = req("../geo/build.js");
+const GB = req("../geo/build.js"), GB2 = req("../geo/buildings.js");
 
-const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.11.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.12.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -843,8 +843,21 @@ function addTerrain(t, at) {
   const o = ED.addMesh(st.scene, mesh, "Matte", { smooth: true, geo: t.info || null });
   o.s = 20; if (at) { o.x = +at.x.toFixed(2); o.z = +at.z.toFixed(2); } CT.rest(st.scene, o);
   o.layers = [SF.layer({ name: "Satellite photo", img: { w: t.pic.w, h: t.pic.h, d: t.pic.d, name: t.name }, wrap: "UV" })];
+  if (t.buildings && t.buildings.idx.length) addBuildingsFor(o, m.pos, t.buildings, t.name);
   select(o); CT.frame(st.scene, o); commit(); changed("val");
   setStatus("Terrain " + t.name + ": " + (t.info ? (t.info.w / 1000).toFixed(1) + " x " + (t.info.d / 1000).toFixed(1) + " km of real ground, shown 40 m wide" : "added"));
+  return o;
+}
+// the buildings as their own object, lined up with their terrain (both meshes are in the same metres; each object
+// stores its mesh normalised around its own middle, so the scale and position follow from the two middles)
+function frameOf(P) { const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9]; for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], P[i + k]); mx[k] = Math.max(mx[k], P[i + k]); }
+  return { c: [0, 1, 2].map((k) => (mn[k] + mx[k]) / 2), half: Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) / 2 || 1 }; }
+function addBuildingsFor(ter, terP, bm, name) {
+  const I = bm.idx, tc = new Uint8Array(I.length);   // one colour per triangle (its first corner's)
+  for (let k = 0; k < I.length; k += 3) { const q = I[k] * 3; tc[k] = bm.col[q]; tc[k + 1] = bm.col[q + 1]; tc[k + 2] = bm.col[q + 2]; }
+  const mesh = MODELS.finishMesh(name + " buildings", bm.pos, I, tc), ft = frameOf(terP), fb = frameOf(bm.pos), k = ter.s / ft.half;
+  const o = ED.addMesh(st.scene, mesh, "Matte", { smooth: false });
+  o.s = +(fb.half * k).toFixed(4); o.x = +(ter.x + (fb.c[0] - ft.c[0]) * k).toFixed(4); o.y = +(ter.y + (fb.c[1] - ft.c[1]) * k).toFixed(4); o.z = +(ter.z + (fb.c[2] - ft.c[2]) * k).toFixed(4); o.ry = ter.ry || 0;
   return o;
 }
 // a Terrain Lab folder from My library / Terrains -> the scene (rebuilt from its 16-bit heightmap + photo)
@@ -854,7 +867,10 @@ async function addGeoFromFolder(dir, at) {
   for (let i = 0; i < n * n; i++) h[i] = j.heightM.min + (hp.gray16 ? hp.gray16[i] / 65535 : hp.rgba[i * 4] / 255) * (j.heightM.max - j.heightM.min);
   const mo = j.mesh || {}, mesh = GB.grid({ n, h, min: j.heightM.min, max: j.heightM.max }, { w: j.sizeM.w, d: j.sizeM.d }, { n: Math.min(384, n), exag: j.heightScale || 1, smooth: mo.smooth || 0, water: mo.water == null ? null : mo.water, base: mo.base || "skirt" });
   const b = await fsp.readFile(p.join(dir, "photo.jpg")), pic0 = await decodeImage("photo.jpg", b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), 2048), pic = (mo.base || "skirt") === "skirt" ? GB.addBand(pic0) : pic0;
-  return addTerrain({ name: j.name || p.basename(dir), mesh, pic, info: { lat: j.centre.lat, lon: j.centre.lon, w: j.sizeM.w, d: j.sizeM.d, min: j.heightM.min, max: j.heightM.max, exag: j.heightScale || 1, folder: dir } }, at);
+  // buildings.json (outlines + heights) -> the buildings, seated on this terrain, roofs coloured from the photo
+  let buildings = null, bj = null; try { bj = JSON.parse(await fsp.readFile(p.join(dir, "buildings.json"), "utf8")); } catch (e) { /* none saved */ }
+  if (bj && bj.list && bj.list.length) buildings = GB2.mesh(bj.list, { n, h }, { w: j.sizeM.w, d: j.sizeM.d }, { lo: mesh.minH, exag: j.heightScale || 1, water: mo.water == null ? null : mo.water }, { scale: (j.buildings && j.buildings.heightScale) || 1, photo: pic0 });
+  return addTerrain({ name: j.name || p.basename(dir), mesh, pic, buildings, info: { lat: j.centre.lat, lon: j.centre.lon, w: j.sizeM.w, d: j.sizeM.d, min: j.heightM.min, max: j.heightM.max, exag: j.heightScale || 1, folder: dir } }, at);
 }
 
 // ---- start-up
