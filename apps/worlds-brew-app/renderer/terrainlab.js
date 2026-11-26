@@ -227,7 +227,7 @@ export function createTerrainLab(ctx) {
     for (let j = 0; j < 256; j++) for (let i = 0; i < 256; i++) {
       const p = j * 256 + i, hx = hgt[p + (i < 255 ? 1 : 0)] - hgt[p - (i > 0 ? 1 : 0)], hy = hgt[p + (j < 255 ? 256 : 0)] - hgt[p - (j > 0 ? 256 : 0)];
       const nx = -hx / (2 * px), ny = -hy / (2 * px), l = (nx * -0.6 + ny * -0.6 + 1) / Math.sqrt(nx * nx + ny * ny + 1) / 1.25, sh = Math.max(0.25, Math.min(1.3, 0.35 + l * 0.85));
-      const c4 = mapShade(hgt[p]), q = p * 4; out.data[q] = c4[0] * sh; out.data[q + 1] = c4[1] * sh; out.data[q + 2] = c4[2] * sh; out.data[q + 3] = 255;
+      const c4 = mapShade(hgt[p] < 2 && Math.abs(hx) + Math.abs(hy) < 0.05 ? 0 : hgt[p]), q = p * 4;   // dead-flat ground just above 0 is sea (US data puts the sea at ~1.2 m) out.data[q] = c4[0] * sh; out.data[q + 1] = c4[1] * sh; out.data[q + 2] = c4[2] * sh; out.data[q + 3] = 255;
     }
     g.putImageData(out, 0, 0); return { c, hgt };
   }
