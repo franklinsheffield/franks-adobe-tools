@@ -25,6 +25,7 @@ Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.
 - **Scene:** Add to scene (and dropping a library terrain) adds the buildings as their own object, lined up with the terrain. It is a separate object, so move or scale it along with the terrain.
 - **Quick picks:** Downtown Phoenix, Midtown Manhattan, San Francisco, Chicago Loop.
 - **Fix:** the Terrain Lab map was blank after the 0.11 sea fix (the map tiles were drawn transparent).
+- **Fix:** bad pixels in the elevation source (single spikes and whole garbage patches thousands of metres deep, e.g. the East River at full detail) are now repaired from the ground around them. Real cliffs and sea floor are left alone.
 
 **0.11.0 (2026-11-26): renamed to Pixel Scape; Terrain Lab (real places to 3D terrain); three .glb fixes**
 

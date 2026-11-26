@@ -93,6 +93,18 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
       const hp = require("../engine/pngdec.js").decodePNG(PNGX.encodeGray16(dem.n, dem.n, B.heightValues(dem))); assert.ok(hp.gray16 && hp.gray16[dem.n - 1] === 65535 && hp.gray16[0] === 0, "16-bit heightmap, white = highest");
     } finally { NET.get = get0; }
   });
+  await t("Terrain Lab heights: bad source pixels (spikes and garbage patches) are repaired, real slopes are left alone", () => {
+    const DEM = require("../geo/dem.js"), n = 64, h = new Float32Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) h[j * n + i] = 10 + i * 0.5;   // a gentle slope
+    const ok = Float32Array.from(h);
+    h[10 * n + 10] = -9000; h[20 * n + 30] = 4000; h[21 * n + 31] = -700;   // spikes
+    for (let j = 50; j < n; j++) for (let i = 40; i < n; i++) h[j * n + i] = -13000 + i;   // a garbage corner
+    const fixed = DEM.fillHoles(h, n, 50) + DEM.despike(h, n, 50);
+    let worst = 0; for (let i = 0; i < h.length; i++) worst = Math.max(worst, Math.abs(h[i] - ok[i]));
+    assert.ok(fixed > 300 && worst < 15, "repaired: " + fixed + " samples, worst error " + worst.toFixed(1) + " m");
+    const cliff = new Float32Array(n * n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) cliff[j * n + i] = i < 32 ? 0 : 30;
+    const c2 = Float32Array.from(cliff); assert.strictEqual(DEM.fillHoles(c2, n, 50) + DEM.despike(c2, n, 50), 0, "a real 30 m step is kept");
+  });
   await t("Terrain Lab buildings: a PMTiles archive + vector tile decode to outlines with heights, meshes sit on the ground, roofs face up, the .glb carries them", async () => {
     const NET = require("../geo/net.js"), PM = require("../geo/pmtiles.js"), BL = require("../geo/buildings.js"), P = require("../geo/proj.js"), B = require("../geo/build.js"), M = require("../engine/models.js");
     // a tiny vector tile: layer "building" with one 40 x 40 unit square (height 30 m) and one 20 x 20 square with 5 floors
