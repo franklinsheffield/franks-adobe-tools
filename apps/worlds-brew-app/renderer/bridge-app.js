@@ -1,6 +1,6 @@
-// Worlds Lab app: the app's end of the Photoshop bridge (phase 3). The file formats live in engine/bridge.js,
+// Pixel Scape app: the app's end of the Photoshop bridge (phase 3). The file formats live in engine/bridge.js,
 // shared with the Photoshop panel. Here: Node file I/O, sending a render, and watching for Photoshop's
-// "Match document size" and "Send layer to Worlds Lab" files.
+// "Match document size" and "Send layer to Pixel Scape" files.
 const req = window.require;
 const fs = req("fs"), fsp = fs.promises, path = req("path");
 const B = req("../engine/bridge.js");

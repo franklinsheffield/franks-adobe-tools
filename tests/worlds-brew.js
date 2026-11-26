@@ -1,5 +1,5 @@
 "use strict";
-// Worlds Lab (phase 1) tests: model importers, scene save/load, determinism, render layers, wireframe and handles.
+// Pixel Scape (phase 1) tests: model importers, scene save/load, determinism, render layers, wireframe and handles.
 const path = require("path");
 const assert = require("assert");
 const ROOT = path.resolve(__dirname, "..");
@@ -9,7 +9,7 @@ module.exports = async function (t) {
   const M = require(J + "/models.js"), S = require(J + "/scene.js"), E = require(J + "/engine.js"), W = require(J + "/wire.js");
   const hash = (u8) => { let h = 2166136261; for (let i = 0; i < u8.length; i++) h = Math.imul(h ^ u8[i], 16777619); return (h >>> 0).toString(16); };
 
-  await t("Worlds Lab: .obj import (quads, negative indices, v/vt/vn faces) normalises to a -1..1 box", () => {
+  await t("Pixel Scape: .obj import (quads, negative indices, v/vt/vn faces) normalises to a -1..1 box", () => {
     const m = M.parseOBJ("v 0 0 0\nv 4 0 0\nv 4 2 0\nv 0 2 0\nvn 0 0 1\nf 1//1 2//1 3//1 4//1\nf -4 -2 -1\n", "quad.obj");
     assert.strictEqual(m.tris, 3); assert.strictEqual(Math.max(...m.v), 1); assert.strictEqual(Math.min(...m.v), -1);
     assert.ok(Math.abs(m.hy - 0.5) < 1e-6, "half-height in normalised units");
@@ -17,7 +17,7 @@ module.exports = async function (t) {
     assert.throws(() => M.parseOBJ("v 0 0 0\nf 1 2 3\n", "bad.obj"), /missing vertex/);
   });
 
-  await t("Worlds Lab: .stl import (binary and ASCII) turns Z-up into Y-up", () => {
+  await t("Pixel Scape: .stl import (binary and ASCII) turns Z-up into Y-up", () => {
     const tri = [[0, 0, 0], [1, 0, 0], [0, 0, 2]], buf = new ArrayBuffer(84 + 50), dv = new DataView(buf);
     dv.setUint32(80, 1, true); tri.forEach((v, k) => v.forEach((c, j) => dv.setFloat32(84 + 12 + k * 12 + j * 4, c, true)));
     const b = M.parseSTL(buf, "t.stl"); assert.strictEqual(b.tris, 1); assert.strictEqual(b.hy, 1, "STL z (height 2) becomes y");
@@ -25,7 +25,7 @@ module.exports = async function (t) {
     const a = M.parseSTL(new TextEncoder().encode(asc).buffer, "a.stl"); assert.deepStrictEqual(Array.from(a.v), Array.from(b.v));
   });
 
-  await t("Worlds Lab: .glb import applies node transforms and reads uint16 indices", () => {
+  await t("Pixel Scape: .glb import applies node transforms and reads uint16 indices", () => {
     const P = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), I = new Uint16Array([0, 1, 2, 0]);
     const bin = new Uint8Array(36 + 8); bin.set(new Uint8Array(P.buffer), 0); bin.set(new Uint8Array(I.buffer), 36);
     const json = { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ children: [1], scale: [4, 1, 1] }, { mesh: 0, translation: [0, 5, 0] }],
@@ -42,7 +42,7 @@ module.exports = async function (t) {
     assert.throws(() => M.parseGLB(new ArrayBuffer(24), "x.glb"), /binary glTF/);
   });
 
-  await t("Worlds Lab: 12 built-in scenes, all render, deterministically", async () => {
+  await t("Pixel Scape: 12 built-in scenes, all render, deterministically", async () => {
     const names = Object.keys(S.PRESETS); assert.strictEqual(names.length, 12);
     for (const n of names) {
       const s = S.loadPreset(n), r1 = await E.render(s, s.cam, 48, 27), r2 = await E.render(S.loadPreset(n), s.cam, 48, 27);
@@ -52,7 +52,7 @@ module.exports = async function (t) {
     }
   });
 
-  await t("Worlds Lab: render layers (Render + Depth, Object mask, Sky mask) and draft/cancel", async () => {
+  await t("Pixel Scape: render layers (Render + Depth, Object mask, Sky mask) and draft/cancel", async () => {
     const s = S.loadPreset("Chrome Garden"), r = await E.render(s, s.cam, 64, 36, { passes: true });
     const L = E.layers(r, { depth: true, mask: true, sky: true });
     assert.deepStrictEqual(L.map((l) => l.name), ["Render", "Depth", "Object mask", "Sky mask"]);
@@ -63,7 +63,7 @@ module.exports = async function (t) {
     assert.ok(c === null || calls >= 1, "cancel stops the render");
   });
 
-  await t("Worlds Lab: scene save/load keeps models and renders identically", async () => {
+  await t("Pixel Scape: scene save/load keeps models and renders identically", async () => {
     const s = S.loadPreset("Model Showcase"), back = S.fromJSON(S.toJSON(s));
     assert.strictEqual(back.objs.filter((o) => o.type === "mesh").length, 4);
     const a = await E.render(s, s.cam, 40, 24), b = await E.render(back, back.cam, 40, 24);
@@ -71,7 +71,7 @@ module.exports = async function (t) {
     const obj = M.exportOBJ(s.objs[0]); assert.ok(/^v /m.test(obj) && /^f /m.test(obj));
   });
 
-  await t("Worlds Lab: wireframe, picking and move / scale / rotate handles", () => {
+  await t("Pixel Scape: wireframe, picking and move / scale / rotate handles", () => {
     const s = S.loadPreset("Chrome Garden"), pawn = s.objs[1], w = W.wireframe(s, s.cam, 320, 180, { sel: pawn, gizmo: "move" });
     assert.strictEqual(w.rgba.length, 320 * 180 * 4); assert.ok(w.gizmo && w.gizmo.axes.length === 3);
     const x = w.gizmo.axes.find((a) => a.ax === "x"), h = W.pickHandle(w.gizmo, (w.gizmo.s0[0] + x.s1[0]) / 2, (w.gizmo.s0[1] + x.s1[1]) / 2);
@@ -85,7 +85,7 @@ module.exports = async function (t) {
     assert.ok(B.tan > 0);
   });
 
-  await t("Worlds Lab: PNG reader (zlib inflate) and model colours from glTF materials", () => {
+  await t("Pixel Scape: PNG reader (zlib inflate) and model colours from glTF materials", () => {
     const zlib = require("zlib"), D = require(J + "/pngdec.js");
     const raw = Buffer.alloc(50000); for (let i = 0; i < raw.length; i++) raw[i] = (i * 7 + (i >> 8)) & 255;
     for (const level of [0, 1, 9]) assert.strictEqual(Buffer.compare(Buffer.from(D.inflate(zlib.deflateSync(raw, { level }).subarray(2))), raw), 0, "inflate level " + level);
@@ -98,7 +98,7 @@ module.exports = async function (t) {
     const j = M.meshFromJSON(M.meshToJSON(m)); assert.deepStrictEqual(Array.from(j.tc), [255, 0, 0], "colours survive save / load");
   });
 
-  await t("Worlds Lab: Fantasy (Kenney CC0) and Alien packs: 52 coloured assets and 10 maps that render", async () => {
+  await t("Pixel Scape: Fantasy (Kenney CC0) and Alien packs: 52 coloured assets and 10 maps that render", async () => {
     const PK = require(J + "/packs.js");
     assert.deepStrictEqual(PK.PACKS, ["Fantasy", "Alien"]);
     assert.ok(PK.assets("Fantasy").length === 36 && PK.assets("Alien").length === 16, "52 starter models (doubled in 0.6)");
@@ -115,7 +115,7 @@ module.exports = async function (t) {
     assert.notStrictEqual(hash(on.rgba), hash((await E.render(red, red.cam, 40, 24)).rgba), "Model colours switch changes the render");
   });
 
-  await t("Worlds Lab 0.4: sun colour / brightness, point lights, water waves / clarity / foam all change the render", async () => {
+  await t("Pixel Scape 0.4: sun colour / brightness, point lights, water waves / clarity / foam all change the render", async () => {
     const r = async (s) => hash((await E.render(s, s.cam, 40, 24)).rgba);
     const base = S.loadPreset("Ocean Rock"), h0 = await r(base);
     assert.strictEqual(await r(Object.assign(S.loadPreset("Ocean Rock"), S.DEFAULTS)), h0, "defaults reproduce the 0.3 look");
@@ -132,7 +132,7 @@ module.exports = async function (t) {
     const back = S.fromJSON(S.toJSON(n)); assert.strictEqual(hash((await E.render(back, back.cam, 40, 24)).rgba), hash(lit.rgba), "lights save and load");
   });
 
-  await t("Worlds Lab 0.4: surface shaping dials and sculpt brushes (raise, lower, smooth, flatten, roughen, restore), saved with the scene", async () => {
+  await t("Pixel Scape 0.4: surface shaping dials and sculpt brushes (raise, lower, smooth, flatten, roughen, restore), saved with the scene", async () => {
     const ED = require(J + "/editor.js");
     const s = S.loadPreset("Snow Peaks"), o = s.objs[0], h0 = hash((await E.render(s, s.cam, 40, 24)).rgba);
     for (const [k, v] of [["plateau", 0.4], ["sharp", 2], ["crater", true], ["terrace", 5], ["rough", 0.7], ["erosion", 4]]) {
@@ -154,7 +154,7 @@ module.exports = async function (t) {
     assert.strictEqual(ED.terrainHit(o, ED.screenRay(s.cam, 320, 180, 160, 2)), null, "sky misses");
   });
 
-  await t("Worlds Lab Bridge: shared folder format (render + passes + info, latest written last, document size, pictures, cover resize)", async () => {
+  await t("Pixel Scape Bridge: shared folder format (render + passes + info, latest written last, document size, pictures, cover resize)", async () => {
     const B = require(J + "/bridge.js"), os = require("os"), fs = require("fs");
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "wbb-")), fsp = fs.promises;
     const io = { read: async (p) => new Uint8Array(await fsp.readFile(p)), readText: (p) => fsp.readFile(p, "utf8"), write: (p, d) => fsp.writeFile(p, typeof d === "string" ? d : Buffer.from(d)), mkdir: (p) => fsp.mkdir(p, { recursive: true }), list: (p) => fsp.readdir(p), stat: async () => null };
@@ -163,7 +163,7 @@ module.exports = async function (t) {
     assert.strictEqual(r.folder, "20261124-090507-Snow Peaks test");
     assert.ok(fs.existsSync(path.join(r.dir, "render.png")) && fs.existsSync(path.join(r.dir, "depth.png")) && !fs.existsSync(path.join(r.dir, "sky.png")));
     const L = await B.readLatest(io, root); assert.deepStrictEqual(L.info.passes, ["render", "depth"]); assert.strictEqual(L.info.w, 4);
-    assert.strictEqual(B.groupName("Snow Peaks"), "Worlds Lab - Snow Peaks");
+    assert.strictEqual(B.groupName("Snow Peaks"), "Pixel Scape - Snow Peaks");
     await B.writeDocSize(io, root, { w: 3000, h: 2000, ppi: 300, doc: "poster.psd" }); assert.deepStrictEqual([(await B.readDocSize(io, root)).w, (await B.readDocSize(io, root)).doc], [3000, "poster.psd"]);
     const pic = await B.writePicture(io, root, { name: "Brick wall", w: 1, h: 1 }, new Uint8Array([9])); assert.ok(fs.existsSync((await B.readPicture(io, root)).path) && pic.name === "Brick wall");
     // cover resize: same size is untouched, a 2:1 picture into a square keeps the middle
@@ -174,7 +174,7 @@ module.exports = async function (t) {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  await t("Worlds Lab Bridge panel: sees a new render, Place as layer (group, hidden passes, document size, one undo), Match document size, Send layer", async () => {
+  await t("Pixel Scape Bridge panel: sees a new render, Place as layer (group, hidden passes, document size, one undo), Match document size, Send layer", async () => {
     const B = require(J + "/bridge.js"), PNG = require(path.join(ROOT, "shared/png.js")), os = require("os"), fs = require("fs");
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "wbb-")), fsp = fs.promises;
     const io = { read: async (p) => new Uint8Array(await fsp.readFile(p)), readText: (p) => fsp.readFile(p, "utf8"), write: (p, d) => fsp.writeFile(p, typeof d === "string" ? d : Buffer.from(d)), mkdir: (p) => fsp.mkdir(p, { recursive: true }) };
@@ -191,7 +191,7 @@ module.exports = async function (t) {
       const calls = P.host.calls; calls.length = 0;
       await T.place();
       assert.deepStrictEqual(calls.filter((c) => c[0] === "createPixelLayer").map((c) => c[1]), ["Render", "Depth", "Object mask", "Sky mask"]);
-      assert.deepStrictEqual(calls.find((c) => c[0] === "createLayerGroup"), ["createLayerGroup", "Worlds Lab - Chrome Garden", 4]);
+      assert.deepStrictEqual(calls.find((c) => c[0] === "createLayerGroup"), ["createLayerGroup", "Pixel Scape - Chrome Garden", 4]);
       assert.ok(calls.filter((c) => c[0] === "putPixels").every((c) => c[3] === 96 * 54 * 4), "scaled to the 96 x 54 document");
       assert.strictEqual(calls.filter((c) => c[0] === "suspendHistory").length, 1, "one undo step");
       assert.ok(/scaled from 48 x 27/.test(T.refs.status.textContent), T.refs.status.textContent);

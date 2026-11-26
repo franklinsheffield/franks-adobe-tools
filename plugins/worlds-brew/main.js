@@ -1,12 +1,12 @@
 "use strict";
 // ======================================================================
-// Worlds Lab Bridge (WB-10): the Photoshop end of the Worlds Lab desktop app.
+// Pixel Scape Bridge (PX-10): the Photoshop end of the Pixel Scape desktop app.
 // The app builds and renders scenes; this panel
 //   - shows the latest render the app sent, with Place as layer (one undo step, sized to the
 //     active document, the passes Depth / Object mask / Sky mask as hidden layers in the group)
 //   - Match document size: tells the app the active document's size so renders fit exactly
 //   - Send layer: sends the active layer to the app as a picture for surface layers
-// The two talk through files in Documents/Worlds Lab (formats in js/bridge.js).
+// The two talk through files in Documents/Pixel Scape (formats in js/bridge.js).
 // The scene-builder panels of 0.5 are retired (kept in legacy/, not packaged); the engine in js/ is
 // shared with the app.
 // ======================================================================
@@ -17,12 +17,12 @@ const PNG = require("./core/png.js");
 const { createUI, el, clear } = require("./core/ui.js");
 const { splitLayout, pressGlow } = require("./core/layout.js");
 
-const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "1.0.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "1.1.0";
 PS.configure({ appName: APP, presetFile: "bridge.json", exportName: "worlds-bridge.json" });
 let uxp = null; try { uxp = require("uxp"); } catch (e) { uxp = null; }
 const fsys = uxp && uxp.storage ? uxp.storage.localFileSystem : null;
 
-// ---- file I/O: UXP storage with full access (Documents/Worlds Lab); plain Node fs when tested in Node
+// ---- file I/O: UXP storage with full access (Documents/Pixel Scape); plain Node fs when tested in Node
 function uxpIO() {
   const formats = uxp.storage.formats, url = (p) => "file:" + p;
   const get = async (p) => fsys.getEntryWithUrl(url(p));
@@ -58,6 +58,8 @@ function documentsDir() {
   return null;
 }
 let ROOT = documentsDir() ? documentsDir() + "/" + B.ROOT_NAME : null;
+// 1.1 (Pixel Scape rename): an app that has not been updated yet still writes to Documents/Worlds Lab
+(async () => { try { if (ROOT && !(await io.stat(ROOT)) && (await io.stat(documentsDir() + "/" + B.LEGACY_ROOT))) ROOT = documentsDir() + "/" + B.LEGACY_ROOT; } catch (e) { /* keep ROOT */ } })();
 
 // ---- state
 const st = { place: { passes: true, fit: "cover" } };
@@ -79,13 +81,13 @@ async function poll() {
   } catch (e) { /* mid-write: next time */ }
   pollT = setTimeout(poll, 1000);
 }
-function showNone() { if (refs.info) refs.info.textContent = "No render yet. In the Worlds Lab app, press Send to Photoshop (or turn on Auto-send)."; if (refs.place) refs.place.setAttribute("disabled", "true"); }
+function showNone() { if (refs.info) refs.info.textContent = "No render yet. In the Pixel Scape app, press Send to Photoshop (or turn on Auto-send)."; if (refs.place) refs.place.setAttribute("disabled", "true"); }
 async function showLatest() {
   const j = latest.info;
   refs.info.textContent = j.scene + "  -  " + j.w + " x " + j.h + "  -  " + (j.engine === "ray" ? "ray traced" : "GPU") + " " + j.quality + "  -  " + when(j.time) + (j.passes.length > 1 ? "  -  + " + (j.passes.length - 1) + " passes" : "");
   refs.place.removeAttribute("disabled");
   try { const bytes = await io.read(B.join(latest.dir, "render.png")); refs.thumb.src = "data:image/png;base64," + PNG.toBase64(bytes); refs.thumb.style.display = ""; } catch (e) { refs.thumb.style.display = "none"; }
-  if (lastSeen && lastSeen !== latest.folder) setStatus("New render from Worlds Lab: " + j.scene + ". Press Place as layer.");
+  if (lastSeen && lastSeen !== latest.folder) setStatus("New render from Pixel Scape: " + j.scene + ". Press Place as layer.");
   lastSeen = latest.folder;
 }
 
@@ -112,8 +114,8 @@ async function matchSize() {
   const doc = PS.activeDoc(); if (!doc) { setStatus("Open a document first: its size goes to the app.", true); return; }
   if (!ROOT) { setStatus("Couldn't find your Documents folder.", true); return; }
   const info = PS.docInfo(doc);
-  try { await B.writeDocSize(io, ROOT, { w: info.w, h: info.h, ppi: info.ppi, doc: doc.name || "" }); setStatus("Sent " + info.w + " x " + info.h + " to Worlds Lab. Its next render will fit this document exactly."); }
-  catch (e) { setStatus("Couldn't reach the Worlds Lab folder: " + (e.message || e), true); }
+  try { await B.writeDocSize(io, ROOT, { w: info.w, h: info.h, ppi: info.ppi, doc: doc.name || "" }); setStatus("Sent " + info.w + " x " + info.h + " to Pixel Scape. Its next render will fit this document exactly."); }
+  catch (e) { setStatus("Couldn't reach the Pixel Scape folder: " + (e.message || e), true); }
 }
 async function sendLayer() {
   const doc = PS.activeDoc(); if (!doc) { setStatus("Open a document and select a layer first.", true); return; }
@@ -125,7 +127,7 @@ async function sendLayer() {
     if (src.c === 3) { rgba = new Uint8Array(n * 4); for (let i = 0; i < n; i++) { rgba[i * 4] = src.data[i * 3]; rgba[i * 4 + 1] = src.data[i * 3 + 1]; rgba[i * 4 + 2] = src.data[i * 3 + 2]; rgba[i * 4 + 3] = 255; } }
     const png = PNG.encodePNG(rgba, src.w, src.h, 4);
     const j = await B.writePicture(io, ROOT, { name: layer.name, w: src.w, h: src.h }, png);
-    setStatus("Sent " + j.name + " (" + src.w + " x " + src.h + ") to Worlds Lab: it's in the app's Surfaces tab.");
+    setStatus("Sent " + j.name + " (" + src.w + " x " + src.h + ") to Pixel Scape: it's in the app's Surfaces tab.");
   } catch (e) { setStatus("Couldn't send the layer: " + (e.message || e), true); }
   finally { busy = false; if (refs.led) refs.led.set("ready"); }
 }
@@ -135,7 +137,7 @@ function build(root) {
   clear(root); root.classList.add("brand-console");
   const lay = splitLayout(root, el);
   refs.led = ui.brand.header({ title: APP + " Bridge", code: CODE }); lay.pinned.appendChild(refs.led.node);
-  refs.status = el("div", { class: "status", text: "Looking for renders from the Worlds Lab app..." });
+  refs.status = el("div", { class: "status", text: "Looking for renders from the Pixel Scape app..." });
   refs.thumb = el("img", { class: "wbthumb" }); refs.thumb.style.display = "none";
   refs.info = el("div", { class: "info" });
   refs.place = btn("Place as layer", () => place(), "Adds the render as a layer group above the active layer, sized to this document. One undo step.", "apply");
@@ -145,12 +147,12 @@ function build(root) {
     checkRow("Add the passes (Depth, Object mask, Sky mask) as hidden layers", "place.passes"),
     el("div", { class: "hint", text: "A render with another shape fills the document and is cropped evenly. Match document size makes the app render this document's exact size." })
   ]));
-  s.appendChild(card("Document", [btn("Match document size", () => matchSize(), "Tells the Worlds Lab app this document's width and height"),
+  s.appendChild(card("Document", [btn("Match document size", () => matchSize(), "Tells the Pixel Scape app this document's width and height"),
     el("div", { class: "hint", text: "The app's output size follows straight away." })]));
-  s.appendChild(card("Pictures", [btn("Send layer to Worlds Lab", () => sendLayer(), "Sends the active layer as a picture for surface layers in the app"),
+  s.appendChild(card("Pictures", [btn("Send layer to Pixel Scape", () => sendLayer(), "Sends the active layer as a picture for surface layers in the app"),
     el("div", { class: "hint", text: "The picture shows up in the app's Surfaces tab: add it as a new layer or use it on the selected one." })]));
   const where = el("div", { class: "info path" }); bind(() => { where.textContent = ROOT ? "Shared folder: " + ROOT : "Shared folder not found"; });
-  s.appendChild(card("About", [where, el("div", { class: "hint", text: "Build and render scenes in the Worlds Lab app; this panel brings them into Photoshop." })]));
+  s.appendChild(card("About", [where, el("div", { class: "hint", text: "Build and render scenes in the Pixel Scape app; this panel brings them into Photoshop." })]));
   s.appendChild(el("div", { class: "foot", text: APP + " Bridge " + VERSION + "  -  Lab suite" }));
   pressGlow(root); ui.refreshAll(); showNone(); poll();
 }

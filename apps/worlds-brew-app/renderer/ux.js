@@ -1,4 +1,4 @@
-// Worlds Lab app: UI helpers from the UI research quick wins (2026-11-23).
+// Pixel Scape app: UI helpers from the UI research quick wins (2026-11-23).
 //  - axisGizmo: the view ball in the viewport corner: drag to orbit, click an axis end to snap, ZOOM / PAN / FRAME / HOME strip.
 //  - palette:   a Cmd/Ctrl+K command palette over every action, with fuzzy search and keyboard control.
 const SVGNS = "http://www.w3.org/2000/svg";

@@ -1,5 +1,5 @@
-// Worlds Lab app: the live GPU viewport (Three.js on WebGL2).
-// A World mirrors one Worlds Lab scene (plain data from engine/scene.js) as Three objects;
+// Pixel Scape app: the live GPU viewport (Three.js on WebGL2).
+// A World mirrors one Pixel Scape scene (plain data from engine/scene.js) as Three objects;
 // the Viewport adds the window's camera, picking, the move / rotate / scale handles and the brush ring.
 // Renders: renderer/gpurender.js draws this same world offscreen at full size; the CPU ray tracer (engine/engine.js) is the other choice.
 import * as THREE from "three";
@@ -107,7 +107,7 @@ function terrainGeo(o, scene) {
   return g;
 }
 
-// ---- materials: the Worlds Lab presets as physically based materials
+// ---- materials: the Pixel Scape presets as physically based materials
 function hueCol(o, m) {
   if (!o.hue) return m.col;
   const h = o.hue / 360 * 6, s = 0.7, v = Math.max(...m.col), c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), mm = v - c;
@@ -255,7 +255,7 @@ export class World {
   dispose() { for (const rec of this.nodes.values()) this.drop(rec); this.nodes.clear(); if (this.envRT) this.envRT.dispose(); this.skyMat.dispose(); this.sky.geometry.dispose(); this.ground.material.dispose(); this.waterGeo.dispose(); this.waterMat.dispose(); }
 }
 
-// put a Three camera where the Worlds Lab camera is
+// put a Three camera where the Pixel Scape camera is
 export function placeCamera(camera, c, aspect) {
   const yw = c.yaw * Math.PI / 180, pt = c.pitch * Math.PI / 180;
   camera.position.set(c.tx + Math.sin(yw) * Math.cos(pt) * c.dist, c.ty + Math.sin(pt) * c.dist, c.tz + Math.cos(yw) * Math.cos(pt) * c.dist);

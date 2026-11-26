@@ -1,6 +1,6 @@
-# Worlds Lab (WB-10)
+# Pixel Scape (PX-10)
 
-Worlds Lab is a standalone desktop app (Electron + Three.js) for building 3D scenes. It has terrains, shapes, models, water, sky and lights, plus a live GPU view and a ray tracer. Renders go to Photoshop through the **Worlds Lab Bridge** panel.
+Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.js) for building 3D scenes. It has terrains, shapes, models, water, sky and lights, plus a live GPU view and a ray tracer. **Terrain Lab (TL-11)** turns real places into 3D terrain assets from elevation data and satellite photos. Renders go to Photoshop through the **Pixel Scape Bridge** panel.
 
 - **App:** `apps/worlds-brew-app`
   - `npm run sync` copies the engine and the shared 3.0 kit into `engine/`.
@@ -12,6 +12,36 @@ Worlds Lab is a standalone desktop app (Electron + Three.js) for building 3D sce
   - plugin `com.franks.worldsbrew`
 
 ## Update notes
+
+**0.12.0 (2026-11-26): real buildings in Terrain Lab**
+
+- **Buildings card** in Terrain Lab (on by default):
+  - Buildings come from **Overture Maps** (OpenStreetMap, Microsoft and Google open buildings merged). They are read straight from Overture's planet-wide tile archive with byte-range requests, so there is no key and no big download (a 2 x 2 km city box is about 4 tiles).
+  - **Height:** the mapped height where there is one, else floors x 3.2 m, else an estimate from the building type and size. The status line says how many have a real height.
+  - Each building sits on the terrain at the lowest ground under its outline, so none float on slopes. Towers with mapped parts (podium + tower) are built from their parts.
+  - **Colours:** mapped roof / facade colours where known; otherwise the roof is taken from the satellite photo and walls get a light stone palette.
+  - **Building height** 0.5 to 3x (on top of the terrain height scale) and **Smallest** (everything / no sheds / houses up / big buildings only).
+- **Files:** `terrain.glb` gets the buildings as a second node (`<name> buildings`, vertex colours), so Blender, C4D and Unity see them as their own object. Library terrains also save `buildings.json`, and the buildings credit goes into `terrain.json`.
+- **Scene:** Add to scene (and dropping a library terrain) adds the buildings as their own object, lined up with the terrain. It is a separate object, so move or scale it along with the terrain.
+- **Quick picks:** Downtown Phoenix, Midtown Manhattan, San Francisco, Chicago Loop.
+- **Fix:** the Terrain Lab map was blank after the 0.11 sea fix (the map tiles were drawn transparent).
+- **Fix:** bad pixels in the elevation source (single spikes and whole garbage patches thousands of metres deep, e.g. the East River at full detail) are now repaired from the ground around them. Real cliffs and sea floor are left alone.
+
+**0.11.0 (2026-11-26): renamed to Pixel Scape; Terrain Lab (real places to 3D terrain); three .glb fixes**
+
+- **Rename:** Worlds Lab is now **Pixel Scape** (app code PX-10; Bridge panel 1.1.0). `Documents/Worlds Lab` moves to `Documents/Pixel Scape` on first start; the Bridge panel still finds the old folder. Internal IDs are unchanged.
+- **Terrain Lab** (header button **Terrain Lab...**, or Cmd/Ctrl+T):
+  - **Place:** 16 quick picks, place search, or paste lat/long from Google Maps. A shaded-relief map: drag to pan, click to set the centre, double-click to zoom.
+  - **Area:** width / depth 0.5 to 50 km, turn, Square, Half size, Double size.
+  - **Height:** real ground heights from AWS Terrain Tiles (USGS 3DEP ~10 m in the USA, SRTM ~30 m elsewhere). Height scale (1x = true scale), smoothing, water level (off / sea / custom).
+  - **Photo:** the clearest recent Sentinel-2 picture (10 m true colour, ESA Copernicus, free with credit). It checks clouds, shadows and gaps inside the box itself and prefers a high sun. Season filter; or colour by height instead.
+  - **Mesh:** grid 256 to 2048, an earth-layer base (skirt) or none.
+  - **Preview** (fast), **Build** (full detail; saved to `My library / Terrains / <name>`: `terrain.glb`, `height16.png`, `photo.jpg`, `thumb.jpg`, `terrain.json`), **Add to scene**, **Export...** (.glb in real metres, Y up, plus the 16-bit heightmap, photo and JSON).
+  - Library terrains drop into any scene like other items. Downloads are cached, so rebuilding a place works offline.
+- **.glb fixes:**
+  - The centre (XYZ) scale handle no longer blows models up: it now sizes from up/down pointer travel (double per 150 px).
+  - JPEG / WebP textures inside .glb / .gltf now import (they loaded flat before). A model with one texture also gets it as a full-detail UV surface layer.
+  - **Import folder** on a folder holding several PBR sets now imports each set.
 
 **0.10.0 (2026-11-25): dynamic view ball, My library, texture / terrain / shader importers**
 

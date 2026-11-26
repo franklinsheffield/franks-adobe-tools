@@ -1,6 +1,6 @@
 "use strict";
-// Worlds Lab: the bridge between the desktop app and Photoshop (phase 3).
-// Both sides share one folder, Documents/Worlds Lab, and talk only through files in it:
+// Pixel Scape: the bridge between the desktop app and Photoshop (phase 3).
+// Both sides share one folder, Documents/Pixel Scape, and talk only through files in it:
 //   Renders/<stamp>-<scene>/render.png (+ depth.png, mask.png, sky.png) + info.json    app -> Photoshop
 //   Renders/latest.json   { folder, time }   written last, so a half-written render is never picked up
 //   Bridge/doc-size.json  { w, h, ppi, doc, time }                                    Photoshop -> app
@@ -8,7 +8,7 @@
 // This file holds the names, the formats and the pixel helpers; each side does its own file I/O
 // (Node fs in the app, UXP fs in the plugin) through the tiny `io` interface below.
 const VERSION = 1;
-const ROOT_NAME = "Worlds Lab";
+const ROOT_NAME = "Pixel Scape", LEGACY_ROOT = "Worlds Lab";   // renamed 2026-11-26 (app 0.11 moves the old folder)
 const PASSES = [   // file name, layer name, hidden when placed
   { key: "render", file: "render.png", name: "Render", hidden: false },
   { key: "depth", file: "depth.png", name: "Depth", hidden: true },
@@ -16,7 +16,7 @@ const PASSES = [   // file name, layer name, hidden when placed
   { key: "sky", file: "sky.png", name: "Sky mask", hidden: true }
 ];
 const join = (...p) => p.join("/").replace(/\/+/g, "/");
-function paths(root) {   // root = <Documents>/Worlds Lab
+function paths(root) {   // root = <Documents>/Pixel Scape
   return { root, renders: join(root, "Renders"), latest: join(root, "Renders", "latest.json"), bridge: join(root, "Bridge"),
     docSize: join(root, "Bridge", "doc-size.json"), pictures: join(root, "Bridge", "Pictures"), picture: join(root, "Bridge", "picture.json") };
 }
@@ -29,7 +29,7 @@ function info(o) {
     passes: PASSES.filter((p) => o.have ? o.have.includes(p.key) : true).map((p) => p.key), time: o.time || Date.now(), app: o.app || "" };
 }
 function checkInfo(j) {
-  if (!j || j.worldsBrewBridge !== VERSION) throw new Error("Not a Worlds Lab render (or from a newer version of the app).");
+  if (!j || j.worldsBrewBridge !== VERSION) throw new Error("Not a Pixel Scape render (or from a newer version of the app).");
   if (!(j.w > 0 && j.h > 0)) throw new Error("The render's size is missing.");
   return j;
 }
@@ -95,4 +95,4 @@ async function readPicture(io, root) {
   try { const j = JSON.parse(await io.readText(P.picture)); if (!j || !j.file) return null; return Object.assign({ path: join(P.pictures, j.file) }, j); } catch (e) { return null; }
 }
 
-module.exports = { VERSION, ROOT_NAME, PASSES, paths, join, stamp, safe, renderFolder, info, checkInfo, groupName, coverResize, toRGBA, writeRender, readLatest, writeDocSize, readDocSize, writePicture, readPicture };
+module.exports = { VERSION, ROOT_NAME, LEGACY_ROOT, PASSES, paths, join, stamp, safe, renderFolder, info, checkInfo, groupName, coverResize, toRGBA, writeRender, readLatest, writeDocSize, readDocSize, writePicture, readPicture };
