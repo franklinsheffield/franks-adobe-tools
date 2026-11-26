@@ -20,6 +20,7 @@ jobs:
     defaults: { run: { working-directory: apps/pixel-scape-discord } }
     steps:
       - name: Hide the interaction token from logs
+        working-directory: .
         run: echo "::add-mask::${{ inputs.token }}"
       - uses: actions/checkout@v4
         with: { sparse-checkout: apps/pixel-scape-discord }
