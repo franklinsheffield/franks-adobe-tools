@@ -61,7 +61,7 @@ function gltfToMesh(json, bufs, name, opt) {
   opt = opt || {};
   const P = [], I = [], TC = [], UVC = [];
   let coloured = false, hasUV = true;
-  const imgCache = {};
+  const imgCache = {}, texUse = new Set();
   const image = (ti) => { // texture index -> decoded RGBA, or null
     const tx = (json.textures || [])[ti]; if (!tx || tx.source == null) return null;
     if (tx.source in imgCache) return imgCache[tx.source];
@@ -71,8 +71,9 @@ function gltfToMesh(json, bufs, name, opt) {
       if (im.bufferView != null) { const bv = json.bufferViews[im.bufferView], st = bv.byteOffset || 0; bytes = new Uint8Array(bufs[bv.buffer || 0].slice(st, st + bv.byteLength)); }
       else if (im.uri && im.uri.startsWith("data:")) { const s = atobSafe(im.uri.split(",")[1]); bytes = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i); }
       else if (im.uri && opt.image) bytes = opt.image(decodeURIComponent(im.uri));
-      if (bytes) out = require("./pngdec.js").decodePNG(bytes);
-    } catch (e) { out = null; }   // JPEG or unreadable texture: fall back to the material colour
+      if (opt.decoded && opt.decoded[tx.source]) out = opt.decoded[tx.source];   // JPEG / WebP decoded by the app window beforehand
+      else if (bytes) out = require("./pngdec.js").decodePNG(bytes);
+    } catch (e) { out = null; }   // unreadable texture: fall back to the material colour
     imgCache[tx.source] = out; return out;
   };
   const acc = (i) => { const a = json.accessors[i], bv = json.bufferViews[a.bufferView], comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type];
@@ -93,6 +94,7 @@ function gltfToMesh(json, bufs, name, opt) {
       // colour per triangle: material colour x texture at the triangle's centre x vertex colours
       const mat = pr.material != null && json.materials ? json.materials[pr.material] : null, pbr = (mat && mat.pbrMetallicRoughness) || {};
       const fac = pbr.baseColorFactor || [1, 1, 1, 1], ti = pbr.baseColorTexture ? pbr.baseColorTexture.index : null, img = ti != null ? image(ti) : null;
+      texUse.add(img && !pbr.baseColorTexture.texCoord ? img : null);
       const uvAcc = img && pr.attributes["TEXCOORD_" + (pbr.baseColorTexture.texCoord || 0)], uv = uvAcc != null ? acc(uvAcc) : null;
       const vcA = pr.attributes.COLOR_0, vc = vcA != null ? acc(vcA) : null, vcn = vc ? { VEC3: 3, VEC4: 4 }[json.accessors[vcA].type] : 0, vcs = vc ? ({ 5121: 255, 5123: 65535 }[json.accessors[vcA].componentType] || 1) : 1;
       if (mat || img || vc) coloured = true;
@@ -109,7 +111,29 @@ function gltfToMesh(json, bufs, name, opt) {
   const ID = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], sc = json.scenes ? json.scenes[json.scene || 0] : null;
   (sc ? sc.nodes : (json.nodes || []).map((_, i) => i)).forEach((ni) => visit(ni, ID));
   if (!I.length) throw new Error("no triangle meshes found");
-  return finishMesh(name, P, I, coloured ? TC : null, hasUV ? UVC : null);
+  const m = finishMesh(name, P, I, coloured ? TC : null, hasUV ? UVC : null);
+  // one colour texture over the whole model (and UVs): hand it back so the app can show it at full detail
+  if (hasUV && texUse.size === 1) { const t = [...texUse][0]; if (t) m.texture = { w: t.w, h: t.h, d: t.rgba || t.d }; }
+  return m;
+}
+// the images inside a .glb / .gltf (for decoding JPEG / WebP in the app window first) -> [{ index, bytes, mime }]
+function gltfImages(name, buf) {
+  const ext = String(name).split(".").pop().toLowerCase(); let json = null, bin = null;
+  if (ext === "glb") { const dv = new DataView(buf); if (buf.byteLength < 20 || dv.getUint32(0, true) !== 0x46546C67) return [];
+    let off = 12; while (off + 8 <= buf.byteLength) { const len = dv.getUint32(off, true), type = dv.getUint32(off + 4, true), chunk = buf.slice(off + 8, off + 8 + len);
+      if (type === 0x4E4F534A) json = JSON.parse(utf8(chunk)); else if (type === 0x004E4942) bin = chunk; off += 8 + len; } }
+  else if (ext === "gltf") { try { json = JSON.parse(utf8(buf)); } catch (e) { return []; } }
+  if (!json || !json.images) return [];
+  const out = [];
+  json.images.forEach((im, index) => {
+    let bytes = null;
+    if (im.bufferView != null && bin) { const bv = json.bufferViews[im.bufferView], st = bv.byteOffset || 0; bytes = new Uint8Array(bin.slice(st, st + bv.byteLength)); }
+    else if (im.uri && im.uri.startsWith("data:")) { const s = atobSafe(im.uri.split(",")[1]); bytes = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i); }
+    if (!bytes || bytes.length < 4) return;
+    const png = bytes[0] === 0x89 && bytes[1] === 0x50, jpg = bytes[0] === 0xff && bytes[1] === 0xd8;
+    out.push({ index, bytes, mime: im.mimeType || (png ? "image/png" : jpg ? "image/jpeg" : "") });
+  });
+  return out;
 }
 function upright(m) { const P = []; for (let i = 0; i < m.v.length; i += 3) P.push(m.v[i], m.v[i + 2], -m.v[i + 1]); return finishMesh(m.name, P, Array.from(m.f), m.tc, m.uv); }
 function meshVerts(o) {
@@ -142,4 +166,4 @@ function meshFromJSON(j) { const v = new Float32Array(unb64(j.v)), f = new Uint3
 function exportOBJ(o) { const m = meshVerts(o), f = o.mesh.f, c = Math.cos(o.ry * Math.PI / 180), s = Math.sin(o.ry * Math.PI / 180), out = ["# Frank's Worlds Brew export: " + o.mesh.name];
   for (let i = 0; i < m.v.length; i += 3) { const lx = m.v[i] * o.s * o.sx, ly = m.v[i + 1] * o.s * o.sy, lz = m.v[i + 2] * o.s * o.sz; out.push("v " + (o.x + c * lx + s * lz).toFixed(5) + " " + (o.y + ly).toFixed(5) + " " + (o.z - s * lx + c * lz).toFixed(5)); }
   for (let i = 0; i < f.length; i += 3) out.push("f " + (f[i] + 1) + " " + (f[i + 1] + 1) + " " + (f[i + 2] + 1)); return out.join("\n") + "\n"; }
-module.exports = { finishMesh, vertexNormals, parseOBJ, parseSTL, parseGLB, parseGLTF, upright, meshVerts, lathe, toOBJ, SAMPLES, meshToJSON, meshFromJSON, exportOBJ };
+module.exports = { finishMesh, vertexNormals, parseOBJ, parseSTL, parseGLB, parseGLTF, gltfImages, upright, meshVerts, lathe, toOBJ, SAMPLES, meshToJSON, meshFromJSON, exportOBJ };

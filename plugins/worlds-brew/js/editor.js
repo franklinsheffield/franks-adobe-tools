@@ -117,13 +117,13 @@ function clearSculpt(o) { o.sculpt = null; o.sculptV = (o.sculptV || 0) + 1; o._
 function label(o) { if (!o) return "NOTHING SELECTED"; return (o.type === "light" ? "LIGHT" : o.type === "mesh" ? "MODEL " + String(o.mesh && o.mesh.name || "").toUpperCase() : o.type.toUpperCase()) + "  #" + o.id; }
 
 // model file -> mesh, by file extension (buf = ArrayBuffer)
-function parseModel(name, buf) {
+function parseModel(name, buf, opt) {
   const ext = String(name).split(".").pop().toLowerCase(), text = () => (typeof TextDecoder !== "undefined" ? new TextDecoder().decode(new Uint8Array(buf)) : String.fromCharCode.apply(null, new Uint8Array(buf)));
   let m;
   if (ext === "obj") m = M.parseOBJ(text(), name);
   else if (ext === "stl") m = M.parseSTL(buf, name);
-  else if (ext === "glb") m = M.parseGLB(buf, name);
-  else if (ext === "gltf") m = M.parseGLTF(text(), name);
+  else if (ext === "glb") m = M.parseGLB(buf, name, opt);
+  else if (ext === "gltf") m = M.parseGLTF(text(), name, opt);
   else throw new Error("Use a .obj, .stl, .glb or .gltf file (convert .fbx / .usdz / .blend to .glb in Blender).");
   if (m.tris > 400000) throw new Error(m.tris.toLocaleString() + " triangles is over the 400,000 limit.");
   return m;

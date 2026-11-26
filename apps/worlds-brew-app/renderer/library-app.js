@@ -1,7 +1,8 @@
-// Worlds Lab app: your own library (0.10, Frank 2026-11-25: "users add textures, terrain, and shaders",
-// "a shaders importer, same for textures"). Everything lives in Documents/Worlds Lab/Library/:
+// Pixel Scape app: your own library (0.10, Frank 2026-11-25: "users add textures, terrain, and shaders",
+// "a shaders importer, same for textures"). Everything lives in Documents/Pixel Scape/Library/:
 //   Textures/  pictures (png jpg jpeg webp), imported one by one or as whole folders (sub-folders flattened)
-//   Terrains/  heightmaps (png 8/16-bit, jpg) and terrains saved from the app (.wbterrain = { name, d: base64 float32 grid })
+//   Terrains/  heightmaps (png 8/16-bit, jpg) and terrains saved from the app (.wbterrain = { name, d: base64 float32 grid }),
+//              and Terrain Lab builds (0.11): a folder with terrain.json, terrain.glb, height16.png, photo.jpg, thumb.jpg
 //   Shaders/   GLSL files (.glsl .frag .fs: Shadertoy "mainImage" or GLSL-sandbox "main") and PBR material folders
 //              (colour / height / normal / roughness / metal maps, found by file name)
 // A GLSL shader is baked to a picture on the GPU and put on the object as a surface layer, so the live view,
@@ -17,7 +18,7 @@ const IMG = ["png", "jpg", "jpeg", "webp"], GLSL = ["glsl", "frag", "fs", "shade
 const ext = (f) => path.extname(f).slice(1).toLowerCase();
 let ROOT = null;
 export function setRoot(documentsDir) {
-  ROOT = path.join(documentsDir, "Worlds Lab", "Library");
+  ROOT = path.join(documentsDir, "Pixel Scape", "Library");
   KINDS.forEach((k) => fs.mkdirSync(path.join(ROOT, k), { recursive: true }));
   return ROOT;
 }
@@ -40,6 +41,7 @@ export function list(kind) {
     if (f[0] === ".") continue;
     const p = path.join(d, f), st = fs.statSync(p), name = f.replace(/\.[^.]+$/, "");
     if (kind === "Textures" && st.isFile() && IMG.includes(ext(f))) out.push({ kind, type: "image", name, path: p, thumb: fileURL(p) });
+    else if (kind === "Terrains" && st.isDirectory() && fs.existsSync(path.join(p, "terrain.json"))) out.push({ kind, type: "geo", name: f, path: p, thumb: fs.existsSync(path.join(p, "thumb.jpg")) ? fileURL(path.join(p, "thumb.jpg")) : null });   // Terrain Lab builds
     else if (kind === "Terrains" && st.isFile() && (IMG.includes(ext(f)) || ext(f) === "wbterrain")) out.push({ kind, type: ext(f) === "wbterrain" ? "terrain" : "heightmap", name, path: p, thumb: ext(f) === "wbterrain" ? null : fileURL(p) });
     else if (kind === "Shaders" && st.isFile() && GLSL.includes(ext(f))) out.push({ kind, type: "glsl", name, path: p, thumb: null });
     else if (kind === "Shaders" && st.isDirectory()) { const m = pbrMaps(p); if (m.colour || m.height) out.push({ kind, type: "pbr", name: f, path: p, maps: m, thumb: fileURL(m.colour || m.height) }); }
@@ -49,6 +51,11 @@ export function list(kind) {
 
 // ---- importing: files or whole folders, copied into the library (names never overwrite: "Rock 2")
 function freeName(d, base, e) { let n = base, i = 2; while (fs.existsSync(path.join(d, n + e))) n = base + " " + i++; return n; }
+function pbrFolders(folder, out, depth) {
+  depth = depth || 0; const m = pbrMaps(folder); if (m.colour || m.height) out.push([folder, m]);
+  if (depth < 4) for (const f of fs.readdirSync(folder).sort()) { if (f[0] === ".") continue; const p = path.join(folder, f); if (fs.statSync(p).isDirectory()) pbrFolders(p, out, depth + 1); }
+  return out;
+}
 function walk(folder, test, out) {
   for (const f of fs.readdirSync(folder)) { if (f[0] === ".") continue; const p = path.join(folder, f), st = fs.statSync(p); if (st.isDirectory()) walk(p, test, out); else if (test(f)) out.push(p); }
   return out;
@@ -59,10 +66,11 @@ export async function importPaths(kind, paths) {
   for (const src of paths) {
     const st = fs.statSync(src);
     if (kind === "Shaders" && st.isDirectory()) {
-      const m = pbrMaps(src), glsl = walk(src, (f) => GLSL.includes(ext(f)), []);
-      if (m.colour || m.height) { const n = freeName(d, path.basename(src), ""); await fsp.mkdir(path.join(d, n)); for (const p of Object.values(m)) await fsp.copyFile(p, path.join(d, n, path.basename(p))); added.push(n); }
+      // this folder and every folder inside it that holds maps becomes its own PBR set (a parent of many sets works too)
+      const sets = pbrFolders(src, []), glsl = walk(src, (f) => GLSL.includes(ext(f)), []);
+      for (const [folder, m] of sets) { const n = freeName(d, path.basename(folder), ""); await fsp.mkdir(path.join(d, n)); for (const p of Object.values(m)) await fsp.copyFile(p, path.join(d, n, path.basename(p))); added.push(n); }
       for (const g of glsl) await copy(g);
-      if (!(m.colour || m.height) && !glsl.length) skipped.push(path.basename(src));
+      if (!sets.length && !glsl.length) skipped.push(path.basename(src));
       continue;
     }
     const ok = (f) => (kind === "Shaders" ? GLSL : kind === "Terrains" ? IMG.concat(["wbterrain"]) : IMG).includes(ext(f));
@@ -125,7 +133,7 @@ void main() { vec4 c = vec4(0.0, 0.0, 0.0, 1.0); mainImage(c, gl_FragCoord.xy); 
 uniform float time; uniform vec2 resolution; uniform vec2 mouse; uniform vec2 surfaceSize;
 varying vec2 surfacePosition;
 ${clean(src)}` };
-  throw new Error("No mainImage() or main() found. Worlds Lab reads Shadertoy-style shaders (mainImage) and GLSL-sandbox shaders (main + gl_FragColor).");
+  throw new Error("No mainImage() or main() found. Pixel Scape reads Shadertoy-style shaders (mainImage) and GLSL-sandbox shaders (main + gl_FragColor).");
 }
 function program(code) {
   const { g, cache } = gl();

@@ -1,4 +1,4 @@
-// Worlds Lab (WB-10) desktop app: the window's UI.
+// Pixel Scape (PX-10) desktop app: the window's UI.
 // Library (scenes, drag-and-drop assets, object list) | live GPU viewport + control pads | Inspector tabs,
 // with a render bar along the bottom. The scene is the same plain data the Photoshop plugin uses.
 import { Viewport, snapshot } from "./view3d.js";
@@ -6,6 +6,7 @@ import { axisGizmo, palette } from "./ux.js";
 import { renderGPU, passPictures } from "./gpurender.js";
 import * as BR from "./bridge-app.js";
 import * as LIB from "./library-app.js";
+import { createTerrainLab } from "./terrainlab.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -20,8 +21,10 @@ const { pressGlow } = req("../engine/kit/layout.js");
 const HELP = req("./help-app.js");   // hover help text for the app's own controls (shared texts come from engine/kit/help-text.js)
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
+const MODELS = req("../engine/models.js");
+const GB = req("../geo/build.js");
 
-const APP = "Worlds Lab", CODE = "WB-10", GLOW = "#5effc8", VERSION = "0.10.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.11.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -92,14 +95,21 @@ function pickColor(hex) {
 // ---- viewport
 const canvas = document.getElementById("vp");
 const vp = new Viewport(canvas, {
-  onGizmoDrag(on, o) { if (on) { gz = o; if (o && o.type === "terrain") { o._s0 = o.s; o._h0 = o.h; } } else { gz = null; commit(); changed("val"); } },
+  onGizmoDrag(on, o) { if (on) { gz = o; if (o) { o._s0 = o.s; o._h0 = o.h; o._py0 = gizmoY; } } else { gz = null; commit(); changed("val"); } },
   onGizmoChange(o, n, mode) {
     if (!o) return;
     const r3 = (v) => +v.toFixed(3);
     if (mode === "translate") { o.x = r3(n.position.x); o.y = r3(n.position.y); o.z = r3(n.position.z); }
     else if (mode === "rotate") { o.ry = Math.round(((n.rotation.y * 180 / Math.PI) % 360 + 360) % 360); }
     else if (mode === "scale") {
-      if (o.type === "terrain") { const k = (n.scale.x + n.scale.z) / 2; o.s = r3(Math.max(0.5, (o._s0 || o.s) * k)); o.h = r3(Math.max(0.1, (o._h0 || o.h) * n.scale.y)); }
+      // the centre (XYZ) handle: Three's uniform scale divides by the grab point's distance from the centre, which is ~0
+      // there, so one pixel blew meshes up. Size from the pointer's up / down travel instead (up = bigger, x2 per 150 px).
+      if (vp.tc.axis === "XYZ" && o.type !== "light") {
+        const k = Math.pow(2, (o._py0 - gizmoY) / 150);
+        o.s = r3(Math.max(o.type === "terrain" ? 0.5 : 0.02, Math.min(400, (o._s0 || o.s) * k))); if (o.type === "terrain") o.h = r3(Math.max(0.1, (o._h0 || o.h) * k));
+        if (o.type !== "terrain" && st.view.stick) CT.rest(st.scene, o);
+      }
+      else if (o.type === "terrain") { const k = (n.scale.x + n.scale.z) / 2; o.s = r3(Math.max(0.5, (o._s0 || o.s) * k)); o.h = r3(Math.max(0.1, (o._h0 || o.h) * n.scale.y)); }
       else if (o.type !== "light") {
         const ex = o.s * (o.sx || 1), ey = o.s * (o.sy || 1), ez = o.s * (o.sz || 1), rx = n.scale.x / ex, ry = n.scale.y / ey, rz = n.scale.z / ez;
         if (Math.abs(rx - ry) < 1e-4 && Math.abs(ry - rz) < 1e-4) o.s = r3(Math.max(0.02, o.s * rx));
@@ -111,7 +121,9 @@ const vp = new Viewport(canvas, {
   },
   onDraw() { placeFrameGuide(); }
 });
-let gz = null;
+let gz = null, gizmoY = 0;
+// the pointer's height, read before the gizmo handles the move (capture phase), for the centre scale handle
+window.addEventListener("pointermove", (e) => { gizmoY = e.clientY; }, true); window.addEventListener("pointerdown", (e) => { gizmoY = e.clientY; }, true);
 const vpwrap = document.getElementById("vpwrap");
 
 // the render frame: the area outside the output's aspect ratio is dimmed
@@ -238,10 +250,11 @@ vpwrap.addEventListener("drop", async (e) => {
   }
 });
 
-// ---- your library (0.10): textures, terrains and shaders in Documents/Worlds Lab/Library
+// ---- your library (0.10): textures, terrains and shaders in Documents/Pixel Scape/Library
 // it = a LIB.list() entry; target = the object under the pointer (drag) or null (click: the selection); at = ground point
 async function applyLibItem(it, target, at) {
   try {
+    if (it.kind === "Terrains" && it.type === "geo") return await addGeoFromFolder(it.path, at);
     if (it.kind === "Terrains") {
       const hm = await LIB.loadTerrain(it, decodeImage);
       let o = target && target.type === "terrain" ? target : hasSel() && st.sel.type === "terrain" && !at ? st.sel : null;
@@ -285,7 +298,17 @@ function rebakeShader() {
 
 // ---- files
 async function importModelData(name, buf, at) {
-  try { const m = ED.parseModel(name, buf), o = ED.addMesh(st.scene, m, "Matte"); if (at) CT.placeAt(st.scene, o, at.x, at.z, true); select(o); commit(); setStatus("Imported " + name + " (" + m.tris.toLocaleString() + " triangles)"); }
+  try {
+    // JPEG / WebP textures inside .glb / .gltf: decode them here (the model reader only reads PNG by itself)
+    const decoded = {};
+    for (const im of MODELS.gltfImages(name, buf)) if (im.mime !== "image/png") {
+      try { const p = await decodeImage("tex", im.bytes.buffer.slice(im.bytes.byteOffset, im.bytes.byteOffset + im.bytes.byteLength), 2048); decoded[im.index] = { w: p.w, h: p.h, rgba: p.d }; } catch (e) { /* unreadable: material colour */ }
+    }
+    const m = ED.parseModel(name, buf, { decoded }), o = ED.addMesh(st.scene, m, "Matte");
+    // one colour texture: also show it at full detail as a UV surface layer (the per-triangle colours stay underneath)
+    if (m.texture) { o.layers = [SF.layer({ name: "Model texture", img: { w: m.texture.w, h: m.texture.h, d: m.texture.d, name }, wrap: "UV" })]; delete m.texture; }
+    if (at) CT.placeAt(st.scene, o, at.x, at.z, true); select(o); commit(); changed("val"); setStatus("Imported " + name + " (" + m.tris.toLocaleString() + " triangles)");
+  }
   catch (err) { setStatus(String(err.message || err), true); }
 }
 async function importModel() {
@@ -367,12 +390,12 @@ async function renderNow() {
   } catch (err) { refs.meter.idle(); setStatus("Render failed: " + (err.message || err), true); }
   finally { rendering = false; vp.paused = false; vp.dirty = true; refs.go.textContent = "Render PNG"; refs.led.set("ready"); }
 }
-// ---- Photoshop bridge: renders go to Documents/Worlds Lab; the Bridge panel in Photoshop places them
+// ---- Photoshop bridge: renders go to Documents/Pixel Scape; the Bridge panel in Photoshop places them
 async function sendToPhotoshop() {
   if (!refs.lastPics) { await renderNow(); if (!refs.lastPics || st.out.autoSend) return; }
   try {
     const r = await BR.sendRender(refs.lastPics, refs.lastMeta); refs.lastSent = r;
-    setStatus("Sent to Photoshop: " + r.info.scene + " (" + r.info.w + " x " + r.info.h + "). In Photoshop, press Place as layer in the Worlds Lab Bridge panel.");
+    setStatus("Sent to Photoshop: " + r.info.scene + " (" + r.info.w + " x " + r.info.h + "). In Photoshop, press Place as layer in the Pixel Scape Bridge panel.");
   } catch (err) { setStatus("Couldn't send to Photoshop: " + (err.message || err), true); }
 }
 function applyDocSize(j) {
@@ -426,8 +449,8 @@ function buildTop(ui) {
   refs.docName = el("span", { class: "docname" });
   top.appendChild(h.node);
   top.appendChild(el("div", { class: "menu" }, [refs.docName, btn("New", () => newScene()), btn("Open...", () => openScene()), btn("Save", () => save(false)), btn("Save as...", () => save(true)),
-    btn("Import model...", () => importModel(), "Add a .glb, .gltf, .obj or .stl model"), btn("Undo", () => undo()), btn("Redo", () => redo()),
-    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Worlds Lab Bridge panel in Photoshop places it as a layer group"),
+    btn("Import model...", () => importModel(), "Add a .glb, .gltf, .obj or .stl model"), btn("Terrain Lab...", () => openTerrainLab(), "Build a real 3D terrain from satellite data (Cmd/Ctrl+T)"), btn("Undo", () => undo()), btn("Redo", () => redo()),
+    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Pixel Scape Bridge panel in Photoshop places it as a layer group"),
     ui.brand.toggle("Auto-send", "out.autoSend")]));
 }
 
@@ -457,7 +480,7 @@ function buildLibrary(ui) {
   refs.tiles = tiles;
   const count = el("div", { class: "hint" }); bind(() => { count.textContent = tiles.filter((t) => t.__pack === st.view.addPack).length + " items. Drag one into the view, or click it."; });
   lib.appendChild(card("Add", [row("", segGroup("view.addPack", [{ v: "Shapes", l: "Shapes" }].concat(PK.PACKS.map((p) => ({ v: p, l: p }))))), count, grid]));
-  // your own library: Textures / Terrains / Shaders (Documents/Worlds Lab/Library)
+  // your own library: Textures / Terrains / Shaders (Documents/Pixel Scape/Library)
   const myGrid = el("div", { class: "wbtiles wbmylib" }), myCount = el("div", { class: "hint" });
   let myItems = [];
   const drawMyLib = async () => {
@@ -688,7 +711,7 @@ function buildInspector(ui) {
     only(layList, canLayer),
     only(el("div", { class: "row wrap" }, [presetSel, btn("Picture layer...", () => loadLayerPicture(true), "Add a layer with a PNG / JPG of your own")]), canLayer),
     only(el("div", { class: "row wrap" }, [psPicName, btn("New layer", () => usePhotoshopPicture(true), "Add a layer with the picture Photoshop sent"), only(btn("Use on this layer", () => usePhotoshopPicture(false)), hasLay)]), () => canLayer() && !!refs.psPic),
-    only(el("div", { class: "hint", text: "Tip: in Photoshop, the Worlds Lab Bridge panel's Send layer button sends the active layer here as a picture." }), () => canLayer() && !refs.psPic),
+    only(el("div", { class: "hint", text: "Tip: in Photoshop, the Pixel Scape Bridge panel's Send layer button sends the active layer here as a picture." }), () => canLayer() && !refs.psPic),
     only(el("div", { class: "row wrap" }, [btn("Up", () => layOps.move(1), "Move the layer up the stack"), btn("Down", () => layOps.move(-1)), btn("Duplicate", () => layOps.dup()), btn("Delete", () => layOps.remove())]), () => canLayer() && hasLay()),
     lay(row("Name", nameIn)),
     lay(el("div", { class: "row wrap" }, [picName, btn("Change picture...", () => loadLayerPicture(false))])),
@@ -782,6 +805,7 @@ const pal = palette(commands, (c) => setStatus(c.group + ": " + c.label));
 function onKey(e) {
   if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === "k") { e.preventDefault(); lastPalKey = Date.now(); pal.toggle(); return; }
   if (pal.isOpen) return;
+  if (TL && TL.isOpen) return;   // Terrain Lab has the keyboard
   const t = e.target && e.target.tagName; if (/INPUT|SELECT|TEXTAREA/.test(t || "")) return;
   if (uis.some((u) => u.brand && u.brand.selectedDial) && /Arrow/.test(e.key)) return;   // a selected knob takes the arrows
   if (e.metaKey || e.ctrlKey) return;   // menu shortcuts
@@ -804,9 +828,34 @@ function onKey(e) {
   if (hasSel() && (key === "-" || key === "=" || key === "+")) { CT.grow(sc, st.sel, key === "-" ? -1 : 1, big, st.view.stick); return done(); }
 }
 document.addEventListener("keydown", onKey);
-ipcRenderer.on("menu", (e, cmd) => ({ new: newScene, open: () => openScene(), save: () => save(false), saveAs: () => save(true), importModel, render: renderNow, undo, redo,
+ipcRenderer.on("menu", (e, cmd) => ({ terrainLab: () => openTerrainLab(), new: newScene, open: () => openScene(), save: () => save(false), saveAs: () => save(true), importModel, render: renderNow, undo, redo,
   palette: () => { if (Date.now() - lastPalKey > 200) pal.toggle(); }, duplicate: () => { if (hasSel()) { select(ED.duplicate(st.scene, st.sel)); commit(); } }, frameAll: () => { CT.frame(st.scene); changed("view"); }, home: () => { if (homeCam) { CT.camSet(st.scene.cam, homeCam); changed("view"); } } }[cmd] || (() => {}))());
 ipcRenderer.on("app:close-request", async () => { if (await askSave()) ipcRenderer.send("app:close-ok"); });
+
+// ---- Terrain Lab (0.11): real terrains from elevation data + Sentinel-2 photos
+let TL = null;
+function openTerrainLab() { if (TL) TL.open(); }
+// t = { name, mesh (geo/build.js grid, metres), pic ({ w, h, d } RGBA), info } -> a textured mesh object, 40 m wide in the scene
+function addTerrain(t, at) {
+  const m = t.mesh, I = m.idx, uv = new Float32Array(I.length * 2);
+  for (let k = 0; k < I.length; k++) { uv[k * 2] = m.uv[I[k] * 2]; uv[k * 2 + 1] = 1 - m.uv[I[k] * 2 + 1]; }   // the app's v runs up (as for .glb imports)
+  const mesh = MODELS.finishMesh(t.name, m.pos, I, null, uv);
+  const o = ED.addMesh(st.scene, mesh, "Matte", { smooth: true, geo: t.info || null });
+  o.s = 20; if (at) { o.x = +at.x.toFixed(2); o.z = +at.z.toFixed(2); } CT.rest(st.scene, o);
+  o.layers = [SF.layer({ name: "Satellite photo", img: { w: t.pic.w, h: t.pic.h, d: t.pic.d, name: t.name }, wrap: "UV" })];
+  select(o); CT.frame(st.scene, o); commit(); changed("val");
+  setStatus("Terrain " + t.name + ": " + (t.info ? (t.info.w / 1000).toFixed(1) + " x " + (t.info.d / 1000).toFixed(1) + " km of real ground, shown 40 m wide" : "added"));
+  return o;
+}
+// a Terrain Lab folder from My library / Terrains -> the scene (rebuilt from its 16-bit heightmap + photo)
+async function addGeoFromFolder(dir, at) {
+  const fsp = req("fs").promises, p = req("path"), j = JSON.parse(await fsp.readFile(p.join(dir, "terrain.json"), "utf8"));
+  const hp = req("../engine/pngdec.js").decodePNG(new Uint8Array(await fsp.readFile(p.join(dir, "height16.png")))), n = hp.w, h = new Float32Array(n * n);
+  for (let i = 0; i < n * n; i++) h[i] = j.heightM.min + (hp.gray16 ? hp.gray16[i] / 65535 : hp.rgba[i * 4] / 255) * (j.heightM.max - j.heightM.min);
+  const mo = j.mesh || {}, mesh = GB.grid({ n, h, min: j.heightM.min, max: j.heightM.max }, { w: j.sizeM.w, d: j.sizeM.d }, { n: Math.min(384, n), exag: j.heightScale || 1, smooth: mo.smooth || 0, water: mo.water == null ? null : mo.water, base: mo.base || "skirt" });
+  const b = await fsp.readFile(p.join(dir, "photo.jpg")), pic0 = await decodeImage("photo.jpg", b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), 2048), pic = (mo.base || "skirt") === "skirt" ? GB.addBand(pic0) : pic0;
+  return addTerrain({ name: j.name || p.basename(dir), mesh, pic, info: { lat: j.centre.lat, lon: j.centre.lon, w: j.sizeM.w, d: j.sizeM.d, min: j.heightM.min, max: j.heightM.max, exag: j.heightScale || 1, folder: dir } }, at);
+}
 
 // ---- start-up
 const root = document.getElementById("app");
@@ -822,6 +871,11 @@ let sweepT = null; const sweepAll = () => { clearTimeout(sweepT); sweepT = setTi
     u.helpAt(n, n.classList.contains("wbcell") ? { key: "lib.scene", name: nm, kind: "grid" } : n.classList.contains("wblibitem") ? { key: "lib.my", name: nm, kind: "grid" } : n.classList.contains("wbtile") ? { key: "lib.add", name: nm, kind: "grid" } : n.closest(".wblayers") ? { key: "lay.row", name: nm, kind: "info" } : { key: "lib.obj", name: nm, kind: "info" }); }); }, 60); };
 new MutationObserver(sweepAll).observe(root, { childList: true, subtree: true });   // panes that redraw (layers, objects) get their help too
 buildTop(lui); buildLibrary(lui); buildToolbar(lui); buildPads(lui); buildInspector(ui); buildBar(lui);
+TL = createTerrainLab({ mount: root, glow: GLOW, version: VERSION,
+  createUI: (o) => createUI(Object.assign({ pickColor, brand: "console", glow: GLOW, storeKey: "worlds-lab", arcade: true, helpText: HELP }, o)),
+  terrainsDir: () => (LIB.root() ? LIB.dir("Terrains") : null), libChanged: () => { if (st.view.myKind === "Terrains" && refs.drawMyLib) refs.drawMyLib(); },
+  addTerrain: (t) => addTerrain(t), closed: () => changed("view") });
+uis.push(TL.ui); TL.ui.help.onChange((on) => { if (lui.help.on !== on) lui.help.setOn(on); }); lui.help.onChange((on) => { if (TL.ui.help.on !== on) TL.ui.help.setOn(on); });
 refs.axes = axisGizmo(vpwrap, () => st.scene.cam, {   // the view ball: drag to orbit, snap to axes, ZOOM / PAN / FRAME / HOME
   change: (name) => { changed("view"); if (name) setStatus(name); }, locked: () => st.view.camLock,
   zoom: (f) => CT.camZoom(st.scene.cam, f), pan: (c0, dx, dy) => ED.pan(st.scene.cam, c0, dx, dy, canvas.width / canvas.height),
@@ -838,4 +892,4 @@ ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { TL: () => TL, addTerrain, addGeoFromFolder, openTerrainLab, importModelData, LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

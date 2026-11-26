@@ -1,4 +1,4 @@
-// Worlds Lab app: the GPU renderer (phase 2).
+// Pixel Scape app: the GPU renderer (phase 2).
 // Renders a scene offscreen with the same Three.js world as the live view, at full output size:
 //   Draft = 1 sample per pixel with MSAA; Final = 2x2 supersampling, sharper shadows, and reflections of the
 //   scene itself (a cube map taken at the camera's aim point) on metals and glossy surfaces.
