@@ -9,3 +9,6 @@ GH_WORKFLOW = "pixel-scape-render.yml"
 GH_REF = "main"
 COOLDOWN_S = "60"
 # Secrets (set by the deploy workflow): DISCORD_PUBLIC_KEY, DISCORD_APP_ID, GH_DISPATCH_TOKEN
+
+[observability]
+enabled = true
