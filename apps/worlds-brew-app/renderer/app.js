@@ -24,6 +24,7 @@ const SF = req("../engine/surface.js");
 const MODELS = req("../engine/models.js");
 const GB = req("../geo/build.js"), GB2 = req("../geo/buildings.js");
 
+const WEB = !!window.__psWeb;   // the browser / Discord build (web/): no Photoshop bridge there
 const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.12.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
@@ -425,7 +426,7 @@ function showShot(res, W, H, what) {
   row.appendChild(b("Save PNG...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save " + cur.name.toLowerCase(), name: base + suffix(cur) + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return; await ipcRenderer.invoke("fs:write", p, png(cur)); setStatus("Saved " + req("path").basename(p)); }));
   row.appendChild(b("Save all passes...", async () => { const p = await ipcRenderer.invoke("dlg:save", { title: "Save the render and its passes", name: base + ".png", filters: [{ name: "PNG image", extensions: ["png"] }] }); if (!p) return;
     const stem = p.replace(/\.png$/i, ""); for (const q of pics) await ipcRenderer.invoke("fs:write", stem + suffix(q) + ".png", png(q)); setStatus("Saved " + pics.length + " PNGs: " + req("path").basename(stem) + "*.png"); }));
-  row.appendChild(b("Send to Photoshop", () => sendToPhotoshop()));
+  if (!WEB) row.appendChild(b("Send to Photoshop", () => sendToPhotoshop()));
   row.appendChild(b("Close", () => { box.hidden = true; }));
   show(pics[0]); box.hidden = false;
 }
@@ -450,8 +451,8 @@ function buildTop(ui) {
   top.appendChild(h.node);
   top.appendChild(el("div", { class: "menu" }, [refs.docName, btn("New", () => newScene()), btn("Open...", () => openScene()), btn("Save", () => save(false)), btn("Save as...", () => save(true)),
     btn("Import model...", () => importModel(), "Add a .glb, .gltf, .obj or .stl model"), btn("Terrain Lab...", () => openTerrainLab(), "Build a real 3D terrain from satellite data (Cmd/Ctrl+T)"), btn("Undo", () => undo()), btn("Redo", () => redo()),
-    btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Pixel Scape Bridge panel in Photoshop places it as a layer group"),
-    ui.brand.toggle("Auto-send", "out.autoSend")]));
+    ...(WEB ? [] : [btn("Send to Photoshop", () => sendToPhotoshop(), "Send the last render (or render now) with its passes; the Pixel Scape Bridge panel in Photoshop places it as a layer group"),
+      ui.brand.toggle("Auto-send", "out.autoSend")])]));
 }
 
 // ---- library: scenes, add (drag and drop), objects
@@ -759,7 +760,7 @@ function commands() {
   add("File", "New scene", () => newScene(), M + "N", true); add("File", "Open scene...", () => openScene(), M + "O", true);
   add("File", "Save", () => save(false), M + "S", true); add("File", "Save as...", () => save(true), M + "Shift+S");
   add("File", "Import model...", () => importModel(), M + "I", true); add("Render", "Render PNG", () => renderNow(), M + "R", true);
-  add("Photoshop", "Send to Photoshop", () => sendToPhotoshop(), "", true); add("Photoshop", (st.out.autoSend ? "Turn off" : "Turn on") + " Auto-send", () => { st.out.autoSend = !st.out.autoSend; changed("val"); });
+  if (!WEB) add("Photoshop", "Send to Photoshop", () => sendToPhotoshop(), "", true); if (!WEB) add("Photoshop", (st.out.autoSend ? "Turn off" : "Turn on") + " Auto-send", () => { st.out.autoSend = !st.out.autoSend; changed("val"); });
   add("Render", "Draft quality", () => { st.out.quality = "draft"; changed("val"); }); add("Render", "Render on the GPU", () => { st.out.engine = "gpu"; changed("val"); }); add("Render", "Render with the ray tracer", () => { st.out.engine = "ray"; changed("val"); }); add("Render", "Final quality", () => { st.out.quality = "final"; changed("val"); });
   [["HD 1920 x 1080", 1920, 1080], ["4K 3840 x 2160", 3840, 2160], ["Square 1080", 1080, 1080], ["Story 1080 x 1920", 1080, 1920], ["Print 3:2", 2400, 1600]].forEach(([l, w, h]) => add("Render size", l, () => { st.out.w = w; st.out.h = h; uis.forEach((u) => u.refreshAll()); placeFrameGuide(); }));
   add("Edit", "Undo", () => undo(), M + "Z", true); add("Edit", "Redo", () => redo(), M + "Shift+Z");
@@ -902,9 +903,9 @@ homeCam = CT.camCopy(st.scene.cam); resetHistory(); uis.forEach((u) => u.refresh
 setStatus("Ready. Drag shapes and models in from the Library, then Render PNG.");
 setTimeout(() => drawLibrary().catch((err) => console.error(err)), 50);
 ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder + watching for the panel's requests
-  BR.setRoot(window.__wbBridgeRoot || info.docs);
+  if (!WEB) BR.setRoot(window.__wbBridgeRoot || info.docs);
   try { LIB.setRoot(window.__wbLibDocs || info.docs); refs.drawMyLib(); } catch (err) { console.error(err); }
-  refs.bridgeWatch = BR.watch({ docSize: applyDocSize, picture: (p) => { refs.psPic = p; uis.forEach((u) => u.refreshAll()); setStatus("Photoshop sent a picture: " + p.name + " (Surfaces tab)"); } });
+  if (!WEB) refs.bridgeWatch = BR.watch({ docSize: applyDocSize, picture: (p) => { refs.psPic = p; uis.forEach((u) => u.refreshAll()); setStatus("Photoshop sent a picture: " + p.name + " (Surfaces tab)"); } });
 }).catch((err) => console.error(err));
 
 // for the automated tests
