@@ -20,6 +20,7 @@ jobs:
     defaults: { run: { working-directory: apps/pixel-scape-discord } }
     steps:
       - name: Hide the interaction token from logs
+        working-directory: .
         run: echo "::add-mask::${{ inputs.token }}"
       - uses: actions/checkout@v4
         with: { sparse-checkout: apps/pixel-scape-discord }
@@ -27,6 +28,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/pixel-scape-discord/package-lock.json }
       - run: npm ci --omit=dev --no-audit --no-fund
       - name: Build, render and post to Discord
+        id: build
         env:
           TOKEN: ${{ inputs.token }}
           PLACE: ${{ inputs.place }}
@@ -37,3 +39,13 @@ jobs:
           USER: ${{ inputs.user }}
           DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
         run: CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node scripts/job.js
+      - name: Tell Discord if the job broke before posting
+        if: failure() && steps.build.outcome != 'failure'
+        working-directory: .
+        env:
+          TOKEN: ${{ inputs.token }}
+          DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}\n" -X PATCH -H "content-type: application/json" \
+            --data '{"content":"Pixel Scape hit an error building this one. Try again in a minute."}' \
+            "https://discord.com/api/v10/webhooks/${DISCORD_APP_ID}/${TOKEN}/messages/@original"
