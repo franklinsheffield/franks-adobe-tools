@@ -25,7 +25,7 @@ const MODELS = req("../engine/models.js");
 const GB = req("../geo/build.js"), GB2 = req("../geo/buildings.js");
 
 const WEB = !!window.__psWeb;   // the browser / Discord build (web/): no Photoshop bridge there
-const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.13.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.14.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 

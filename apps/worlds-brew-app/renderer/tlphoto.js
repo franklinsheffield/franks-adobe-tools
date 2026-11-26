@@ -28,6 +28,25 @@ function scaleWF(wf, sx, sy) {
 }
 export const toCanvas = (pic) => { const c = document.createElement("canvas"); c.width = pic.w; c.height = pic.h; const g = c.getContext("2d"), im = g.createImageData(pic.w, pic.h); im.data.set(pic.d); g.putImageData(im, 0, 0); return c; };
 
+// how much bigger than the base picture the texture should be so the photo keeps its own detail
+export const TEX_MAX = 7680, TEX_PREVIEW = 4096;   // 7680 + the earth band stays within 8192 GPU textures
+export function texScale(base, box, mpp, full) {
+  const long = Math.max(base.w, base.h), want = Math.max(box.w, box.d) / Math.max(0.05, mpp), cap = full ? TEX_MAX : TEX_PREVIEW;
+  return Math.max(1, Math.min(want, cap) / long);
+}
+// bilinear resize of an RGBA picture (the satellite / height-colour picture under your photo)
+export function upscale(p, W, H) {
+  const out = new Uint8Array(W * H * 4), sx = p.w / W, sy = p.h / H, d = p.d, w = p.w;
+  for (let y = 0; y < H; y++) {
+    const fy = Math.max(0, Math.min(p.h - 1, (y + 0.5) * sy - 0.5)), y0 = Math.min(p.h - 2, Math.floor(fy)), by = p.h > 1 ? fy - y0 : 0;
+    for (let x = 0; x < W; x++) {
+      const fx = Math.max(0, Math.min(w - 1, (x + 0.5) * sx - 0.5)), x0 = Math.min(w - 2, Math.floor(fx)), bx = w > 1 ? fx - x0 : 0, q = (Math.max(0, y0) * w + Math.max(0, x0)) * 4, o = (y * W + x) * 4;
+      for (let c = 0; c < 4; c++) out[o + c] = (d[q + c] * (1 - bx) + d[q + 4 + c] * bx) * (1 - by) + (d[q + w * 4 + c] * (1 - bx) + d[q + w * 4 + 4 + c] * bx) * by;
+    }
+  }
+  return out;
+}
+
 export function createMyPhoto(T) {
   const { ui, btn, st, tl, say, glow } = T;
   st.my = null;
@@ -96,11 +115,13 @@ export function createMyPhoto(T) {
   // ---- the texture: the photo over the satellite / height-colour picture
   function compose(base, box) {
     const m = st.my; if (tl.photo !== "my" || !m || !m.place || !base) return base;
-    const key = [JSON.stringify(m.spec), box.lat, box.lon, box.w, box.d, box.turn, base.w, base.h, m.name].join("|");
+    const key = [JSON.stringify(m.spec), T.full ? T.full() : 1, box.lat, box.lon, box.w, box.d, box.turn, base.w, base.h, m.name].join("|");
     if (cache.key === key && cache.base === base) return cache.pic;
-    const r = M.render(m.place, box, base.w, base.h, m.pic), out = new Uint8Array(base.d);
+    // 0.14: the texture is as sharp as your photo (up to TEX_MAX px), not as soft as the satellite picture under it
+    const s = texScale(base, box, m.place.mpp, T.full ? T.full() : true), W = Math.round(base.w * s), H = Math.round(base.h * s);
+    const r = M.render(m.place, box, W, H, m.pic), out = s > 1 ? upscale(base, W, H) : new Uint8Array(base.d);
     for (let i = 0; i < out.length; i += 4) { const a = r.d[i + 3] / 255; if (!a) continue; for (let c = 0; c < 3; c++) out[i + c] = r.d[i + c] * a + out[i + c] * (1 - a); out[i + 3] = 255; }
-    m.cover = r.cover; cache = { key, base, pic: { w: base.w, h: base.h, d: out, missing: 0 } };
+    m.cover = r.cover; cache = { key, base, pic: { w: W, h: H, d: out, missing: 0 } };
     return cache.pic;
   }
   function info() {
