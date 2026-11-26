@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults: { run: { working-directory: apps/oracle-discord } }
     env:
-      HAVE_SECRETS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.ORACLE_DISCORD_PUBLIC_KEY != '' && secrets.ORACLE_KEY != '' && secrets.GH_DISPATCH_TOKEN != '' }}
+      HAVE_SECRETS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.ORACLE_DISCORD_PUBLIC_KEY != '' && secrets.ORACLE_DISCORD_BOT_TOKEN != '' && secrets.GH_DISPATCH_TOKEN != '' }}
       IS_MAIN: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,15 @@ jobs:
       - name: Secrets missing
         if: env.HAVE_SECRETS != 'true'
         run: echo "::warning::Oracle bot secrets not set yet; tests passed, deploy skipped."
+      - name: Sealing key (ORACLE_KEY secret, or derived from the bot token)
+        env:
+          K: ${{ secrets.ORACLE_KEY }}
+          T: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
+        run: |
+          if [ -z "$K" ] && [ -n "$T" ]; then K=$(printf %s "$T" | openssl dgst -sha256 -hmac science-is-magic-oracle-seal -binary | base64); fi
+          echo "::add-mask::$K"
+          echo "ORACLE_KEY=$K" >> "$GITHUB_ENV"
       - name: Saved-profiles KV namespace (create once, fill in its id)
         if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
         env:
@@ -54,7 +63,7 @@ jobs:
         env:
           DISCORD_PUBLIC_KEY: ${{ secrets.ORACLE_DISCORD_PUBLIC_KEY }}
           GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
-          ORACLE_KEY: ${{ secrets.ORACLE_KEY }}
+          ORACLE_KEY: ${{ env.ORACLE_KEY }}
       - name: Register slash commands
         if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
         env:

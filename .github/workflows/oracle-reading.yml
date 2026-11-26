@@ -27,12 +27,19 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/oracle-discord/package-lock.json }
       - run: npm ci --omit=dev --no-audit --no-fund
+      - name: Sealing key (ORACLE_KEY secret, or derived from the bot token)
+        env:
+          K: ${{ secrets.ORACLE_KEY }}
+          T: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        run: |
+          if [ -z "$K" ] && [ -n "$T" ]; then K=$(printf %s "$T" | openssl dgst -sha256 -hmac science-is-magic-oracle-seal -binary | base64); fi
+          echo "::add-mask::$K"
+          echo "ORACLE_KEY=$K" >> "$GITHUB_ENV"
       - name: Read and post to Discord
         env:
           TOKEN: ${{ inputs.token }}
           COMMAND: ${{ inputs.command }}
           PAYLOAD: ${{ inputs.payload }}
           PRIVATE: ${{ inputs.private }}
-          ORACLE_KEY: ${{ secrets.ORACLE_KEY }}
           DISCORD_APP_ID: ${{ secrets.ORACLE_DISCORD_APP_ID }}
         run: node scripts/job.js
