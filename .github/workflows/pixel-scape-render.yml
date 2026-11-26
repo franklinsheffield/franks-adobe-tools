@@ -1,0 +1,39 @@
+# Render job for the Pixel Scape Discord bot. Started by the Cloudflare Worker (workflow_dispatch) for each /terrain.
+name: Pixel Scape render
+run-name: "terrain: ${{ inputs.place }} (${{ inputs.size }} km) for ${{ inputs.user }}"
+on:
+  workflow_dispatch:
+    inputs:
+      token: { description: "Discord interaction token (valid 15 min)", required: true }
+      place: { description: "Place name or lat,lon", required: true }
+      size: { description: "Size in km", default: "10" }
+      view: { description: "oblique or top", default: "oblique" }
+      format: { description: "both, image or glb", default: "both" }
+      relief: { description: "auto or 1-4", default: "auto" }
+      user: { description: "Discord user name", default: "someone" }
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults: { run: { working-directory: apps/pixel-scape-discord } }
+    steps:
+      - name: Hide the interaction token from logs
+        run: echo "::add-mask::${{ inputs.token }}"
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: apps/pixel-scape-discord }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/pixel-scape-discord/package-lock.json }
+      - run: npm ci --omit=dev --no-audit --no-fund
+      - name: Build, render and post to Discord
+        env:
+          TOKEN: ${{ inputs.token }}
+          PLACE: ${{ inputs.place }}
+          SIZE: ${{ inputs.size }}
+          VIEW: ${{ inputs.view }}
+          FORMAT: ${{ inputs.format }}
+          RELIEF: ${{ inputs.relief }}
+          USER: ${{ inputs.user }}
+          DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
+        run: CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node scripts/job.js

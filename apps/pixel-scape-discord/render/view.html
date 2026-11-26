@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;background:#000;overflow:hidden;font-family:"JetBrains Mono","DejaVu Sans Mono",Menlo,monospace}
+  canvas{display:block}
+  #bar{position:absolute;left:24px;right:24px;bottom:20px;height:58px;display:flex;align-items:center;gap:18px;padding:0 18px;
+       background:rgba(0,0,0,.78);border:1px solid rgba(255,255,255,.85);border-radius:6px;color:#fff;letter-spacing:.06em;box-sizing:border-box}
+  #tag{color:#000;background:#5effc8;font-weight:700;font-size:13px;padding:4px 8px;border-radius:3px}
+  #name{font-size:20px;font-weight:700;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  #meta{font-size:13px;color:#cfd6dc;white-space:nowrap}
+  #src{position:absolute;right:28px;top:16px;font-size:11px;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000}
+</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+</head><body>
+<div id="bar"><span id="tag">PIXEL SCAPE</span><span id="name"></span><span id="meta"></span></div><div id="src"></div>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+window.renderTerrain = async (opt) => {
+  const W = opt.width, H = opt.height, info = opt.info, ex = opt.exaggeration;
+  document.getElementById("name").textContent = info.label || info.name;
+  document.getElementById("meta").textContent = `${(info.widthM/1000).toFixed(1)} × ${(info.depthM/1000).toFixed(1)} KM  ·  ${info.minElevationM}–${info.maxElevationM} M` + (ex !== 1 ? `  ·  ${ex}× RELIEF` : "");
+  document.getElementById("src").textContent = info.scenes.length ? `Sentinel-2 ${info.scenes[0].date} · Copernicus/ESA · AWS Terrain Tiles` : "AWS Terrain Tiles · elevation tint";
+  const gltf = await new GLTFLoader().loadAsync(opt.url);
+  const root = gltf.scene; root.scale.set(1, ex, 1);
+  root.traverse((o) => { if (o.isMesh && o.material.map) { o.material.map.colorSpace = THREE.SRGBColorSpace; o.material.map.anisotropy = 8; } });
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.setPixelRatio(1); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+  document.body.prepend(r.domElement);
+  const sc = new THREE.Scene(), w = info.widthM, relief = (info.maxElevationM - info.minElevationM) * ex;
+  // sky gradient
+  const cv = document.createElement("canvas"); cv.width = 2; cv.height = 256; const g = cv.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, "#3d6f9e"); gr.addColorStop(0.6, "#a9c3d8"); gr.addColorStop(1, "#dfe7ec"); g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const bg = new THREE.CanvasTexture(cv); bg.colorSpace = THREE.SRGBColorSpace; sc.background = opt.view === "top" ? new THREE.Color(0x050506) : bg;
+  sc.fog = opt.view === "top" ? null : new THREE.Fog(0xc9d6e0, w * 1.4, w * 4.5);
+  sc.add(root);
+  sc.add(new THREE.HemisphereLight(0xdfeaff, 0x3a2a20, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.2); sun.position.set(-w, w * 0.9, w * 0.35); sc.add(sun);
+  const cam = new THREE.PerspectiveCamera(opt.view === "top" ? 30 : 38, W / H, w / 500, w * 20);
+  const mid = relief * 0.35;
+  if (opt.view === "top") { const d = (w * 0.6) / Math.tan(THREE.MathUtils.degToRad(15)); cam.up.set(0, 0, -1); cam.position.set(0, d + relief, 0); cam.lookAt(0, 0, 0); }
+  else { cam.position.set(0, mid + w * 0.72, w * 1.22); cam.lookAt(0, mid * 0.5, -w * 0.04); }
+  r.render(sc, cam);
+  return true;
+};
+document.title = "ready";
+</script></body></html>
