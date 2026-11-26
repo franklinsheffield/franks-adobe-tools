@@ -121,7 +121,7 @@ export function createTerrainLab(ctx) {
   }
   async function search() {
     const q = String(tl.q || "").trim(); if (!q) return say("Type a place to search for.", true);
-    const ll = parseCoords(q); if (ll) { setPlace(null, ll[0], ll[1]); return preview(); }
+    const ll = parseCoords(q); if (ll) { setPlace(coordName(ll), ll[0], ll[1]); return preview(); }
     say("Searching for " + q + "...");
     try {
       st.results = await ipcRenderer.invoke("geo:search", q); clear(results);
@@ -140,7 +140,8 @@ export function createTerrainLab(ctx) {
     let lat = +m[1], lon = +m[3]; if (m[2] && /s/i.test(m[2])) lat = -Math.abs(lat); if (m[4] && /w/i.test(m[4])) lon = -Math.abs(lon);
     return Math.abs(lat) <= 85 && Math.abs(lon) <= 180 ? [lat, lon] : null;
   }
-  function goCoords() { const ll = parseCoords(tl.coords); if (!ll) return say("Use the form 36.0755, -112.1300 (latitude, longitude).", true); setPlace(null, ll[0], ll[1]); preview(); }
+  function goCoords() { const ll = parseCoords(tl.coords); if (!ll) return say("Use the form 36.0755, -112.1300 (latitude, longitude).", true); setPlace(coordName(ll), ll[0], ll[1]); preview(); }
+  const coordName = (ll) => "Place " + (+ll[0]).toFixed(4) + " " + (+ll[1]).toFixed(4);   // typed coordinates: a new place, so not the old name
 
   // ---- fetching and building
   async function fetchData(grid, photoPx, full) {
