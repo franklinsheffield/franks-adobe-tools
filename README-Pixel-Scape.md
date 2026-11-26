@@ -13,6 +13,20 @@ Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.
 
 ## Update notes
 
+**0.13.0 (2026-11-26): My photo: your own aerial, drone or map picture on the terrain**
+
+- **Photo: My photo** in Terrain Lab (next to Satellite and Heights). **Load photo...** takes a picture plus any side files picked with it (or found next to it):
+  - **GeoTIFF** lands at its real place by itself (plain, LZW or Deflate; strips or tiles; 8 or 16-bit; palette). Map projections: lat/long, web mercator and UTM (WGS84, NAD83, ETRS89).
+  - **JPG / PNG / WebP / TIFF with a world file** (`.jgw .pgw .tfw .wld` ...) lands by itself too. The `.prj` gives the projection; without one it is guessed from the numbers and the status line says so.
+  - **Drone photo looking straight down** (DJI-style GPS, height above take-off, lens and heading) is placed roughly from those. Pin it for a close fit.
+  - **Anything else** (a screenshot, a scan, a photo from a plane window) is pinned by hand.
+- **Pin...** opens the pin aligner: your photo on the left, the box on the right (scroll to zoom, drag to move). Click a spot on the photo, then the same spot on the map. 2 pins = move / turn / size, 3 = also stretch, 4 or more = also perspective (shots taken at an angle). **Overlay** shows the photo laid over the map as you go; with spare pins it says how far they miss, in metres. **Undo pin**, **Clear pins**, **Done**, **Cancel**.
+- **Box to photo** fits the box to the photo. If a placed photo is outside the box, the box moves to it.
+- The photo goes over the satellite picture, which still fills anything the photo doesn't cover. Roof colours of buildings come from your photo where it covers them. The map shows the photo's outline (**MY PHOTO**).
+- **Files:** `terrain.json` records the photo, how it was placed and the pins; the credits list your photo first.
+- **Fix:** the third Photo button was cut off; it is now **Heights**.
+- Big pictures are shrunk to 8192 px on the long side on loading; the placement is kept exact.
+
 **0.12.0 (2026-11-26): real buildings in Terrain Lab**
 
 - **Buildings card** in Terrain Lab (on by default):

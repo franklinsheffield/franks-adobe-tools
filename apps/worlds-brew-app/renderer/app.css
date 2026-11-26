@@ -189,3 +189,15 @@ input.num.wide { width: 70px; }
 .tlacts .btn { width: 100%; }
 .tlresults { display: grid; gap: 2px; margin: 2px 0 4px; }
 .tlres { cursor: pointer; font-size: 11px; }
+
+/* ---- Terrain Lab 0.13: My photo pin aligner (over the whole Terrain Lab box) */
+.tlpin { position: absolute; inset: 14px; z-index: 5; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; padding: 8px; background: var(--panel, #000); border: 1px solid var(--line, rgba(255,255,255,0.85)); }
+.tlpinbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.tlpinbar .ctitle { font-size: 11px; letter-spacing: 0.06em; }
+.tlpinbtns { display: grid; grid-auto-flow: column; grid-auto-columns: 96px; gap: 6px; }
+.tlpinbtns .btn { width: 100%; }
+.tlpinbtns .btn.on { box-shadow: 0 0 0 1px var(--glow, #5effc8) inset; }
+.tlpinpanes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
+.tlpinpanes .tlcanvas canvas { cursor: crosshair; }
+.tlpininfo { font-size: 11px; opacity: 0.92; min-height: 16px; }
+.tlmy { display: grid; gap: 4px; margin: 2px 0 4px; }
