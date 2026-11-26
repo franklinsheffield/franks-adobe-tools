@@ -4,7 +4,7 @@
   "description": "Pixel Scape Discord bot: /terrain renders real terrain (Cloudflare Worker + GitHub Actions)",
   "main": "worker/index.mjs",
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test tests/*.test.js tests/*.test.mjs",
     "try": "node scripts/try.js",
     "job": "node scripts/job.js",
     "register": "node scripts/register-commands.js"
