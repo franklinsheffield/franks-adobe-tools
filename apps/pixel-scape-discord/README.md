@@ -17,3 +17,9 @@ Local: `npm test`; `node scripts/try.js "36.10,-112.11" 10 out` (build + render)
 Next: switch `src/` to Terrain Lab's shared `apps/worlds-brew-app/geo/` modules once Terrain Lab 0.11 is on main (same data sources), so the bot and the desktop app build identical terrain.
 
 Imagery: Copernicus Sentinel-2 (ESA) via AWS Open Data. Elevation: AWS Terrain Tiles (Mapzen terrarium).
+
+## Role gate (Science is Magic)
+Both pieces only open for members of the Science is Magic server who hold one of the roles in `GATE_ROLE_IDS`
+(Pixel Scape Access, Hierophant, Patron of the Lab). Set in `wrangler.toml` and `activity/wrangler.toml`; leave it empty to open to everyone.
+- `/terrain` checks `member.roles` on the interaction and answers with a private "sealed" note otherwise.
+- The Activity asks for `guilds.members.read`, and `/api/token` checks `/users/@me/guilds/{GATE_GUILD_ID}/member`. It returns 403 `locked` (no token) when the role is missing, and the web build shows a "Sealed" screen.

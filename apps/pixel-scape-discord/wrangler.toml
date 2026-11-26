@@ -8,6 +8,9 @@ GH_REPO = "franklinsheffield/franks-adobe-tools"
 GH_WORKFLOW = "pixel-scape-render.yml"
 GH_REF = "main"
 COOLDOWN_S = "60"
+# Role gate for /terrain: Pixel Scape Access, Hierophant, Patron of the Lab. Empty = open to everyone.
+GATE_ROLE_IDS = "1575316203621060638,1574485334014558290,1575350660277211266"
+GATE_MESSAGE = "Pixel Scape is sealed. Unlock it in Science is Magic: boost the server (Patron of the Lab) or earn the Pixel Scape Access role."
 # Secrets (set by the deploy workflow): DISCORD_PUBLIC_KEY, DISCORD_APP_ID, GH_DISPATCH_TOKEN
 
 [observability]
