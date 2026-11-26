@@ -49,16 +49,19 @@ const camSlots = [null, null, null];
 
 // ---- undo: a stack of light snapshots (objects are shallow copies; meshes, images and sculpt grids are shared, never mutated)
 const hist = { list: [], i: -1 };
+// building together (web/multi.js, Discord D4) hooks in here: commit / loaded / sel / drag / draw, canSelect
+const net = {};
+const netCall = (k) => { if (net[k]) try { net[k](); } catch (err) { console.error("[multi]", err); } };
 function snap() { const sc = st.scene; return { scene: Object.assign({}, sc, { cam: Object.assign({}, sc.cam), objs: sc.objs.map((o) => Object.assign({}, o, o.layers ? { layers: o.layers.map((L) => Object.assign({}, L)) } : null)) }), sel: hasSel() ? st.sel.id : null }; }
-function commit() { hist.list = hist.list.slice(0, hist.i + 1); hist.list.push(snap()); if (hist.list.length > 80) hist.list.shift(); hist.i = hist.list.length - 1; markDirty(); }
+function commit() { hist.list = hist.list.slice(0, hist.i + 1); hist.list.push(snap()); if (hist.list.length > 80) hist.list.shift(); hist.i = hist.list.length - 1; markDirty(); netCall("commit"); }
 function resetHistory() { hist.list = [snap()]; hist.i = 0; }
 function restore(sn) {
   const byId = new Map(st.scene.objs.map((o) => [o.id, o])), cam = st.scene.cam;
   const objs = sn.scene.objs.map((c) => { const o = byId.get(c.id) || {}; Object.keys(o).forEach((k) => { if (!(k in c) && k[0] !== "_") delete o[k]; }); return Object.assign(o, c, c.layers ? { layers: c.layers.map((L) => Object.assign({}, L)) } : null); });
   Object.assign(st.scene, sn.scene, { objs, cam }); st.sel = objs.find((o) => o.id === sn.sel) || NONE; changed("sel");
 }
-function undo() { if (hist.i > 0) { hist.i--; restore(hist.list[hist.i]); markDirty(); setStatus("Undo"); } }
-function redo() { if (hist.i < hist.list.length - 1) { hist.i++; restore(hist.list[hist.i]); markDirty(); setStatus("Redo"); } }
+function undo() { if (hist.i > 0) { hist.i--; restore(hist.list[hist.i]); markDirty(); setStatus("Undo"); netCall("commit"); } }
+function redo() { if (hist.i < hist.list.length - 1) { hist.i++; restore(hist.list[hist.i]); markDirty(); setStatus("Redo"); netCall("commit"); } }
 function markDirty() { dirty = true; title(); }
 function title() { const n = filePath ? req("path").basename(filePath) : (st.scene.name || "Untitled"); ipcRenderer.send("app:title", (dirty ? "* " : "") + n + "  -  " + APP); if (refs.docName) refs.docName.textContent = String(n).toUpperCase() + (dirty ? "  *" : ""); }
 
@@ -73,15 +76,17 @@ function changed(kind) {
   vp.sync(st.scene, hasSel() ? st.sel : null, st.view.gizmo);
   if (refs.axes) refs.axes.update();
   updateHint();
+  if (kind === "drag") netCall("drag");
 }
-function select(o) { st.sel = o || NONE; lastStretch = hasSel() ? { sx: st.sel.sx || 1, sy: st.sel.sy || 1, sz: st.sel.sz || 1 } : null; changed("sel"); }
+function select(o) { if (o && o !== NONE && net.canSelect && !net.canSelect(o)) return;
+  st.sel = o || NONE; lastStretch = hasSel() ? { sx: st.sel.sx || 1, sy: st.sel.sy || 1, sz: st.sel.sz || 1 } : null; changed("sel"); netCall("sel"); }
 function edited() { // a committed Inspector edit
   if (hasSel() && st.view.lockScale && lastStretch && SC.applyLock(st.sel, lastStretch)) { /* spread W / H / D */ }
   if (hasSel()) lastStretch = { sx: st.sel.sx || 1, sy: st.sel.sy || 1, sz: st.sel.sz || 1 };
   if (hasLay() && st.lay.shader && (st.lay.shader.bt !== st.lay.shader.t || st.lay.shader.bs !== st.lay.shader.size)) { try { LIB.rebake(st.lay); } catch (err) { setStatus(String(err.message || err), true); } }   // shader Time / Detail changed: bake again
   commit(); changed("val");
 }
-function loadScene(sc, path) { st.scene = sc; st.sel = NONE; filePath = path || null; dirty = false; homeCam = CT.camCopy(sc.cam); resetHistory(); changed("scene"); title(); }
+function loadScene(sc, path) { st.scene = sc; st.sel = NONE; filePath = path || null; dirty = false; homeCam = CT.camCopy(sc.cam); resetHistory(); changed("scene"); title(); netCall("loaded"); }
 
 // ---- colour picker: the system colour dialog through a hidden <input type="color">
 function pickColor(hex) {
@@ -120,7 +125,7 @@ const vp = new Viewport(canvas, {
     }
     changed("drag");
   },
-  onDraw() { placeFrameGuide(); }
+  onDraw() { placeFrameGuide(); netCall("draw"); }
 });
 let gz = null, gizmoY = 0;
 // the pointer's height, read before the gizmo handles the move (capture phase), for the centre scale handle
@@ -909,4 +914,4 @@ ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { TL: () => TL, addTerrain, addGeoFromFolder, openTerrainLab, importModelData, LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { TL: () => TL, addTerrain, addGeoFromFolder, openTerrainLab, importModelData, LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, net, resetHistory, setStatus, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

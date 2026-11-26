@@ -53,9 +53,12 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/pixel-scape-discord/activity
           wranglerVersion: "4.150.0"
-          secrets: ${{ secrets.DISCORD_CLIENT_SECRET != '' && 'DISCORD_CLIENT_SECRET' || '' }}
+          secrets: |
+            ${{ secrets.DISCORD_CLIENT_SECRET != '' && 'DISCORD_CLIENT_SECRET' || '' }}
+            ${{ secrets.DISCORD_BOT_TOKEN != '' && 'DISCORD_BOT_TOKEN' || '' }}
         env:
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
       - name: Register slash commands
         if: env.HAVE_SECRETS == 'true'
         env:

@@ -11,7 +11,18 @@ run_worker_first = ["/api/*", "/.proxy/api/*"]
 
 [vars]
 DISCORD_APP_ID = "1575319071283617842"
-# Secret (set by the deploy workflow): DISCORD_CLIENT_SECRET
+PLAY_CHANNEL_ID = "1575574504133099701"   # #pixel-scape-play: where renders go when the call's channel can't be confirmed
+# Secrets (set by the deploy workflow): DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN (posts renders)
+# Local test rooms without Discord: wrangler dev --var DEV_ROOMS:1
+
+# D4: one Durable Object per Discord server holds its rooms (one per call), scene library and blobs (SQLite, free plan)
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Rooms"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Rooms"]
 
 [observability]
 enabled = true

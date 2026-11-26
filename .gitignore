@@ -4,3 +4,4 @@ dist/
 apps/worlds-brew-app/engine/
 apps/worlds-brew-app/renderer/vendor/
 apps/worlds-brew-app/tests/out/
+apps/pixel-scape-discord/activity/.wrangler/

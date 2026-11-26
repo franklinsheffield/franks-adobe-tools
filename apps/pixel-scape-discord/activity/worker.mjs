@@ -1,6 +1,9 @@
 // Pixel Scape Activity (Discord D3): serves the Pixel Scape web build (static assets) and swaps the Discord sign-in
 // code for an access token. The client secret stays here, never in the page.
 //   POST /api/token  { code } -> { access_token }
+//   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs)
+import { Rooms } from "./rooms.mjs";
+export { Rooms };
 export async function exchange(env, code, fetchImpl = fetch) {
   const body = new URLSearchParams({ client_id: env.DISCORD_APP_ID, client_secret: env.DISCORD_CLIENT_SECRET, grant_type: "authorization_code", code });
   const r = await fetchImpl("https://discord.com/api/v10/oauth2/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
@@ -20,7 +23,16 @@ export default {
       const r = await exchange(env, code); if (r.status !== 200) console.error("token exchange failed", r.status, r.body.error);
       return json(r.body, r.status);
     }
-    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET });
+    if (path === "/api/room") {
+      if ((req.headers.get("upgrade") || "").toLowerCase() !== "websocket") return json({ error: "WebSocket only" }, 426);
+      const guild = url.searchParams.get("guild") || "", room = url.searchParams.get("room") || "";
+      const dev = env.DEV_ROOMS === "1" && guild === "dev";
+      if (!dev && !/^\d{5,25}$/.test(guild)) return json({ error: "building together works in a server" }, 400);
+      if (!/^[\w:.-]{1,100}$/.test(room)) return json({ error: "missing room" }, 400);
+      if (!env.ROOMS) return json({ error: "rooms are not set up" }, 503);
+      return env.ROOMS.get(env.ROOMS.idFromName("guild:" + guild)).fetch(req);
+    }
+    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, rooms: !!env.ROOMS, posting: !!env.DISCORD_BOT_TOKEN });
     return env.ASSETS.fetch(req);
   }
 };

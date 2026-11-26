@@ -24,5 +24,5 @@ export async function startDiscord(say) {
   const auth = await sdk.commands.authenticate({ access_token });
   const user = auth && auth.user;
   if (say) say("Signed in to Discord as " + (user && (user.global_name || user.username)));
-  return { sdk, user, channelId: sdk.channelId, guildId: sdk.guildId };
+  return { sdk, user, access_token, instanceId: sdk.instanceId, channelId: sdk.channelId, guildId: sdk.guildId };
 }
