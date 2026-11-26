@@ -28,6 +28,7 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/pixel-scape-discord/package-lock.json }
       - run: npm ci --omit=dev --no-audit --no-fund
       - name: Build, render and post to Discord
+        id: build
         env:
           TOKEN: ${{ inputs.token }}
           PLACE: ${{ inputs.place }}
@@ -39,7 +40,7 @@ jobs:
           DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
         run: CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node scripts/job.js
       - name: Tell Discord if the job broke before posting
-        if: failure()
+        if: failure() && steps.build.outcome != 'failure'
         working-directory: .
         env:
           TOKEN: ${{ inputs.token }}
