@@ -10,5 +10,10 @@ GH_REF = "main"
 COOLDOWN_S = "20"
 # Secrets (set by the deploy workflow): DISCORD_PUBLIC_KEY, GH_DISPATCH_TOKEN, ORACLE_KEY
 
+# Saved birth profiles (opt-in, sealed). The deploy workflow creates the namespace and fills in its id.
+[[kv_namespaces]]
+binding = "PROFILES"
+id = "KV_ID_SET_BY_DEPLOY"
+
 [observability]
 enabled = true

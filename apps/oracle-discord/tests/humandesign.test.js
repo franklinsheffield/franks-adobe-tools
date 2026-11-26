@@ -46,3 +46,11 @@ test("every type and authority has reading text, and readings fit Discord limits
   }
   assert.ok(seen.size >= 4, [...seen].join());
 });
+
+import { run } from "../src/modules/humandesign/index.js";
+test("unknown birth time gives a noon chart with a provisional note", async () => {
+  const r = await run({ date: "1990-04-09", place: "Phoenix" }, { geocoded: { lat: 33.45, lon: -112.07, name: "Phoenix, USA" } });
+  assert.match(r.embeds[0].fields[0].name, /Birth time unknown/);
+  assert.match(r.embeds[0].fields[0].value, /profile|noon chart/);
+  assert.ok(r.files[0].data.length > 10000);
+});

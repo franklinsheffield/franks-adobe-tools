@@ -12,9 +12,9 @@ export const command = {
   name: "humandesign",
   description: "Your Human Design bodygraph from real planetary data, with a Science is Magic reading",
   options: [
-    { type: 3, name: "date", description: "Birth date as year-month-day, e.g. 1990-04-09", required: true, min_length: 8, max_length: 10 },
-    { type: 3, name: "time", description: "Birth time, local clock, e.g. 14:30 or 2:30 pm", required: true, max_length: 8 },
-    { type: 3, name: "place", description: "Birth town/city and country, e.g. Phoenix, USA", required: true, max_length: 100 },
+    { type: 3, name: "date", description: "Birth date as year-month-day (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "time", description: "Birth time, local clock, e.g. 14:30 or 2:30 pm (leave out if unknown)", max_length: 8 },
+    { type: 3, name: "place", description: "Birth town/city and country, e.g. Phoenix, USA", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
     { type: 5, name: "show_birth_details", description: "Print your birth date and place on the chart (default: hidden)" },
   ],
@@ -70,6 +70,14 @@ export function readingEmbeds(chart, { who = "you", image = "attachment://bodygr
   return [main, wiring, purpose];
 }
 
+// Which headline results change between the first and last minute of the birth day (unknown birth time).
+function timeSensitive(chart, birth, zone) {
+  const ends = [{ ...birth, hour: 0, minute: 0 }, { ...birth, hour: 23, minute: 59 }].map((b) => bodygraph(localToUtc(b, zone)));
+  const keys = { type: "type", authority: "authority", profile: "profile", definition: "definition", cross: "incarnation cross", channels: "channels" };
+  const val = (c, k) => k === "cross" ? c.cross.full : k === "channels" ? c.channels.map((x) => x.key).join() : c[k];
+  return Object.keys(keys).filter((k) => ends.some((c) => val(c, k) !== val(chart, k))).map((k) => keys[k]);
+}
+
 function experiment(chart) {
   const a = { Emotional: "wait out your emotional wave", Sacral: "trust your gut's first sound", Splenic: "act on the first quiet hit of instinct",
     "Ego Manifested": "say what you want out loud and listen", "Ego Projected": "ask what you truly want", "Self-Projected": "talk it through and hear yourself",
@@ -79,14 +87,22 @@ function experiment(chart) {
 
 /** Discord options -> { embeds, files, ephemeral }. */
 export async function run(o, ctx = {}) {
-  const birth = parseBirth(o.date, o.time);
-  const where = await geocode(o.place, ctx.fetch || fetch);
+  const timeKnown = !!(o.time && String(o.time).trim());
+  const birth = parseBirth(o.date, timeKnown ? o.time : "12:00");
+  if (!o.date || !o.place) throw new Error("I need your birth date and place. Add them, or save them once with /profile set.");
+  const where = ctx.geocoded || await geocode(o.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${o.place}". Try "City, Country".`);
   const zone = timeZoneAt(where.lat, where.lon), utc = localToUtc(birth, zone);
   const chart = bodygraph(utc);
+  const unsure = timeKnown ? [] : timeSensitive(chart, birth, zone);
   const who = ctx.user ? `@${ctx.user}` : "you";
   const place = where.name.split(",").slice(0, 1).concat(where.name.split(",").slice(-1)).map((s) => s.trim()).join(", ");
-  const subtitle = o.show_birth_details ? `${fmtDate(birth)} · ${String(birth.hour).padStart(2, "0")}:${String(birth.minute).padStart(2, "0")} · ${place}` : `Personal chart for ${who}`;
+  const clock = timeKnown ? `${String(birth.hour).padStart(2, "0")}:${String(birth.minute).padStart(2, "0")}` : "time unknown (noon chart)";
+  const subtitle = o.show_birth_details ? `${fmtDate(birth)} · ${clock} · ${place}` : `Personal chart for ${who}${timeKnown ? "" : " · birth time unknown"}`;
   const png = await bodygraphPng(chart, { title: "Human Design", subtitle });
-  return { embeds: readingEmbeds(chart, { who }), files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart };
+  const embeds = readingEmbeds(chart, { who });
+  if (!timeKnown) embeds[0].fields.unshift({ name: "⏱️ Birth time unknown", value: unsure.length
+    ? `This is a noon chart. Across the whole day these could change: **${unsure.join(", ")}**. Treat them as provisional until you find your birth time (birth certificate or hospital record).`
+    : "This is a noon chart, but your type, authority, profile, definition, cross and channels stay the same all day, so the core reading holds." });
+  return { embeds, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart };
 }
