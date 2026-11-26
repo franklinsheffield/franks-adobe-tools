@@ -1,0 +1,19 @@
+{
+  "name": "oracle-discord",
+  "version": "0.1.0",
+  "description": "Science is Magic oracle bot for Discord: Human Design bodygraphs (and later astrology, I Ching, tarot) from real ephemeris data",
+  "type": "module",
+  "private": true,
+  "license": "ISC",
+  "scripts": {
+    "test": "node --test tests/",
+    "try": "node scripts/try.js"
+  },
+  "dependencies": {
+    "astronomy-engine": "^2.1.19",
+    "tz-lookup": "^6.1.25"
+  },
+  "devDependencies": {
+    "sweph": "^2.10.3-8"
+  }
+}
