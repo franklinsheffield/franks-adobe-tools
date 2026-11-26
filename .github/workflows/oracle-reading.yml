@@ -1,0 +1,38 @@
+# Reading job for the Science is Magic oracle bot. Started by its Cloudflare Worker (workflow_dispatch).
+# Options arrive sealed (AES-GCM, ORACLE_KEY), so birth data never appears in inputs or logs.
+name: Oracle reading
+run-name: "oracle: /${{ inputs.command }}"
+on:
+  workflow_dispatch:
+    inputs:
+      token: { description: "Discord interaction token (valid 15 min)", required: true }
+      command: { description: "Slash command name", required: true }
+      payload: { description: "Sealed options", required: true }
+      private: { description: "Ephemeral reply", default: "false" }
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - name: Hide the interaction token and payload from logs
+        working-directory: .
+        run: |
+          echo "::add-mask::${{ inputs.token }}"
+          echo "::add-mask::${{ inputs.payload }}"
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: apps/oracle-discord }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/oracle-discord/package-lock.json }
+      - run: npm ci --omit=dev --no-audit --no-fund
+      - name: Read and post to Discord
+        env:
+          TOKEN: ${{ inputs.token }}
+          COMMAND: ${{ inputs.command }}
+          PAYLOAD: ${{ inputs.payload }}
+          PRIVATE: ${{ inputs.private }}
+          ORACLE_KEY: ${{ secrets.ORACLE_KEY }}
+          DISCORD_APP_ID: ${{ secrets.ORACLE_DISCORD_APP_ID }}
+        run: node scripts/job.js

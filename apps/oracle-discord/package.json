@@ -7,9 +7,11 @@
   "license": "ISC",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "try": "node scripts/try.js"
+    "try": "node scripts/try.js",
+    "register": "node scripts/register-commands.js"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "astronomy-engine": "^2.1.19",
     "tz-lookup": "^6.1.25"
   },

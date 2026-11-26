@@ -1,0 +1,53 @@
+# Tests the Science is Magic oracle bot, deploys its Cloudflare Worker and registers the slash commands.
+name: Oracle bot deploy
+on:
+  push:
+    branches: [main]
+    paths: ["apps/oracle-discord/**", ".github/workflows/oracle-*.yml"]
+  pull_request:
+    paths: ["apps/oracle-discord/**", ".github/workflows/oracle-*.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    env:
+      HAVE_SECRETS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.ORACLE_DISCORD_PUBLIC_KEY != '' && secrets.ORACLE_KEY != '' && secrets.GH_DISPATCH_TOKEN != '' }}
+      IS_MAIN: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/oracle-discord/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Secrets missing
+        if: env.HAVE_SECRETS != 'true'
+        run: echo "::warning::Oracle bot secrets not set yet; tests passed, deploy skipped."
+      - name: Deploy Worker
+        if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
+        id: wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/oracle-discord
+          secrets: |
+            DISCORD_PUBLIC_KEY
+            GH_DISPATCH_TOKEN
+            ORACLE_KEY
+        env:
+          DISCORD_PUBLIC_KEY: ${{ secrets.ORACLE_DISCORD_PUBLIC_KEY }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+          ORACLE_KEY: ${{ secrets.ORACLE_KEY }}
+      - name: Register slash commands
+        if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        run: npm run register
+      - name: Interactions endpoint URL
+        if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
+        run: |
+          echo "Discord Developer Portal > General Information > Interactions Endpoint URL:" >> "$GITHUB_STEP_SUMMARY"
+          echo '${{ steps.wrangler.outputs.deployment-url }}' >> "$GITHUB_STEP_SUMMARY"
