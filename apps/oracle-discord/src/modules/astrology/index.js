@@ -6,8 +6,8 @@ import { castNow, skyContext, transits, transitLine } from "./now.js";
 import { SUN, MOON, RISING, planetLine, aspectLine, elementLine, formula } from "./text.js";
 
 const CHART_OPTS = [
-  { type: 3, name: "date", description: "Birth date, year-month-day (1990-07-14)", required: true },
-  { type: 3, name: "place", description: "Birth town or city (Phoenix, AZ)", required: true },
+  { type: 3, name: "date", description: "Birth date, year-month-day (1990-07-14). Blank = saved profile or form", required: false },
+  { type: 3, name: "place", description: "Birth town or city (Phoenix, AZ). Blank = saved profile or form", required: false },
   { type: 3, name: "time", description: "Birth time (08:45 or 8:45 am). Leave out if unknown", required: false },
   { type: 3, name: "name", description: "Name shown on the chart", required: false },
   { type: 3, name: "houses", description: "House system", required: false,
@@ -19,6 +19,7 @@ const NOW_OPTS = [
   { type: 3, name: "birth_date", description: "Your birth date to see how today's sky touches your chart", required: false },
   { type: 3, name: "birth_time", description: "Your birth time (optional)", required: false },
   { type: 3, name: "birth_place", description: "Your birth town or city", required: false },
+  { type: 5, name: "my_chart", description: "Use my saved birth details (reply is private)", required: false },
   { type: 5, name: "private", description: "Only you see it (default: no, unless birth details are given)", required: false },
 ];
 
