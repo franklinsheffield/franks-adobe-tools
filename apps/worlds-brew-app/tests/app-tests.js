@@ -515,6 +515,7 @@ async function uiTests() {
   await t("app: My photo (0.13): a GeoTIFF lands by itself, so does a PNG with its world file and .prj, the pin aligner pins it, and the photo goes on the terrain and into terrain.json", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "px-myphoto-")), w = 60, h = 40, rgb = checker(w, h, 10);
     fs.writeFileSync(path.join(dir, "gc.tif"), writeTIFF({ w, h, rgb, comp: 5, geo: { sx: 2, sy: 2, x0: 399000, y0: 3993000, epsg: 32612 } }));
+    fs.writeFileSync(path.join(dir, "fine.tif"), writeTIFF({ w, h, rgb, comp: 8, geo: { sx: 0.25, sy: 0.25, x0: 399055, y0: 3992965, epsg: 32612 } }));
     fs.writeFileSync(path.join(dir, "gc.png"), writePNG(w, h, rgb)); fs.writeFileSync(path.join(dir, "gc.pgw"), "2\n0\n0\n-2\n399001\n3992999\n");
     fs.writeFileSync(path.join(dir, "gc.prj"), 'PROJCS["WGS 84 / UTM zone 12N",GEOGCS["WGS 84"],AUTHORITY["EPSG","32612"]]');
     const c = require("../geo/myphoto.js").fromCRS(399060, 3992960, { kind: "utm", zone: 12, south: false });   // the photo's middle
@@ -535,6 +536,8 @@ async function uiTests() {
       out.pinInfo = document.querySelector(".tlpininfo").textContent; pin.finish(true); await wait();
       out.pinned = { desc: T.myp.describe(), px: at(), overlayGone: !document.querySelector(".tlpin") };
       const f = await T.files("x"); out.info = f.info.myPhoto; out.credit = f.info.credits[0];
+      // 0.14: a sharper photo makes a sharper texture (25 cm pixels over 400 m = 1600 px, not the 256 px picture under it)
+      out.w0 = T.st.pic.w; await T.myp.load([dir + "/fine.tif"]); await wait(); out.fine = { w: T.st.pic.w, h: T.st.pic.h, desc: T.myp.describe() };
       return out;
     }, { dir, c });
     const blue = (p) => p[0] < 70 && p[1] < 80 && p[2] > 170;
@@ -544,6 +547,7 @@ async function uiTests() {
     assert.ok(/gc\.pgw/.test(r.png.desc) && !/guessed/.test(r.png.desc), "PNG placed by its world file + .prj: " + r.png.desc); assert.ok(blue(r.png.px), "PNG on the terrain: " + r.png.px);
     assert.ok(r.overlay && /3 pins: stretch/.test(r.pinInfo), r.pinInfo); assert.ok(/pinned \(3 pins, stretch\)/.test(r.pinned.desc) && r.pinned.overlayGone, r.pinned.desc); assert.ok(blue(r.pinned.px), "pinned photo on the terrain");
     assert.deepStrictEqual([r.info.file, r.info.placed], ["gc.png", "affine pins"]); assert.ok(Math.abs(parseFloat(r.info.coversBox) - 6) < 1, r.info.coversBox); assert.ok(/^Photo: gc\.png \(your own picture\)/.test(r.credit), r.credit);
+    assert.ok(r.w0 <= 512 && r.fine.w === 1600 && r.fine.h === 1600, "texture follows the photo's sharpness: " + r.w0 + " -> " + r.fine.w + " x " + r.fine.h + " (" + r.fine.desc + ")");
     await win.waitForTimeout(300); await win.screenshot({ path: path.join(OUT, "app-my-photo.png") });
     assert.strictEqual(await W(() => { const T = window.__wb.TL(); T.tl.photo = "tint"; T.changed(); const i = T.myp.info(); T.close(); return i; }), null, "Heights leaves the photo out");
   });

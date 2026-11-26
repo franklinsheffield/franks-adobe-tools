@@ -13,6 +13,13 @@ Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.
 
 ## Update notes
 
+**0.14.0 (2026-11-26): sharper Terrain Lab pictures**
+
+- **3D preview** in Terrain Lab now draws at full screen resolution on Retina displays (it was drawing at half and looked soft).
+- **My photo keeps its own sharpness:** the terrain texture is now sized from your photo's pixel size, not from the satellite picture under it. A 25 cm drone or aerial photo over a 2 km box gives a 7680 px texture (the most a graphics card texture safely takes with the earth band); Preview uses up to 4096 px, Build up to 7680 px. The satellite picture is smoothly enlarged underneath.
+- **Tip:** Preview always uses a light mesh (160) and a 640 px satellite photo. For the sharpest result set Photo detail 4096 and Mesh detail 2048 and press **Build**; render the scene at **Final** quality and 4K.
+- The satellite photo is still Sentinel-2 (10 m pixels), so small boxes stay soft unless you load your own photo. Sharper US aerial photos (USDA NAIP, 0.6 m) are a candidate for a later update.
+
 **0.13.0 (2026-11-26): My photo: your own aerial, drone or map picture on the terrain**
 
 - **Photo: My photo** in Terrain Lab (next to Satellite and Heights). **Load photo...** takes a picture plus any side files picked with it (or found next to it):

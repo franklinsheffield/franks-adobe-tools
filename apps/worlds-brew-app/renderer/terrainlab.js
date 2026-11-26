@@ -72,7 +72,7 @@ export function createTerrainLab(ctx) {
   ctx.mount.appendChild(root);
 
   // ---- My photo (0.13): your own picture over the satellite photo
-  const myp = createMyPhoto({ ui, btn, st, tl, glow: ctx.glow, ipcRenderer, root, box, say: (m, e) => say(m, e), changed: () => changed(), preview: () => preview(), remesh: () => remesh(),
+  const myp = createMyPhoto({ ui, btn, st, tl, full: () => !!(st.data && st.data.full), glow: ctx.glow, ipcRenderer, root, box, say: (m, e) => say(m, e), changed: () => changed(), preview: () => preview(), remesh: () => remesh(),
     setPlace: (...a) => setPlace(...a), basePicture: () => (st.data ? basePicture(st.data) : null) });
 
   // ---- cards
@@ -305,6 +305,7 @@ export function createTerrainLab(ctx) {
 
   // ---- the 3D preview
   const R = new THREE.WebGLRenderer({ canvas: viewC, antialias: true, preserveDrawingBuffer: true }); R.outputColorSpace = THREE.SRGBColorSpace;
+  R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));   // 0.14: full sharpness on Retina screens
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1016);
   scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x3a2c22, 1.35)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1, 1.4, -0.6); scene.add(sun);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 50), cam = { yaw: 30, pitch: 32, dist: 2.6 };

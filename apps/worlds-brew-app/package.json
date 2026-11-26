@@ -1,7 +1,7 @@
 {
   "name": "franks-worlds-brew",
   "productName": "Pixel Scape",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Pixel Scape (PX-10): standalone 3D scene builder",
   "main": "main.js",
   "private": true,
