@@ -11,6 +11,10 @@ run_worker_first = ["/api/*", "/.proxy/api/*"]
 
 [vars]
 DISCORD_APP_ID = "1575319071283617842"
+# Role gate (Science is Magic server): Pixel Scape Access, Hierophant, Patron of the Lab
+GATE_GUILD_ID = "1530029383404884069"
+GATE_ROLE_IDS = "1575316203621060638,1574485334014558290,1575350660277211266"
+GATE_MESSAGE = "Pixel Scape is sealed. Unlock it in Science is Magic: boost the server (Patron of the Lab) or earn the Pixel Scape Access role."
 PLAY_CHANNEL_ID = "1575574504133099701"   # #pixel-scape-play: where renders go when the call's channel can't be confirmed
 # Secrets (set by the deploy workflow): DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN (posts renders)
 # Local test rooms without Discord: wrangler dev --var DEV_ROOMS:1

@@ -1,9 +1,19 @@
 // Pixel Scape Activity (Discord D3): serves the Pixel Scape web build (static assets) and swaps the Discord sign-in
 // code for an access token. The client secret stays here, never in the page.
-//   POST /api/token  { code } -> { access_token }
-//   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs)
+//   POST /api/token  { code } -> { access_token }, or 403 { error: "locked" } when the member lacks an access role.
+//   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs; same role gate)
 import { Rooms } from "./rooms.mjs";
 export { Rooms };
+// Role gate: GATE_GUILD_ID + GATE_ROLE_IDS (comma list). Unset = no gate.
+export const gateRoles = (env) => String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
+export const hasAccess = (env, roles) => { const need = gateRoles(env); return !need.length || (roles || []).some((r) => need.includes(r)); };
+export async function checkMember(env, token, fetchImpl = fetch) {
+  if (!env.GATE_GUILD_ID || !gateRoles(env).length) return { ok: true };
+  const r = await fetchImpl(`https://discord.com/api/v10/users/@me/guilds/${env.GATE_GUILD_ID}/member`, { headers: { authorization: "Bearer " + token } });
+  if (!r.ok) return { ok: false, reason: r.status === 404 ? "not a member" : "member lookup " + r.status };
+  const m = await r.json().catch(() => ({}));
+  return hasAccess(env, m.roles) ? { ok: true } : { ok: false, reason: "missing role" };
+}
 export async function exchange(env, code, fetchImpl = fetch) {
   const body = new URLSearchParams({ client_id: env.DISCORD_APP_ID, client_secret: env.DISCORD_CLIENT_SECRET, grant_type: "authorization_code", code });
   const r = await fetchImpl("https://discord.com/api/v10/oauth2/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
@@ -20,8 +30,10 @@ export default {
       if (!env.DISCORD_CLIENT_SECRET) return json({ error: "sign-in is not set up yet" }, 503);
       const { code } = await req.json().catch(() => ({}));
       if (!code || typeof code !== "string" || code.length > 200) return json({ error: "missing code" }, 400);
-      const r = await exchange(env, code); if (r.status !== 200) console.error("token exchange failed", r.status, r.body.error);
-      return json(r.body, r.status);
+      const r = await exchange(env, code); if (r.status !== 200) { console.error("token exchange failed", r.status, r.body.error); return json(r.body, r.status); }
+      const g = await checkMember(env, r.body.access_token);
+      if (!g.ok) { console.log("locked:", g.reason); return json({ error: "locked", message: env.GATE_MESSAGE || "Pixel Scape is locked." }, 403); }
+      return json(r.body, 200);
     }
     if (path === "/api/room") {
       if ((req.headers.get("upgrade") || "").toLowerCase() !== "websocket") return json({ error: "WebSocket only" }, 426);

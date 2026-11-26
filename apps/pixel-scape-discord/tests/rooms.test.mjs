@@ -30,12 +30,15 @@ test("join: welcome with peers and colours, others hear about it", async () => {
 
 test("dev sign-in only when the Worker allows it; Discord sign-in checks the server", async () => {
   await assert.rejects(identify({}, { dev: true, name: "x" }, "g"), /Discord/);
-  const f = async (u) => new Response(JSON.stringify(/guilds$/.test(u) ? [{ id: "111" }] : { id: "9", global_name: "Frank" }), { status: 200 });
+  const f = async (u) => /\/member$/.test(u) ? (/guilds\/111\//.test(u) ? new Response(JSON.stringify({ roles: ["r1"] }), { status: 200 }) : new Response("{}", { status: 404 })) : new Response(JSON.stringify({ id: "9", global_name: "Frank" }), { status: 200 });
   assert.deepStrictEqual(await identify({}, { token: "t" }, "111", f), { userId: "9", name: "Frank", channel: null });
   await assert.rejects(identify({}, { token: "t" }, "222", f), /not in this server/);
+  // the role gate (same as the sign-in's): members of the gated server need one of the access roles
+  assert.ok(await identify({ GATE_GUILD_ID: "111", GATE_ROLE_IDS: "r0,r1" }, { token: "t" }, "111", f));
+  await assert.rejects(identify({ GATE_GUILD_ID: "111", GATE_ROLE_IDS: "r2", GATE_MESSAGE: "sealed" }, { token: "t" }, "111", f), /sealed/);
   const bad = async () => new Response("{}", { status: 401 }); await assert.rejects(identify({}, { token: "t" }, "111", bad), /expired/);
   // with the bot token: the call's channel, and members outside the call are turned away
-  const g = (users) => async (u) => new Response(JSON.stringify(/activity-instances/.test(u) ? { location: { guild_id: "111", channel_id: "555" }, users } : /guilds$/.test(u) ? [{ id: "111" }] : { id: "9", username: "frank" }), { status: 200 });
+  const g = (users) => async (u) => new Response(JSON.stringify(/activity-instances/.test(u) ? { location: { guild_id: "111", channel_id: "555" }, users } : /\/member$/.test(u) ? { roles: [] } : { id: "9", username: "frank" }), { status: 200 });
   assert.strictEqual((await identify({ DISCORD_BOT_TOKEN: "b", DISCORD_APP_ID: "1" }, { token: "t", instance: "i-1" }, "111", g(["9"]))).channel, "555");
   await assert.rejects(identify({ DISCORD_BOT_TOKEN: "b", DISCORD_APP_ID: "1" }, { token: "t", instance: "i-1" }, "111", g(["8"])), /not in this call/);
   const w = world({ DEV_ROOMS: "" }), s = await w.join(null); await s.say({ t: "hello", dev: true, name: "x" });

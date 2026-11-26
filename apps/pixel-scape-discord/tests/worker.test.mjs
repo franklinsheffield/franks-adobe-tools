@@ -30,4 +30,13 @@ test("/terrain defers and dispatches the render job", async () => {
     const again = await worker.fetch(await signed(body), env, { waitUntil() {} }); assert.match((await again.json()).data.content, /One terrain a minute/);
   } finally { globalThis.fetch = realFetch; }
 });
+test("/terrain is refused without an access role", async () => {
+  const g = Object.assign({}, env, { GATE_ROLE_IDS: "A,B", GATE_MESSAGE: "sealed" });
+  const body = (roles) => JSON.stringify({ type: 2, token: "t", member: { roles, user: { id: "77" } }, data: { name: "terrain", options: [{ name: "place", value: "x" }] } });
+  const no = await (await worker.fetch(await signed(body(["z"])), g, { waitUntil() {} })).json();
+  assert.strictEqual(no.type, 4); assert.strictEqual(no.data.content, "sealed"); assert.strictEqual(no.data.flags, 64);
+  const realFetch = globalThis.fetch; globalThis.fetch = async () => new Response(null, { status: 204 });
+  try { assert.strictEqual((await (await worker.fetch(await signed(body(["B"])), g, { waitUntil() {} })).json()).type, 5); }
+  finally { globalThis.fetch = realFetch; }
+});
 test("command schema", () => { assert.strictEqual(COMMANDS[0].name, "terrain"); assert.ok(COMMANDS[0].options.every((o) => o.description.length <= 100)); });

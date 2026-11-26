@@ -46,10 +46,11 @@ export async function identify(env, hello, guild, f = fetch) {
   const me = await f(API + "/users/@me", auth);
   if (!me.ok) throw new Error("Discord sign-in expired, reopen the Activity");
   const u = await me.json();
-  const gs = await f(API + "/users/@me/guilds", auth);
-  if (!gs.ok) throw new Error("could not check your servers (" + gs.status + ")");
-  const list = await gs.json();
-  if (!Array.isArray(list) || !list.some((g) => g.id === guild)) throw new Error("you are not in this server");
+  const mr = await f(API + "/users/@me/guilds/" + guild + "/member", auth);   // a member of this server (and, in the gated server, with an access role)
+  if (mr.status === 404) throw new Error("you are not in this server");
+  if (!mr.ok) throw new Error("could not check your server membership (" + mr.status + ")");
+  const mem = await mr.json().catch(() => ({})), need = String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (env.GATE_GUILD_ID === guild && need.length && !(mem.roles || []).some((r) => need.includes(r))) throw new Error(env.GATE_MESSAGE || "Pixel Scape is locked.");
   let channel = null;
   if (env.DISCORD_BOT_TOKEN && hello.instance) {   // the call itself: which channel, who is in it (best effort)
     try {

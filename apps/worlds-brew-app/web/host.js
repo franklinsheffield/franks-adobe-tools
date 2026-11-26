@@ -3,7 +3,7 @@
 import REG from "./.gen/registry.js";
 import VFS from "./shims/vfs.js";
 import { ipcRenderer } from "./shims/electron.js";
-import { inDiscord, startDiscord } from "./discord.js";
+import { inDiscord, startDiscord, showLocked } from "./discord.js";
 
 const cache = new Map();
 function require(id) {
@@ -29,6 +29,6 @@ export async function start() {
   window.addEventListener("keydown", onKey, true);
   if (inDiscord()) {   // a Discord Activity: sign in in the background; the app works meanwhile
     document.documentElement.classList.add("ps-discord");
-    window.__psDiscord = startDiscord((m) => console.log("[discord]", m)).catch((e) => { console.error("[discord]", e); return null; });
+    window.__psDiscord = startDiscord((m) => console.log("[discord]", m)).catch((e) => { console.error("[discord]", e); if (e && e.locked) showLocked(e.message); return null; });
   }
 }
