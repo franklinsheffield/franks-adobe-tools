@@ -1,0 +1,11 @@
+name = "pixel-scape-bot"
+main = "worker/index.mjs"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[vars]
+GH_REPO = "franklinsheffield/franks-adobe-tools"
+GH_WORKFLOW = "pixel-scape-render.yml"
+GH_REF = "main"
+COOLDOWN_S = "60"
+# Secrets (set by the deploy workflow): DISCORD_PUBLIC_KEY, DISCORD_APP_ID, GH_DISPATCH_TOKEN
