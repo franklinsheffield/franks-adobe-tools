@@ -10,15 +10,22 @@
     "start": "npm run sync && electron .",
     "test": "node tests/app-tests.js",
     "dist:mac": "npm run sync && electron-builder --mac --publish never",
-    "dist:win": "npm run sync && electron-builder --win zip --x64 --publish never"
+    "dist:win": "npm run sync && electron-builder --win zip --x64 --publish never",
+    "web": "npm run sync && node web/build.js",
+    "web:serve": "node web/serve.js",
+    "web:smoke": "node web/smoke.js"
   },
   "dependencies": {
     "earcut": "2.2.4",
     "three": "0.180.0"
   },
   "devDependencies": {
+    "buffer": "^6.0.3",
     "electron": "38.2.0",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.0.12",
+    "esbuild": "^0.25.10",
+    "fflate": "^0.8.2",
+    "path-browserify": "^1.0.1"
   },
   "build": {
     "appId": "com.franks.worldsbrew.app",
