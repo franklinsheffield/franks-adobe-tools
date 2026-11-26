@@ -24,6 +24,7 @@
     "productName": "Pixel Scape",
     "files": [
       "main.js",
+      "geo/**",
       "renderer/**",
       "engine/**",
       "node_modules/three/build/**",

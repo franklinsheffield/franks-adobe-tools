@@ -64,6 +64,45 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
     assert.strictEqual(PK.PACKS.reduce((n, p) => n + Object.keys(PK.MAPS[p]).length, 0), 10);
   });
 
+  await t("Terrain Lab maths: lon/lat to tiles and UTM, Sentinel-2 tile names, scene names", () => {
+    const P = require("../geo/proj.js"), SN = require("../geo/sentinel.js");
+    assert.deepStrictEqual([P.mgrsTile(-112.13, 36.075), P.mgrsTile(151.21, -33.87), P.mgrsTile(2.35, 48.86)].map((x) => x.id), ["12SUE", "56HLH", "31UDQ"]);
+    const u = P.toUTM(-112.13, 36.075, 12, false), back = P.fromUTM(u.e, u.n, 12, false); assert.ok(Math.abs(back.lon + 112.13) < 1e-6 && Math.abs(back.lat - 36.075) < 1e-6, "UTM round trip");
+    const t = P.tileXY(-112.13, 36.075, 12), ll = P.tileLonLat(t.x, t.y, 12); assert.ok(Math.abs(ll.lon + 112.13) < 1e-9 && Math.abs(ll.lat - 36.075) < 1e-9, "web tiles round trip");
+    const F = P.boxFrame({ lat: 36.075, lon: -112.13, w: 10000, d: 8000, turn: 0 }), c = F.at(0.5, 0.5);
+    assert.ok(Math.abs(c.lon + 112.13) < 1e-6 && Math.abs(c.lat - 36.075) < 1e-6 && F.north > F.south && F.east > F.west, "box frame centred, north up");
+    assert.strictEqual(SN.tilesFor({ lat: 36.075, lon: -112.13, w: 12600, d: 10000, turn: 0 })[0].id, "12SUE");
+    assert.deepStrictEqual(SN.parseScene("S2C_12SUE_20260819_1_L2A"), { name: "S2C_12SUE_20260819_1_L2A", sat: "S2C", tile: "12SUE", year: 2026, month: 8, day: 19, date: "2026-08-19", seq: 1 });
+    assert.strictEqual(SN.sceneURL(SN.parseScene("S2A_09UXA_20250601_0_L2A"), "TCI.tif"), "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/9/U/XA/2025/6/S2A_09UXA_20250601_0_L2A/TCI.tif");
+  });
+  await t("Terrain Lab heights + mesh: terrarium tiles decode to metres, the mesh is real scale with an earth-layer base, the .glb and heightmap are valid", async () => {
+    const NET = require("../geo/net.js"), DEM = require("../geo/dem.js"), B = require("../geo/build.js"), PNGX = require("../geo/png.js"), M = require("../engine/models.js");
+    // fake terrarium tiles: height = 1000 m + 2 m per pixel eastwards (no network)
+    const get0 = NET.get; NET.get = async (url) => { const d = new Uint8Array(256 * 256 * 4); for (let i = 0; i < 65536; i++) { const v = 1000 + (i & 255) * 2 + 32768; d[i * 4] = v >> 8; d[i * 4 + 1] = v & 255; d[i * 4 + 2] = 0; d[i * 4 + 3] = 255; } return PNGX.encodeRGBA(256, 256, d); };
+    try {
+      const box = { lat: 36.075, lon: -112.13, w: 3000, d: 3000, turn: 0 }, dem = await DEM.heights(box, 33);
+      assert.ok(dem.min >= 1000 && dem.max <= 1510 && dem.max > dem.min, "heights in metres: " + dem.min + ".." + dem.max);
+      const m = B.grid(dem, box, { n: 33, exag: 1, smooth: 0, water: null, base: "skirt" });
+      assert.strictEqual(m.w, 3000); assert.ok(m.idx.every((i) => i < m.pos.length / 3), "indices in range"); assert.ok(m.tris > 32 * 32 * 2, "top + walls + floor: " + m.tris);
+      let lo = Infinity, hi = -Infinity; for (let i = 1; i < m.pos.length; i += 3) { lo = Math.min(lo, m.pos[i]); hi = Math.max(hi, m.pos[i]); } assert.ok(hi - lo > dem.max - dem.min, "the base goes below the lowest ground");
+      const pic = { w: 32, h: 32, d: new Uint8Array(32 * 32 * 4).fill(200) }, banded = B.addBand(pic); assert.strictEqual(banded.w, 32); assert.ok(banded.h > 32 && banded.d.length === 32 * banded.h * 4, "earth band rows added");
+      const flat = B.grid(dem, box, { n: 33, exag: 1, base: "none" }); assert.ok(flat.tris === 32 * 32 * 2, "no base: just the ground");
+      const jpg = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAA//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AN//Z", "base64");
+      const g = B.glb(m, { bytes: new Uint8Array(jpg), mime: "image/jpeg" }, "Test"), ab = g.buffer.slice(g.byteOffset, g.byteOffset + g.byteLength), back = M.parseGLB(ab, "Test.glb");
+      assert.strictEqual(back.tris, m.tris, "the .glb reads back"); assert.deepStrictEqual(M.gltfImages("Test.glb", ab).map((x) => x.mime), ["image/jpeg"], "the photo is inside");
+      const hp = require("../engine/pngdec.js").decodePNG(PNGX.encodeGray16(dem.n, dem.n, B.heightValues(dem))); assert.ok(hp.gray16 && hp.gray16[dem.n - 1] === 65535 && hp.gray16[0] === 0, "16-bit heightmap, white = highest");
+    } finally { NET.get = get0; }
+  });
+  await t(".glb with a JPEG texture: decoded pictures are used, and one texture over the model is handed back", () => {
+    const B = require("../geo/build.js"), M = require("../engine/models.js");
+    const dem = { n: 3, h: new Float32Array(9), min: 0, max: 0, z: 1, pixelM: 1 }, m = B.grid(dem, { w: 10, d: 10 }, { n: 3, base: "none" });
+    const g = B.glb(m, { bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), mime: "image/jpeg" }, "J"), ab = g.buffer.slice(g.byteOffset, g.byteOffset + g.byteLength);
+    const red = { w: 2, h: 2, rgba: new Uint8Array([255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255]) };
+    const a = M.parseGLB(ab, "J.glb"), b = M.parseGLB(ab, "J.glb", { decoded: { 0: red } });
+    assert.ok(!a.texture, "undecodable JPEG: no texture"); assert.ok(b.texture && b.texture.w === 2 && b.texture.d[0] === 255, "decoded JPEG becomes the texture");
+    assert.ok(b.tc && b.tc[0] === 255 && b.tc[1] === 0, "triangle colours come from the decoded picture");
+  });
+
   // ---- the app itself
   if (process.env.WB_SKIP_UI) { console.log("skip UI tests (WB_SKIP_UI)"); return done(); }
   if (process.platform === "linux" && !process.env.DISPLAY) {   // re-run under a virtual display
@@ -349,6 +388,52 @@ async function uiTests() {
     await W(() => { const w = window.__wb; w.select(w.st.scene.objs.find((o) => o.type === "sphere")); w.CT.frame(w.st.scene, w.st.sel); w.changed("view"); });
     await win.waitForTimeout(400); await win.screenshot({ path: path.join(OUT, "app-my-library.png") });
   });
+  await t("app: Terrain Lab (TL-11) opens, builds a terrain from heights, saves it to My library / Terrains, adds it to the scene and rebuilds it from the library", async () => {
+    await W(() => { const w = window.__wb; w.loadScene(w.S.loadPreset("Chrome Garden")); w.openTerrainLab(); });
+    await win.waitForTimeout(400);
+    assert.ok(await W(() => window.__wb.TL().isOpen && !!document.querySelector("#tlab canvas")), "the Terrain Lab screen is up");
+    // a made-up place (no network in tests): a 4 x 3 km dome, 200 m to 900 m
+    const r = await W(async () => {
+      const T = window.__wb.TL(), n = 65, h = new Float32Array(n * n);
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const x = i / (n - 1) - 0.5, y = j / (n - 1) - 0.5; h[j * n + i] = 200 + 700 * Math.max(0, 1 - 3 * (x * x + y * y)); }
+      T.tl.name = "Test Dome"; T.tl.base = "skirt";
+      T.st.data = { dem: { n, h, min: 200, max: 900, z: 12, pixelM: 30, source: "test", credit: "test" }, photo: null, picks: [], box: { lat: 36, lon: -112, w: 4000, d: 3000, turn: 0 }, full: true, key: "test" };
+      T.remesh(); const folder = await T.saveToLibrary(); T.st.folder = folder; T.addToScene(); T.close();
+      const o = window.__wb.st.sel; return { folder, tris: T.st.mesh.tris, type: o && o.type, layer: o && o.layers && o.layers[0] && o.layers[0].name, layerH: o && o.layers[0].img.h, s: o && o.s };
+    });
+    for (const f of ["terrain.glb", "height16.png", "photo.jpg", "thumb.jpg", "terrain.json"]) assert.ok(fs.existsSync(path.join(r.folder, f)), f + " saved");
+    const j = JSON.parse(fs.readFileSync(path.join(r.folder, "terrain.json"), "utf8")); assert.deepStrictEqual([j.sizeM, j.heightM, j.mesh.base], [{ w: 4000, d: 3000 }, { min: 200, max: 900 }, "skirt"]);
+    assert.strictEqual(r.type, "mesh"); assert.strictEqual(r.layer, "Satellite photo"); assert.strictEqual(r.s, 20, "shown 40 m wide"); assert.ok(r.tris > 64 * 64 * 2);
+    const item = await W(() => window.__wb.LIB.list("Terrains").find((x) => x.type === "geo" && x.name === "Test Dome")); assert.ok(item, "listed in My library / Terrains");
+    const n0 = await W(() => window.__wb.st.scene.objs.length); await W(async (x) => { await window.__wb.applyLibItem(x, null, { x: 5, y: 0, z: 5 }); }, item);
+    assert.deepStrictEqual(await W(() => { const w = window.__wb, o = w.st.sel; return [w.st.scene.objs.length, o.type, o.layers[0].name, o.layers[0].img.h > o.layers[0].img.w * 3 / 4]; }), [n0 + 1, "mesh", "Satellite photo", true], "rebuilt from the library with the earth band under the photo");
+    await win.waitForTimeout(400); await win.screenshot({ path: path.join(OUT, "app-terrain-lab.png") });
+  });
+  await t("app: the centre (XYZ) scale handle sizes smoothly from the pointer (it used to blow models up)", async () => {
+    const r = await W(() => {
+      const w = window.__wb, o = w.st.scene.objs.find((q) => q.type === "sphere"), node = w.vp.world.nodes.get(o).node, s0 = o.s, mv = (y) => window.dispatchEvent(new PointerEvent("pointermove", { clientY: y }));
+      mv(500); w.vp.hooks.onGizmoDrag(true, o); w.vp.tc.axis = "XYZ"; mv(499); w.vp.hooks.onGizmoChange(o, node, "scale"); const tiny = o.s;
+      mv(350); w.vp.hooks.onGizmoChange(o, node, "scale"); const up = o.s; mv(650); w.vp.hooks.onGizmoChange(o, node, "scale"); const down = o.s;
+      w.vp.tc.axis = null; w.vp.hooks.onGizmoDrag(false, o); return { s0, tiny, up, down };
+    });
+    assert.ok(Math.abs(r.tiny / r.s0 - 1) < 0.02, "1 px is a tiny change: " + JSON.stringify(r)); assert.ok(Math.abs(r.up / r.s0 - 2) < 0.01, "150 px up doubles"); assert.ok(Math.abs(r.down / r.s0 - 0.5) < 0.01, "150 px down halves");
+  });
+  await t("app: a .glb with a JPEG texture imports with its picture; a folder of several PBR sets imports each set", async () => {
+    const r = await W(async () => {
+      const w = window.__wb, B = window.require("../geo/build.js"), c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"); g.fillStyle = "#ff0000"; g.fillRect(0, 0, 8, 4); g.fillStyle = "#0000ff"; g.fillRect(0, 4, 8, 4);
+      const jpg = new Uint8Array(await (await new Promise((res) => c.toBlob(res, "image/jpeg", 0.95))).arrayBuffer());
+      const dem = { n: 5, h: new Float32Array(25), min: 0, max: 0, z: 1, pixelM: 1 }, m = B.grid(dem, { w: 10, d: 10 }, { n: 5, base: "none" }), glb = B.glb(m, { bytes: jpg, mime: "image/jpeg" }, "Jpeg test");
+      await w.importModelData("Jpeg test.glb", glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength)); const o = w.st.sel, tc = o.mesh.tc;
+      let red = 0, blue = 0; for (let i = 0; i < tc.length; i += 3) { if (tc[i] > 200 && tc[i + 2] < 60) red++; if (tc[i + 2] > 200 && tc[i] < 60) blue++; }
+      return { name: o.mesh.name, layer: o.layers && o.layers[0] && o.layers[0].name, w: o.layers && o.layers[0].img.w, red, blue };
+    });
+    assert.strictEqual(r.layer, "Model texture"); assert.strictEqual(r.w, 8); assert.ok(r.red > 0 && r.blue > 0, "the texture colours reach the mesh: " + JSON.stringify(r));
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), "wbpbr-")), PNGE = require("../engine/kit/png.js");
+    for (const s of ["Rock A", "Rock B", "Moss"]) { fs.mkdirSync(path.join(parent, "sets", s), { recursive: true }); const px = new Uint8Array(4 * 4 * 4).fill(120);
+      fs.writeFileSync(path.join(parent, "sets", s, s.replace(" ", "_") + "_basecolor.png"), Buffer.from(PNGE.encodePNG(px, 4, 4, 4))); fs.writeFileSync(path.join(parent, "sets", s, s.replace(" ", "_") + "_height.png"), Buffer.from(PNGE.encodePNG(px, 4, 4, 4))); }
+    const imp = await W((p) => window.__wb.importPathsToLibrary("Shaders", [p]), path.join(parent, "sets"));
+    assert.deepStrictEqual(imp.added.slice().sort(), ["Moss", "Rock A", "Rock B"]); assert.deepStrictEqual(imp.skipped, []);
+  });
   await t("app: 3.0 interface like the plugins: Night Arcade style, pixel type, LCD boxes, one HELP switch, help text on every control", async () => {
     const r = await W(async () => {
       const w = window.__wb, root = document.getElementById("app");
@@ -362,7 +447,7 @@ async function uiTests() {
     assert.ok(r.cls, "#app has the arcade / ui3 classes"); assert.strictEqual(r.bg, "rgb(5, 4, 12)");
     assert.ok(r.sprites > 10, "pixel-sprite headings: " + r.sprites); assert.ok(r.lcd > 0, "LCD value boxes in the Inspector");
     assert.ok(r.helped > 150, "controls with hover help: " + r.helped); assert.deepStrictEqual(r.miss, {}, "controls without help text");
-    assert.deepStrictEqual([r.was, r.off, r.back], [true, [false, false], [true, true]], "one HELP switch turns every bubble off and on");
+    assert.deepStrictEqual([r.was, r.off, r.back], [true, r.off.map(() => false), r.off.map(() => true)], "one HELP switch turns every bubble off and on"); assert.ok(r.off.length >= 3, "the Terrain Lab panel follows the switch too");
   });
   await t("app: no script errors during the session", () => { assert.deepStrictEqual(errors, []); });
   await t("app: Quit with unsaved changes asks first; Don't Save ends the app (macOS used to keep it running)", async () => {
