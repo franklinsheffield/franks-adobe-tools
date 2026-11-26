@@ -1,7 +1,7 @@
 {
   "name": "franks-worlds-brew",
   "productName": "Pixel Scape",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Pixel Scape (PX-10): standalone 3D scene builder",
   "main": "main.js",
   "private": true,
@@ -13,6 +13,7 @@
     "dist:win": "npm run sync && electron-builder --win zip --x64 --publish never"
   },
   "dependencies": {
+    "earcut": "2.2.4",
     "three": "0.180.0"
   },
   "devDependencies": {
@@ -29,7 +30,10 @@
       "engine/**",
       "node_modules/three/build/**",
       "node_modules/three/package.json",
-      "node_modules/three/LICENSE"
+      "node_modules/three/LICENSE",
+      "node_modules/earcut/package.json",
+      "node_modules/earcut/src/**",
+      "node_modules/earcut/LICENSE"
     ],
     "mac": {
       "category": "public.app-category.graphics-design",

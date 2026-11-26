@@ -69,9 +69,11 @@ function boxFrame(box) {
     const x = (u - 0.5) * box.w, z = (v - 0.5) * box.d, ex = x * c - z * s, nz = -(x * s + z * c);   // turn the box clockwise
     return { lon: box.lon + ex / (r.N * cl) * R2D, lat: box.lat + nz / r.M * R2D };
   };
+  // lon / lat -> metres from the box centre (x east-ish, z south-ish), the terrain mesh's own frame
+  const local = (lon, lat) => { const ex = (lon - box.lon) * D2R * r.N * cl, mz = -(lat - box.lat) * D2R * r.M; return { x: c * ex + s * mz, z: -s * ex + c * mz }; };
   const corners = [at(0, 0), at(1, 0), at(1, 1), at(0, 1)];
   const lons = corners.map((p) => p.lon), lats = corners.map((p) => p.lat);
-  return { at, corners, west: Math.min(...lons), east: Math.max(...lons), south: Math.min(...lats), north: Math.max(...lats) };
+  return { at, local, corners, west: Math.min(...lons), east: Math.max(...lons), south: Math.min(...lats), north: Math.max(...lats) };
 }
 // a box from two map corners (no turn)
 function boxFromBounds(west, south, east, north) {

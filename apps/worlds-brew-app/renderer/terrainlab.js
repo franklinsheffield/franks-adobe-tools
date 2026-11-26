@@ -9,7 +9,7 @@ const req = window.require;
 const { ipcRenderer } = req("electron");
 const path = req("path"), fs = req("fs"), fsp = fs.promises;
 const { Buffer } = req("buffer");
-const P = req("../geo/proj.js"), B = req("../geo/build.js"), PNGX = req("../geo/png.js");
+const P = req("../geo/proj.js"), B = req("../geo/build.js"), PNGX = req("../geo/png.js"), BL = req("../geo/buildings.js");
 const { el, clear } = req("../engine/kit/ui.js");
 
 export const CODE = "TL-11";
@@ -30,20 +30,25 @@ export const PLACES = [
   ["Kilimanjaro, Tanzania", -3.0674, 37.3556, 30, 30],
   ["Table Mountain, Cape Town", -33.9628, 18.4098, 8, 6],
   ["Uluru, Australia", -25.3444, 131.0369, 6, 5],
-  ["Torres del Paine, Chile", -50.97, -72.97, 20, 16]
+  ["Torres del Paine, Chile", -50.97, -72.97, 20, 16],
+  ["Downtown Phoenix, Arizona", 33.4484, -112.074, 2.5, 2.5],
+  ["Midtown Manhattan, New York", 40.7549, -73.9840, 3, 3],
+  ["San Francisco, California", 37.7930, -122.3990, 3, 3],
+  ["Chicago Loop, Illinois", 41.8810, -87.6290, 3, 3]
 ];
 const DETAILS = [256, 512, 1024, 2048], PHOTOS = [1024, 2048, 4096];
 const SCENE_MAX = 384;   // grid used for the copy in the scene (the ray tracer and the live view stay quick); exports use full detail
 
 export function createTerrainLab(ctx) {
   const tl = { quick: "", q: "", coords: "", lat: 36.075, lon: -112.13, wKm: 12.6, dKm: 10, turn: 0, exag: 1, smooth: 0, water: "off", waterM: 0,
-    photo: "sat", season: "Any", photoPx: 2048, detail: 512, base: "skirt", name: "Grand Canyon, Arizona", elev: "auto" };
-  const st = { tl, data: null, dataKey: "", mesh: null, folder: null, busy: false, results: [] };
+    photo: "sat", season: "Any", photoPx: 2048, detail: 512, base: "skirt", name: "Grand Canyon, Arizona", elev: "auto", bld: "on", bScale: 1, bMin: 8 };
+  const st = { tl, data: null, dataKey: "", mesh: null, bmesh: null, folder: null, busy: false, results: [] };
   const ui = ctx.createUI({ getState: () => st, onChange: () => changed(), onLive: () => changed(true) });
   const { card, segGroup, selectRow, sliderRow, textRow, row, bind, showIf } = ui;
   const btn = (l, fn, cls) => { const b = el("button", { class: cls || "btn small", text: l }); b.addEventListener("click", () => fn(b)); return ui.helpAt(b, { key: "btn:" + l, name: l, kind: "button" }); };
   const box = () => ({ lat: tl.lat, lon: tl.lon, w: tl.wKm * 1000, d: tl.dKm * 1000, turn: tl.turn });
   const boxKey = () => [tl.lat.toFixed(5), tl.lon.toFixed(5), tl.wKm, tl.dKm, tl.turn].join(",");
+  const dataKey = () => boxKey() + "|" + tl.photo + "|" + tl.season + "|" + tl.bld;
 
   // ---- layout
   const root = el("div", { id: "tlab", class: "tlab", hidden: "" });
@@ -92,10 +97,15 @@ export function createTerrainLab(ctx) {
   const triLine = el("div", { class: "wbsize" }); bind(() => { const n = tl.detail; triLine.textContent = (2 * (n - 1) * (n - 1)).toLocaleString() + " triangles, a point every " + Math.round(Math.max(tl.wKm, tl.dKm) * 1000 / (n - 1)) + " m"; });
   const meshCard = card("Mesh", [row("Detail", segGroup("tl.detail", DETAILS.map((v) => ({ v, l: String(v) })))), triLine,
     row("Base", segGroup("tl.base", [{ v: "skirt", l: "Solid base" }, { v: "none", l: "Surface only" }])), textRow("Name", "tl.name", "Terrain name")]);
+  const bldLine = el("div", { class: "hint" });
+  bind(() => { const d = st.data, b = d && d.buildings; bldLine.textContent = tl.bld !== "on" ? "Buildings are off." : !d ? "Press Preview to load the buildings." : d.buildingsError ? "Buildings could not load: " + d.buildingsError : !b ? "Press Preview to load the buildings." : !b.list.length ? "No buildings mapped in this box." : (st.bmesh ? st.bmesh.count : 0).toLocaleString() + " buildings shown (" + b.list.filter((x) => x.known !== "guess").length.toLocaleString() + " with a real height or floor count, the rest estimated)."; });
+  const bldCard = card("Buildings", [row("Buildings", segGroup("tl.bld", [{ v: "on", l: "On" }, { v: "off", l: "Off" }])),
+    sliderRow("Building height", "tl.bScale", 0.5, 3, 0.1, "x"), selectRow("Smallest", "tl.bMin", [{ v: 8, l: "Everything (8 m2+)" }, { v: 30, l: "No sheds (30 m2+)" }, { v: 100, l: "Houses up (100 m2+)" }, { v: 400, l: "Big buildings (400 m2+)" }]),
+    bldLine, el("div", { class: "hint", text: "Outlines and heights: Overture Maps (OpenStreetMap, Microsoft, Google). Roofs take their colour from the photo." })]);
   const resLine = el("div", { class: "hint" });
   bind(() => { const m = st.mesh, d = st.data; resLine.textContent = !d ? "Nothing built yet." : (Math.round(d.box.w) / 1000).toFixed(1) + " x " + (Math.round(d.box.d) / 1000).toFixed(1) + " km, ground " + Math.round(d.dem.min) + " to " + Math.round(d.dem.max) + " m (" + Math.round(d.dem.max - d.dem.min) + " m of relief)" + (m ? ", " + m.tris.toLocaleString() + " triangles" : "") + (st.folder ? ". Saved to My library / Terrains / " + path.basename(st.folder) : d.full ? "" : ". Preview quality: press Build for full detail."); });
   const resultCard = card("Result", [resLine, el("div", { class: "hint", text: "Heights: AWS Terrain Tiles (USGS 3DEP, SRTM). Photo: Copernicus Sentinel-2 (ESA). Credits are written into terrain.json." })]);
-  [placeCard, areaCard, heightCard, photoCard, meshCard, resultCard].forEach((c) => side.appendChild(c));
+  [placeCard, areaCard, heightCard, photoCard, meshCard, bldCard, resultCard].forEach((c) => side.appendChild(c));
   bind(() => { acts.add.disabled = !st.mesh || st.busy; acts.exp.disabled = !st.mesh || st.busy || !st.data || !st.data.full; acts.preview.disabled = st.busy; acts.build.disabled = st.busy; });
 
   // ---- status + progress
@@ -111,7 +121,7 @@ export function createTerrainLab(ctx) {
   }
   async function search() {
     const q = String(tl.q || "").trim(); if (!q) return say("Type a place to search for.", true);
-    const ll = parseCoords(q); if (ll) { setPlace(null, ll[0], ll[1]); return preview(); }
+    const ll = parseCoords(q); if (ll) { setPlace(coordName(ll), ll[0], ll[1]); return preview(); }
     say("Searching for " + q + "...");
     try {
       st.results = await ipcRenderer.invoke("geo:search", q); clear(results);
@@ -130,15 +140,16 @@ export function createTerrainLab(ctx) {
     let lat = +m[1], lon = +m[3]; if (m[2] && /s/i.test(m[2])) lat = -Math.abs(lat); if (m[4] && /w/i.test(m[4])) lon = -Math.abs(lon);
     return Math.abs(lat) <= 85 && Math.abs(lon) <= 180 ? [lat, lon] : null;
   }
-  function goCoords() { const ll = parseCoords(tl.coords); if (!ll) return say("Use the form 36.0755, -112.1300 (latitude, longitude).", true); setPlace(null, ll[0], ll[1]); preview(); }
+  function goCoords() { const ll = parseCoords(tl.coords); if (!ll) return say("Use the form 36.0755, -112.1300 (latitude, longitude).", true); setPlace(coordName(ll), ll[0], ll[1]); preview(); }
+  const coordName = (ll) => "Place " + (+ll[0]).toFixed(4) + " " + (+ll[1]).toFixed(4);   // typed coordinates: a new place, so not the old name
 
   // ---- fetching and building
   async function fetchData(grid, photoPx, full) {
     if (st.busy) return null;
     st.busy = true; ui.refreshAll(); progress(0.01); say("Fetching heights and photo...");
     try {
-      const b = box(), r = await ipcRenderer.invoke("geo:fetch", { box: b, grid, photoPx: tl.photo === "sat" ? photoPx : 0, season: tl.season });
-      r.box = b; r.full = full; r.key = boxKey() + "|" + tl.photo + "|" + tl.season; st.data = r; st.folder = null; return r;
+      const b = box(), r = await ipcRenderer.invoke("geo:fetch", { box: b, grid, photoPx: tl.photo === "sat" ? photoPx : 0, season: tl.season, buildings: tl.bld === "on" });
+      r.box = b; r.full = full; r.key = dataKey(); st.data = r; st.folder = null; return r;
     } catch (err) { say(String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""), true); return null; }
     finally { st.busy = false; progress(1); ui.refreshAll(); }
   }
@@ -159,7 +170,13 @@ export function createTerrainLab(ctx) {
   let remeshT = null;
   function remesh() {
     const d = st.data; if (!d) return;
-    st.mesh = B.grid(d.dem, d.box, meshOpts(d.dem.n)); st.pic = picture(d); show3d(st.mesh, banded(st.pic)); ui.refreshAll();
+    st.mesh = B.grid(d.dem, d.box, meshOpts(d.dem.n)); st.pic = picture(d); st.bmesh = bmesh(st.mesh); show3d(st.mesh, banded(st.pic), st.bmesh); ui.refreshAll();
+  }
+  // the buildings, seated on this terrain mesh (same metres, same lowest point)
+  function bmesh(m) {
+    const d = st.data; if (!d || tl.bld !== "on" || !d.buildings || !d.buildings.list.length) return null;
+    const list = d.buildings.list.filter((b) => b.foot >= tl.bMin); if (!list.length) return null;
+    return BL.mesh(list, d.dem, d.box, { lo: m.minH, exag: m.exag, water: meshOpts(0).water }, { scale: tl.bScale, photo: d.photo });
   }
   // the texture: the photo, with height colours wherever there is no photo
   function picture(d) {
@@ -185,16 +202,24 @@ export function createTerrainLab(ctx) {
     const k = document.createElement("canvas"); k.width = w; k.height = Math.round(w * pic.h / pic.w); k.getContext("2d").drawImage(c, 0, 0, k.width, k.height); const d = k.getContext("2d").getImageData(0, 0, k.width, k.height); return { w: k.width, h: k.height, d: new Uint8Array(d.data.buffer) }; }
   async function files(name) {
     const d = st.data, mesh = B.grid(d.dem, d.box, meshOpts(d.dem.n)), photo = await jpeg(st.pic, 0.9), tex = tl.base === "skirt" ? await jpeg(banded(st.pic), 0.9) : photo;
-    return {
-      glb: B.glb(mesh, { bytes: tex, mime: "image/jpeg" }, name), photo, height: PNGX.encodeGray16(d.dem.n, d.dem.n, B.heightValues(d.dem)), thumb: await jpeg(small(st.pic, 192), 0.82),
-      info: B.info({ name, box: d.box, dem: d.dem, photo: d.photo, exag: tl.exag, app: "Pixel Scape " + (ctx.version || ""), files: ["terrain.glb", "height16.png", "photo.jpg", "thumb.jpg"] }), mesh
+    const out = {
+      glb: B.glb(mesh, { bytes: tex, mime: "image/jpeg" }, name, { buildings: bmesh(mesh) }), photo, height: PNGX.encodeGray16(d.dem.n, d.dem.n, B.heightValues(d.dem)), thumb: await jpeg(small(st.pic, 192), 0.82),
+      info: Object.assign(B.info({ name, box: d.box, dem: d.dem, photo: d.photo, exag: tl.exag, app: "Pixel Scape " + (ctx.version || ""), files: ["terrain.glb", "height16.png", "photo.jpg", "thumb.jpg"].concat(st.bmesh ? ["buildings.json"] : []) }), bldInfo()), mesh,
+      buildings: st.bmesh ? JSON.stringify({ release: d.buildings.release, list: d.buildings.list.filter((b) => b.foot >= tl.bMin).map((b) => ({ id: b.id, rings: b.rings.map((r) => r.map((p) => [+p[0].toFixed(2), +p[1].toFixed(2)])), seams: b.seams, foot: b.foot, height: b.height, base: b.base, known: b.known, roof: b.roof, wall: b.wall, part: b.part })) }) : null
     };
+    if (out.info.credits && out.info.buildings) out.info.credits.push(out.info.buildings.credit);   // saved and exported files both credit the buildings
+    return out;
+  }
+  function bldInfo() {
+    const d = st.data; if (!st.bmesh || !d.buildings) return {};
+    return { buildings: { count: st.bmesh.count, heightScale: tl.bScale, smallestM2: tl.bMin, source: "Overture Maps buildings " + d.buildings.release, credit: d.buildings.credit, mesh: "second node in terrain.glb (vertex colours)" } };
   }
   async function saveToLibrary() {
     const dir = ctx.terrainsDir(); if (!dir) throw new Error("the library folder isn't ready");
     const base = String(tl.name || "Terrain").replace(/[^\w\- ,.]+/g, "").replace(/[,.]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 50) || "Terrain";
     let n = base, i = 2; while (fs.existsSync(path.join(dir, n))) n = base + " " + i++;
     const f = await files(n), out = path.join(dir, n); await fsp.mkdir(out, { recursive: true });
+    if (f.buildings) await fsp.writeFile(path.join(out, "buildings.json"), f.buildings);
     await fsp.writeFile(path.join(out, "terrain.glb"), f.glb); await fsp.writeFile(path.join(out, "height16.png"), f.height); await fsp.writeFile(path.join(out, "photo.jpg"), f.photo); await fsp.writeFile(path.join(out, "thumb.jpg"), f.thumb);
     f.info.mesh = { grid: tl.detail, base: tl.base, smooth: tl.smooth, water: tl.water === "off" ? null : tl.water === "sea" ? 0 : tl.waterM };
     await fsp.writeFile(path.join(out, "terrain.json"), JSON.stringify(f.info, null, 1));
@@ -210,7 +235,7 @@ export function createTerrainLab(ctx) {
   function addToScene() {
     if (!st.mesh || !st.data) return;
     const d = st.data, n = Math.min(SCENE_MAX, d.dem.n), mesh = B.grid(d.dem, d.box, meshOpts(n)), pic = banded(st.pic.w > 2048 ? small(st.pic, 2048) : st.pic);
-    ctx.addTerrain({ name: tl.name || "Terrain", mesh, pic, info: { lat: d.box.lat, lon: d.box.lon, w: d.box.w, d: d.box.d, min: d.dem.min, max: d.dem.max, exag: tl.exag, folder: st.folder } });
+    ctx.addTerrain({ name: tl.name || "Terrain", mesh, pic, buildings: bmesh(mesh), info: { lat: d.box.lat, lon: d.box.lon, w: d.box.w, d: d.box.d, min: d.dem.min, max: d.dem.max, exag: tl.exag, folder: st.folder } });
     say("Added " + (tl.name || "the terrain") + " to the scene (" + mesh.tris.toLocaleString() + " triangles). Close Terrain Lab to see it.");
   }
 
@@ -227,7 +252,8 @@ export function createTerrainLab(ctx) {
     for (let j = 0; j < 256; j++) for (let i = 0; i < 256; i++) {
       const p = j * 256 + i, hx = hgt[p + (i < 255 ? 1 : 0)] - hgt[p - (i > 0 ? 1 : 0)], hy = hgt[p + (j < 255 ? 256 : 0)] - hgt[p - (j > 0 ? 256 : 0)];
       const nx = -hx / (2 * px), ny = -hy / (2 * px), l = (nx * -0.6 + ny * -0.6 + 1) / Math.sqrt(nx * nx + ny * ny + 1) / 1.25, sh = Math.max(0.25, Math.min(1.3, 0.35 + l * 0.85));
-      const c4 = mapShade(hgt[p] < 2 && Math.abs(hx) + Math.abs(hy) < 0.05 ? 0 : hgt[p]), q = p * 4;   // dead-flat ground just above 0 is sea (US data puts the sea at ~1.2 m) out.data[q] = c4[0] * sh; out.data[q + 1] = c4[1] * sh; out.data[q + 2] = c4[2] * sh; out.data[q + 3] = 255;
+      const c4 = mapShade(hgt[p] < 2 && Math.abs(hx) + Math.abs(hy) < 0.05 ? 0 : hgt[p]), q = p * 4;   // dead-flat ground just above 0 is sea (US data puts the sea at ~1.2 m)
+      out.data[q] = c4[0] * sh; out.data[q + 1] = c4[1] * sh; out.data[q + 2] = c4[2] * sh; out.data[q + 3] = 255;
     }
     g.putImageData(out, 0, 0); return { c, hgt };
   }
@@ -273,8 +299,15 @@ export function createTerrainLab(ctx) {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1016);
   scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x3a2c22, 1.35)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-1, 1.4, -0.6); scene.add(sun);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 50), cam = { yaw: 30, pitch: 32, dist: 2.6 };
-  let meshNode = null;
-  function show3d(m, pic) {
+  let meshNode = null, bNode = null;
+  function show3d(m, pic, bm) {
+    if (bNode) { scene.remove(bNode); bNode.geometry.dispose(); bNode.material.dispose(); bNode = null; }
+    if (bm) {
+      const k = 2 / Math.max(m.w, m.d), p = new Float32Array(bm.pos.length), c = new Float32Array(bm.col.length); for (let i = 0; i < p.length; i++) p[i] = bm.pos[i] * k;
+      for (let i = 0; i < c.length; i++) { const v = bm.col[i] / 255; c[i] = v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(p, 3)); g.setAttribute("normal", new THREE.BufferAttribute(bm.nrm, 3)); g.setAttribute("color", new THREE.BufferAttribute(c, 3)); g.setIndex(new THREE.BufferAttribute(bm.idx, 1));
+      bNode = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 })); scene.add(bNode);
+    }
     if (meshNode) { scene.remove(meshNode); meshNode.geometry.dispose(); if (meshNode.material.map) meshNode.material.map.dispose(); meshNode.material.dispose(); }
     const k = 2 / Math.max(m.w, m.d), pos = new Float32Array(m.pos.length); for (let i = 0; i < pos.length; i++) pos[i] = m.pos[i] * k;
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.BufferAttribute(m.nrm, 3)); g.setAttribute("uv", new THREE.BufferAttribute(m.uv, 2)); g.setIndex(new THREE.BufferAttribute(m.idx, 1));
@@ -296,7 +329,7 @@ export function createTerrainLab(ctx) {
 
   // ---- changes
   function changed(live) {
-    const key = boxKey() + "|" + tl.photo + "|" + tl.season;
+    const key = dataKey();
     if (st.data && st.data.key !== key) { st.data = null; st.mesh = null; st.folder = null; say("Area changed. Press Preview."); }
     if (st.data) { clearTimeout(remeshT); remeshT = setTimeout(() => { remesh(); }, live ? 120 : 0); if (st.folder) st.folder = null; }
     ui.refreshAll(); drawMap();
