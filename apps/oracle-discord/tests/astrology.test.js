@@ -74,3 +74,11 @@ test("/astrology now: sky context, transits and embed limits", async () => {
   const total = withNow.title.length + withNow.description.length + withNow.footer.text.length + withNow.fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
   assert.ok(total <= 6000, String(total));
 });
+
+test("time_unknown from the saved-profile modal hides houses", async () => {
+  const { run } = await import("../src/modules/astrology/index.js");
+  const r = await run({ subcommand: "chart", date: "1990-07-14", time: "12:00", time_unknown: true, place: "Phoenix" },
+    { geocoded: { lat: 33.45, lon: -112.07, name: "Phoenix" }, now: new Date("2026-11-26T18:30:00Z") });
+  assert.equal(r.chart.cusps, null);
+  assert.ok(r.embeds[0].description.includes("birth time unknown"));
+});

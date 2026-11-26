@@ -53,7 +53,7 @@ export async function run(options, ctx = {}) {
 }
 
 async function natalFrom(options, ctx) {
-  const timeKnown = !!(options.time && String(options.time).trim());
+  const timeKnown = !options.time_unknown && !!(options.time && String(options.time).trim());
   const birth = parseBirth(options.date, timeKnown ? options.time : "12:00");
   const where = ctx.geocoded || await geocode(options.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${options.place}". Try "City, Country".`);
@@ -77,7 +77,7 @@ export async function runNow(options, ctx = {}) {
   let natal = null;
   if (options.birth_date) {
     if (!options.birth_place) throw new Error("Add birth_place too, so I can place your chart.");
-    ({ chart: natal } = await natalFrom({ date: options.birth_date, time: options.birth_time, place: options.birth_place }, { ...ctx, geocoded: ctx.geocodedBirth }));
+    ({ chart: natal } = await natalFrom({ date: options.birth_date, time: options.birth_time, time_unknown: options.birth_time_unknown ?? options.time_unknown, place: options.birth_place }, { ...ctx, geocoded: ctx.geocodedBirth }));
   }
   return withPng(renderNow(sky, date, where, natal, options));
 }
