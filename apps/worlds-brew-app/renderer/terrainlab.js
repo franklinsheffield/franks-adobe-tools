@@ -11,6 +11,7 @@ const path = req("path"), fs = req("fs"), fsp = fs.promises;
 const { Buffer } = req("buffer");
 const P = req("../geo/proj.js"), B = req("../geo/build.js"), PNGX = req("../geo/png.js"), BL = req("../geo/buildings.js");
 const { el, clear } = req("../engine/kit/ui.js");
+import { createMyPhoto } from "./tlphoto.js";
 
 export const CODE = "TL-11";
 // famous landscapes to start from: [name, lat, lon, width km, depth km]
@@ -48,7 +49,7 @@ export function createTerrainLab(ctx) {
   const btn = (l, fn, cls) => { const b = el("button", { class: cls || "btn small", text: l }); b.addEventListener("click", () => fn(b)); return ui.helpAt(b, { key: "btn:" + l, name: l, kind: "button" }); };
   const box = () => ({ lat: tl.lat, lon: tl.lon, w: tl.wKm * 1000, d: tl.dKm * 1000, turn: tl.turn });
   const boxKey = () => [tl.lat.toFixed(5), tl.lon.toFixed(5), tl.wKm, tl.dKm, tl.turn].join(",");
-  const dataKey = () => boxKey() + "|" + tl.photo + "|" + tl.season + "|" + tl.bld;
+  const dataKey = () => boxKey() + "|" + (tl.photo === "tint" ? "tint" : "sat") + "|" + tl.season + "|" + tl.bld;   // My photo goes over the same satellite download
 
   // ---- layout
   const root = el("div", { id: "tlab", class: "tlab", hidden: "" });
@@ -70,6 +71,10 @@ export function createTerrainLab(ctx) {
   root.appendChild(el("div", { class: "tlbox" }, [head.node, el("div", { class: "tlmain" }, [side, stage]), foot]));
   ctx.mount.appendChild(root);
 
+  // ---- My photo (0.13): your own picture over the satellite photo
+  const myp = createMyPhoto({ ui, btn, st, tl, glow: ctx.glow, ipcRenderer, root, box, say: (m, e) => say(m, e), changed: () => changed(), preview: () => preview(), remesh: () => remesh(),
+    setPlace: (...a) => setPlace(...a), basePicture: () => (st.data ? basePicture(st.data) : null) });
+
   // ---- cards
   const results = el("div", { class: "tlresults" });
   const quickOpts = [{ v: "", l: "Famous places..." }].concat(PLACES.map((p) => ({ v: p[0], l: p[0] })));
@@ -89,9 +94,9 @@ export function createTerrainLab(ctx) {
     sliderRow("Height scale", "tl.exag", 1, 5, 0.1, "x"), sliderRow("Smooth", "tl.smooth", 0, 4, 1, ""),
     row("Water", segGroup("tl.water", [{ v: "off", l: "Off" }, { v: "sea", l: "Sea level" }, { v: "custom", l: "Custom" }])), waterRow,
     el("div", { class: "hint", text: "1x is true scale. Water flattens everything below its level into a lake or sea surface." })]);
-  const pickLine = el("div", { class: "hint" }); bind(() => { const d = st.data; pickLine.textContent = !d ? "Press Preview to find the clearest recent picture." : d.photo ? "Photo: Sentinel-2, " + d.photo.dates.join(" + ") + (d.picks[0] ? "  (" + Math.round(d.picks[0].cloud * 100) + "% cloud over the box, sun " + Math.round(d.picks[0].sun || 0) + " deg)" : "") : "No photo: coloured by height."; });
+  const pickLine = el("div", { class: "hint" }); bind(() => { const d = st.data; pickLine.textContent = !d ? "Press Preview to find the clearest recent picture." : d.photo ? (tl.photo === "my" ? "Under your photo: " : "") + "Photo: Sentinel-2, " + d.photo.dates.join(" + ") + (d.picks[0] ? "  (" + Math.round(d.picks[0].cloud * 100) + "% cloud over the box, sun " + Math.round(d.picks[0].sun || 0) + " deg)" : "") : "No photo: coloured by height."; });
   const photoCard = card("Photo", [
-    row("Photo", segGroup("tl.photo", [{ v: "sat", l: "Satellite" }, { v: "tint", l: "Height colours" }])),
+    row("Photo", segGroup("tl.photo", [{ v: "sat", l: "Satellite" }, { v: "my", l: "My photo" }, { v: "tint", l: "Heights" }])), myp.rows,
     selectRow("Season", "tl.season", [{ v: "Any", l: "Any time" }, { v: "Spring", l: "Spring" }, { v: "Summer", l: "Summer" }, { v: "Autumn", l: "Autumn" }, { v: "Winter", l: "Winter" }]),
     selectRow("Photo detail", "tl.photoPx", PHOTOS.map((v) => ({ v, l: v + " px" }))), pickLine]);
   const triLine = el("div", { class: "wbsize" }); bind(() => { const n = tl.detail; triLine.textContent = (2 * (n - 1) * (n - 1)).toLocaleString() + " triangles, a point every " + Math.round(Math.max(tl.wKm, tl.dKm) * 1000 / (n - 1)) + " m"; });
@@ -148,7 +153,7 @@ export function createTerrainLab(ctx) {
     if (st.busy) return null;
     st.busy = true; ui.refreshAll(); progress(0.01); say("Fetching heights and photo...");
     try {
-      const b = box(), r = await ipcRenderer.invoke("geo:fetch", { box: b, grid, photoPx: tl.photo === "sat" ? photoPx : 0, season: tl.season, buildings: tl.bld === "on" });
+      const b = box(), r = await ipcRenderer.invoke("geo:fetch", { box: b, grid, photoPx: tl.photo !== "tint" ? photoPx : 0, season: tl.season, buildings: tl.bld === "on" });
       r.box = b; r.full = full; r.key = dataKey(); st.data = r; st.folder = null; return r;
     } catch (err) { say(String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""), true); return null; }
     finally { st.busy = false; progress(1); ui.refreshAll(); }
@@ -176,10 +181,11 @@ export function createTerrainLab(ctx) {
   function bmesh(m) {
     const d = st.data; if (!d || tl.bld !== "on" || !d.buildings || !d.buildings.list.length) return null;
     const list = d.buildings.list.filter((b) => b.foot >= tl.bMin); if (!list.length) return null;
-    return BL.mesh(list, d.dem, d.box, { lo: m.minH, exag: m.exag, water: meshOpts(0).water }, { scale: tl.bScale, photo: d.photo });
+    return BL.mesh(list, d.dem, d.box, { lo: m.minH, exag: m.exag, water: meshOpts(0).water }, { scale: tl.bScale, photo: st.pic || d.photo });
   }
   // the texture: the photo, with height colours wherever there is no photo
-  function picture(d) {
+  function picture(d) { return myp.compose(basePicture(d), d.box); }   // My photo goes over the satellite / height colours
+  function basePicture(d) {
     if (d.photo && d.photo.missing < 0.999) { if (d.photo.missing > 0) fillTint(d.photo, d); return d.photo; }
     const n = Math.min(1024, Math.max(256, d.dem.n * 2)), pic = { w: n, h: Math.round(n * d.box.d / d.box.w), d: null }; pic.d = new Uint8Array(pic.w * pic.h * 4); fillTint(pic, d); return pic;
   }
@@ -208,6 +214,7 @@ export function createTerrainLab(ctx) {
       buildings: st.bmesh ? JSON.stringify({ release: d.buildings.release, list: d.buildings.list.filter((b) => b.foot >= tl.bMin).map((b) => ({ id: b.id, rings: b.rings.map((r) => r.map((p) => [+p[0].toFixed(2), +p[1].toFixed(2)])), seams: b.seams, foot: b.foot, height: b.height, base: b.base, known: b.known, roof: b.roof, wall: b.wall, part: b.part })) }) : null
     };
     if (out.info.credits && out.info.buildings) out.info.credits.push(out.info.buildings.credit);   // saved and exported files both credit the buildings
+    const mine = myp.info(); if (mine) { out.info.myPhoto = mine; if (out.info.credits) out.info.credits.unshift("Photo: " + mine.file + " (your own picture), placed by " + mine.placed); }
     return out;
   }
   function bldInfo() {
@@ -276,6 +283,8 @@ export function createTerrainLab(ctx) {
     g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath();
     g.fillStyle = "rgba(94,255,200,0.10)"; g.fill(); g.lineWidth = 2; g.strokeStyle = ctx.glow; g.stroke();
     const nm = toScreen(F.at(0.5, 0).lon, F.at(0.5, 0).lat); g.fillStyle = ctx.glow; g.font = "11px -apple-system, sans-serif"; g.fillText("N", nm[0] - 3, nm[1] - 5);
+    const fp = tl.photo === "my" ? myp.footprint() : null;   // where your photo lies
+    if (fp) { const q = fp.map((p) => toScreen(p.lon, p.lat)); g.setLineDash([6, 4]); g.strokeStyle = "#ffd166"; g.lineWidth = 2; g.beginPath(); q.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.stroke(); g.setLineDash([]); g.fillStyle = "#ffd166"; g.fillText("MY PHOTO", q[0][0] + 4, q[0][1] + 13); }
     const c = toScreen(tl.lon, tl.lat); g.strokeStyle = "#ffffff"; g.lineWidth = 1; g.beginPath(); g.moveTo(c[0] - 7, c[1]); g.lineTo(c[0] + 7, c[1]); g.moveTo(c[0], c[1] - 7); g.lineTo(c[0], c[1] + 7); g.stroke();
     // scale bar
     const ll = toLonLat(W / 2, H / 2), mpp = P.tilePixelM(ll.lat, z), nice = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000].find((m) => m / mpp > 70) || 1000000, len = nice / mpp;
@@ -338,9 +347,9 @@ export function createTerrainLab(ctx) {
 
   function open() { root.hidden = false; ui.refreshAll(); requestAnimationFrame(() => { if (!map.cx) fitBox(); drawMap(); draw3d(); }); say(st.data ? "Ready." : "Pick a place: a famous one, a search, coordinates, or click the map. Then press Preview."); }
   function close() { root.hidden = true; ctx.closed && ctx.closed(); }
-  document.addEventListener("keydown", (e) => { if (!root.hidden && e.key === "Escape") { e.stopPropagation(); close(); } }, true);
+  document.addEventListener("keydown", (e) => { if (!root.hidden && e.key === "Escape") { e.stopPropagation(); if (myp.pin) myp.pin.finish(false); else close(); } }, true);
   ui.refreshAll(); progress(1);
-  return { open, close, get isOpen() { return !root.hidden; }, root, ui, st, tl, preview, build, remesh, addToScene, exportFiles, setPlace, search, pickResult, parseCoords, fitBox, drawMap, files, saveToLibrary, map };
+  return { open, close, get isOpen() { return !root.hidden; }, root, ui, st, tl, myp, dataKey, box, changed, preview, build, remesh, addToScene, exportFiles, setPlace, search, pickResult, parseCoords, fitBox, drawMap, files, saveToLibrary, map };
 }
 
 // the map: neutral grey relief (a little lighter up high), blue water

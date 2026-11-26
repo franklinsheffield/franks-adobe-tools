@@ -9,6 +9,7 @@ const APP = path.resolve(__dirname, ".."), OUT = path.join(__dirname, "out");
 let failed = 0;
 async function t(name, fn) { try { await fn(); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n     " + String(e && e.stack || e).split("\n").slice(0, 8).join("\n     ")); } }
 const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h ^= a[i]; h = Math.imul(h, 16777619); } return h >>> 0; };
+const { writeTIFF, writePNG, checker } = require("./pictures.js");   // tiny GeoTIFF / PNG writers for the My photo tests
 
 (async () => {
   await t("engine/ matches plugins/worlds-brew/js and shared/ (run npm run sync)", () => { assert.deepStrictEqual(require("../tools/sync-engine.js").sync(true), []); });
@@ -150,6 +151,53 @@ const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) { h
     assert.ok(b.tc && b.tc[0] === 255 && b.tc[1] === 0, "triangle colours come from the decoded picture");
   });
 
+  await t("My photo (0.13): GeoTIFFs (plain / LZW / deflate + predictor / tiled) decode and land at their map position; world files, .prj, pins and drone GPS place photos", () => {
+    const MP = require("../geo/myphoto.js"), P = require("../geo/proj.js"), w = 60, h = 40, rgb = checker(w, h, 10);
+    const geo = { sx: 2, sy: 2, x0: 399000, y0: 3993000, epsg: 32612 };   // UTM 12N, 2 m pixels, near the Grand Canyon
+    for (const o of [{ comp: 1 }, { comp: 5 }, { comp: 8, pred: 2 }, { comp: 8, tile: 16 }, { comp: 5, pred: 2, tile: 32 }]) {
+      const r = MP.decodeTIFF(writeTIFF(Object.assign({ w, h, rgb, geo }, o)));
+      assert.deepStrictEqual([r.w, r.h, r.geo.epsg], [w, h, 32612], JSON.stringify(o));
+      let bad = 0; for (let i = 0; i < w * h; i++) for (let c = 0; c < 3; c++) if (r.d[i * 4 + c] !== rgb[i * 3 + c]) bad++;
+      assert.strictEqual(bad, 0, "every pixel right: " + JSON.stringify(o)); assert.deepStrictEqual(r.geo.wf, [2, 0, 0, -2, 399001, 3992999], "world file points at pixel centres");
+    }
+    // where it lands: the photo's corner is the tiepoint, pixels go both ways
+    const r = MP.decodeTIFF(writeTIFF({ w, h, rgb, comp: 8, geo })), pl = MP.placement({ kind: "world", wf: r.geo.wf, crs: MP.crsFromEPSG(r.geo.epsg) }, r.w, r.h);
+    const c0 = pl.pxToLonLat(0, 0), u = P.toUTM(c0.lon, c0.lat, 12, false); assert.ok(Math.abs(u.e - 399000) < 0.01 && Math.abs(u.n - 3993000) < 0.01, "top-left corner at the tiepoint");
+    const g = pl.pxToLonLat(25.5, 10.5), back = pl.lonlatToPx(g.lon, g.lat); assert.ok(Math.abs(back[0] - 25.5) < 1e-4 && Math.abs(back[1] - 10.5) < 1e-4, "round trip (to 0.2 mm)");
+    assert.ok(Math.abs(pl.mpp - 2) < 0.01, "2 m pixels: " + pl.mpp);
+    // shrunk on loading: every 2nd pixel, still in the same place
+    const s = MP.decodeTIFF(writeTIFF({ w, h, rgb, comp: 1, geo }), 30), ps = MP.placement({ kind: "world", wf: s.geo.wf, crs: MP.crsFromEPSG(32612) }, s.w, s.h);
+    assert.deepStrictEqual([s.w, s.h, s.shrink], [30, 20, 2]); const a = ps.pxToLonLat(7.5, 4.5), b = pl.pxToLonLat(14.5, 8.5); assert.ok(Math.abs(a.lon - b.lon) < 1e-9 && Math.abs(a.lat - b.lat) < 1e-9, "shrunk pixel 7 = source pixel 14");
+    // world files and projections
+    assert.deepStrictEqual(MP.worldFile("2.0\n0\n0\n-2.0\n399001\n3992999\n"), [2, 0, 0, -2, 399001, 3992999]); assert.strictEqual(MP.worldFile("hello"), null);
+    assert.deepStrictEqual(MP.crsFromPrj('PROJCS["WGS 84 / UTM zone 12N",GEOGCS["WGS 84"],UNIT["metre",1],AUTHORITY["EPSG","32612"]]'), { kind: "utm", zone: 12, south: false, epsg: 32612 });
+    assert.strictEqual(MP.crsFromPrj('PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984"]]').kind, "merc"); assert.strictEqual(MP.crsFromPrj('GEOGCS["GCS_WGS_1984"]').kind, "ll");
+    assert.deepStrictEqual([MP.guessCRS(-112.1, 36.07).kind, MP.guessCRS(399000, 3993000, -112.1, 36.07).zone, MP.guessCRS(-12480000, 4310000).kind], ["ll", 12, "merc"]);
+    for (const crs of [{ kind: "merc" }, { kind: "ll" }, { kind: "utm", zone: 12, south: false }]) { const [X, Y] = MP.toCRS(-112.115, 36.0728, crs), q = MP.fromCRS(X, Y, crs); assert.ok(Math.abs(q.lon + 112.115) < 1e-7 && Math.abs(q.lat - 36.0728) < 1e-7, crs.kind); }
+    // pins: 2 = move / turn / size, 3 = stretch too, 4+ = perspective; a known map is found again, and the miss is reported once there are spare pins
+    const pin = (u, v) => { const q = pl.pxToLonLat(u, v); return { u, v, lon: q.lon, lat: q.lat }; }, P5 = [pin(3, 4), pin(55, 6), pin(50, 35), pin(6, 33), pin(30, 20)];
+    for (const [k, kind] of [[2, "similar"], [3, "affine"], [4, "perspective"], [5, "perspective"]]) {
+      const q = MP.placement({ kind: "pins", pins: P5.slice(0, k) }, w, h), t2 = pl.pxToLonLat(40, 12), uv = q.lonlatToPx(t2.lon, t2.lat);
+      assert.strictEqual(q.kind, kind); assert.ok(Math.hypot(uv[0] - 40, uv[1] - 12) < 0.05, kind + " finds the map again: " + uv); assert.ok(Math.abs(q.mpp - 2) < 0.02, kind + " 2 m pixels");
+      assert.ok(k === 5 ? q.rms < 0.01 : q.rms === null, "miss reported only with spare pins");
+    }
+    // the photo over a box: alpha 0 outside, the photo's own colours inside, coverage about right (120 x 80 m of a 400 x 400 m box = 6%)
+    const ctr = pl.pxToLonLat(30, 20), box = { lat: ctr.lat, lon: ctr.lon, w: 400, d: 400, turn: 0 }, out = MP.render(pl, box, 200, 200, r);
+    assert.ok(Math.abs(out.cover - 0.06) < 0.01, "cover " + out.cover); assert.strictEqual(out.d[3], 0, "outside the photo stays see-through");
+    const mid = (100 * 200 + 100) * 4; assert.ok(out.d[mid + 3] === 255, "inside is solid");
+    // drone photo: DJI-style JPEG with GPS in EXIF and height / gimbal in XMP; 100 m up with a 24 mm lens sees 150 m across
+    const T = Buffer.alloc(128); T.write("II*\0", 0, "latin1"); T.writeUInt32LE(8, 4); T.writeUInt16LE(1, 8); T.writeUInt16LE(0x8825, 10); T.writeUInt16LE(4, 12); T.writeUInt32LE(1, 14); T.writeUInt32LE(26, 18);
+    const ge = (i, tag, type, n, v) => { const o = 28 + i * 12; T.writeUInt16LE(tag, o); T.writeUInt16LE(type, o + 2); T.writeUInt32LE(n, o + 4); if (typeof v === "string") T.write(v, o + 8, "latin1"); else T.writeUInt32LE(v, o + 8); };
+    T.writeUInt16LE(4, 26); ge(0, 1, 2, 2, "N\0"); ge(1, 2, 5, 3, 80); ge(2, 3, 2, 2, "W\0"); ge(3, 4, 5, 3, 104);
+    [[36, 1], [4, 1], [2208, 100], [112, 1], [6, 1], [5400, 100]].forEach(([n, d], i) => { T.writeUInt32LE(n, 80 + i * 8); T.writeUInt32LE(d, 84 + i * 8); });   // 36 4' 22.08" N, 112 6' 54" W
+    const app1 = (body) => { const b = Buffer.alloc(4); b[0] = 0xff; b[1] = 0xe1; b.writeUInt16BE(body.length + 2, 2); return Buffer.concat([b, body]); };
+    const jpg = Buffer.concat([Buffer.from([0xff, 0xd8]), app1(Buffer.concat([Buffer.from("Exif\0\0", "latin1"), T])),
+      app1(Buffer.from('http://ns.adobe.com/xap/1.0/\0<x drone-dji:GimbalPitchDegree="-90.0" drone-dji:RelativeAltitude="+100.00" drone-dji:GimbalYawDegree="+30.0"/>', "latin1")), Buffer.from([0xff, 0xd9])]);
+    const ex = MP.readEXIF(jpg); assert.ok(Math.abs(ex.lat - 36.0728) < 1e-6 && Math.abs(ex.lon + 112.115) < 1e-6, "GPS read"); assert.deepStrictEqual([ex.pitch, ex.relAlt, ex.yaw], [-90, 100, 30]);
+    const cs = MP.droneCorners(ex, 400, 300), across = (p, q) => { const r2 = P.radii(p.lat); return Math.hypot((q.lon - p.lon) * P.D2R * r2.N * Math.cos(p.lat * P.D2R), (q.lat - p.lat) * P.D2R * r2.M); };
+    assert.ok(Math.abs(across(cs[0], cs[1]) - 150) < 0.5 && Math.abs(across(cs[1], cs[2]) - 112.5) < 0.5, "150 x 112.5 m on the ground");
+    assert.ok(cs[1].lat < cs[0].lat, "turned 30 degrees: the top edge runs south-east"); assert.strictEqual(MP.droneCorners(Object.assign({}, ex, { pitch: -45 }), 400, 300), null, "angled shots need pins");
+  });
   // ---- the app itself
   if (process.env.WB_SKIP_UI) { console.log("skip UI tests (WB_SKIP_UI)"); return done(); }
   if (process.platform === "linux" && !process.env.DISPLAY) {   // re-run under a virtual display
@@ -463,6 +511,41 @@ async function uiTests() {
     const n0 = await W(() => window.__wb.st.scene.objs.length); await W(async (x) => { await window.__wb.applyLibItem(x, null, { x: 5, y: 0, z: 5 }); }, item);
     assert.deepStrictEqual(await W(() => { const w = window.__wb, o = w.st.sel; return [w.st.scene.objs.length, o.type, o.layers[0].name, o.layers[0].img.h > o.layers[0].img.w * 3 / 4]; }), [n0 + 2, "mesh", "Satellite photo", true], "rebuilt from the library with the earth band under the photo, and its buildings");
     await win.waitForTimeout(400); await win.screenshot({ path: path.join(OUT, "app-terrain-lab.png") });
+  });
+  await t("app: My photo (0.13): a GeoTIFF lands by itself, so does a PNG with its world file and .prj, the pin aligner pins it, and the photo goes on the terrain and into terrain.json", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "px-myphoto-")), w = 60, h = 40, rgb = checker(w, h, 10);
+    fs.writeFileSync(path.join(dir, "gc.tif"), writeTIFF({ w, h, rgb, comp: 5, geo: { sx: 2, sy: 2, x0: 399000, y0: 3993000, epsg: 32612 } }));
+    fs.writeFileSync(path.join(dir, "gc.png"), writePNG(w, h, rgb)); fs.writeFileSync(path.join(dir, "gc.pgw"), "2\n0\n0\n-2\n399001\n3992999\n");
+    fs.writeFileSync(path.join(dir, "gc.prj"), 'PROJCS["WGS 84 / UTM zone 12N",GEOGCS["WGS 84"],AUTHORITY["EPSG","32612"]]');
+    const c = require("../geo/myphoto.js").fromCRS(399060, 3992960, { kind: "utm", zone: 12, south: false });   // the photo's middle
+    const r = await W(async ({ dir, c }) => {
+      const w = window.__wb; w.openTerrainLab(); const T = w.TL(), n = 33, wait = () => new Promise((ok) => setTimeout(ok, 250));
+      Object.assign(T.tl, { lat: c.lat, lon: c.lon, wKm: 0.4, dKm: 0.4, turn: 0, photo: "sat", bld: "off", name: "My photo test" });
+      T.st.data = { dem: { n, h: new Float32Array(n * n).fill(2000), min: 2000, max: 2000, z: 15, pixelM: 12, source: "test", credit: "test" }, photo: null, picks: [], box: T.box(), full: true, key: T.dataKey(), buildings: null };
+      T.remesh();
+      // a spot 11 m east and 9 m north of the middle is photo pixel (35, 15): a blue square of the checker
+      const at = () => { const p = T.st.pic, x = Math.floor(p.w / 2 + 11 / 400 * p.w), y = Math.floor(p.h / 2 - 9 / 400 * p.h), o = (y * p.w + x) * 4; return [p.d[o], p.d[o + 1], p.d[o + 2]]; };
+      const out = { before: at() };
+      await T.myp.load([dir + "/gc.tif"]); await wait();
+      out.tif = { desc: T.myp.describe(), photo: T.tl.photo, cover: T.st.my.cover, px: at(), data: !!T.st.data };
+      await T.myp.load([dir + "/gc.png"]); await wait();
+      out.png = { desc: T.myp.describe(), px: at() };
+      const pl = T.st.my.place, pin = T.myp.openPins(); out.overlay = !!document.querySelector(".tlpin canvas");
+      for (const [u, v] of [[5, 5], [55, 8], [30, 36]]) { const g = pl.pxToLonLat(u, v); pin.add(u, v, g.lon, g.lat); }
+      out.pinInfo = document.querySelector(".tlpininfo").textContent; pin.finish(true); await wait();
+      out.pinned = { desc: T.myp.describe(), px: at(), overlayGone: !document.querySelector(".tlpin") };
+      const f = await T.files("x"); out.info = f.info.myPhoto; out.credit = f.info.credits[0];
+      return out;
+    }, { dir, c });
+    const blue = (p) => p[0] < 70 && p[1] < 80 && p[2] > 170;
+    assert.ok(!blue(r.before), "height colours before the photo: " + r.before);
+    assert.ok(/placed from its map position \(EPSG 32612\), 2\.0 m pixels/.test(r.tif.desc), r.tif.desc); assert.strictEqual(r.tif.photo, "my"); assert.ok(r.tif.data, "no new download needed");
+    assert.ok(Math.abs(r.tif.cover - 0.06) < 0.01, "120 x 80 m of a 400 m box: " + r.tif.cover); assert.ok(blue(r.tif.px), "the photo is on the terrain: " + r.tif.px);
+    assert.ok(/gc\.pgw/.test(r.png.desc) && !/guessed/.test(r.png.desc), "PNG placed by its world file + .prj: " + r.png.desc); assert.ok(blue(r.png.px), "PNG on the terrain: " + r.png.px);
+    assert.ok(r.overlay && /3 pins: stretch/.test(r.pinInfo), r.pinInfo); assert.ok(/pinned \(3 pins, stretch\)/.test(r.pinned.desc) && r.pinned.overlayGone, r.pinned.desc); assert.ok(blue(r.pinned.px), "pinned photo on the terrain");
+    assert.deepStrictEqual([r.info.file, r.info.placed], ["gc.png", "affine pins"]); assert.ok(Math.abs(parseFloat(r.info.coversBox) - 6) < 1, r.info.coversBox); assert.ok(/^Photo: gc\.png \(your own picture\)/.test(r.credit), r.credit);
+    await win.waitForTimeout(300); await win.screenshot({ path: path.join(OUT, "app-my-photo.png") });
+    assert.strictEqual(await W(() => { const T = window.__wb.TL(); T.tl.photo = "tint"; T.changed(); const i = T.myp.info(); T.close(); return i; }), null, "Heights leaves the photo out");
   });
   await t("app: the centre (XYZ) scale handle sizes smoothly from the pointer (it used to blow models up)", async () => {
     const r = await W(() => {
