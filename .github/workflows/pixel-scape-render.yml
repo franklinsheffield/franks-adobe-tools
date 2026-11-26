@@ -38,3 +38,13 @@ jobs:
           USER: ${{ inputs.user }}
           DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
         run: CHROMIUM_PATH="$(command -v google-chrome || command -v chromium)" node scripts/job.js
+      - name: Tell Discord if the job broke before posting
+        if: failure()
+        working-directory: .
+        env:
+          TOKEN: ${{ inputs.token }}
+          DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
+        run: |
+          curl -s -o /dev/null -w "%{http_code}\n" -X PATCH -H "content-type: application/json" \
+            --data '{"content":"Pixel Scape hit an error building this one. Try again in a minute."}' \
+            "https://discord.com/api/v10/webhooks/${DISCORD_APP_ID}/${TOKEN}/messages/@original"
