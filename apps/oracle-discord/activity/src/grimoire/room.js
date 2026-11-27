@@ -56,8 +56,8 @@ export const room = {
     const prog = () => grim(state.prog);
     let shown = LEAVES; // leaves on the page last time it was drawn, so a lost one can fall
     const draw = (p, run, revealed = false, fx = {}) => { tableEl.className = "table grimoire";
-      const leaves = run ? run.leaves : LEAVES, fell = leaves < shown ? leaves : -1; shown = leaves;
-      tableEl.innerHTML = pageSvg(p, { leaves, revealed, no: p ? NUM.get(p.id) : 0, theme: themeOf(state.prog), poison: p && revealed && p.danger[0] === "poison", fell, ...fx });
+      const leaves = run ? run.leaves : LEAVES, fell = leaves < shown ? leaves : -1, fellTo = shown; shown = leaves;
+      tableEl.innerHTML = pageSvg(p, { leaves, revealed, no: p ? NUM.get(p.id) : 0, theme: themeOf(state.prog), poison: p && revealed && p.danger[0] === "poison", fell, fellTo, ...fx });
       if (fell >= 0) SFX.leaf();
       if (fx.shake) { void tableEl.offsetWidth; tableEl.classList.add("gr-shake"); } };
     const stats = () => { const n = solvedCount(state.prog), t = titleOf(n), nx = nextTitle(n);
@@ -77,7 +77,7 @@ export const room = {
       const known = ALL.filter(({ L, p }) => prog().solved[keyOf(L, p)]);
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="choices">${LEVELS.map((L) => `<button class="c small" type="button" data-g="${L.n}" data-label="📖 Study guide: ${esc(L.name)}">📖 Study guide: ${esc(L.name)}</button>`).join("")}</div>
-        <div class="note">5 leaves per plant. The first clue is free; each extra clue and each wrong name costs a leaf. Typing the name scores double. For learning only: never eat or use a plant because of a game.</div>
+        <div class="note">5 leaves per plant. The first clue is free; each extra clue and each wrong typed name costs a leaf; a wrong pick from four costs 3. Typing the name scores double. For learning only: never eat or use a plant because of a game.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
         ${known.length ? `<div class="group">Your grimoire</div><div class="choices">${known.map(({ L, p }) => `<button class="c small" type="button" data-k="${p.id}">${p.emoji} ${esc(p.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, p)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; identify(L, nextPlant(state.prog, L, prog().last)); }));
@@ -108,12 +108,12 @@ export const room = {
       const more = run.shown < p.clues.length && run.leaves > 1;
       const form = run.mode === "type"
         ? `<div class="form one" id="gr-f"><label for="gr-n">Name the plant<input id="gr-n" maxlength="60" autocomplete="off" placeholder="Its common name, e.g. lavender"></label></div>
-           <div class="choices"><button class="c main" type="button" id="gr-go">✦ Name it</button>${more ? `<button class="c" type="button" id="gr-more">🍃 Another clue (1 leaf)</button>` : ""}<button class="c" type="button" id="gr-pick">🎴 Show me 4 (half points)</button></div>`
+           <div class="choices"><button class="c main" type="button" id="gr-go">✦ Name it</button>${more ? `<button class="c" type="button" id="gr-more">🍃 Another clue (1 leaf)</button>` : ""}<button class="c" type="button" id="gr-pick">🎴 Show me 4 (half points, wrong pick = 3 leaves)</button></div>`
         : `<div class="choices col">${choices(p, L).map((x) => `<button class="c" type="button" data-n="${x.id}" ${run.wrong.includes(x.id) ? "disabled" : ""}>${run.wrong.includes(x.id) ? "✗ " : ""}${esc(x.name)}</button>`).join("")}</div>
            <div class="choices">${more ? `<button class="c" type="button" id="gr-more">🍃 Another clue (1 leaf)</button>` : ""}</div>`;
       ui(`${leafBar(L, run)}${clueList(p, run)}${form}<div class="choices"><button class="c small" type="button" id="gr-leave">Close the grimoire</button></div>`);
       if ($("gr-more")) $("gr-more").onclick = () => { if (moreClue(run, p)) { SFX.quill(); name(L, p, run, `Next clue: “${p.clues[run.shown - 1]}”`); } };
-      if ($("gr-pick")) $("gr-pick").onclick = () => { usePick(run); name(L, p, run, "Very well. It's one of these four."); };
+      if ($("gr-pick")) $("gr-pick").onclick = () => { usePick(run); name(L, p, run, "Very well. It's one of these four. Choose carefully: a wrong pick costs three leaves."); };
       $("gr-leave").onclick = () => lobby(false);
       const answer = (who) => { const r = guessName(run, p, who);
         if (r === "right") return named(L, p, run, true);

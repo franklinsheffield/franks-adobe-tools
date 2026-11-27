@@ -171,10 +171,10 @@ export function placed(p) {
 }
 
 /** The grimoire page in the table pane: parchment, tape, the specimen, its label and the leaves you have left. */
-export function pageSvg(p, { leaves = 5, max = 5, revealed = false, no = 1, theme = null, poison = false, fell = -1, turn = false, sparkle = false } = {}) {
+export function pageSvg(p, { leaves = 5, max = 5, revealed = false, no = 1, theme = null, poison = false, fell = -1, fellTo = fell + 1, turn = false, sparkle = false } = {}) {
   const T = theme || PAGE_THEMES.parchment, latin = revealed && p ? `<tspan font-style="italic">${esc(p.latin)}</tspan>` : "· · · · ·";
   const name = revealed && p ? esc(p.name) : "Unknown specimen";
-  const leafIcons = Array.from({ length: max }, (_, i) => `${i === fell ? `<g transform="translate(${36 + i * 18} 40)"><g class="gr-fall"><path d="${leafPath("oval", 13)}" transform="rotate(-30)" fill="#5a9a4a" stroke="${INK}" stroke-width=".9"/></g></g>` : ""}<g transform="translate(${36 + i * 18} 40) rotate(-30)"><path d="${leafPath("oval", 13)}" fill="${i < leaves ? "#5a9a4a" : "none"}" stroke="${i < leaves ? INK : T.ink}" stroke-width=".9" opacity="${i < leaves ? 1 : 0.45}"/></g>`).join("");
+  const leafIcons = Array.from({ length: max }, (_, i) => `${i >= fell && i < fellTo && fell >= 0 ? `<g transform="translate(${36 + i * 18} 40)"><g class="gr-fall"><path d="${leafPath("oval", 13)}" transform="rotate(-30)" fill="#5a9a4a" stroke="${INK}" stroke-width=".9"/></g></g>` : ""}<g transform="translate(${36 + i * 18} 40) rotate(-30)"><path d="${leafPath("oval", 13)}" fill="${i < leaves ? "#5a9a4a" : "none"}" stroke="${i < leaves ? INK : T.ink}" stroke-width=".9" opacity="${i < leaves ? 1 : 0.45}"/></g>`).join("");
   return `<svg viewBox="0 0 400 318" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 <defs><radialGradient id="gr-page" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="${T.paper}"/><stop offset="1" stop-color="${T.edge}"/></radialGradient></defs>
 <rect x="-600" y="-400" width="1600" height="1100" fill="${T.desk}"/>
