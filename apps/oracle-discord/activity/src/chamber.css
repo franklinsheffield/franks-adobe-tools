@@ -1743,3 +1743,29 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .sc-glint{animation:sc-glint 9s ease-in-out 2s infinite}
 @keyframes sc-glint{0%,70%{transform:skewX(-18deg) translateX(0)}100%{transform:skewX(-18deg) translateX(120px)}}
 @media (prefers-reduced-motion:reduce){.sc-cloud,.sc-rays,.sc-halo,.sc-moonbob,.sc-skyshift,.sc-birds,.sc-bird,.sc-shoot,.sc-fly,.sc-glint,.sc-moon circle:first-child{animation:none}.sc-shoot,.sc-fly{opacity:0}}
+/* Emote particles and the emote book (emotes.js) */
+.efx-layer{position:absolute;left:50%;top:42%;width:0;height:0;pointer-events:none;z-index:6}
+.efx{position:absolute;font-style:normal;font-size:calc(22px * var(--s,1));opacity:0;animation:efx-burst 1.6s cubic-bezier(.2,.7,.3,1) var(--d,0s) forwards}
+.efx-burst{--ang:calc(var(--i) / var(--n) * 360deg)}
+@keyframes efx-burst{0%{opacity:0;transform:rotate(var(--ang,0deg)) translateY(0) rotate(calc(var(--ang,0deg) * -1)) scale(.3)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--ang,0deg)) translateY(-120px) rotate(calc(var(--ang,0deg) * -1)) scale(1)}}
+.efx-rise{animation-name:efx-rise;animation-duration:2s}
+@keyframes efx-rise{0%{opacity:0;transform:translate(var(--x),60px) scale(.5)}20%{opacity:1}100%{opacity:0;transform:translate(calc(var(--x) * 1.6),-170px) scale(1.1)}}
+.efx-fall{animation-name:efx-fall;animation-duration:2.2s}
+@keyframes efx-fall{0%{opacity:0;transform:translate(calc(var(--x) * 3),-200px) rotate(0)}20%{opacity:1}100%{opacity:0;transform:translate(calc(var(--x) * 3.4),60px) rotate(200deg)}}
+.efx-swirl{animation-name:efx-swirl;animation-duration:2.2s}
+@keyframes efx-swirl{0%{opacity:0;transform:rotate(calc(var(--i) / var(--n) * 360deg)) translateX(20px)}25%{opacity:1}100%{opacity:0;transform:rotate(calc(var(--i) / var(--n) * 360deg + 540deg)) translateX(140px)}}
+.efx-orbit{animation-name:efx-orbit;animation-duration:2.2s;animation-timing-function:linear}
+@keyframes efx-orbit{0%{opacity:0;transform:rotate(calc(var(--i) / var(--n) * 360deg)) translateX(110px) rotate(calc(var(--i) / var(--n) * -360deg))}15%,85%{opacity:1}100%{opacity:0;transform:rotate(calc(var(--i) / var(--n) * 360deg + 360deg)) translateX(110px) rotate(calc(var(--i) / var(--n) * -360deg - 360deg))}}
+.efx-wave{animation-name:efx-wave;animation-duration:2s}
+@keyframes efx-wave{0%{opacity:0;transform:translate(calc(var(--i) * 30px - 120px),40px)}30%{opacity:1;transform:translate(calc(var(--i) * 30px - 120px),-30px)}60%{transform:translate(calc(var(--i) * 30px - 120px),20px)}100%{opacity:0;transform:translate(calc(var(--i) * 30px - 120px),-60px)}}
+.eb{width:min(760px,94vw);max-height:86vh;overflow:auto;padding:18px 20px;border-radius:16px;background:rgba(18,10,40,.97);border:1px solid rgba(250,222,140,.5);color:#f3ead2;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.eb-top{display:flex;justify-content:space-between;align-items:center}.eb-top h3{margin:0;font-family:var(--display,Cinzel,serif)}.eb-top small{font-size:13px;opacity:.7;margin-left:6px}
+.eb-day{font-size:14px;opacity:.9}.eb h4{margin:14px 0 8px;font-family:var(--display,Cinzel,serif);color:var(--gold,#E2B04A);font-size:14px}
+.eb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.eb-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border-radius:12px;border:1px solid rgba(250,222,140,.35);background:rgba(60,35,110,.45);color:inherit;font:inherit;cursor:pointer;transition:transform .15s,background .15s}
+.eb-card:hover:not([disabled]){transform:translateY(-2px);background:rgba(90,55,160,.6)}
+.eb-card.locked{opacity:.5;cursor:default;filter:grayscale(.6)}
+.eb-card.today{box-shadow:0 0 0 2px #FADE8C,0 0 16px rgba(250,222,140,.5)}
+.eb-e{font-size:28px}.eb-card b{font-size:13px}.eb-card small{font-size:11px;opacity:.75;text-align:center}
+.eb-lv{position:absolute;top:4px;right:6px;font-style:normal;font-size:10px;padding:1px 5px;border-radius:8px}.eb-lv.lv1{background:#8a5a2b}.eb-lv.lv2{background:#9aa3ad;color:#111}.eb-lv.lv3{background:#E2B04A;color:#111}
+@media (prefers-reduced-motion:reduce){.efx{display:none}}

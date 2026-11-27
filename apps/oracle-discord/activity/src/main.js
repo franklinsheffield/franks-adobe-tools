@@ -38,6 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { ALL_EMOTES, emoteAny, emoteOk, owned as emotesOwned, useEmote, emoteBookHtml, emoteFxHtml } from "./emotes.js";
 import { CODES, BOOK_CODES, broken as cdBroken, tryCode, spot as cdSpot, codesOn, scrapHtml, glyphLayer } from "./codes.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
@@ -931,13 +932,16 @@ function bookExtrasNote() { const t = $("bk-note"); if (!t) return; let tm = nul
 // ---- the emote wheel: make the Oracle wave, laugh, dance…; in a Discord call everyone in the Chamber sees it ----
 const EMO = { last: 0, lobby: null };
 function doEmote(id, by = null) {
-  const e = emoteOf(id); if (!e) return; const t = $("teller");
-  mood.emote(e.mood); mood.bubble(by ? `${by} made me ${e.name.toLowerCase()}! ${e.say}` : e.say, 2200, e.e);
+  const e = emoteAny(id); if (!e) return; const t = $("teller");
+  mood.emote(e.mood);
+  if (!reduced && e.fx) { const fx = document.createElement("div"); fx.className = "efx-layer"; fx.innerHTML = emoteFxHtml(e); t.parentElement.append(fx); setTimeout(() => fx.remove(), 2600); } mood.bubble(by ? `${by} made me ${e.name.toLowerCase()}! ${e.say}` : e.say, 2200, e.e);
   t.classList.remove("em-wave", "em-dance", "em-spook"); void t.offsetWidth; if (["wave", "dance", "spook"].includes(id)) { t.classList.add("em-" + id); setTimeout(() => t.classList.remove("em-" + id), 2400); }
   const f = $("familiar"); if (f) { f.classList.remove("react"); void f.offsetWidth; f.classList.add("react"); }
 }
 function sendEmote(id) {
-  if (Date.now() - EMO.last < 1500) return; EMO.last = Date.now(); doEmote(id);
+  if (Date.now() - EMO.last < 1500 || !emoteOk(state.prog, emoteAny(id))) return; EMO.last = Date.now(); doEmote(id);
+  const u = useEmote(state.prog, id); if (u.dayBonus) { showStats(); } saveProgress();
+  if (u.levelUp || u.dayBonus || u.unlocked.length) setTimeout(() => mood.bubble(u.unlocked.length ? `New emote: ${u.unlocked[0].e} ${u.unlocked[0].name}! Find it in your emotes.` : u.dayBonus ? `Emote of the day! +💎 ${u.dayBonus}` : `${emoteAny(id).name} reached ${u.levelUp}!`, 3000, u.unlocked.length ? u.unlocked[0].e : u.dayBonus ? "⭐" : "🏅"), 2300);
   const L = EMO.lobby; if (!L) return; const m = { emote: id, by: state.name, byId: L.me && L.me.id };
   if (L.isHost()) L.to("*", m); else L.up(m);
 }
@@ -945,19 +949,26 @@ function sendEmote(id) {
   const pane = $("teller").parentElement, btn = document.createElement("button"), wheel = document.createElement("div");
   btn.type = "button"; btn.id = "emote-btn"; btn.className = "emote-btn"; btn.textContent = "😀"; btn.title = "Emotes: make the Oracle react"; btn.setAttribute("aria-label", "Emotes"); btn.setAttribute("aria-expanded", "false");
   wheel.id = "emote-wheel"; wheel.className = "emote-wheel"; wheel.hidden = true; wheel.setAttribute("role", "menu");
-  wheel.innerHTML = EMOTES.map((e, i) => `<button type="button" role="menuitem" style="--a:${(i / EMOTES.length) * 360 - 90}deg" data-emote="${e.id}" title="${e.name}" aria-label="${e.name}">${e.e}</button>`).join("");
+  // the ring: your 7 most-used emotes, plus the emote book with all of them
+  const ring = () => { const p = state.prog, use = p.emo || {}, mine = emotesOwned(p).sort((a, b) => (use[b.id] || 0) - (use[a.id] || 0)).slice(0, 7), all = [...mine, { id: "_book", e: "📒", name: `All emotes (${emotesOwned(p).length} of ${ALL_EMOTES.length})` }];
+    wheel.innerHTML = all.map((e, i) => `<button type="button" role="menuitem" style="--a:${(i / all.length) * 360 - 90}deg" data-emote="${e.id}" title="${e.name}" aria-label="${e.name}">${e.e}</button>`).join("");
+    wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); if (b.dataset.emote === "_book") emoteBook(); else sendEmote(b.dataset.emote); })); };
   pane.append(wheel, btn);
   const close = () => { wheel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
-  btn.onclick = (ev) => { ev.stopPropagation(); wheel.hidden = !wheel.hidden; btn.setAttribute("aria-expanded", String(!wheel.hidden)); };
-  wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); sendEmote(b.dataset.emote); }));
+  btn.onclick = (ev) => { ev.stopPropagation(); if (wheel.hidden) ring(); wheel.hidden = !wheel.hidden; btn.setAttribute("aria-expanded", String(!wheel.hidden)); };
   document.addEventListener("click", (ev) => { if (!wheel.hidden && !wheel.contains(ev.target)) close(); });
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !wheel.hidden) { close(); btn.focus(); } });
 })();
+function emoteBook() {
+  const m = modal("emote-book", emoteBookHtml(state.prog, esc, (id) => (item(id) || {}).name || id));
+  $("eb-close").onclick = m.close;
+  m.el.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = () => { m.close(); sendEmote(b.dataset.emote); }));
+}
 /** The Chamber lobby: one shared table per call, used only to pass emotes around. Quietly off when it can't start. */
 function joinLobby() {
   if (EMO.lobby || !canJoin(state)) return;
   joinTable("lobby", state).then((L) => { EMO.lobby = L;
-    L.on("msg", ({ from, m }) => { if (!m || !emoteOf(m.emote)) return;
+    L.on("msg", ({ from, m }) => { if (!m || !emoteAny(m.emote)) return;
       if (L.isHost() && from !== L.me.id && !m.fwd) L.to("*", { ...m, fwd: true });
       if (m.byId && L.me && m.byId === L.me.id) return; doEmote(m.emote, String(m.by || L.nameOf(from)).slice(0, 32)); });
     L.on("close", () => { EMO.lobby = null; }); }).catch(() => { /* not in a call */ });
