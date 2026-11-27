@@ -1067,3 +1067,46 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @media (max-width:640px){.rp-deck{grid-template-columns:1fr}.rp-crate{grid-template-columns:1fr 1fr}.tc-views{order:3;width:100%;margin:6px 0 0}}
 @media (prefers-reduced-motion: reduce){.vinyl.spin,.tt.playing .tt-disc,.rp-rec.now .rp-v,.th-rec svg{animation:none}}
 .music-pop[hidden],.gate[hidden]{display:none}
+/* Daily challenge boards (daily.js boardHtml) */
+.daily-board{list-style:none;margin:6px 0;padding:0;display:grid;gap:3px}
+.daily-board li{padding:4px 8px;border:1px solid rgba(255,255,255,.12);border-radius:8px;font-size:.92em}
+.daily-board li.me{border-color:var(--gold2,#e8c66a);background:rgba(232,198,106,.08)}
+/* ---- the Star Crown (credits.js): the Oracle's permanent reward for finishing every game on every level ---- */
+.teller .o-crown{pointer-events:none;filter:drop-shadow(0 0 6px rgba(250,222,140,.8))}
+.teller .o-crown .cr-halo{animation:crown-glow 3s ease-in-out infinite}
+.teller .o-crown .cr-star{transform-box:fill-box;transform-origin:center;animation:crown-twinkle 2.4s ease-in-out var(--d,0s) infinite}
+@keyframes crown-glow{50%{opacity:.35}}
+@keyframes crown-twinkle{50%{transform:scale(.7) rotate(20deg);opacity:.75}}
+/* ---- the end credits ---- */
+.credits{position:fixed;inset:0;z-index:60;overflow:hidden;background:radial-gradient(80% 60% at 50% 30%,#1d1440,#07050f 75%);color:#f3e6c4;animation:cr-in .8s ease-out}
+.credits.out{opacity:0;transition:opacity .4s}
+@keyframes cr-in{from{opacity:0}}
+.cr-stars{position:absolute;inset:0}
+.cr-stars i{position:absolute;width:var(--s);height:var(--s);border-radius:50%;background:#fff;opacity:.7;animation:cr-tw 2.6s ease-in-out var(--d) infinite}
+@keyframes cr-tw{50%{opacity:.15}}
+.cr-x{position:absolute;top:12px;right:12px;z-index:2}
+.cr-roll{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center;gap:56px;padding:0 16px 40px;text-align:center;will-change:transform}
+.credits.still{overflow-y:auto}.credits.still .cr-roll{padding-top:70px}
+.cr-title small{display:block;letter-spacing:.3em;text-transform:uppercase;font-size:13px;color:#7fe0c8}
+.cr-title h2{font-family:Cinzel,serif;font-size:clamp(34px,7vw,64px);margin:10px 0;color:var(--gold,#E2B04A);text-shadow:0 0 24px rgba(226,176,74,.5)}
+.cr-song{font-size:15px;opacity:.8}
+.cr-sec{width:min(640px,100%)}
+.cr-sec h3{font-family:Cinzel,serif;font-size:clamp(18px,3.4vw,24px);letter-spacing:.14em;text-transform:uppercase;color:var(--gold,#E2B04A);margin:0 0 16px}
+.cr-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0;text-align:left;font-size:15px;line-height:1.4}
+.cr-row span{text-align:right;opacity:.7}
+.cr-row b{font-weight:600}
+.cr-row.solo{grid-template-columns:1fr;text-align:center}
+.cr-thanks .cr-big{font-family:Cinzel,serif;font-size:clamp(30px,6vw,48px);color:#fff;text-shadow:0 0 22px rgba(255,79,179,.7),0 0 40px rgba(226,176,74,.5)}
+.cr-thanks p{max-width:480px;margin:12px auto 0;font-size:16px;line-height:1.5;opacity:.85}
+.cr-end{display:flex;flex-direction:column;align-items:center;gap:12px;min-height:60vh;justify-content:center}
+.cr-end h2{font-family:Cinzel,serif;font-size:clamp(36px,7vw,60px);margin:0;color:var(--gold,#E2B04A)}
+.cr-sig{font-size:44px;color:var(--gold,#E2B04A);animation:cr-spin 12s linear infinite}
+@keyframes cr-spin{to{transform:rotate(360deg)}}
+.cr-crown{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 18px;border:1px solid var(--gold,#E2B04A);border-radius:14px;background:rgba(226,176,74,.1);max-width:420px}
+.cr-crown b{color:var(--gold,#E2B04A)}
+.cr-end #cr-done{opacity:0;transition:opacity .8s}
+.credits.over #cr-done,.credits.still #cr-done{opacity:1}
+@media (max-width:520px){.cr-row{grid-template-columns:1fr;gap:2px;text-align:center}.cr-row span{text-align:center}}
+@media (prefers-reduced-motion: reduce){.teller .o-crown .cr-halo,.teller .o-crown .cr-star,.cr-stars i,.cr-sig,.credits{animation:none}}
+.tset.tmaster{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#stats .booster{color:#e7b8ff;text-shadow:0 0 8px rgba(199,155,255,.7)}

@@ -83,8 +83,8 @@ export const CSS = `
 .gm-slot b{font-size:clamp(.5rem,1.6vw,.66rem);color:var(--teal);text-align:center;line-height:1.05;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gm-candles{display:flex;gap:clamp(4px,1.4vw,12px);align-items:flex-end;justify-content:center;flex-wrap:wrap}
 .gm-candle{position:relative;width:clamp(10px,2.2vw,16px);height:clamp(28px,6vw,44px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
-.gm-candle b{display:block;width:100%;height:70%;border-radius:3px 3px 2px 2px;background:linear-gradient(90deg,#d9c9a3,#fff4d8 45%,#c9b68a);box-shadow:0 0 10px rgba(255,190,90,.35)}
-.gm-flame{position:absolute;top:0;width:70%;height:34%;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%,#fff 0 18%,#ffd36b 40%,#ff8a1f 75%,transparent 80%);
+.gm-candle b{display:block;width:100%;height:70%;border-radius:3px 3px 2px 2px;background:linear-gradient(90deg,var(--cw2,#d9c9a3),var(--cw1,#fff4d8) 45%,var(--cw2,#c9b68a));box-shadow:0 0 10px var(--ch,rgba(255,190,90,.35))}
+.gm-flame{position:absolute;top:0;width:70%;height:34%;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%,#fff 0 18%,var(--cf1,#ffd36b) 40%,var(--cf2,#ff8a1f) 75%,transparent 80%);
   filter:drop-shadow(0 0 6px #ffb347);transform-origin:50% 100%;animation:gm-flick 1.4s ease-in-out calc(var(--i) * -170ms) infinite}
 @keyframes gm-flick{0%,100%{transform:scale(1) rotate(-2deg)}33%{transform:scale(.92,1.08) rotate(2deg)}66%{transform:scale(1.05,.95) rotate(-1deg)}}
 .gm-candle.out .gm-flame{display:none}.gm-candle.out b,.gm-candle.snuff b{box-shadow:none;filter:brightness(.6)}
