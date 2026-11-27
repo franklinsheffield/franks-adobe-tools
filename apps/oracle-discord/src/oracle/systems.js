@@ -8,6 +8,10 @@ import { MODULES } from "../registry.js";
 export const SYSTEMS = [
   { key: "tarot", command: "tarot", label: "Tarot", emoji: "🃏", kind: "cast", row: "cards", hint: "Shuffle, cut and deal the 78", ask: "question",
     spreads: [["three", "Past · present · future"], ["one", "One card"], ["five", "The crossroads (5)"], ["celtic", "Celtic cross (10)"]] },
+  { key: "lenormand", command: "lenormand", label: "Lenormand", emoji: "🎴", kind: "cast", row: "cards", hint: "36 picture cards, read in pairs", ask: "question",
+    spreads: [["line", "Three-card sentence"], ["pair", "Two cards: quick answer"], ["square", "The square (9)"]] },
+  { key: "magicdeck", command: "magicdeck", label: "Science is Magic deck", emoji: "⚛️", kind: "cast", row: "cards", hint: "44 cards, each with a real science fact", ask: "question",
+    spreads: [["three", "Hypothesis · test · result"], ["one", "One card"], ["five", "The lab report (5)"]] },
   { key: "iching", command: "iching", label: "I Ching", emoji: "🪙", kind: "cast", hint: "Six coins, one question", ask: "question" },
   { key: "runes", command: "runes", label: "Runes", emoji: "🪨", kind: "cast", hint: "Draw from the Elder Futhark", ask: "question",
     spreads: [["three", "The Norns (3)"], ["one", "Odin's rune (1)"], ["five", "The cross (5)"]] },

@@ -422,6 +422,14 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .clue.new{animation:btnin .35s ease-out both,scclue 1.4s .2s ease-out both}
 @keyframes scclue{0%{box-shadow:0 0 0 0 rgba(250,222,140,.7)}100%{box-shadow:0 0 0 12px rgba(250,222,140,0)}}
 @media (prefers-reduced-motion: reduce){.sc-mote,.sc-eyes,.sc-q,.sc-flame-out,.sc-halo-out,.sc-ghost,.sc-flame,.sc-ghost.gone,.sc-prop.show,.sc-prop.show .sc-stamp{animation:none}.sc-ghost.gone{opacity:0}.sc-prop.show{opacity:1}}
+[data-vibe="v-lenormand"]{--gold:#e9c27a;--gold2:#fbf1da;--teal:#7fd6a0;--fg:#fbf1da;--muted:#c9c0a0;--line:#3a5a3e;--display:"IM Fell English",serif;--body:"IM Fell English",Georgia,serif;
+  --bg-stage:linear-gradient(180deg,#0c1f17 0%,#143526 60%,#07120d 100%);
+  --bg-oracle:radial-gradient(70% 45% at 50% 25%,rgba(255,217,138,.22),transparent 70%),repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 6px),linear-gradient(180deg,#143526,#0a1a12);
+  --bg-table:radial-gradient(60% 50% at 50% 55%,rgba(255,217,138,.18),transparent 70%),linear-gradient(180deg,#1a4a33,#0a1a12)}
+[data-vibe="v-magicdeck"]{--gold:#66E0C8;--gold2:#FADE8C;--teal:#ff8fc8;--fg:#eef8ff;--muted:#9fb3c8;--line:#1f4a5a;--display:"Cinzel",serif;--body:"DejaVu Sans",system-ui,sans-serif;
+  --bg-stage:linear-gradient(180deg,#06121e 0%,#0d2236 60%,#040a12 100%);
+  --bg-oracle:radial-gradient(70% 45% at 50% 30%,rgba(102,224,200,.18),transparent 70%),linear-gradient(180deg,#0d2236,#06121e);
+  --bg-table:radial-gradient(60% 50% at 50% 60%,rgba(255,143,200,.14),transparent 70%),linear-gradient(180deg,#0f2a40,#06121e)}
 [data-vibe="v-tarot"]{--gold:#f0c565;--gold2:#fff1c9;--teal:#e7a0ff;--fg:#fbefff;--muted:#c2a9cf;--line:#5a2a5e;--display:"Uncial Antiqua",serif;--body:"Cormorant Garamond",Georgia,serif;
   --bg-stage:linear-gradient(180deg,#14051c 0%,#2a0b33 60%,#0a020e 100%);
   --bg-oracle:repeating-linear-gradient(115deg,rgba(240,197,101,.07) 0 2px,transparent 2px 22px),radial-gradient(70% 45% at 50% 30%,rgba(231,160,255,.25),transparent 70%),linear-gradient(180deg,#2a0b33,#120418);

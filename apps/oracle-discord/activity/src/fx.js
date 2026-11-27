@@ -76,6 +76,13 @@ export const VIBE_FX = {
   "v-celtic": (p, R) => wrapV(p, "", `${many(16, () => { const x = r(R() * 400); return `<g class="vx-leaf" ${st({ t: r(9 + R() * 8) + "s", d: -r(R() * 16) + "s", x: r(R() * 120 - 60) + "px", rot: r(300 + R() * 500) + "deg" })}><path transform="translate(${x} -16)" d="M0 -7 C6 -4 6 4 0 7 C-6 4 -6 -4 0 -7Z M0 -7 V7" fill="${R() < 0.5 ? "#7bbf4a" : "#c9a640"}" stroke="#2f5a1e" stroke-width=".6"/></g>`; })}
     ${fireflies(R, 16, "#e6ff9a", p)}`),
 
+  "v-lenormand": (p, R) => wrapV(p, "", `<ellipse class="vx-drift" cx="200" cy="60" rx="150" ry="50" fill="#ffd98a" opacity=".16" filter="url(#${p}-b)" ${st({ t: "14s" })}/>
+    ${many(7, (i) => { const x = r(40 + i * 54 + R() * 10), y = r(70 + R() * 170), rot = r(R() * 30 - 15); return `<g transform="translate(${x} ${y}) rotate(${rot})"><g class="vx-card" ${st({ t: r(6 + R() * 5) + "s", d: -r(R() * 6) + "s" })}>
+      <rect x="-12" y="-17" width="24" height="34" rx="2.5" fill="#f6ead0" stroke="#e9d6ae" opacity=".42"/><text y="5" font-family="Cinzel" font-size="11" fill="#2f8a5a" text-anchor="middle" opacity=".6">${[1, 4, 16, 24, 31, 33, 35][i]}</text></g></g>`; })}
+    ${fireflies(R, 10, "#ffd98a", p)}`),
+  "v-magicdeck": (p, R) => wrapV(p, "", `<g opacity=".16" stroke="#66E0C8" stroke-width=".5">${many(11, (i) => `<path d="M${i * 40} 0 V300"/>`)}${many(8, (i) => `<path d="M0 ${i * 40} H400"/>`)}</g>
+    ${[[90, 90, 30, "#66E0C8", "40s"], [310, 200, 40, "#ff8fc8", "55s"], [320, 70, 22, "#FADE8C", "32s"]].map(([x, y, rr, c, t], k) => `<g transform="translate(${x} ${y})"><g class="vx-spin${k % 2 ? " rev" : ""}" ${st({ t })}><g fill="none" stroke="${c}" stroke-width="1" opacity=".5"><ellipse rx="${rr}" ry="${r(rr * 0.36)}"/><ellipse rx="${rr}" ry="${r(rr * 0.36)}" transform="rotate(60)"/><ellipse rx="${rr}" ry="${r(rr * 0.36)}" transform="rotate(-60)"/></g><circle r="3" fill="${c}" opacity=".7"/></g></g>`).join("")}
+    ${rising(R, 18, "#ff8fc8", { size: [1.5, 4], o: 0.45 })}${twinkles(R, 20, ["#66E0C8", "#FADE8C"])}`),
   "v-tarot": (p, R) => wrapV(p, "", `${many(9, (i) => { const x = r(30 + R() * 340), y = r(30 + R() * 240), rot = r(R() * 50 - 25); return `<g transform="translate(${x} ${y}) rotate(${rot})"><g class="vx-card" ${st({ t: r(7 + R() * 6) + "s", d: -r(R() * 8) + "s", x: r(R() * 30 - 15) + "px", y: r(-10 - R() * 20) + "px", rot: r(R() * 30 - 15) + "deg" })}>
       <rect x="-14" y="-23" width="28" height="46" rx="3" fill="#2a0f4a" stroke="#f0c565" stroke-width="1.2" opacity=".6"/><circle r="6" fill="none" stroke="#f0c565" opacity=".6"/><circle r="2" fill="#e7a0ff" opacity=".8"/></g></g>`; })}
     ${twinkles(R, 34, ["#f0c565", "#e7a0ff", "#fff1c9"])}`),
