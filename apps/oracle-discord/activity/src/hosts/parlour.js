@@ -5,6 +5,8 @@ import { vinylSvg } from "../player.js";
 import { parlourSceneHtml, bellJarSvg, propsSvg, react, SEANCE_EMOTES, ROOM_CSS, gownOf, gownShop } from "./parlour-room.js";
 import { coatOverlay } from "./alchemist-lab.js";
 import { PARLOUR_SECRETS, parlourBgHtml, PARLOUR_BG_CSS } from "../parlour/secrets.js";
+import { NEW_PARLOUR_RELICS } from "../parlour/relics.js";
+import { finaleDone } from "../parlour/finale.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -58,6 +60,19 @@ export const PARLOUR_RELICS = [
     art: () => `<defs>${BR}</defs><rect x="4" y="4" width="92" height="112" rx="4" fill="url(#hrp)" stroke="#5a3a12" stroke-width="2"/><rect x="14" y="14" width="72" height="92" fill="#d8c8a8"/><circle cx="50" cy="50" r="12" fill="#6a5a48"/><path d="M28 106q0 -34 22 -34t22 34z" fill="#6a5a48"/><g class="hr-ghost"><circle cx="66" cy="40" r="10" fill="#fff" opacity=".55"/><path d="M52 90q0 -34 14 -34t14 34" fill="#fff" opacity=".4"/></g>` },
   { id: "rp-board", e: "🔮", name: "Talking board", price: 30, note: "The talking board with a planchette was patented in the US in 1891 and sold as a parlour game.", x: 2, y: 85, w: 14, vb: "0 0 140 70",
     art: () => `<rect x="4" y="6" width="132" height="60" rx="8" fill="#c8a878" stroke="#5a3a12" stroke-width="2"/><path d="M14 30q56 -26 112 0" stroke="#2A0F24" stroke-width="1" fill="none"/>${"ABCDEFGHIJKLM".split("").map((ch, i) => `<text x="${16 + i * 8.8}" y="${30 - Math.sin((i / 12) * Math.PI) * 10}" font-size="7" fill="#2A0F24" font-family="serif">${ch}</text>`).join("")}<text x="20" y="58" font-size="8" fill="#2A0F24" font-family="serif">YES</text><text x="104" y="58" font-size="8" fill="#2A0F24" font-family="serif">NO</text><g class="hr-glide"><path d="M64 34q8 -8 16 0l-8 18z" fill="#3a1a0e" stroke="#FFE3A3" stroke-width=".8"/><circle cx="72" cy="38" r="3" fill="#FFE3A3" opacity=".7"/></g>` },
+  // M7 relics (data in parlour/relics.js): art and place in the Parlour.
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-margerybox"), x: 17, y: 64, w: 9, vb: "0 0 100 100",
+    art: () => `<defs>${BR}</defs><ellipse cx="50" cy="96" rx="42" ry="4" fill="#000" opacity=".35"/><rect x="10" y="30" width="80" height="64" fill="#8a5a2a" stroke="#4a2a10" stroke-width="2"/><path d="M10 30l10 -14h80l-10 14" fill="#a8743a" stroke="#4a2a10" stroke-width="2"/><path d="M90 30l10 -14v64l-10 14" fill="#6a4018" stroke="#4a2a10" stroke-width="2"/><ellipse cx="56" cy="24" rx="12" ry="4" fill="#1a0a04"/><circle cx="24" cy="56" r="6" fill="#1a0a04"/><circle cx="76" cy="56" r="6" fill="#1a0a04"/>${[44, 62, 80].map((y) => `<path d="M10 ${y}h80" stroke="#6a4018" stroke-width="1"/>`).join("")}<rect x="44" y="76" width="12" height="8" fill="url(#hrp)"/>` },
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-indicator"), x: 93, y: 72, w: 7, vb: "0 0 70 90",
+    art: () => `<defs>${BR}</defs><ellipse cx="35" cy="86" rx="30" ry="3" fill="#000" opacity=".35"/>${[0, 1, 2, 3].map((i) => `<rect x="${6 + i * 2}" y="${66 - i * 5}" width="${58 - i * 4}" height="5" fill="${i % 2 ? "#efe6d2" : "#d8ccb0"}" stroke="#8a7a5a" stroke-width=".8"/>`).join("")}<path d="M35 50L35 18" stroke="#c8a040" stroke-width="2.4"/><g class="hr-tilt" style="transform-origin:35px 50px"><path d="M35 50L60 20" stroke="#d8b860" stroke-width="2"/></g><circle cx="35" cy="50" r="3" fill="url(#hrp)"/>` },
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-plate"), x: 85, y: 84, w: 6, vb: "0 0 70 80",
+    art: () => `<defs>${BR}</defs><rect x="6" y="6" width="58" height="68" rx="2" fill="#bcc6cf" stroke="#5a6470" stroke-width="2" opacity=".9"/><rect x="12" y="12" width="46" height="56" fill="#2a2e33"/><g class="hr-glow"><ellipse cx="35" cy="34" rx="10" ry="13" fill="#e8e8f0" opacity=".45"/></g><path d="M48 58l6 6M54 58l-6 6" stroke="#c0392b" stroke-width="1.6" opacity=".5"/>` },
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-codecard"), x: 36, y: 2, w: 7, vb: "0 0 70 100",
+    art: () => `<defs>${BR}</defs><rect x="6" y="6" width="58" height="88" rx="6" fill="#FFF6EE" stroke="#5a3a12" stroke-width="2"/><rect x="12" y="12" width="46" height="76" rx="3" fill="none" stroke="url(#hrp)" stroke-width="2"/><circle cx="26" cy="40" r="8" fill="#2A0F24"/><circle cx="44" cy="40" r="8" fill="#2A0F24"/><path d="M14 66q12 -14 21 0q9 -14 21 0" stroke="#2A0F24" stroke-width="2" fill="none"/><path d="M30 40h10" stroke="#C3A6FF" stroke-width="1.4" stroke-dasharray="2 2"/><text x="35" y="82" font-size="8" text-anchor="middle" fill="#5a3a12" font-family="Georgia,serif">ZANCIG</text>` },
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-glass"), x: 0, y: 26, w: 12, vb: "0 0 110 120",
+    art: () => `<defs>${BR}</defs><path d="M10 116h90" stroke="#5a3a12" stroke-width="4"/><path d="M20 116L46 10L90 10L64 116Z" fill="#cfe8ff" fill-opacity=".14" stroke="#B9C2D9" stroke-width="2"/><path d="M50 22L84 22" stroke="#fff" stroke-opacity=".5" stroke-width="2"/><g class="hr-float"><ellipse cx="62" cy="62" rx="10" ry="12" fill="#e8f2ff" opacity=".4"/><path d="M52 66q10 30 20 0" fill="#e8f2ff" opacity=".3"/><circle cx="58" cy="60" r="1.6" fill="#2a2e33" opacity=".6"/><circle cx="66" cy="60" r="1.6" fill="#2a2e33" opacity=".6"/></g>` },
+  { ...NEW_PARLOUR_RELICS.find((r) => r.id === "rp-giftbook"), x: 88, y: 2, w: 10, vb: "0 0 120 80",
+    art: () => `<defs>${BR}</defs><path d="M60 14Q34 4 6 10V74Q34 68 60 78Q86 68 114 74V10Q86 4 60 14Z" fill="#f4ead4" stroke="#8a6a3a" stroke-width="2"/><path d="M60 14V78" stroke="#8a6a3a" stroke-width="1.5"/>${[22, 30, 38, 46, 54].map((y) => `<path d="M14 ${y}h38" stroke="#b8a888" stroke-width="1"/>`).join("")}<g class="hr-float"><circle cx="86" cy="34" r="5" fill="#f2d0b8" stroke="#6a4a2a" stroke-width=".8"/><path d="M80 34q-10 -10 -4 -16q6 4 6 12M92 34q10 -10 4 -16q-6 4 -6 12" fill="#d8e8f8" stroke="#6a4a2a" stroke-width=".8" opacity=".9"/><path d="M86 39v14M80 46h12" stroke="#6a4a2a" stroke-width="1.4"/></g>` },
 ];
 
 /** The Spirit Trumpet Gramophone: Madame Rook's own player for the shared music pool (classes tt, tt-disc). */
@@ -79,7 +94,8 @@ export function gramophoneSvg(t, playing) {
 </svg>`;
 }
 
-export const PARLOUR_CSS = `
+export const PARLOUR_CSS = `.rk-goldcameo{filter:drop-shadow(0 0 4px #FFE3A3)}
+
 body[data-house="parlour"] .speaker{color:#C3A6FF;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;letter-spacing:.14em}
 body[data-house="parlour"] .gate-title{color:#C3A6FF;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic}
 .gr .gr-n{opacity:0}.gr.playing .gr-n{animation:gr-rise 2.4s linear infinite}.gr.playing .gr-n1{animation-delay:.8s}.gr.playing .gr-n2{animation-delay:1.6s}
@@ -109,7 +125,7 @@ function paint(svg, prog, id = "t") {
   const scallops = Array.from({ length: 11 }, (_, i) => { const x = 152 + i * 9.6; return `<path d="M${x} 116q4.8 7 9.6 0" stroke="#F3EAFF" stroke-width="1.2" fill="none" opacity=".75"/><circle cx="${x + 4.8}" cy="121" r="1" fill="#F3EAFF" opacity=".7"/>`; }).join("");
   g.innerHTML = `<g class="hk-veil"><path d="M152 116Q200 96 258 116" stroke="#F3EAFF" stroke-width="1.4" fill="none" opacity=".8"/>${scallops}
       <path d="M156 118Q200 104 254 118L262 176Q200 160 138 176Z" fill="#F3EAFF" opacity=".08"/></g>
-    <g transform="translate(200 90)"><ellipse rx="12" ry="14" fill="#E7A0B4" stroke="#FFE3A3" stroke-width="2.4"/><path d="M-2 -8q6 -2 6 4q0 4 -3 6q2 4 -1 8h-6q2 -6 0 -10q-1 -6 4 -8z" fill="#FFF6EE"/>${Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return `<circle cx="${(13 * Math.cos(a)).toFixed(1)}" cy="${(15 * Math.sin(a)).toFixed(1)}" r="1.3" fill="#FFE3A3"/>`; }).join("")}</g>
+    <g transform="translate(200 90)"${finaleDone(prog || {}) ? ` class="rk-goldcameo"` : ""}><ellipse rx="12" ry="14" fill="${finaleDone(prog || {}) ? "#E2B04A" : "#E7A0B4"}" stroke="${finaleDone(prog || {}) ? "#FFF1B8" : "#FFE3A3"}" stroke-width="2.4"/><path d="M-2 -8q6 -2 6 4q0 4 -3 6q2 4 -1 8h-6q2 -6 0 -10q-1 -6 4 -8z" fill="#FFF6EE"/>${Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return `<circle cx="${(13 * Math.cos(a)).toFixed(1)}" cy="${(15 * Math.sin(a)).toFixed(1)}" r="1.3" fill="#FFE3A3"/>`; }).join("")}</g>
     <g transform="translate(252 104) rotate(14)">${cardFace(T, 0.7)}</g>
     <g transform="translate(140 98)"><rect x="-3" y="0" width="6" height="16" fill="#FFF6EE"/><path class="hk-flame" d="M0 0q5 -8 0 -14q-5 6 0 14z" fill="#FFE3A3"/><circle cy="-6" r="8" fill="#FFE3A3" opacity=".18"/></g>`;
   eye.after(g);
@@ -183,6 +199,7 @@ export const parlour = {
     casefiles: G("Look for the method, darling. Every spirit leaves a mechanism.", "Houdini exposed fake mediums in his 1924 book, A Magician Among the Spirits.", "Solved! Another ghost unmasked. The Society would applaud.", "Not quite. The trick hides where you aren't looking, darling."),
     workshop: G("Every trick has a method, darling. Find the thread.", "Maskelyne invented a coin lock for public toilets. Magicians love a mechanism.", "Built and baffling! The Davenports would be jealous, {name}.", "The trick showed its strings. Rehearse, darling."),
     phantasmagoria: G("Robertson's Fantasmagorie opened in Paris in 1798. The ghosts were lantern slides.", "His lantern rolled on wheels, darling. Pull it back and the ghost grows.", "Pepper's Ghost, {name}! First shown in London at Christmas 1862.", "Tilt the glass by θ and the reflection turns by 2θ. Mind your angles, darling."),
+    roguesgallery: G("Every rogue here has a matching debunker. Find the pair, darling.", "Houdini's 1924 book A Magician Among the Spirits named names.", "A perfect pair, {name}! Faraday would tip his hat. Not his table.", "Wrong pair. Even Conan Doyle backed the Cottingley fairies in 1920."),
     mentalist: G("Pray, Answer, Say: the Houdinis' code turned plain words into numbers.", "Forer gave 39 students one shared reading. They rated it 4.26 out of 5.", "Code cracked, {name}! Dunninger bet $10,000 nobody could prove he used plants.", "Fooled, darling. Forer's students were too. One reading fit all 39 of them."),
     darkseance: G("Lights out, darling. Mediums always insisted on the dark. Ask yourself why.", "Penn's Seybert Commission sat with mediums in the 1880s and found no real spirits.", "Caught it in the dark, {name}! Luminous paint gave many trumpets away.", "Fooled in the dark. The Davenport brothers fooled crowds for years too."),
     bookings: G("Pick your act for tonight's bill, darling.", "Houdini played dime museums and vaudeville for years before fame.", "A full house! They'll talk about this show all week, {name}.", "Empty seats tonight. Even Houdini had thin houses early on."),
