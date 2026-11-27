@@ -92,3 +92,22 @@ test("each study guide covers its levels' questions", async () => {
     for (const w of words) assert.ok(text.includes(w), `${k} guide mentions "${w}"`);
   }
 });
+
+test("Decoder tablets are on sale in the Essence store and each one has a look", async () => {
+  const { SHOP, tabletOf } = await import("../activity/src/decoder/shop.js");
+  const { room } = await import("../activity/src/decoder/room.js");
+  const { STORE, KINDS, SHOP_TALK, ensureFree, buy, registerShelf, shelf } = await import("../activity/src/store.js");
+  const { CSS } = await import("../activity/src/decoder/style.js");
+  assert.equal(room.shop.kind, "tablet"); assert.equal(typeof room.shop.preview, "function");
+  registerShelf(room.shop); assert.equal(shelf("tablet"), room.shop);
+  assert.ok(KINDS.some(([k]) => k === "tablet") && SHOP_TALK.tablet.buy.length);
+  for (const it of SHOP.items) assert.equal(STORE.filter((s) => s.id === it.id).length, 1, `${it.id} is unique in the store`);
+  for (const it of SHOP.items) {
+    assert.ok(it.id.startsWith("tab-") && STORE.some((s) => s.id === it.id && s.kind === "tablet") && it.price >= 0, it.id);
+    if (it.price) assert.ok(CSS.includes(`[data-tablet="${tabletOf(it.id)}"]`), `${it.id} has CSS`);
+    assert.ok(LEVELS.some((l) => l.id === it.sample), `${it.id} sample level`);
+  }
+  const p = ensureFree({ essence: 100 });
+  assert.ok(p.owned.includes("tab-starlit")); assert.equal(tabletOf(p.tablet), "starlit");
+  assert.ok(buy(p, "tab-birch")); assert.equal(p.essence, 40); assert.ok(!buy(p, "tab-bracteate"));
+});
