@@ -50,3 +50,27 @@ test("Magister Vell renames the Oracle in her House only, and keeps rank names a
 });
 
 test("/play is a plain slash command", () => { assert.equal(playCommand.name, "play"); assert.equal(playCommand.type, 1); assert.ok(playCommand.description.length <= 100); });
+
+import { tokensLeft, addTokens, houseLevelTokens, dailyVisit, strayFind, buyHouseRelic, houseRelicsHtml, strayLine } from "../activity/src/hosts/tokens.js";
+test("each House has its own luxury token, relics priced in it, and an emoji", () => {
+  const ids = HOSTS.map((h) => h.token.id); assert.equal(new Set(ids).size, ids.length);
+  for (const h of HOSTS) { assert.ok(h.token.emoji && h.token.name && h.token.plural && h.token.purse, h.id); if (h.id !== "oracle") { assert.ok(h.relics.length >= 6, h.id); for (const r of h.relics) assert.ok(r.price > 0 && r.note && r.art().includes("<"), r.id); } }
+});
+test("House tokens: level wins, daily visit, relics, and strays sent to the right House", () => {
+  const [oracle, alch] = HOSTS, p = { tokens: 3, moonSpent: 1 };
+  assert.equal(tokensLeft(p, oracle), 2); assert.equal(tokensLeft(p, alch), 0);
+  assert.deepEqual(houseLevelTokens(p, alch, "duel", 1, true), { n: 2, series: false }); assert.equal(houseLevelTokens(p, alch, "duel", 1, true).n, 0, "paid once");
+  houseLevelTokens(p, alch, "duel", 2, true); assert.deepEqual(houseLevelTokens(p, alch, "duel", 3, true), { n: 9, series: true });
+  assert.equal(tokensLeft(p, alch), 15); assert.equal(p.tokens, 3, "the Oracle's moons are untouched");
+  assert.equal(dailyVisit(p, alch, "2026-11-27"), 1); assert.equal(dailyVisit(p, alch, "2026-11-27"), 0); assert.equal(dailyVisit(p, oracle, "2026-11-27"), 0);
+  const r = buyHouseRelic(p, alch, "st-alembic"); assert.equal(r.id, "st-alembic"); assert.equal(tokensLeft(p, alch), 12); assert.equal(buyHouseRelic(p, alch, "st-alembic"), null);
+  assert.equal(buyHouseRelic(p, alch, "st-stone"), null, "too dear"); assert.match(houseRelicsHtml(p, alch), /hr-st-alembic/);
+  // strays: found in the Alchemist's House -> a moon for the Oracle; at most one a day
+  assert.equal(strayFind(p, alch, HOSTS, "2026-11-27", () => 0.99), null);
+  const home = strayFind(p, alch, HOSTS, "2026-11-27", () => 0.01); assert.equal(home.id, "oracle"); assert.equal(p.tokens, 4);
+  assert.equal(strayFind(p, alch, HOSTS, "2026-11-27", () => 0.01), null, "one a day");
+  assert.equal(strayFind(p, oracle, HOSTS, "2026-11-28", () => 0.01).id, "alchemist"); assert.equal(tokensLeft(p, alch), 13);
+  assert.match(strayLine(alch, oracle), /moon token from The Oracle Chamber/);
+  addTokens(p, alch, 2); assert.equal(tokensLeft(p, alch), 15);
+});
+test("the Alchemist's House is routed from #⚗️-laboratory", () => { assert.equal(hostFor({ channelId: "1575967994633396544" }).id, "alchemist"); });

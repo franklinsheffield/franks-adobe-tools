@@ -12,7 +12,7 @@ const BASE = process.argv[2] || "http://127.0.0.1:8799", SHOTS = process.argv[3]
     const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } }), p = await ctx.newPage();
     p.on("pageerror", (e) => errs.push(name + ": " + e.message)); p.on("console", (m) => { if (m.type() === "error") errs.push(name + ": " + m.text()); });
     p.on("dialog", (d) => d.accept(d.type() === "prompt" ? "Smoke garden" : undefined));
-    pages.push(p); await p.goto(BASE + "/?room=" + ROOM + "&name=" + name);
+    pages.push(p); await p.goto(BASE + "/?nostart=1&room=" + ROOM + "&name=" + name);
     await p.waitForFunction(() => window.__psNet && window.__psNet.ready && !window.__psNet.pendingReplace, null, { timeout: 90000 }); return p;
   };
   let step = "start";

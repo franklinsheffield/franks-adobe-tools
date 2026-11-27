@@ -177,6 +177,18 @@ export class Hub {
         return this.cast(room, { t: "scene", scene: s, by, opened: s.name });
       }
       case "post": return this.post(ws, m, x);
+      case "cam": {   // presence: where this builder is looking; relayed, never stored, at most 5 a second
+        const c = x.c, now = Date.now();
+        if (!c || typeof c !== "object" || JSON.stringify(c).length > 512 || now - (m.camAt || 0) < 200) return;
+        m.camAt = now; this.setMeta(ws, m);
+        return this.cast(room, { t: "cam", sid: by, c }, ws);
+      }
+      case "ping": {  // "look here" marker on the ground; relayed, never stored, at most 1 a second
+        const now = Date.now(), p = [x.x, x.y, x.z].map(Number);
+        if (!p.every(Number.isFinite) || now - (m.pingAt || 0) < 1000) return;
+        m.pingAt = now; this.setMeta(ws, m);
+        return this.cast(room, { t: "ping", sid: by, name: m.name, color: m.color, p }, ws);
+      }
     }
   }
 

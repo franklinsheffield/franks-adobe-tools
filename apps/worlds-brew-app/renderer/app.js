@@ -166,6 +166,34 @@ function updateHint() {
 // ---- pointer: select, drag-move, orbit / pan / zoom, sculpt
 let drag = null;
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+// touch: two fingers pinch to zoom and drag to pan (phones, tablets, touch screens). Runs before the handlers below.
+const touchPts = new Map(); let pinch = null, touchHold = false;
+const pinchInfo = () => { const [a, b] = [...touchPts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+canvas.addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "touch") return;
+  touchPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touchPts.size === 2) {
+    if (drag && (drag.kind === "move" || drag.kind === "lift" || drag.kind === "sculpt") && drag.moved) { commit(); changed("val"); }
+    else if (drag && drag.cam) { Object.assign(st.scene.cam, drag.cam); }
+    drag = null; touchHold = true; const p = pinchInfo(); pinch = Object.assign(p, { cam: Object.assign({}, st.scene.cam) });
+    e.stopImmediatePropagation();
+  } else if (touchHold) e.stopImmediatePropagation();
+}, true);
+canvas.addEventListener("pointermove", (e) => {
+  if (e.pointerType !== "touch" || !touchPts.has(e.pointerId)) return;
+  touchPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!pinch) { if (touchHold) e.stopImmediatePropagation(); return; }
+  e.stopImmediatePropagation(); if (st.view.camLock || touchPts.size < 2) return;
+  const p = pinchInfo(), sc = st.scene;
+  ED.pan(sc.cam, pinch.cam, p.x - pinch.x, p.y - pinch.y, canvas.width / canvas.height); CT.camZoom(sc.cam, pinch.d / p.d); changed("view");
+}, true);
+const touchUp = (e) => {
+  if (e.pointerType !== "touch") return;
+  touchPts.delete(e.pointerId);
+  if (pinch && touchPts.size < 2) { pinch = null; changed("view"); }
+  if (touchHold) { e.stopImmediatePropagation(); if (!touchPts.size) touchHold = false; }
+};
+canvas.addEventListener("pointerup", touchUp, true); canvas.addEventListener("pointercancel", touchUp, true);
 canvas.addEventListener("pointerdown", (e) => {
   if (vp.tc.dragging || vp.overGizmo()) return;
   canvas.setPointerCapture(e.pointerId); canvas.focus();
@@ -959,4 +987,4 @@ ipcRenderer.invoke("app:info").then((info) => {   // the Photoshop bridge folder
 }).catch((err) => console.error(err));
 
 // for the automated tests
-window.__wb = { TL: () => TL, addTerrain, addGeoFromFolder, openTerrainLab, importModelData, LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, net, resetHistory, setStatus, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };
+window.__wb = { TL: () => TL, newScene, addTerrain, addGeoFromFolder, openTerrainLab, importModelData, LIB, applyLibItem, importPathsToLibrary, rebakeShader, uis, sweepAll, BR, sendToPhotoshop, refs, pal, commands, st, vp, S, ED, CT, PK, SC, addThing, select, changed, commit, undo, redo, loadScene, renderNow, save, openScene, snap, hist, net, resetHistory, setStatus, get homeCam() { return homeCam; }, get filePath() { return filePath; }, set filePath(p) { filePath = p; }, get dirty() { return dirty; }, set dirty(v) { dirty = v; }, NONE };

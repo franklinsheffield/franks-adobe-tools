@@ -25,3 +25,88 @@
 .ps-room-item button { grid-row: 1 / span 2; }
 .ps-room-empty { opacity: 0.7; }
 .ps-peer-tag { position: absolute; left: 0; top: 0; z-index: 4; padding: 1px 5px; background: rgba(0, 0, 0, 0.75); border: 1px solid; border-radius: 3px; font: 600 10px/1.3 system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+
+/* phone layout (web/phone.js adds body.ps-phone on small screens): full-screen 3D view, panels as slide-up drawers */
+#ps-tabs { display: none; }
+body.ps-phone #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) calc(58px + env(safe-area-inset-bottom)); grid-template-areas: "top" "centre" "tabs"; height: 100vh; height: 100dvh; }
+body.ps-phone #top .rack { display: none; }
+body.ps-phone #top { min-height: 0; }
+body.ps-phone #top .menu { display: none; }
+body.ps-phone #top .docname { padding: 6px 10px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+body.ps-phone #toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px 6px; gap: 4px; }
+body.ps-phone #toolbar::-webkit-scrollbar { display: none; }
+body.ps-phone #toolbar > * { flex: none; }
+body.ps-phone #vpwrap { min-height: 0; }
+body.ps-phone #lib, body.ps-phone #insp, body.ps-phone #bar, body.ps-phone #top .menu.ps-open {
+  position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 30; max-height: 62vh; max-height: 62dvh;
+  overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; background: #08070f; border-top: 1px solid var(--glow, #5effc8);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6); padding: 10px 10px 16px; transform: translateY(calc(100% + 80px)); transition: transform 0.22s ease; display: block; }
+body.ps-phone #top .menu.ps-open { display: flex; flex-wrap: wrap; gap: 8px; transform: none; }
+body.ps-phone .ps-open { transform: none !important; }
+body.ps-phone #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+body.ps-phone #bar > * { max-width: 100%; }
+/* the Move pad is used while watching the view, so it docks under it (the view shrinks) instead of covering it */
+body.ps-phone #pad { display: none; grid-area: pad; position: static; flex-wrap: wrap; justify-content: center; gap: 8px; max-height: 42vh; max-height: 42dvh; overflow-y: auto; background: #08070f; border-top: 1px solid var(--glow, #5effc8); padding: 8px; }
+body.ps-phone #pad.ps-open { display: flex; }
+body.ps-phone.ps-pad #app { grid-template-rows: auto minmax(0, 1fr) auto calc(58px + env(safe-area-inset-bottom)); grid-template-areas: "top" "centre" "pad" "tabs"; }
+body.ps-phone #ps-tabs { grid-area: tabs; display: flex; align-items: stretch; z-index: 40; background: #05040c; border-top: 1px solid rgba(255, 255, 255, 0.25); padding-bottom: env(safe-area-inset-bottom); }
+body.ps-phone #ps-tabs button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; color: rgba(255, 255, 255, 0.75); font: 600 11px/1 system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+body.ps-phone #ps-tabs .ps-tab-ic { font-size: 20px; line-height: 22px; }
+body.ps-phone #ps-tabs button[aria-pressed="true"] { color: var(--glow, #5effc8); box-shadow: inset 0 2px 0 var(--glow, #5effc8); }
+/* finger-sized controls on touch screens */
+@media (pointer: coarse) {
+  #app .btn, #app button, #app select, #app input[type="number"], #app input[type="text"] { min-height: 40px; }
+  #app .btn, #app button { min-width: 40px; }
+  #app input[type="range"] { height: 32px; }
+  .ps-room-row button, .ps-room-item button { min-height: 36px; padding: 6px 10px; }
+}
+body.ps-phone .keyhints { display: none; }
+body.ps-phone .ps-room { top: 6px; left: 6px; max-width: calc(100% - 12px); }
+
+/* 3.1 ease of use (web/extras.js, web/marks.js) */
+.ps-marks { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+.ps-mark { position: absolute; left: 0; top: 0; font: 600 10px/1.3 system-ui, sans-serif; color: var(--c); white-space: nowrap; }
+.ps-mark i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--c); box-sizing: border-box; }
+.ps-mark span { position: absolute; left: 10px; top: -8px; padding: 1px 5px; background: rgba(0, 0, 0, 0.75); border: 1px solid var(--c); border-radius: 3px; }
+.ps-mark.eye i { background: rgba(0, 0, 0, 0.5); }
+.ps-mark.eye i::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--c); }
+.ps-mark.eye.on span { background: var(--c); color: #000; }
+.ps-mark.ping i { width: 18px; height: 18px; left: -9px; top: -9px; background: var(--c); }
+.ps-mark.ping.go i::before, .ps-mark.ping.go i::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--c); animation: ps-ping 1.2s ease-out 3; }
+.ps-mark.ping.go i::after { animation-delay: 0.4s; }
+@keyframes ps-ping { from { transform: scale(1); opacity: 1; } to { transform: scale(4); opacity: 0; } }
+button.ps-chip { color: #fff; font: inherit; cursor: pointer; }
+button.ps-chip:hover { box-shadow: 0 0 8px var(--c, #5effc8); }
+button.ps-chip.on { background: var(--c); color: #000; }
+.ps-room-theme { align-self: flex-start; padding: 3px 7px; background: rgba(0, 0, 0, 0.72); border: 1px dashed rgba(255, 255, 255, 0.4); border-radius: 3px; }
+.ps-room-theme b { color: #5effc8; }
+.ps-mode { position: absolute; left: 8px; bottom: 8px; z-index: 6; padding: 6px 12px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 3px; font: 600 11px/1.2 system-ui, sans-serif; cursor: pointer; }
+.ps-mode:hover, .ps-mode[aria-pressed="true"] { box-shadow: 0 0 8px #5effc8; border-color: #5effc8; }
+.ps-xpad { position: absolute; right: 8px; bottom: 8px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font: 11px/1.3 system-ui, sans-serif; color: #fff; }
+.ps-xpad[hidden] { display: none; }
+.ps-xgrid { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; }
+.ps-xpad button { min-width: 44px; min-height: 44px; background: rgba(0, 0, 0, 0.72); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 3px; font-size: 18px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ps-xpad button:active { box-shadow: 0 0 10px #5effc8; border-color: #5effc8; }
+.ps-xpad .ps-xkind { font-size: 12px; font-weight: 600; padding: 0 14px; }
+.ps-xpad.walk [data-k="q"], .ps-xpad.walk [data-k="e"] { visibility: hidden; }
+.ps-xhint { max-width: 180px; text-align: right; padding: 3px 6px; background: rgba(0, 0, 0, 0.6); border-radius: 3px; opacity: 0.85; }
+body.ps-explore #lib, body.ps-explore #insp, body.ps-explore #bar, body.ps-explore #toolbar, body.ps-explore #pad, body.ps-explore #ps-tabs, body.ps-explore #top .menu, body.ps-explore #top .rack { display: none !important; }
+body.ps-explore #app, body.ps-explore.ps-phone #app, body.ps-explore.ps-phone.ps-pad #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top" "centre"; }
+.ps-start { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(5, 4, 12, 0.88); font: 13px/1.4 system-ui, sans-serif; color: #fff; }
+.ps-start-box { position: relative; width: min(720px, 100%); max-height: 100%; overflow-y: auto; padding: 22px; background: #05040c; border: 1px solid #5effc8; box-shadow: 0 0 24px rgba(94, 255, 200, 0.25); }
+.ps-start-title { font-size: 22px; font-weight: 700; color: #5effc8; letter-spacing: 0.04em; }
+.ps-start-sub { margin: 2px 0 16px; opacity: 0.8; }
+.ps-start-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.ps-start-card { display: flex; flex-direction: column; gap: 6px; min-height: 110px; padding: 14px; text-align: left; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 3px; font: inherit; cursor: pointer; }
+.ps-start-card b { font-size: 15px; }
+.ps-start-card span { opacity: 0.75; font-size: 12px; }
+.ps-start-card:hover, .ps-start-card:focus-visible { border-color: #5effc8; box-shadow: 0 0 10px rgba(94, 255, 200, 0.6); outline: none; }
+.ps-start-card.main { border-color: #5effc8; }
+.ps-start-x { position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; background: none; color: #fff; border: 0; font-size: 22px; cursor: pointer; }
+.ps-tip { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 7; width: min(380px, calc(100% - 24px)); padding: 12px; background: #05040c; border: 1px solid #5effc8; border-radius: 3px; box-shadow: 0 0 16px rgba(94, 255, 200, 0.35); font: 13px/1.4 system-ui, sans-serif; color: #fff; }
+.ps-tip-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.ps-tip-n { flex: 1; opacity: 0.6; font-size: 11px; }
+.ps-tip button { padding: 6px 12px; background: #000; color: #fff; border: 1px solid #5effc8; border-radius: 3px; font: inherit; cursor: pointer; }
+.ps-tip button.ghost { border-color: rgba(255, 255, 255, 0.35); }
+#lib.ps-flash { box-shadow: inset 0 0 0 2px #5effc8; transition: box-shadow 0.3s; }
+body.ps-phone .ps-mode { bottom: 8px; }
