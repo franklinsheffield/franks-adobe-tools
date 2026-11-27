@@ -9,7 +9,7 @@ import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse
 import { sceneSvg } from "./scene.js";
 import { CSS } from "./style.js";
 import * as sfx from "./sfx.js";
-import { LEVELS, ALL, FLAMES, keyOf, room as labOf, solvedCount, titleOf, nextTitle, byId, nextOf, start, options, moreClue, readSymbol, transmute, hintOf, nameIt, settle, opsFor, PER_FLAME, NAME_PTS } from "./logic.js";
+import { LEVELS, ALL, FLAMES, keyOf, room as labOf, solvedCount, titleOf, nextTitle, byId, nextOf, start, options, moreClue, readSymbol, transmute, hintOf, nameIt, settle, opsFor, PER_FLAME, NAME_PTS, experiment, logPlay, gridOf, FIND_PTS } from "./logic.js";
 
 const rot = (a, id) => { const k = [...id].reduce((n, c) => n + c.charCodeAt(0), 0) % a.length; return [...a.slice(k), ...a.slice(0, k)]; };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -41,10 +41,11 @@ export const alchemy = {
       const lvl = (L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⚗️".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${solvedCount(P(), L)} / ${L.deck.length} done · points ×${L.mult}</span></button>`;
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">4 flames in the furnace. A wrong answer, a failed mix or a notebook hint puts one out.</div>
+        <div class="choices"><button class="c main" type="button" id="al-free">🧪 Free play (${gridOf(P()).got} / ${gridOf(P()).total})</button></div>
         <div class="choices"><button class="c" type="button" id="al-book">📓 Alchemist's notebook</button><button class="c" type="button" id="al-music">${sfx.musicOn() ? "🎵 Music on" : "🔇 Music off"}</button><button class="c" type="button" id="al-table">🧪 My periodic table</button><button class="c" type="button" id="al-shop">🏺 Apothecary</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; begin(L, nextOf(P(), L, lab().last)); }));
       $("al-book").onclick = () => toggle("book", $("al-book"), "📓 Alchemist's notebook"); $("al-table").onclick = () => toggle("table", $("al-table"), "🧪 My periodic table");
-      $("al-shop").onclick = shop; $("back").onclick = greet;
+      $("al-shop").onclick = shop; $("back").onclick = greet; $("al-free").onclick = () => { sfx.whoosh(); freeplay(); };
       setTimeout(() => sfx.startMusic(() => tableEl.classList.contains("alchemy")), 50);
       $("al-music").onclick = () => { const on = !sfx.musicOn(); sfx.setMusic(on); $("al-music").textContent = on ? "🎵 Music on" : "🔇 Music off"; if (on) sfx.startMusic(() => tableEl.classList.contains("alchemy")); };
     }
@@ -124,25 +125,22 @@ export const alchemy = {
         <div class="choices"><button class="c main" type="button" id="al-ok">${run.done ? "Finish" : "⚗️ Back to the bench"}</button></div>`);
       $("al-ok").onclick = () => (run.done ? finish(L, x, run) : bench(L, x, run, [], op, "Steady now. Try a safer mix."));
     }
-    function gassed(L, x, run, hz, sel) {
-      sfx.gas(); cap("☠️ " + hz.name);
-      draw({ flames: run.flames, shelf: x.shelf, chips: sel, gas: hz.col, label: "☠️ " + hz.name });
-      tableEl.classList.remove("choke"); void tableEl.offsetWidth; tableEl.classList.add("choke");
-      say(pick(["*cough* *cough* A poison cloud pours out of the flask. Get out! The experiment is over.", "The air turns thick and stinging. You stagger out of the Lab, eyes streaming. Experiment over.", "A deadly gas fills the room. Out, now! This experiment is finished."]));
-      ui(`<div class="al-boomcard gas"><b>☠️ ${esc(hz.name)}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>
-        <div class="choices"><button class="c main" type="button" id="al-ok">🪟 Open the windows and get out</button></div>`);
-      $("al-ok").onclick = () => finish(L, x, run, hz);
+    /** Play an accident (explosion or poison gas) on the bench and show its lesson card. `end` = the experiment is over. */
+    function accident(hz, { flames = 0, shelf, sel, end = true, btn, done }) {
+      const gas = hz.kind === "gas", tail = end ? "" : " Luckily this is free play, so nobody gets hurt.";
+      if (gas) { sfx.gas(); cap("☠️ " + hz.name); draw({ flames, shelf, chips: sel, gas: hz.col, label: "☠️ " + hz.name });
+        tableEl.classList.remove("choke"); void tableEl.offsetWidth; tableEl.classList.add("choke");
+        say(pick(end ? ["*cough* *cough* A poison cloud pours out of the flask. Get out! The experiment is over.", "The air turns thick and stinging. You stagger out of the Lab, eyes streaming. Experiment over.", "A deadly gas fills the room. Out, now! This experiment is finished."]
+          : ["*cough* *cough* A poison cloud pours out of the flask!", "The air turns thick and stinging. Out, quickly!"]) + tail); }
+      else { sfx.boom(); cap("💥 " + hz.name); draw({ flames: 0, shelf, chips: sel, boom: true, label: "💥 " + hz.name });
+        tableEl.classList.remove("quake"); void tableEl.offsetWidth; tableEl.classList.add("quake");
+        say(pick(end ? ["KABOOM! Glass everywhere. The experiment is over.", "BANG! The flask is gone, and so are your eyebrows. Experiment over.", "A blinding flash, a bang, and soot on the ceiling. That's the end of this experiment."]
+          : ["KABOOM! Glass everywhere.", "BANG! The flask is gone, and so are your eyebrows."]) + tail); }
+      ui(`<div class="al-boomcard${gas ? " gas" : ""}"><b>${gas ? "☠️" : "💥"} ${esc(hz.name)}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>
+        <div class="choices"><button class="c main" type="button" id="al-ok">${btn || (gas ? "🪟 Open the windows and get out" : "🧹 Sweep up the glass")}</button></div>`);
+      $("al-ok").onclick = done;
     }
-    function explode(L, x, run, hz, sel) {
-      if (hz.kind === "gas") return gassed(L, x, run, hz, sel);
-      sfx.boom(); cap("💥 " + hz.name);
-      draw({ flames: 0, shelf: x.shelf, chips: sel, boom: true, label: "💥 " + hz.name });
-      tableEl.classList.remove("quake"); void tableEl.offsetWidth; tableEl.classList.add("quake");
-      say(pick(["KABOOM! Glass everywhere. The experiment is over.", "BANG! The flask is gone, and so are your eyebrows. Experiment over.", "A blinding flash, a bang, and soot on the ceiling. That's the end of this experiment."]));
-      ui(`<div class="al-boomcard"><b>💥 ${esc(hz.name)}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>
-        <div class="choices"><button class="c main" type="button" id="al-ok">🧹 Sweep up the glass</button></div>`);
-      $("al-ok").onclick = () => finish(L, x, run, hz);
-    }
+    const explode = (L, x, run, hz, sel) => accident(hz, { flames: hz.kind === "gas" ? run.flames : 0, shelf: x.shelf, sel, done: () => finish(L, x, run, hz) });
     const eqCard = (x) => `<div class="al-eq"><b>${esc(x.product)}</b><code>${esc(x.eq)}</code></div>`;
     function success(L, x, run) {
       sfx.transmute(); spark(); cap(`✨ ${x.product}`);
@@ -177,6 +175,43 @@ export const alchemy = {
       $("al-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
 
+    // ---- free play: every reagent, every operation, no target ----
+    const ALL_IDS = Object.keys(REAGENTS);
+    const freeShelf = (sel) => [...sel, ...["mercury", "sulfur", "salt", "aquafortis", "vitriol", "gold"].filter((i) => !sel.includes(i))].slice(0, 6);
+    function freeplay(sel = [], op = null, line, fx = {}) {
+      const g = gridOf(P()); if (!line) clearReading();
+      cap("🧪 Free play"); draw({ shelf: freeShelf(sel), chips: sel, liquid: sel.length ? REAGENTS[sel[sel.length - 1]].c : null, ...fx });
+      say(line || `The whole shelf is yours, ${state.name}. Mix anything you like and see what you make. You've found ${g.got} of ${g.total} discoveries. Careful: some mixtures explode or give off deadly gas.`);
+      ui(`<div class="cx-top">🧪 Free play · ${g.got} / ${g.total} discoveries · first find of each product +${FIND_PTS} ✦ +${FIND_PTS} 💎</div>
+        <div class="group">Reagents (choose up to 3)</div><div class="al-shelf">${ALL_IDS.map((id) => reagentBtn(id, sel.includes(id))).join("")}</div>
+        <div class="group">Operation</div><div class="al-ops">${Object.keys(OPS).map((k) => `<button class="c al-op${op === k ? " on" : ""}" type="button" data-op="${k}" title="${esc(OPS[k].what)}" aria-pressed="${op === k}">${OPS[k].emoji} ${esc(OPS[k].name)}</button>`).join("")}</div>
+        <div class="choices"><button class="c main" type="button" id="al-go" ${sel.length && op ? "" : "disabled"}>⚗️ Mix</button><button class="c" type="button" id="al-grid">🗂 Discoveries</button><button class="c small" type="button" id="al-leave">Leave the bench</button></div>`);
+      $("ui").querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => { const id = b.dataset.r, s2 = sel.includes(id) ? sel.filter((i) => i !== id) : sel.length < 3 ? [...sel, id] : sel, added = s2.length > sel.length;
+        sfx.clink(ALL_IDS.indexOf(id) % 6); if (added) sfx.pour(); freeplay(s2, op, " ", added ? { pour: REAGENTS[id].c } : {}); }));
+      $("ui").querySelectorAll("[data-op]").forEach((b) => (b.onclick = () => { const k = b.dataset.op; (k === "dissolve" ? sfx.bubble : k === "electrolyse" ? sfx.zap : sfx.whoosh)(); freeplay(sel, k, `${OPS[k].name}: ${OPS[k].what}`); }));
+      $("al-leave").onclick = () => lobby(false);
+      $("al-grid").onclick = () => { const rb = $("reading-body"); sfx.page(); rb.innerHTML = gridHtml(P(), esc); rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      $("al-go").onclick = () => {
+        const res = experiment(sel, op); if (!res) return;
+        const lg = logPlay(P(), res), aw = award(lg.xp, lg.essence); saveProgress(); showStats();
+        const again = () => freeplay([], op, "Clean flask. What next?");
+        if (res.hazard) { const hz = res.hazard, gear = shopItem(lookOf(P()).gear);
+          if ((gear?.guards || []).includes(hz.kind)) { sfx.saved(); cap("🛡 " + hz.name); draw({ shelf: freeShelf(sel), chips: sel, saved: hz.col || "#9fd8ff", fizzle: true, label: `🛡 ${gear.name} saved you` });
+            say(`${hz.kind === "gas" ? "☠️" : "💥"} ${hz.name}! Your ${gear.name.toLowerCase()} kept you safe.`);
+            ui(`<div class="al-boomcard saved"><b>🛡 ${esc(hz.name)}${lg.first ? " · new in your Discoveries" : ""}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div><div class="choices"><button class="c main" type="button" id="al-ok">⚗️ Mix again</button></div>`);
+            $("al-ok").onclick = again; return; }
+          return accident(hz, { flames: 4, shelf: freeShelf(sel), sel, end: false, btn: hz.kind === "gas" ? "🪟 Air the room and mix again" : "🧹 Sweep up and mix again", done: again }); }
+        if (res.find) { const x = res.find; sfx.transmute(); spark(); cap(`✨ ${x.product}`);
+          draw({ shelf: freeShelf(sel), chips: x.make, liquid: x.colour, glow: true, label: x.product, react: { from: x.make.map((i) => REAGENTS[i].c), to: x.colour, fx: x.fx, fxc: x.fxc } }); sfx.react(x.fx);
+          const els = lg.newEls.length ? `<div class="up">🧪 New on your periodic table: ${lg.newEls.map((e) => `<span class="al-el on">${e}<small>${ELEMENTS[e][2]}</small></span>`).join(" ")}</div>` : "";
+          return talkThrough([lg.first ? `A discovery! ${x.product}.` : `${x.product} again. You found this one before.`, x.story, x.science], () => {
+            ui(`<div class="reward"><div>${lg.first ? `<b>+${lg.xp} ✦ · +${lg.essence} 💎</b> · new in your Discoveries` : "Already in your Discoveries"}</div>${els}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>${eqCard(x)}
+              <div class="choices"><button class="c main" type="button" id="al-ok">⚗️ Mix again</button><button class="c" type="button" id="al-grid2">🗂 Discoveries</button></div>`);
+            $("al-ok").onclick = again; $("al-grid2").onclick = () => { $("reading-body").innerHTML = gridHtml(P(), esc); sfx.page(); }; }); }
+        sfx.fizzle(); freeplay(sel, op, pick(["Nothing much happens. A little warmth, a little smell. No discovery here.", "It bubbles, then settles. Nothing new.", "A murky mess. No alchemist wrote this one down."]), { fizzle: true });
+      };
+    }
+
     // ---- the apothecary ----
     function shop(msg) {
       clearReading(); cap("🏺 The Apothecary"); const look = lookOf(P()); draw({ shelf: ["gold", "silver", "copper", "mercury", "sulfur", "salt"] });
@@ -195,6 +230,14 @@ export const alchemy = {
   },
 };
 
+/** The Discoveries grid: every product you can make and every accident you can have, found or still a mystery. */
+export function gridHtml(p, esc) {
+  const g = gridOf(p);
+  const cell = (on, icon, name, sub) => `<span class="al-find${on ? " on" : ""}"><b>${on ? icon : "❔"}</b>${on ? `${esc(name)}<small>${esc(sub)}</small>` : "<small>not found yet</small>"}</span>`;
+  return `<div class="al-grid"><h3>🗂 Discoveries · ${g.got} / ${g.total}</h3><p class="note">Free play lets you mix anything. Each product and each accident you find is filled in here.</p>
+    <div class="group">✨ Products (${g.finds.filter((f) => f.on).length} / ${g.finds.length})</div><div class="al-finds">${g.finds.map(({ x, on }) => cell(on, "✨", x.product, x.eq)).join("")}</div>
+    <div class="group">⚠️ Accidents (${g.hazards.filter((f) => f.on).length} / ${g.hazards.length})</div><div class="al-finds">${g.hazards.map(({ h, on }) => cell(on, h.kind === "gas" ? "☠️" : "💥", h.name, h.kind === "gas" ? "poison gas" : h.kind === "splash" ? "acid eruption" : "explosion")).join("")}</div></div>`;
+}
 /** The notebook (study guide) shown in the reading area. */
 export function notebookHtml(esc) {
   return `<div class="al-book"><h3>📓 The Alchemist's Notebook</h3>${NOTEBOOK.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(s.h)}</summary>${s.p.map((t) => `<p>${esc(t)}</p>`).join("")}</details>`).join("")}
@@ -219,5 +262,6 @@ export function alchemyCodex(p, esc) {
     return `<div class="cx"><div class="cx-h"><span>⚗️ Lab level ${L.n}: ${esc(L.what)}</span><span class="note">${done.length} / ${L.deck.length}</span></div>
       <div class="bar"><i style="width:${(done.length / L.deck.length) * 100}%"></i></div>${done.length ? `<div class="chips">${done.map((x) => `<span>${esc(x.name || x.product)}</span>`).join("")}</div>` : ""}</div>`; }).join("")
     + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>⚠️ Lab accidents (lessons learned)</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
+    + (() => { const g = gridOf(p); return `<div class="cx"><div class="cx-h"><span>🗂 Free-play discoveries</span><span class="note">${g.got} / ${g.total}</span></div><div class="bar"><i style="width:${(g.got / g.total) * 100}%"></i></div></div>`; })()
     + `<div class="cx"><div class="cx-h"><span>🧪 Elements found in the Lab</span><span class="note">${n} / ${of}</span></div><div class="bar"><i style="width:${(n / of) * 100}%"></i></div>${n ? `<div class="chips">${r.elements.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}</div>`;
 }
