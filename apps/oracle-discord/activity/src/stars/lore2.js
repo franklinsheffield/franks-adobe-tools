@@ -69,7 +69,7 @@ export const MORE = [
     ],
     science: [
       "The Andromeda Galaxy is about 2.5 million light-years away. The light you see left it before modern humans existed.",
-      "It is falling toward the Milky Way. In roughly 4 to 5 billion years the two galaxies will merge into one.",
+      "It is falling toward the Milky Way. Older estimates said the two would merge in about 4 to 5 billion years; a 2025 study puts the odds of a merger in the next 10 billion years at only about 50%.",
       "Almach, the princess's foot, is a lovely double star in a small telescope: gold and blue, like Albireo in the Swan.",
     ],
     quiz: { q: "About how far away is the Andromeda Galaxy?", a: "2.5 million light-years", wrong: ["2,500 light-years", "4.2 light-years", "25 billion light-years"] } },
@@ -115,7 +115,7 @@ export const MORE = [
     ],
     science: [
       "The Antennae Galaxies in Corvus are two galaxies in the middle of a collision, flinging out long tails of stars.",
-      "Their collision is triggering bursts of new star birth: billions of new stars where the gas clouds crash together.",
+      "Their collision is triggering bursts of new star birth: thousands of bright young star clusters where the gas clouds crash together.",
       "Corvus has no very bright stars, but its four-star shape is easy to spot once you know where to look.",
     ],
     quiz: { q: "What are the Antennae Galaxies in Corvus?", a: "Two galaxies colliding", wrong: ["A double star", "A comet's tail", "A pair of planets"] } },
