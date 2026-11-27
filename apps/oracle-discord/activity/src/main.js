@@ -42,6 +42,7 @@ import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, t
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
 import { joinTable, canJoin } from "./net.js";
+import { gemShop, gemSvg } from "./gems.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
@@ -248,7 +249,7 @@ function openStudy(roomId, back) {
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
-registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -431,6 +432,7 @@ function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
   $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`;
+  setTimeout(() => { try { musicNews(); } catch {} }, 0); // Essence-based records (Coin Drop Groove) unlock as the total changes
 }
 
 const EARNED_DESIGN = { velvet: "", starchart: "constellations", goldleaf: "filigree", moonlit: "moonphases", obsidian: "obsidian" };
@@ -450,7 +452,7 @@ function applyLook(over = {}) {
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   const design = c.design || EARNED_DESIGN[c.id] || "", ink = c.ink || EARNED_INK[c.id] || "#E2B04A";
   setTableDecor({ cardback: p.cardback && p.cardback !== "cb-deck" ? p.cardback : "", design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "",
-    fx: (CLOTH_FX[design] || CLOTH_FX[""])(ink), trim: clothTrim(ink) });
+    fx: (CLOTH_FX[design] || CLOTH_FX[""])(ink), trim: clothTrim(ink), gem: gemSvg(p.gem || "gem-quartz") });
   table.refresh();
   root.style.setProperty("--orb-filter", o ? o.f : "none");
   const O = orbFx(o ? o.id : "amethyst");

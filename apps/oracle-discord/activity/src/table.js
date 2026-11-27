@@ -195,11 +195,12 @@ const idle = () => `<g class="k-float"><path d="M200 150 L222 184 L200 238 L178 
 const scene = (key, o) => (SCENES[key] || sparkle)(o);
 
 export function makeTable(el, { reduced = false } = {}) {
-  let last = ["", ""];
-  const set = (inner, cls) => { last = [inner, cls]; el.className = "table " + (cls || ""); el.innerHTML = tableSvg(inner); };
+  let last = ["", ""], plain = false; // plain: idle with the worn crystal, so a refresh redraws the newly worn one
+  const set = (inner, cls) => { last = [inner, cls]; plain = false; el.className = "table " + (cls || ""); el.innerHTML = tableSvg(inner); };
   return {
-    refresh() { if (!el.querySelector(".art-card")) set(...last); },
-    idle() { set(idle(), "idle"); },
+    refresh() { if (el.querySelector(".art-card")) return; if (plain) { set(DECOR.gem || idle(), "idle"); plain = true; } else set(...last); },
+    /** Idle: the table crystal or relic from the store (gems.js), or the plain quartz point. */
+    idle(svg) { set(svg || DECOR.gem || idle(), "idle"); plain = !svg; },
     /** Tools at rest for the chosen system. */
     rest(key) { set(scene(key), "rest"); },
     /** Cast: the tools fly, spin, crack or turn. Returns after the animation's main beats. */

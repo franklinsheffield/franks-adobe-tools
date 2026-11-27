@@ -1452,3 +1452,35 @@ body[data-mood="love"] .familiar::after{content:"💗";position:absolute;top:-18
 @keyframes em-dance{25%{transform:rotate(-5deg) translateY(-4px)}75%{transform:rotate(5deg) translateY(-4px)}}
 @keyframes em-spook{50%{transform:translateX(3px)}}
 @media (prefers-reduced-motion: reduce){.familiar,.familiar *,.emote-wheel button,.teller.em-wave .o-handR,.teller.em-dance svg,.teller.em-spook svg{animation:none!important}}
+
+/* ---- table crystals & relics (gems.js): float, glints, spins, motes; they react to the Oracle's mood ---- */
+.gm-float{animation:gmf 4.6s ease-in-out infinite;transform-box:view-box}
+@keyframes gmf{50%{transform:translateY(-9px)}}
+.gm-aura{animation:gma 3.2s ease-in-out infinite}
+@keyframes gma{50%{opacity:.4}}
+.gm-pool{animation:gmp 4.6s ease-in-out infinite}
+@keyframes gmp{50%{opacity:.15;transform:scaleX(.8);transform-origin:200px 246px}}
+.gm-glint{opacity:0;transform-box:fill-box;transform-origin:center;animation:gmg 3s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes gmg{0%,70%,100%{opacity:0;transform:scale(.2) rotate(0)}82%{opacity:1;transform:scale(1) rotate(45deg)}}
+.gm-mote{opacity:0;animation:gmm 4s ease-in infinite;animation-delay:var(--d)}
+@keyframes gmm{0%{opacity:0;transform:translate(0,0)}20%{opacity:.9}100%{opacity:0;transform:translate(var(--x),-90px)}}
+.gm-spin{animation:gms 9s linear infinite}.gm-spin.r{animation-direction:reverse;animation-duration:6s}
+@keyframes gms{to{transform:rotate(360deg)}}
+.gm-core{animation:gma 1.6s ease-in-out infinite}
+.gm-blink{transform-box:fill-box;transform-origin:center;animation:gmb 5s infinite}
+@keyframes gmb{0%,88%,100%{transform:scaleY(1)}92%{transform:scaleY(.1)}}
+.gm-ghost{opacity:.75}
+.gm-eyes{animation:gma 1.8s ease-in-out infinite}
+.gm-stream{animation:gmst .6s linear infinite}@keyframes gmst{to{stroke-dashoffset:-6}}
+.gm-sand-top{transform-box:fill-box;transform-origin:50% 100%;animation:gmt 20s linear infinite}@keyframes gmt{to{transform:scaleY(.15)}}
+.gm-sand-bot{transform-box:fill-box;transform-origin:50% 100%;animation:gmu 20s linear infinite}@keyframes gmu{from{transform:scaleY(.2)}}
+.gm-rays{transform-origin:200px 196px;animation:gms 30s linear infinite}
+.gm-slit{animation:gmb 4s infinite;transform-box:fill-box;transform-origin:center}
+.gm-drift{animation:gmd 7s ease-in-out infinite}@keyframes gmd{25%{transform:translate(-10px,-6px) rotate(-6deg)}75%{transform:translate(10px,-4px) rotate(6deg)}}
+.gm-show .gm{filter:drop-shadow(0 0 10px rgba(250,222,140,.5))}
+body.trance .gm-float{animation-duration:.9s}body.trance .gm-spin{animation-duration:1.5s}
+body[data-mood="joy"] .gm-float,body[data-mood="cheer"] .gm-float,body[data-mood="love"] .gm-float{animation-duration:1.6s}
+body[data-mood="sad"] .gm-aura,body[data-mood="sleepy"] .gm-aura{opacity:.08;animation:none}
+body[data-mood="spooked"] .gm,body[data-mood="nervous"] .gm{animation:gmshake .25s linear infinite}
+@keyframes gmshake{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@media (prefers-reduced-motion:reduce){.gm *{animation:none!important}}

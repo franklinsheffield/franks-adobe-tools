@@ -60,7 +60,7 @@ export function openBox(p, boxId, rnd = Math.random) {
   const P = boxPool(); let roll = rnd() * 100, tier = "common";
   for (const t of TIERS) { const o = b.odds[t.id] || 0; if (roll < o) { tier = t.id; break; } roll -= o; }
   const list = P[tier].length ? P[tier] : P.common, it = list[Math.floor(rnd() * list.length)];
-  p.essence -= b.price; p.owned = p.owned || [];
+  p.essence -= b.price; p.owned = p.owned || []; p.boxes = (p.boxes || 0) + 1; // counted for the Jade Cartridge Shop record
   const dupe = p.owned.includes(it.id), refund = dupe ? Math.round(b.price * REFUND) : 0;
   if (dupe) p.essence += refund; else p.owned.push(it.id);
   return { item: it, tier, dupe, refund };
