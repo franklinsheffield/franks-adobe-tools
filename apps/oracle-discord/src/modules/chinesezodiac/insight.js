@@ -2,6 +2,7 @@
 // tally, how the branches relate (clash, harmony, trine), the Day Master's support, and what that may mean.
 import { ELEMENTS, TRINES, HARMONY, ORDER, clashOf, trineOf } from "./text.js";
 import { insight, plural, list } from "../../insight.js";
+import { momentRows, momentMethod, span, hm } from "../../moment.js";
 
 const GEN = ["Wood", "Fire", "Earth", "Metal", "Water"]; // each generates the next; each controls the one after that
 const gen = (e) => GEN[(GEN.indexOf(e) + 1) % 5], ctl = (e) => GEN[(GEN.indexOf(e) + 2) % 5];
@@ -9,7 +10,11 @@ const mother = (e) => GEN[(GEN.indexOf(e) + 4) % 5], master = (e) => GEN[(GEN.in
 const TERMS = ["Lichun (start of spring)", "Yushui (rain water)", "Jingzhe (insects wake)", "Chunfen (spring equinox)", "Qingming (clear and bright)", "Guyu (grain rain)", "Lixia (start of summer)", "Xiaoman (grain buds)", "Mangzhong (grain in ear)", "Xiazhi (summer solstice)", "Xiaoshu (minor heat)", "Dashu (major heat)", "Liqiu (start of autumn)", "Chushu (end of heat)", "Bailu (white dew)", "Qiufen (autumn equinox)", "Hanlu (cold dew)", "Shuangjiang (frost descends)", "Lidong (start of winter)", "Xiaoxue (minor snow)", "Daxue (major snow)", "Dongzhi (winter solstice)", "Xiaohan (minor cold)", "Dahan (major cold)"];
 const num = (v) => (v % 1 ? v.toFixed(1) : String(v));
 
-export function analyse({ z, p, bal, cur }, { timeKnown = true, who } = {}) {
+export function analyse({ z, p, bal, cur, pClock = null, solar = null }, { timeKnown = true, who, moment = null, detail = false } = {}) {
+  // What the exact time and place decide: which two-hour watch the birth falls in by the Sun, and how close it sits to a boundary.
+  const sm = solar ? solar.hour * 60 + solar.minute : null, inWatch = sm === null ? null : (sm + 60) % 120, watchEdge = inWatch === null ? null : Math.min(inWatch, 120 - inWatch);
+  const hourDiffers = !!(pClock && pClock.hour.b !== p.hour.b), dayDiffers = !!(pClock && pClock.day.index !== p.day.index);
+  const intoTerm = (((p.sunLon - 315) % 30) + 30) % 30, termEdge = Math.min(intoTerm, 30 - intoTerm) / 0.9856; // days to the nearest month boundary
   const P = [["Year", p.year], ["Month", p.month], ["Day", p.day], ["Hour", p.hour]].filter(([, c]) => c);
   const stems = P.map(([, c]) => c.stem), animals = P.map(([k, c]) => [k, c.branch.animal]);
   const yin = stems.filter((s) => s.yin).length, dm = p.day.stem, total = Object.values(bal).reduce((a, b) => a + b, 0);
@@ -24,13 +29,17 @@ export function analyse({ z, p, bal, cur }, { timeKnown = true, who } = {}) {
   const pr = (x) => x.map(([ka, a, kb, b]) => `${ka} ${a} and ${kb} ${b}`);
 
   const data = [
+    ...(moment ? momentRows(moment, { detail }) : [["Birth moment", "no birthplace given, so the clock time is read as China Standard Time and true solar time cannot be worked out"]]),
+    solar ? ["Hour pillar basis", `true solar time${detail ? ` ${hm(solar)}` : ""} falls in the ${p.hour.branch.animal} hour (${p.hour.branch.hours}), ${span(inWatch)} after it began and ${span(120 - inWatch)} before the next · ${hourDiffers ? `the clock time alone would give the ${pClock.hour.branch.animal} hour` : "the clock time gives the same hour"}${dayDiffers ? " and a different day pillar" : ""}`] : null,
+    ["Month pillar basis", `the Sun was ${intoTerm.toFixed(1)}° into the ${p.month.branch.animal} month (it changes every 30°), about ${termEdge.toFixed(1)} days from the nearest boundary`],
     ["The characters", P.map(([k, c]) => `${k} ${c.stem.hz}${c.branch.hz} (${c.stem.yin ? "yin" : "yang"} ${c.stem.el} over ${c.branch.animal}, ${c.branch.el})`).join(" · ") + (timeKnown ? "" : " · hour unknown")],
     ["Cycle position", `year ${z.index + 1} of 60 · day ${p.day.index + 1} of 60 · Sun at ${p.sunLon.toFixed(1)}° of the ecliptic, in the solar term ${term}`],
     ["Yin and yang (stems)", `${yin} yin · ${stems.length - yin} yang`],
     ["Five elements", sorted.map(([k, v]) => `${k} ${num(v)} (${Math.round((v / total) * 100)}%)`).join(" · ")],
     ["Day Master", `${dm.hz} ${dm.yin ? "yin" : "yang"} ${dm.el}; supported by ${num(support)} of ${num(total)} points (${Math.round(share * 100)}%: ${dm.el} plus ${mother(dm.el)})`],
+    null,
     ["This year", `${cur.lunarYear} is a ${cur.stem.el} ${curA} year, ${steps === 0 ? "the same animal as the birth year" : `${plural(steps, "sign")} on from the ${a}`}; ${cur.stem.el} is ${rel(cur.stem.el)}`],
-  ];
+  ].filter(Boolean);
 
   const patterns = [
     yin === stems.length || yin === 0 ? `All ${stems.length} stems are ${yin ? "yin" : "yang"}.` : `Stems split ${yin} yin to ${stems.length - yin} yang.`,
@@ -41,6 +50,10 @@ export function analyse({ z, p, bal, cur }, { timeKnown = true, who } = {}) {
     trine.length ? `Same trine: ${pr(trine).join("; ")}.` : "",
     same.length ? `Repeated animal: ${pr(same).join("; ")}.` : "",
     p.year.b !== z.b ? `Born between the solar new year (Lichun) and the lunar new year: the popular animal is the ${a}, the pillar animal is the ${p.year.branch.animal}.` : "",
+    solar ? (hourDiffers || dayDiffers ? `Clock time and true solar time disagree here: by the Sun the hour is ${p.hour.branch.animal}, by the clock ${pClock.hour.branch.animal}${dayDiffers ? ", and the day pillar changes too" : ""}. The chart above uses the Sun.` : "Clock time and true solar time give the same hour and day pillars, so the chart does not depend on which convention is used.") : "",
+    watchEdge !== null && watchEdge <= 15 ? `The birth is ${span(watchEdge)} from the edge of its two-hour watch. Birth times are often rounded to the quarter hour, so the hour pillar is uncertain.` : "",
+    termEdge < 1 ? `The birth falls within a day of a solar term, where the month pillar changes. The exact time decides which month it belongs to.` : "",
+    !timeKnown ? "With no birth time there is no hour pillar: six characters instead of eight, and the element balance leaves out a quarter of the chart. Year, month and day pillars stand, unless the birth was near 23:00, when the day changes." : "",
   ];
 
   const conclusions = [
@@ -64,6 +77,7 @@ export function analyse({ z, p, bal, cur }, { timeKnown = true, who } = {}) {
     "Year, month and hour pillars follow the Sun (solar terms, computed from real ephemeris); the day pillar is a continuous 60-day count unbroken for over 2,000 years. The day changes at 23:00.",
     "The element tally counts each stem as 1 and each branch by its hidden stems. Other schools weight the month branch more heavily, which can change the strong or weak verdict.",
     "There are 60 × 12 × 60 × 12 = 518,400 possible four-pillar charts. One person in 12 shares the year animal; about one in 60 shares the same year stem and animal.",
+    ...(moment ? [momentMethod(moment), "Here the two-hour watches are counted in true solar time at the birthplace (a common practice; some schools keep clock time), so the longitude and the date both matter: a clock can run more than an hour away from the Sun under daylight time or in a wide time zone."] : []),
     "No controlled study supports BaZi as a predictor of character or events. It is a symbolic language with an internally consistent grammar.",
   ];
   return insight({ data, patterns, conclusions, questions, method, who });

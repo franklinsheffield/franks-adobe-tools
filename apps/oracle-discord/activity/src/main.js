@@ -422,7 +422,7 @@ async function reveal(sys, options, question = "") {
   try {
     const mod = MODS[sys.command];
     if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
+    [r] = await Promise.all([mod.run(options, { user: state.name, birthDetail: true }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
   document.body.classList.remove("trance"); refreshEnergy(); cap(sys.emoji + " " + sys.label);
   if (err) {

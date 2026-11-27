@@ -1,13 +1,38 @@
 // The evidence layer of a Human Design reading: the 26 activations as numbers, which centres and channels they
 // define, why the type and authority follow from that wiring, how common each result is, and what it may mean.
-import { CENTERS, CHANNELS, MOTORS, GATE_CENTER, PLANETS } from "./data.js";
+import { CENTERS, CHANNELS, MOTORS, GATE_CENTER, PLANETS, WHEEL_START } from "./data.js";
 import { LINES, GATES } from "./text.js";
 import { insight, plural, list } from "../insight.js";
+import { positions } from "../ephemeris.js";
+import { momentRows, momentMethod, span } from "../moment.js";
 
 const SHARE = { Generator: "about 37%", "Manifesting Generator": "about 33%", Projector: "about 20%", Manifestor: "about 9%", Reflector: "about 1%" };
 const KIND = { "motor+awareness": "energy and feeling (a motor)", "pressure+motor": "pressure and drive (a motor)", pressure: "pressure (the urge to think or act)", awareness: "awareness (thinking, instinct, feeling)", expression: "expression and action", identity: "identity and direction", motor: "energy (a motor)" };
 
-export function analyse(chart, { timeKnown = true, who } = {}) {
+const LINE = 360 / 64 / 6, NODE_KEYS = { northNode: "node", southNode: "node", earth: "sun" };
+/**
+ * How exact the birth time has to be. For each of the 26 activations: minutes until it crosses into the next line
+ * and minutes since it entered this one, from its real speed. Returns the soonest change overall and for the two
+ * Suns (whose lines make the profile).
+ */
+export function lineMargins(chart) {
+  const out = [];
+  for (const [side, when] of [["conscious", chart.birthUtc], ["unconscious", chart.designUtc]]) {
+    const pos = positions(new Date(when), { node: chart.node }), acts = side === "conscious" ? chart.personality : chart.design;
+    for (const p of PLANETS) {
+      const a = acts[p.key], sp = pos[NODE_KEYS[p.key] || p.key].speed; if (!a || !sp) continue;
+      const into = (((a.lon - WHEEL_START) % LINE) + LINE) % LINE; // degrees past the start of this line
+      const fwd = sp > 0 ? LINE - into : into, back = sp > 0 ? into : LINE - into, perMin = Math.abs(sp) / 1440;
+      out.push({ side, key: p.key, name: p.name || p.key, later: fwd / perMin, earlier: back / perMin, gate: a.gate, line: a.line });
+    }
+  }
+  const near = (x) => Math.min(x.later, x.earlier), soonest = out.slice().sort((x, y) => near(x) - near(y))[0];
+  const suns = out.filter((x) => x.key === "sun"), sun = suns.slice().sort((x, y) => near(x) - near(y))[0];
+  return { all: out, soonest, sun };
+}
+
+export function analyse(chart, { timeKnown = true, who, moment = null, detail = false, unsure = [] } = {}) {
+  const mg = timeKnown ? lineMargins(chart) : null, near = (x) => Math.min(x.later, x.earlier), dir = (x) => (x.later <= x.earlier ? "later" : "earlier");
   const acts = [...PLANETS.map((p) => ["conscious", p, chart.personality[p.key]]), ...PLANETS.map((p) => ["unconscious", p, chart.design[p.key]])].filter(([, , a]) => a);
   const pG = new Set(acts.filter(([s]) => s === "conscious").map(([, , a]) => a.gate)), dG = new Set(acts.filter(([s]) => s === "unconscious").map(([, , a]) => a.gate));
   const gates = new Set([...pG, ...dG]), both = [...pG].filter((g) => dG.has(g));
@@ -22,6 +47,8 @@ export function analyse(chart, { timeKnown = true, who } = {}) {
   const cn = (c) => CENTERS[c].name;
 
   const data = [
+    ...(moment ? momentRows(moment, { detail }).filter(([k]) => k !== "True solar time") : []),
+    mg ? ["Time sensitivity", `the first activation to change line is the ${mg.soonest.side} ${mg.soonest.name} (${mg.soonest.gate}.${mg.soonest.line}), with a birth time ${span(near(mg.soonest))} ${dir(mg.soonest)} · the profile ${chart.profile} holds unless the time is off by ${span(near(mg.sun))} or more`] : null,
     ["Two moments", `birth, and the "design" moment ${days} days earlier, when the Sun stood exactly 88° before its birth position`],
     ["Activations", `26 (13 bodies × 2 moments) landing on ${gates.size} of 64 gates${both.length ? `; ${plural(both.length, "gate")} hit from both moments (${both.join(", ")})` : ""}`],
     ["Centres", `${defined.length} of 9 defined (${defined.map(cn).join(", ") || "none"}) · ${open.length} open (${open.map(cn).join(", ") || "none"})`],
@@ -30,7 +57,7 @@ export function analyse(chart, { timeKnown = true, who } = {}) {
     ["Lines", lines.map((c, i) => `line ${i + 1}×${c}`).join(" · ")],
     ["Gates per centre", perCentre.filter(([, c]) => c).map(([c, k]) => `${cn(c)} ${k}`).join(" · ")],
     ["Sun and Earth", `conscious ${chart.personality.sun.gate}.${chart.personality.sun.line} / ${chart.personality.earth.gate}.${chart.personality.earth.line} · unconscious ${chart.design.sun.gate}.${chart.design.sun.line} / ${chart.design.earth.gate}.${chart.design.earth.line}`],
-  ];
+  ].filter(Boolean);
 
   const patterns = [
     `Type is derived, not assigned: the Sacral is ${sacral ? "defined" : "open"}${defined.length ? ` and ${chart.type === "Manifestor" || chart.type === "Manifesting Generator" ? "a motor reaches the Throat through defined channels" : "no motor reaches the Throat through defined channels"}` : " and no centre at all is defined"}, which is the definition of a ${chart.type}.`,
@@ -41,6 +68,9 @@ export function analyse(chart, { timeKnown = true, who } = {}) {
     `${lTop.length > 1 ? "Lines" : "Line"} ${list(lTop.map(String))} ${lTop.length > 1 ? "are" : "is"} the most frequent (${lMax} of 26 activations): ${lTop.map((l) => LINES[l][0]).join(", ")}.`,
     `The profile ${chart.profile} is simply the line of the conscious Sun (${pl}) and of the unconscious Sun (${dl}).`,
     `${cn(perCentre[0][0])} holds the most active gates (${perCentre[0][1]}).`,
+    mg ? `The Moon crosses a line in about 1 h 40 min and a gate in about 10 hours, so it is the part of the chart most sensitive to the birth time. The Sun takes about 23 hours per line. The birthplace matters only through its time zone: Human Design uses no houses or horizon.` : "",
+    mg && near(mg.soonest) <= 20 ? `One activation is within ${span(near(mg.soonest))} of a line boundary. Recorded birth times are often rounded to the quarter hour, so that line is uncertain.` : "",
+    !timeKnown ? (unsure.length ? `With no birth time, noon is used. Across the whole day these would change: ${list(unsure)}.` : "With no birth time, noon is used. Type, authority, profile, definition, cross and channels are the same at every hour of that day, so only single lines and the Moon's gate are in doubt.") : "",
   ];
 
   const conclusions = [
@@ -64,6 +94,7 @@ export function analyse(chart, { timeKnown = true, who } = {}) {
   const method = [
     "Each gate is 5.625° of the zodiac (360° ÷ 64) and each line 0.9375°. Positions come from real planetary ephemeris for the birth instant and for the moment the Sun was 88° earlier.",
     `Commonly quoted shares of the population: ${Object.entries(SHARE).map(([k, v]) => `${k} ${v.replace("about ", "")}`).join(", ")}. A ${chart.type} is ${SHARE[chart.type]}. These figures come from Human Design schools, not from a census.`,
+    ...(moment ? [momentMethod(moment)] : []),
     "Human Design dates from 1987 (Ra Uru Hu) and combines the I Ching's 64 hexagrams, the zodiac, the Kabbalistic Tree of Life and the chakra system. The astronomy is exact; the meanings are the system's own and have not been validated experimentally.",
   ];
   return insight({ data, patterns, conclusions, questions, method, who });

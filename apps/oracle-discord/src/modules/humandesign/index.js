@@ -6,6 +6,7 @@ import { TYPES, SIGNATURE_TEXT, AUTHORITIES, LINES, CENTER_TEXT, DEFINITION_TEXT
 import { analyse } from "../../humandesign/insight.js";
 import { withInsight } from "../../insight.js";
 import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js";
+import { birthMoment } from "../../moment.js";
 
 export const GOLD = 0xE2B04A, TEAL = 0x66E0C8;
 export const FOOTER = { text: "Science is Magic · for reflection, not prediction" };
@@ -86,7 +87,7 @@ export async function run(o, ctx = {}) {
   if (!o.date || !o.place) throw new Error("I need your birth date and place. Add them, or save them once with /profile set.");
   const where = ctx.geocoded || await geocode(o.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${o.place}". Try "City, Country".`);
-  const zone = timeZoneAt(where.lat, where.lon), utc = localToUtc(birth, zone);
+  const zone = timeZoneAt(where.lat, where.lon), moment = birthMoment(birth, where, timeKnown), utc = moment.utc;
   const chart = bodygraph(utc);
   const unsure = timeKnown ? [] : timeSensitive(chart, birth, zone);
   const who = ctx.user ? `@${ctx.user}` : "you";
@@ -98,7 +99,7 @@ export async function run(o, ctx = {}) {
   if (!timeKnown) embeds[0].fields.unshift({ name: "⏱️ Birth time unknown", value: unsure.length
     ? `This is a noon chart. Across the whole day these could change: **${unsure.join(", ")}**. They are provisional without a birth time (a birth certificate or hospital record usually has it).`
     : "This is a noon chart, but your type, authority, profile, definition, cross and channels stay the same all day, so the core reading holds." });
-  const ins = analyse(chart, { timeKnown, who });
-  return { embeds: withInsight(embeds, ins), analysis: ins.analysis, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart,
+  const ins = analyse(chart, { timeKnown, who, moment, detail: !!(o.private || o.show_birth_details || ctx.birthDetail), unsure });
+  return { embeds: withInsight(embeds, ins), analysis: ins.analysis, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart, moment,
     headline: `${chart.type} · ${chart.profile} · ${chart.authority} authority` };
 }
