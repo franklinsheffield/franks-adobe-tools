@@ -1336,10 +1336,10 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .teller .o-peye,.o-peye{transform-box:fill-box;transform-origin:50% 50%;transform:scaleY(.06);opacity:0;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .2s}
 .o-pline{transition:opacity .2s}
 .o-pe-iris{transition:transform .3s}
-.o-hand.peek .o-peye,.teller[data-mood="wow"] .o-peye,.teller[data-mood="joy"] .o-peye,.teller[data-mood="cheer"] .o-peye,.teller[data-mood="curious"] .o-peye,.teller[data-mood="love"] .o-peye,.teller[data-mood="flinch"] .o-peye,.teller[data-mood="nervous"] .o-peye{transform:scaleY(1);opacity:1}
-.o-hand.peek .o-pline,.teller[data-mood="wow"] .o-pline,.teller[data-mood="joy"] .o-pline,.teller[data-mood="cheer"] .o-pline,.teller[data-mood="curious"] .o-pline,.teller[data-mood="love"] .o-pline,.teller[data-mood="flinch"] .o-pline,.teller[data-mood="nervous"] .o-pline{opacity:0}
-.teller[data-mood="angry"] .o-peye,.teller[data-mood="smug"] .o-peye,.teller[data-mood="think"] .o-peye{transform:scaleY(.5);opacity:1}
-.teller[data-mood="angry"] .o-pline,.teller[data-mood="smug"] .o-pline,.teller[data-mood="think"] .o-pline{opacity:0}
+.o-hand.peek .o-peye,.teller[data-mood="wow"] .o-peye,.teller[data-mood="cheer"] .o-peye,.teller[data-mood="love"] .o-peye,.teller[data-mood="flinch"] .o-peye,.teller[data-mood="nervous"] .o-peye{transform:scaleY(1);opacity:1}
+.o-hand.peek .o-pline,.teller[data-mood="wow"] .o-pline,.teller[data-mood="cheer"] .o-pline,.teller[data-mood="love"] .o-pline,.teller[data-mood="flinch"] .o-pline,.teller[data-mood="nervous"] .o-pline{opacity:0}
+.teller[data-mood="angry"] .o-peye,.teller[data-mood="smug"] .o-peye{transform:scaleY(.5);opacity:1}
+.teller[data-mood="angry"] .o-pline,.teller[data-mood="smug"] .o-pline{opacity:0}
 .teller[data-mood="wow"] .o-peye{transform:scaleY(1.2)}
 .teller[data-mood="curious"] .o-pe-iris{transform:translate(2px,-1px)}
 .teller[data-mood="think"] .o-pe-iris{transform:translate(-2px,-2px)}

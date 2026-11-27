@@ -919,11 +919,11 @@ function joinLobby() {
 }
 // ---- palm eyes: the lines on the Oracle's palms open now and then, and with big moods ----
 (function palmEyes() {
-  const t = $("teller"), next = () => setTimeout(open, 5000 + Math.random() * 9000);
+  const t = $("teller"), next = () => setTimeout(open, 25000 + Math.random() * 25000); // a rare peek: the palm eyes stay shut except for expressions
   function open() {
     if (document.hidden || reduced) return next();
     const hands = [...t.querySelectorAll(".o-hand")], h = Math.random() < 0.25 ? hands : [hands[Math.floor(Math.random() * hands.length)]];
-    h.forEach((x) => x && x.classList.add("peek")); setTimeout(() => h.forEach((x) => x && x.classList.remove("peek")), 1400 + Math.random() * 1600); next();
+    h.forEach((x) => x && x.classList.add("peek")); setTimeout(() => h.forEach((x) => x && x.classList.remove("peek")), 1000 + Math.random() * 600); next();
   }
   next();
 })();
