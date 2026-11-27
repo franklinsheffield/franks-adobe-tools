@@ -169,7 +169,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
-  readings: false, rooms: ["watch", "comet", "stars", "calendar", "rummy"], daily: "stars",
+  readings: false, rooms: ["watch", "comet", "eclipse", "stars", "calendar", "rummy"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
@@ -193,6 +193,7 @@ export const observatory = {
   },
   banter: {
     watch: G("Let your eyes settle. Faint things need a slow look.", "Hipparchus ranked star brightness by eye: 1st to 6th magnitude.", "Logged! Every plate needs a night someone stayed up for.", "Clouded out. Even Herschel lost nights. Try again, {name}."),
+    eclipse: G("A Saros cycle is about 18 years 11 days. Eclipses repeat on it.", "Next big one: 2 August 2027, with totality over Luxor for over 6 minutes.", "Right in the shadow, {name}! Totality can last up to about 7.5 minutes.", "Clouded out. And never watch the partial phase without eclipse glasses."),
     comet: G("Sweep slowly. A new comet looks like a faint fuzzy star.", "Charles Messier listed 110 fuzzy things so comet hunters could skip them.", "A comet! Report it fast. Discoverers get their name on it.", "Just a smudge, {name}. Messier made that mistake too."),
     stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
     calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),
