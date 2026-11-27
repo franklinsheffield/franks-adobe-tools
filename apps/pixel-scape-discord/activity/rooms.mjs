@@ -46,9 +46,11 @@ export async function identify(env, hello, guild, f = fetch) {
   const me = await f(API + "/users/@me", auth);
   if (!me.ok) throw new Error("Discord sign-in expired, reopen the Activity");
   const u = await me.json();
-  const mr = await f(API + "/users/@me/guilds/" + guild + "/member", auth);   // a member of this server (and, in the gated server, with an access role)
+  // Discord rate-limits this lookup hard (the sign-in just made the same call), so wait and retry on 429
+  let mr; for (let k = 0; ; k++) { mr = await f(API + "/users/@me/guilds/" + guild + "/member", auth); if (mr.status !== 429 || k >= 3) break;
+    const j = await mr.json().catch(() => ({})); await new Promise((r) => setTimeout(r, Math.min(15, Math.max(0.5, +j.retry_after || +mr.headers.get("retry-after") || 2)) * 1000 + 100)); }   // a member of this server (and, in the gated server, with an access role)
   if (mr.status === 404) throw new Error("you are not in this server");
-  if (!mr.ok) throw new Error("could not check your server membership (" + mr.status + ")");
+  if (!mr.ok) throw new Error("could not check your server membership (Discord said " + mr.status + ")");
   const mem = await mr.json().catch(() => ({})), need = String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
   if (env.GATE_GUILD_ID === guild && need.length && !(mem.roles || []).some((r) => need.includes(r))) throw new Error(env.GATE_MESSAGE || "Pixel Scape is locked.");
   let channel = null;

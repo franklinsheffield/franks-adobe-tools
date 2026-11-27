@@ -33,6 +33,8 @@ test("dev sign-in only when the Worker allows it; Discord sign-in checks the ser
   const f = async (u) => /\/member$/.test(u) ? (/guilds\/111\//.test(u) ? new Response(JSON.stringify({ roles: ["r1"] }), { status: 200 }) : new Response("{}", { status: 404 })) : new Response(JSON.stringify({ id: "9", global_name: "Frank" }), { status: 200 });
   assert.deepStrictEqual(await identify({}, { token: "t" }, "111", f), { userId: "9", name: "Frank", channel: null });
   await assert.rejects(identify({}, { token: "t" }, "222", f), /not in this server/);
+  let n = 0; const busy = async (u) => /\/member$/.test(u) && n++ === 0 ? new Response(JSON.stringify({ retry_after: 0.01 }), { status: 429 }) : f(u);
+  assert.ok(await identify({}, { token: "t" }, "111", busy), "a rate-limited member check is retried"); assert.strictEqual(n, 2);
   // the role gate (same as the sign-in's): members of the gated server need one of the access roles
   assert.ok(await identify({ GATE_GUILD_ID: "111", GATE_ROLE_IDS: "r0,r1" }, { token: "t" }, "111", f));
   await assert.rejects(identify({ GATE_GUILD_ID: "111", GATE_ROLE_IDS: "r2", GATE_MESSAGE: "sealed" }, { token: "t" }, "111", f), /sealed/);
