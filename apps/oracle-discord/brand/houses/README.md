@@ -83,3 +83,20 @@ Pixel Scape points feed the Scholar's Path, so it has titles and badges, not a s
 | Remix | Remix | Already built |
 | Builder titles | Scout → Surveyor → Cartographer → Worldwright | Shown in the Activity only |
 | Badges | Summit (place over 3,000 m), Coastline, Home Town, First Remix, Full Party (8 builders) | One-time sigils |
+
+## Personalities and shop items
+
+Each House gets four paid personalities plus its host's own voice (free), and one new shelf: a free starter plus seven paid items. Personalities change delivery, never facts. Prices: personalities 100 to 160 Essence, items 30 to 160. Every item carries one real fact; every line stays under 90 characters. Full tables with sample lines: brand book, "Personalities and shop items".
+
+| House | Personalities (Essence) | New shelf: items (Essence) |
+|---|---|---|
+| Oracle Chamber | The Pythia 160, The Skeptic 140, The Court Astrologer 140, The Night Shift 120 | Scrying tools: Quartz sphere free, I Ching coins 50, Tea-leaf cup 60, Foucault's pendulum 80, Oracle bone 90, Astrolabe 100, Delphic tripod 110, Dr Dee's mirror 120 |
+| Alchemist's House | Excitable Vell free, Safety Officer 100, Mad Professor 120, Field Botanist 120, Victorian Lecturer 140 | Glassware: Round-bottom flask free, Erlenmeyer 40, Retort 50, Alembic 60, Liebig condenser 70, Bunsen burner 80, Kipp's apparatus 90, Philosopher's egg 150 |
+| Observatory | Keeper Altair free, Night Watchman 100, Ship's Navigator 120, Babylonian Scribe 140, Mission Control 140 | Instruments: Star wheel free, Red lamp 30, Binoculars 50, Sextant 80, Galileo's telescope 90, Armillary sphere 100, Orrery 120, Antikythera mechanism 160 |
+| Séance Parlour | Madame Rook free, Music-Hall Showman 100, Gothic Novelist 120, Houdini's Assistant 120, The Ghost Herself 140 | Parlour props: Plain candle free, Planchette 50, Spirit trumpet 60, Spirit slate 80, Talking board 90, Spirit cabinet 100, Houdini's handcuffs 110, Crystal skull 140 |
+| Scriptorium | Archivist Wren free, Exacting Editor 100, Weary Scribe 120, Decipherer 140, Codebreaker 140 | Writing tools 🪶: Goose quill free, Reed pen 40, Wax tablet 50, Papyrus scroll 60, Clay tablet 70, Vellum sheet 80, Seal ring 90, Rosetta Stone replica 150 |
+| Pixel Scape (Lab) | PX-10 Field Unit free, Tour Guide 100, Arcade Announcer 120, Nature Narrator 120, Hype Drone 140 | Survey kit 🗺️: PX-10 classic shell free, Scanline look 40, Dither look 50, Contour overlay 60, Halo look 70, Chroma look 80, Golden hour sky 90, Aurora sky 120 |
+
+Pixel Scape has no wallet yet. Use the shared Essence wallet when the game layer lands; fallback currency "Pixels" only if it stays separate.
+
+Sample facts (one per item, checkable): Enigma had about 1.59 × 10²⁰ settings; cuneiform began about 3200 BC; the Rosetta Stone was found in 1799; auroras glow about 100 to 300 km up; low sun crosses more air, which scatters blue away.

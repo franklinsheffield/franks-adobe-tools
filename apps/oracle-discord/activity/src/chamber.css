@@ -1926,3 +1926,8 @@ body.cu-aligned .mr-layer [data-relic="mr-orrery"],body.cu-aligned .mr-layer .mr
 @keyframes cu-shine{30%{filter:brightness(1.8) drop-shadow(0 0 14px #fff6c8)}}
 body.cu-8bit #stage{animation:cu-8bit 3s steps(6)}
 @keyframes cu-8bit{0%,100%{filter:none}10%,90%{filter:contrast(1.6) saturate(1.8) hue-rotate(40deg)}}
+/* My charts (Your Grimoire): personal data, storage rows, chart data lists */
+.mc-dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:6px 0 10px;font-size:14px}.mc-dl dt{opacity:.7}.mc-dl dd{margin:0;font-weight:600}
+.mc-store{display:flex;flex-direction:column;gap:6px;margin:8px 0}.mc-row{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-left:3px solid var(--foil,#e2b04a);background:rgba(0,0,0,.06);border-radius:4px}.mc-row small{opacity:.7;font-size:12px}
+.mc-sys{margin:0 0 14px;padding-bottom:10px;border-bottom:1px dashed rgba(0,0,0,.2)}.mc-sys h4{margin:0 0 4px}
+#mc-del[data-sure="1"],#mc-clear[data-sure="1"]{border-color:#e0574a;color:#e0574a}
