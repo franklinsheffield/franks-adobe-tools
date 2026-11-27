@@ -36,3 +36,13 @@ test("the store try-on draws the binding opening on a sample spread", async () =
   const { bookPreviewHtml } = await import("../activity/src/book.js");
   for (const b of BOOKS) { const h = bookPreviewHtml(b); assert.ok(h.includes(`data-page="${b.page}"`) && h.includes("bkp-cover") && h.includes("The Codex") && h.includes("Today"), b.id); }
 });
+
+test("journal entries keep full detail rows for the newest entries", async () => {
+  const { addLog, cleanRows, DETAIL_KEEP, LOG_KINDS, fullWhen } = await import("../activity/src/book.js");
+  const L = addLog([], "reading", "🔮", "A reading", null, 1000, [["System", "Astrology"], ["Empty", ""], ["Bold", "**hi**"]]);
+  assert.deepEqual(L[0].d, [["System", "Astrology"], ["Bold", "hi"]]);
+  assert.equal(cleanRows(null).length, 0);
+  let M = []; for (let i = 0; i < DETAIL_KEEP + 5; i++) M = addLog(M, "game", "⭐", "g" + i, null, i, [["Game", "x"]]);
+  assert.ok(M[0].d && !M[DETAIL_KEEP + 2].d);
+  assert.equal(LOG_KINDS.game, "Game"); assert.match(fullWhen(Date.now()), /·/);
+});

@@ -47,7 +47,7 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
-import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
+import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
@@ -203,7 +203,7 @@ function showGift() {
   $("gift-take").onclick = () => { const g = claimGift(state.prog); if (!g) return m.close();
     saveProgress(); showStats(); chime(2); mood.emote(g.step === 6 ? "cheer" : "joy", { quiet: true });
     const box = m.el.querySelector(".gl.now"); box?.classList.add("open"); $("gift-take").disabled = true; $("gift-take").textContent = `+💎 ${g.amount}`;
-    logEvent("gift", "🎁", `Daily gift, day ${g.step + 1}: 💎 ${g.amount}`);
+    logEvent("gift", "🎁", `Daily gift, day ${g.step + 1}: 💎 ${g.amount}`, null, [["Ladder day", `${g.step + 1} of 7`], ["Essence", `💎 ${g.amount}${g.doubled ? " (doubled by the weekend event)" : ""}`], ["Essence after", `💎 ${state.prog.essence}`], ["Next gift", g.step === 6 ? "The ladder starts again at day 1" : `Day ${g.step + 2}, tomorrow`]]);
     mood.bubble(g.step === 6 ? `Seven days straight! 💎 ${g.amount}. The ladder starts again tomorrow.` : `💎 ${g.amount}. Same time tomorrow?`, 3600, "🎁");
     setTimeout(m.close, reduced ? 600 : 1500); };
 }
@@ -390,7 +390,8 @@ async function reveal(sys, options, question = "") {
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   const lore = codexNotes(state.prog, sys.key, r);
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
-  logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`);
+  logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`, null,
+    [["System", sys.label], ["Your question", question || ""], ["Headline", headline(r.embeds[0], r.headline)], ["The Oracle said", words], ...r.embeds.flatMap((e) => [[e.title || "Reading", e.description || ""], ...(e.fields || []).map((f) => [f.name, f.value])])]);
   useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name, r.analysis);
   const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" },
@@ -649,12 +650,12 @@ function showStore(tab = "outfit", opener = null) {
   $("ui").querySelectorAll("[data-tryset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.tryset), off = trying && trying.set === st.id;
     trying = off ? null : { set: st.id, kind: "set", id: st.id }; if (!off) { mood.emote("wow"); flourish("outfit"); } showStore("sets", off ? null : `The ${st.name} set, all four pieces. ${st.blurb}.`); }));
   $("ui").querySelectorAll("[data-box]").forEach((b) => (b.onclick = () => { const bx = BOXES.find((x) => x.id === b.dataset.box), r = openBox(p, bx.id); if (!r) return;
-    saveProgress(); showStats(); checkout(); trying = null; logEvent("buy", bx.e, `Opened a ${bx.name}: ${r.item.name} (${r.tier})${r.dupe ? `, a duplicate, ${r.refund} Essence back` : ""}`);
+    saveProgress(); showStats(); checkout(); trying = null; logEvent("buy", bx.e, `Opened a ${bx.name}: ${r.item.name} (${r.tier})${r.dupe ? `, a duplicate, ${r.refund} Essence back` : ""}`, null, [["Box", bx.name], ["Price", `💎 ${bx.price}`], ["Inside", r.item.name], ["Rarity", r.tier], ["Duplicate", r.dupe ? `Yes, 💎 ${r.refund} back` : "No, it is new"], ["Essence after", `💎 ${p.essence}`]]);
     const t = $("table"); t.className = "table box-show"; t.innerHTML = `<div class="box-open tier-${r.tier}"><div class="box-rays"></div><div class="box-lid">${bx.e}</div><div class="box-prize">${thumb(r.item)}<b>${esc(r.item.name)}</b><small>${esc(r.tier)}${r.dupe ? ` · duplicate · +${r.refund} 💎` : " · new!"}</small></div></div>`;
     mood.emote(r.tier === "epic" ? "wow" : r.dupe ? "sulk" : "joy"); if (!reduced) bookSfx("cover");
     setTimeout(() => { chime(r.tier === "common" ? 1 : 2); if (!r.dupe) burst(); }, 1100);
     setTimeout(() => showStore("boxes", r.dupe ? `${r.item.name} again. You already own it, so ${r.refund} Essence goes back in your pocket.` : `${r.tier === "epic" ? "EPIC! " : ""}${r.item.name}! It's yours. Find it on its own shelf to put it on.`), reduced ? 0 : 3200); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); const pr = priceNow(it.id); if (buyNow(p, it.id)) { logEvent("buy", "💎", `Bought ${it.name} for ${pr} Essence`); trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); const pr = priceNow(it.id); if (buyNow(p, it.id)) { logEvent("buy", "💎", `Bought ${it.name} for ${pr} Essence`, null, [["Item", it.name], ["Price", `💎 ${pr}`], ["Essence after", `💎 ${p.essence}`]]); trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
@@ -677,12 +678,12 @@ const logKey = () => "oracle-log:" + state.userId;
 const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()) || "null"); if (Array.isArray(L)) return L; } catch { /* none */ }
   // first open: bring in the readings saved before the Journal kept a log
   return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
-function logEvent(k, e, t, ref = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref))); } catch { /* storage full or blocked */ } }
+function logEvent(k, e, t, ref = null, d = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref, Date.now(), d))); } catch { /* storage full or blocked */ } }
 const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
 function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("close"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
 function openBook(sec = "codex") {
   const old = $("book"); if (old) old.remove();
-  const b = bookOf(state.prog); BK.sec = sec; BK.entry = null;
+  const b = bookOf(state.prog); BK.sec = sec; BK.entry = null; BK.li = null;
   const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
     <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
@@ -695,7 +696,7 @@ function openBook(sec = "codex") {
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
     if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
   el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
-    turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; }, back, 6); }));
+    turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; BK.li = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
   bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
 }
@@ -720,7 +721,11 @@ function drawBook() {
   on("[data-bs]", (b) => turnTo(() => { BK.sys = b.dataset.bs; BK.entry = null; }));
   on("[data-be]", (b) => turnTo(() => { BK.entry = b.dataset.be; }));
   on("[data-bback]", () => turnTo(() => { BK.entry = null; }, true));
-  on("[data-day]", (b) => { const older = BK.day && b.dataset.day < BK.day; turnTo(() => { BK.day = b.dataset.day; }, !older); });
+  on("[data-day]", (b) => { const older = BK.day && b.dataset.day < BK.day; turnTo(() => { BK.day = b.dataset.day; BK.li = null; }, !older); });
+  document.querySelectorAll("#book [data-li]").forEach((li) => { const go = (e) => { if (e.target.closest("button")) return; turnTo(() => { BK.li = +li.dataset.li; }, false, 1); };
+    li.onclick = go; li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(e); } }; });
+  on("[data-liback]", () => turnTo(() => { BK.li = null; }, true, 1));
+  on("[data-li-go]", (b) => turnTo(() => { BK.li = +b.dataset.liGo; }, b.dataset.dir === "back", 1));
   on("[data-open]", (b) => openSaved(+b.dataset.open));
   on("[data-w]", (b) => { wear(b.dataset.w); drawBook(); });
   on("[data-jview]", (b) => { BK.view = b.dataset.jview; drawBook(); });
@@ -784,9 +789,20 @@ function journalRight(days, cal = calendarPage()) {
     return pageHead(`🔍 “${esc(BK.q)}”`, `${hits.length} match${hits.length === 1 ? "" : "es"}`) + (hits.length ? `<ol class="bk-log">${hits.map((x) => `<li><time>${esc(dayLabel(dayKey(x.at)))} · ${esc(timeOf(x.at))}</time><span class="e">${x.e}</span><span class="t">${esc(x.t)} <button type="button" class="c small" data-day="${dayKey(x.at)}">Go to day</button></span></li>`).join("")}</ol>` : `<p class="bk-empty">Nothing in the Journal matches that yet.</p>`); }
   if (BK.day === "cal" && cal) return `<div class="bk-calpage">${pageHead(`${cal.e} ${esc(cal.t)}`, "A page that only appears today")}<p>${esc(cal.body)}</p></div>`;
   const D = days.find((d) => d.day === BK.day); if (!D) return pageHead("🗓️ Today") + `<p class="bk-empty">Nothing written today yet.</p>`;
+  if (BK.li != null) { const i = D.entries.findIndex((x) => x.at === BK.li); if (i >= 0) return entryPage(D, i); BK.li = null; }
   const notes = lsGet(notesKey(), {});
-  return markBtn(`day|${D.day}`, `🗓️ ${dayLabel(D.day)}`) + pageHead(esc(dayLabel(D.day)), D.day) + `<ol class="bk-log">${D.entries.map((x) => `<li class="k-${x.k}"><time datetime="${new Date(x.at).toISOString()}">${esc(timeOf(x.at))}</time><span class="e">${x.e}</span><span class="t">${esc(x.t)}${x.k === "save" && x.ref ? ` <button type="button" class="c small" data-open="${x.ref}">Open</button>` : ""}</span></li>`).join("")}</ol>
+  return markBtn(`day|${D.day}`, `🗓️ ${dayLabel(D.day)}`) + pageHead(esc(dayLabel(D.day)), D.day) + `<ol class="bk-log">${D.entries.map((x) => `<li class="k-${x.k} bk-li" data-li="${x.at}" role="button" tabindex="0" title="Open the full log"><time datetime="${new Date(x.at).toISOString()}">${esc(timeOf(x.at))}</time><span class="e">${x.e}</span><span class="t">${esc(x.t)}${x.k === "save" && x.ref ? ` <button type="button" class="c small" data-open="${x.ref}">Open</button>` : ""}</span><i class="bk-li-go" aria-hidden="true">›</i></li>`).join("")}</ol>
     ${pressedHtml(D.day)}<label class="bk-notes"><span>✎ My note for this day</span><textarea id="bk-note" rows="3" maxlength="600" placeholder="What did you notice?">${esc(notes[D.day] || "")}</textarea></label>`;
+}
+/** One Journal entry in full: when, what kind, every detail kept for it, and steps to the entries either side. */
+function entryPage(D, i) {
+  const x = D.entries[i], prev = D.entries[i + 1], next = D.entries[i - 1], rows = x.d || [];
+  const step = (y, dir, label) => y ? `<button type="button" class="c small" data-li-go="${y.at}" data-dir="${dir}">${label}</button>` : `<span></span>`;
+  return `<div class="bk-entrypg"><button type="button" class="bk-back" data-liback>◂ ${esc(dayLabel(D.day))}</button>
+    ${pageHead(`${x.e} ${esc(LOG_KINDS[x.k] || "Entry")}`, fullWhen(x.at))}<p class="bk-entry-t">${esc(x.t)}</p>
+    ${rows.length ? `<dl class="bk-dl">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : `<p class="bk-note">This entry was written before the Journal kept full details, so the line above is all of it.</p>`}
+    ${x.k === "save" && x.ref ? `<button type="button" class="c" data-open="${x.ref}">📖 Open the saved reading</button>` : ""}
+    <div class="bk-entry-nav">${step(prev, "back", "◂ Earlier")}<small>${D.entries.length - i} of ${D.entries.length} that day</small>${step(next, "fwd", "Later ▸")}</div></div>`;
 }
 function patternPages(p, sys) {
   const log = loadLog(), top = topDrawn(p), hrs = hoursOf(log), hmax = Math.max(1, ...Object.values(hrs));
@@ -821,7 +837,7 @@ function revealSecret(id, extra = null) {
   if (id === "calendar" && extra) { p.gcal = Array.isArray(p.gcal) ? p.gcal : []; if (!p.gcal.includes(extra.id)) { p.gcal.push(extra.id); saveProgress(); } }
   if (gsFound(p, id)) return false;
   const pay = findSecret(p, id); saveProgress(); showStats(); chime(2);
-  logEvent("secret", "🗝️", `Found a secret in Your Grimoire: ${s.name}`);
+  logEvent("secret", "🗝️", `Found a secret in Your Grimoire: ${s.name}`, null, [["Secret", `${s.e} ${s.name}`], ["The clue", s.hint], ["Reward", pay ? `💎 ${pay}` : "A binding and a page"], ["Secrets found", `${(p.gs || []).length} of ${SECRETS.length}`]]);
   setTimeout(() => { bkToast(`🗝️ Secret found: ${s.name}${pay ? ` · +${pay} 💎` : ""}`); mood.bubble(`You found ${s.name}. I hid that one myself.`, 3600, "🗝️"); }, 60);
   return true;
 }
@@ -869,7 +885,7 @@ function sharePageNow() {
 function bookExtras(p) {
   const rb = $("bk-ribbons"); if (rb) { const M = lsGet(marksKey(), []); rb.innerHTML = M.map((m, i) => `<button type="button" style="--i:${i}" data-rib="${i}" title="${esc(m.label)}"><span>${esc(m.label)}</span></button>`).join("");
     rb.querySelectorAll("[data-rib]").forEach((x) => (x.onclick = () => { const m = M[+x.dataset.rib], [t, a, c] = m.id.split("|");
-      turnTo(() => { if (t === "day") { BK.sec = "journal"; BK.day = a; BK.q = ""; } else { BK.sec = "codex"; BK.sys = a; BK.entry = c; } }); })); }
+      turnTo(() => { if (t === "day") { BK.sec = "journal"; BK.day = a; BK.q = ""; BK.li = null; } else { BK.sec = "codex"; BK.sys = a; BK.entry = c; } }); })); }
   document.querySelectorAll("#book [data-ink]").forEach((el) => { if (el.classList.contains("lit")) return; const cells = [];
     el.onpointermove = (e) => { const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; el.style.setProperty("--x", x + "px"); el.style.setProperty("--y", y + "px"); el.classList.add("warm");
       cells.push(`${Math.floor((x / r.width) * 6)}-${Math.floor((y / r.height) * 4)}`); if (inkLit(cells) >= 0.5) { el.classList.add("lit"); el.onpointermove = null; revealSecret("ink"); } };
@@ -972,7 +988,7 @@ function saveJournal({ sys, r, words }) {
   const entry = { at: Date.now(), key: sys.key, label: sys.label, emoji: sys.emoji, title: r.embeds[0].title || sys.label, words,
     embeds: r.embeds, files: (r.files || []).map(svgOf).filter(Boolean) };
   try { localStorage.setItem(jKey(), JSON.stringify([entry, ...loadJournal()].slice(0, 60))); } catch {}
-  logEvent("save", "📖", `Saved a ${sys.label} reading: ${String(entry.title).replace(/^\P{L}+/u, "")}`, entry.at);
+  logEvent("save", "📖", `Saved a ${sys.label} reading: ${String(entry.title).replace(/^\P{L}+/u, "")}`, entry.at, [["System", sys.label], ["Title", String(entry.title).replace(/^\P{L}+/u, "")], ["The Oracle said", words]]);
 }
 /** Open a saved reading (from the Grimoire's Journal) in the reading pane. */
 function openSaved(at) {
@@ -1039,14 +1055,14 @@ function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="but
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
-  { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`); }
+  { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
   mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
-  if (!n) return; { const t = TROPHIES.find((x) => x.id === n.id); if (t) logEvent("trophy", "🏆", `${n.from ? "Upgraded" : "Won"} the ${t.name}: ${TIERS[n.tier].name}`); }
+  if (!n) return; { const t = TROPHIES.find((x) => x.id === n.id); if (t) logEvent("trophy", "🏆", `${n.from ? "Upgraded" : "Won"} the ${t.name}: ${TIERS[n.tier].name}`, null, [["Trophy", t.name], ["Game", t.game], ["Tier", TIERS[n.tier].name], ["Before", n.from ? TIERS[n.from].name : "Not yet won"], ["Reward", n.pay ? `💎 ${n.pay}` : ""]]); }
   if (n.pay) award(0, n.pay); saveProgress(); showStats();
   tq.push(n); if (!tShowing) setTimeout(nextCollect, reduced ? 0 : 1200);
 }
@@ -1141,7 +1157,7 @@ setInterval(() => { const tm = document.querySelector(".rp-time"); if (tm && pla
 /** Check the record tasks; announce any record unlocked just now. */
 function musicNews(silent = false) {
   const fresh = checkUnlocks(state.prog); if (!fresh.length) return; saveProgress(); player.refresh(); if (silent) return;
-  for (const x of fresh) logEvent("record", "🎵", `New record: ${x.title}`);
+  for (const x of fresh) logEvent("record", "🎵", `New record: ${x.title}`, null, [["Record", `${x.icon || ""} ${x.title}`], ["How it unlocked", x.task || ""], ["Where", "The record player in the Trophy Case"]]);
   chime(2); const t = fresh[0]; mood.bubble(`New record: ${t.title}! ${fresh.length > 1 ? `And ${fresh.length - 1} more. ` : ""}Find it in the record player.`, 4200, "🎵");
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tcase").hidden && $("tcollect").hidden) $("tcase-x").click(); });
