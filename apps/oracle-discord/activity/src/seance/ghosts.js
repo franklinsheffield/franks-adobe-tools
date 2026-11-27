@@ -3,14 +3,14 @@
 // Facts kept to well-documented history; "they say" marks a famous story that may not be literally true.
 
 export const FIELDS = {
-  magician: { name: "Magician", emoji: "🎩" },
-  scientist: { name: "Scientist", emoji: "🔬" },
+  magic: { name: "Magic", emoji: "🎩" },
+  science: { name: "Science", emoji: "🔬" },
   both: { name: "A bit of both", emoji: "⚗️" },
 };
 
 export const GHOSTS = [
   {
-    id: "houdini", name: "Harry Houdini", life: "1874–1926", field: "magician", emoji: "⛓️",
+    id: "houdini", name: "Harry Houdini", life: "1874–1926", field: "magic", emoji: "⛓️",
     aliases: ["houdini", "harry houdini", "erik weisz", "ehrich weiss", "erich weiss"],
     clues: [
       "I was born in Budapest, though I told everyone it was Appleton, Wisconsin.",
@@ -23,7 +23,7 @@ export const GHOSTS = [
     link: "A magician is the best person to catch a fake: they know exactly where to look.",
   },
   {
-    id: "roberthoudin", name: "Jean-Eugène Robert-Houdin", life: "1805–1871", field: "magician", emoji: "⏱️",
+    id: "roberthoudin", name: "Jean-Eugène Robert-Houdin", life: "1805–1871", field: "magic", emoji: "⏱️",
     aliases: ["robert houdin", "houdin", "jean eugene robert houdin", "robert-houdin", "jean robert houdin"],
     clues: [
       "I was a French clockmaker before I was a conjurer.",
@@ -36,7 +36,7 @@ export const GHOSTS = [
     link: "His best 'magic' was physics the audience hadn't heard of yet.",
   },
   {
-    id: "maskelyne", name: "John Nevil Maskelyne", life: "1839–1917", field: "magician", emoji: "🎭",
+    id: "maskelyne", name: "John Nevil Maskelyne", life: "1839–1917", field: "magic", emoji: "🎭",
     aliases: ["maskelyne", "john nevil maskelyne", "john maskelyne", "nevil maskelyne"],
     clues: [
       "Like another great magician, I began as a watchmaker.",
@@ -49,7 +49,7 @@ export const GHOSTS = [
     link: "Copying a miracle is the fastest way to show it's a method.",
   },
   {
-    id: "adelaide", name: "Adelaide Herrmann", life: "1853–1932", field: "magician", emoji: "👑",
+    id: "adelaide", name: "Adelaide Herrmann", life: "1853–1932", field: "magic", emoji: "👑",
     aliases: ["adelaide herrmann", "adelaide", "herrmann", "adelaide herman"],
     clues: [
       "I was born in London and began as a dancer and acrobat.",
@@ -62,7 +62,7 @@ export const GHOSTS = [
     link: "The assistant knew every secret. She just needed the stage.",
   },
   {
-    id: "chunglingsoo", name: "Chung Ling Soo", life: "1861–1918", field: "magician", emoji: "🔫",
+    id: "chunglingsoo", name: "Chung Ling Soo", life: "1861–1918", field: "magic", emoji: "🔫",
     aliases: ["chung ling soo", "william robinson", "william ellsworth robinson", "ling soo"],
     clues: [
       "I was born in New York, but you'd never know it from my act.",
@@ -114,7 +114,7 @@ export const GHOSTS = [
     link: "Even the father of physics spent his nights looking for the philosopher's stone.",
   },
   {
-    id: "faraday", name: "Michael Faraday", life: "1791–1867", field: "scientist", emoji: "🧲",
+    id: "faraday", name: "Michael Faraday", life: "1791–1867", field: "science", emoji: "🧲",
     aliases: ["faraday", "michael faraday"],
     clues: [
       "I left school young and became a bookbinder's apprentice at 14.",
@@ -127,7 +127,7 @@ export const GHOSTS = [
     link: "He didn't call the table-turners liars. He showed them their own hands.",
   },
   {
-    id: "curie", name: "Marie Curie", life: "1867–1934", field: "scientist", emoji: "☢️",
+    id: "curie", name: "Marie Curie", life: "1867–1934", field: "science", emoji: "☢️",
     aliases: ["curie", "marie curie", "maria sklodowska", "marie sklodowska curie", "madame curie"],
     clues: [
       "I was born in Warsaw, and studied at a secret 'Flying University'.",
@@ -140,20 +140,20 @@ export const GHOSTS = [
     link: "A real scientist stays curious about strange claims, and then tests them.",
   },
   {
-    id: "tesla", name: "Nikola Tesla", life: "1856–1943", field: "scientist", emoji: "⚡",
+    id: "tesla", name: "Nikola Tesla", life: "1856–1943", field: "both", emoji: "⚡",
     aliases: ["tesla", "nikola tesla"],
     clues: [
       "I was born in 1856 in what is now Croatia.",
-      "I worked for Thomas Edison for a short time, and we didn't get along.",
+      "In my lectures I let high-frequency current pass through my body to light lamps in my hands.",
       "In my Colorado Springs lab I made artificial lightning many metres long.",
       "The alternating current in your wall socket owes a lot to me.",
       "A unit of magnetic field strength is named after me.",
     ],
-    bio: "Nikola Tesla developed the AC motor and power systems that run the modern world. He loved a dramatic demonstration, with giant sparks and glowing lamps, which made his science look like sorcery.",
+    bio: "Nikola Tesla developed the AC motor and power systems that run the modern world. He loved a dramatic demonstration, with giant sparks and glowing lamps, which made his science look like sorcery. That's why he counts as both: a real scientist with a showman's act.",
     link: "Any sufficiently dramatic demo looks like magic.",
   },
   {
-    id: "lovelace", name: "Ada Lovelace", life: "1815–1852", field: "scientist", emoji: "🧮",
+    id: "lovelace", name: "Ada Lovelace", life: "1815–1852", field: "science", emoji: "🧮",
     aliases: ["lovelace", "ada lovelace", "ada", "ada byron", "augusta ada king"],
     clues: [
       "My father was a famous poet I never really knew.",
@@ -166,7 +166,7 @@ export const GHOSTS = [
     link: "She imagined computers a century early. That's the kind of prophecy that holds up.",
   },
   {
-    id: "galileo", name: "Galileo Galilei", life: "1564–1642", field: "scientist", emoji: "🔭",
+    id: "galileo", name: "Galileo Galilei", life: "1564–1642", field: "science", emoji: "🔭",
     aliases: ["galileo", "galileo galilei", "galilei"],
     clues: [
       "I was born in Pisa.",
@@ -180,4 +180,3 @@ export const GHOSTS = [
   },
 ];
 
-export const TITLES = [{ at: 0, name: "Curious" }, { at: 3, name: "Medium-rare" }, { at: 6, name: "Ghost Whisperer" }, { at: 9, name: "Spirit Scholar" }, { at: GHOSTS.length, name: "Master of the Séance" }];
