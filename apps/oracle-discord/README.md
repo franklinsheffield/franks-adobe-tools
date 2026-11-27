@@ -61,6 +61,7 @@ The Chamber hosts rooms, small games listed under "Investigate & learn" (registr
 `activity/src/hosts/`: the Chamber is an engine with a host per Discord channel. `hostFor()` picks the House from the Activity's channel (or `?house=<id>` for previews), and `/play` opens it from any channel. Everything stays shared: one Essence wallet, Codex, trophies, store, and one music pool and playlist. Each House draws its own music player.
 - **House 1, The Oracle** (`hosts/oracle.js`): every reading and room, her personalities, and the turntable.
 - **House 2, The Alchemist's House** (`hosts/alchemist.js`): Magister Vell (copper mask, brass goggle, leather hood) hosts the Alchemist's Lab, Element Duel and Herbalist's Grimoire. She has her own greetings, idle facts, jokes, game banter and voice, the 🥽 goggle-lens shelf (10 lenses named after real flame tests, in the "House hosts" department) and the Brass Phonograph player.
+- **Brand:** `brand/houses/` has the brand brief for every House (Houses 3 to 5, the Observatory, the Séance Parlour and the Scriptorium, are ready to build), plus `house-tokens.json` and the crests.
 - **New House:** add `hosts/<id>.js` with `channelIds`, `rooms`, `lines`, `banter` for each of its rooms, a shelf and a `player.deck`, then list it in `HOSTS`. `tests/houses.test.js` checks that it is complete.
 
 ## Human Design
