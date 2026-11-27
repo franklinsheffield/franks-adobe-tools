@@ -5,6 +5,7 @@ export const THEMES = {
   "tl-starchart": { bg: ["#16244f", "#03061a"], ribbon: "#c9d4ff", ink: "#0b1640", pin: "#FADE8C", band: ["#2a3f8a", "#24367a", "#1e2e6a", "#18265a"], sand: "#c9d4ff", font: "Cinzel, Georgia, serif", deco: "stars" },
   "tl-gilded": { bg: ["#4a0e24", "#14040a"], ribbon: "#FADE8C", ink: "#4a0e24", pin: "#FFF3C4", band: ["#b8862b", "#a37320", "#8e6118", "#7a5012"], sand: "#FFF3C4", font: "Cinzel, Georgia, serif", deco: "filigree" },
   "tl-blueprint": { bg: ["#0f3e6e", "#062038"], ribbon: "#dff1ff", ink: "#0f3e6e", pin: "#66E0C8", band: ["#2b6aa6", "#255d93", "#1f5080", "#19436d"], sand: "#66E0C8", font: "ui-monospace, Menlo, monospace", deco: "grid" },
+  "tl-masquerade": { bg: ["#1d3a3a", "#050d10"], ribbon: "#f3e3c3", ink: "#0b1d1f", pin: "#ff4fb3", band: ["#1f6f6a", "#2a5a7a", "#5a3a7a", "#7a2a5a"], sand: "#ff4fb3", font: "Cinzel, Georgia, serif", deco: "filigree" },
   "tl-neon": { bg: ["#2a0a3e", "#05010a"], ribbon: "#ff4fb3", ink: "#05010a", pin: "#66E0C8", band: ["#ff4fb3", "#b06cff", "#6a9cff", "#66E0C8"], sand: "#ff4fb3", font: "ui-monospace, Menlo, monospace", deco: "neon" },
 };
 export const DEFAULT_THEME = "tl-parchment";
@@ -15,6 +16,7 @@ export const SHOP = [
   { id: "tl-starchart", name: "Astronomer's star chart", note: "History of Magic: night-blue chart with constellations", price: 90 },
   { id: "tl-blueprint", name: "Inventor's blueprint", note: "History of Magic: drafting grid and typewriter dates", price: 100 },
   { id: "tl-gilded", name: "Illuminated manuscript", note: "History of Magic: crimson vellum, gold filigree", price: 120 },
+  { id: "tl-masquerade", name: "Fibber's masquerade", note: "History of Magic: teal and rose masquerade silk, made for Fact or Fib nights", price: 110 },
   { id: "tl-neon", name: "Time-machine neon", note: "History of Magic: glowing arcade timeline", price: 150 },
 ];
 
