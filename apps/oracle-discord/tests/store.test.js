@@ -41,3 +41,18 @@ test("every reading system has a vibe, every product kind has dialogue", async (
   const p = { owned: [] }; ensureFree(p);
   assert.ok(p.owned.includes("chamber"));
 });
+
+test("personalities: every one has full line pools and a store item", async () => {
+  const { PERSONAS, personaQuip, deliver, line } = await import("../activity/src/personas.js");
+  const { STORE } = await import("../activity/src/store.js");
+  for (const [id, P] of Object.entries(PERSONAS)) {
+    assert.ok(STORE.find((s) => s.id === id && s.kind === "persona"), id);
+    if (!P) continue;
+    for (const k of ["greet", "ask", "cast", "reveal", "pre", "post"]) assert.ok(P[k].length >= 2, id + k);
+    assert.ok(P.jokes.length >= 12, id);
+    const heard = []; const seen = new Set(); for (let i = 0; i < P.jokes.length; i++) seen.add(personaQuip(id, "Frank", heard));
+    assert.equal(seen.size, P.jokes.length, id + " no repeats");
+    assert.ok(line(P, "reveal", { result: "Hexagram 1" }).includes("Hexagram 1"), id);
+    assert.ok(deliver(id, "Yes.", { name: "Frank" }).includes("Yes."));
+  }
+});

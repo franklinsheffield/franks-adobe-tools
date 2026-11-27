@@ -13,11 +13,13 @@ import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, mer
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
 import { STORE, KINDS, SHOP_TALK, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
-import { setVoiceStyle, sampleVoice, checkout } from "./voice-sfx.js";
+import { setVoiceStyle, sampleVoice, checkout, rimshot } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
+import { persona, line, personaQuip, deliver } from "./personas.js";
+import { headline } from "../../src/oracle/voice.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -93,6 +95,8 @@ function say(text, done) {
   };
   step();
 }
+const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
+const joke = (key) => personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 const ui = (html) => { $("ui").innerHTML = html; };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
@@ -106,7 +110,7 @@ function greet() {
   clearReading(); table.idle(); cap("");
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
-  say(greeting(state.name) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast").map(btn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
@@ -134,7 +138,7 @@ function openRoom(id) {
 function choose(sys) {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   clearReading(); table.rest(sys.key); cap(sys.emoji + " " + sys.label);
-  say(askLine(sys, state.name));
+  say(line(P(), "ask", { name: state.name, system: sys.label }) || askLine(sys, state.name));
   if (sys.kind === "cast") {
     const spreadSel = sys.spreads ? `<label for="sp">Spread<select id="sp">${sys.spreads.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("")}</select></label>` : "";
     ui(`<form class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label>${spreadSel}</form>
@@ -169,7 +173,7 @@ async function reveal(sys, options, question = "") {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question;
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
-  document.body.classList.add("trance"); cap(sys.emoji + " " + (CAST[sys.key] || "The mist is moving…"));
+  document.body.classList.add("trance"); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
   clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
   trance(3);
   let r, err;
@@ -188,12 +192,13 @@ async function reveal(sys, options, question = "") {
   poof(); await wait(250);
   const files = (r.files || []).map(svgOf).filter(Boolean);
   layArt(files);
-  const words = speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
+  const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
   useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
   const a = answer(question, text, state.name);
-  const pages = [words, a.line, quip(sys.key, state.name, heard())];
+  const pages = [words, deliver(pid(), a.line, { name: state.name }), joke(sys.key)];
+  if (pid() === "standup") setTimeout(rimshot, 400);
   talkThrough(pages, () => { afterReading(); reward(gain, sys); });
 }
 
@@ -226,7 +231,7 @@ function goDeeper() {
   const pages = L.deeper.slice(L.di, L.di + 2); L.di += pages.length;
   if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
   if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
-  else pages.push(quip(L.sys.key, state.name, heard()));
+  else pages.push(joke(L.sys.key));
   talkThrough(pages, afterReading);
 }
 
@@ -241,7 +246,7 @@ function askAgain() {
     if (L.sys.kind === "cast") { reveal(L.sys, optionsFor(L.sys, { [L.sys.ask || "question"]: q }), q); return; }
     clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); $("say").textContent = "…"; ui("");
     setTimeout(() => { document.body.classList.remove("trance");
-      talkThrough([answer(q, L.text, state.name).line, quip(L.sys.key, state.name, heard())], afterReading); }, reduced ? 0 : 2000);
+      talkThrough([deliver(pid(), answer(q, L.text, state.name).line, { name: state.name }), joke(L.sys.key)], afterReading); }, reduced ? 0 : 2000);
   };
 }
 
@@ -331,19 +336,19 @@ function applyLook(over = {}) {
 // ---- the Essence store ----
 let trying = null; // a store item being tried on: { kind, id }
 const pickLine = (pool, vars) => { const opts = pool.filter((l) => l !== pickLine.last); const l = opts[Math.floor(Math.random() * opts.length)] || pool[0]; pickLine.last = l; return l.replace(/\{item\}/g, vars.item || "").replace(/\{name\}/g, state.name); };
-function showStore(tab = "outfit", line = null) {
+function showStore(tab = "outfit", opener = null) {
   clearReading(); cap(trying ? "👁 Trying on: " + (lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog;
-  say(line || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
+  say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
   const tabs = KINDS.map(([k, label]) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${label}</button>`).join("");
   const goods = [...(tab === "cloth" || tab === "orb" ? UNLOCKS.filter((u) => u.kind === tab).map((u) => ({ ...u, earned: true })) : []), ...STORE.filter((s) => s.kind === tab)];
   const rows = goods.map((it) => { const own = owns(it.id), on = p[tab] === it.id;
-    const act = on ? `<button class="c small" type="button" disabled>✓ ${tab === "voice" || tab === "vibe" ? "Active" : "Wearing"}</button>`
+    const act = on ? `<button class="c small" type="button" disabled>✓ ${tab === "voice" || tab === "vibe" || tab === "persona" ? "Active" : "Wearing"}</button>`
       : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
       : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
     const tri = trying && trying.id === it.id;
-    const tryBtn = tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
+    const tryBtn = tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : tab === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
     return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}${it.note ? `<span class="note"> · ${esc(it.note)}</span>` : ""}</span>${tryBtn}${act}</div>`; }).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
@@ -359,6 +364,8 @@ function showStore(tab = "outfit", line = null) {
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
   $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
   $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); showStore(tab, talk(tab, "tryon", lookItem(b.dataset.w))); }));
+  $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
+    say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
   $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); showStore(tab, talk(tab, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);

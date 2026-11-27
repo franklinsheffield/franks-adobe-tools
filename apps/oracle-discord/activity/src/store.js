@@ -79,6 +79,16 @@ export const STORE = [
   { id: "wizard", kind: "voice", name: "Tipsy wizard", note: "Wobbly, wise and slightly off-key", price: 100, v: { type: "square", base: 250, step: 24, vowel: 40, dur: 0.06, lp: 2000, wobble: 140, vib: 4, vibDepth: 30 } },
   { id: "alien", kind: "voice", name: "Alien transmission", note: "Greetings, Earth seeker. Bleep.", price: 120, v: { type: "sine", base: 880, step: 90, vowel: 0, dur: 0.05, lp: 7000, sweep: 2, vib: 40, vibDepth: 180 } },
   // Vibes: colour theme, fonts and backgrounds as one set (chamber.css [data-vibe])
+  { id: "mystic", kind: "persona", name: "Mystic", note: "Classic: grand, warm, slightly smug", price: 0 },
+  { id: "deadpan", kind: "persona", name: "Deadpan", note: "Bone-dry delivery. Unimpressed by destiny", price: 100 },
+  { id: "drama", kind: "persona", name: "Drama Oracle", note: "Gasps, sobs and standing ovations for every omen", price: 120 },
+  { id: "standup", kind: "persona", name: "Stand-up", note: "Setups, punchlines and a rimshot after the reveal", price: 120 },
+  { id: "grumpy", kind: "persona", name: "Grumpy Old Seer", note: "Back in my day we cast uphill, both ways", price: 100 },
+  { id: "sports", kind: "persona", name: "Play-by-Play", note: "Sports-commentator energy for every cast", price: 120 },
+  { id: "conspiracy", kind: "persona", name: "Conspiracy Oracle", note: "Coincidence? Never. Wear a hat", price: 140 },
+  { id: "bard", kind: "persona", name: "Bard", note: "Prithee, thine answer in grand old verse", price: 140 },
+  { id: "pirate", kind: "persona", name: "Pirate Seer", note: "Arr! X marks the destiny", price: 120 },
+  { id: "influencer", kind: "persona", name: "Influencer", note: "Hey besties! Destiny, but make it content", price: 140 },
   { id: "chamber", kind: "vibe", name: "Midnight Chamber", note: "Violet night, gold trim, Cinzel letters", price: 0, stars: ["#FADE8C", "#66E0C8"] },
   { id: "v-iching", kind: "vibe", name: "Book of Changes", note: "I Ching: ink-wash mountains, jade and a red seal", price: 150, stars: ["#f4efe2", "#9fd4b0"] },
   { id: "v-tarot", kind: "vibe", name: "Gilded Arcana", note: "Tarot: midnight velvet, gilded borders, a fan of cards", price: 150, stars: ["#FADE8C", "#e7a0ff"] },
@@ -93,7 +103,7 @@ export const STORE = [
   { id: "v-egyptian", kind: "vibe", name: "Valley of the Kings", note: "Egyptian: desert dusk, lapis and gold", price: 150, stars: ["#FADE8C", "#6a9cff"] },
   { id: "v-celtic", kind: "vibe", name: "Druid's Grove", note: "Celtic: mossy greens, mist and uncial script", price: 150, stars: ["#c9ffb0", "#7ad65a"] },
 ];
-export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["vibe", "✨ Vibes"]];
+export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["vibe", "✨ Vibes"]];
 
 /** The Oracle's lines in the store: one pool per product type, for opening the shelf, trying on, and buying. {item} = the item's name. */
 export const SHOP_TALK = {
@@ -127,6 +137,11 @@ export const SHOP_TALK = {
     tryon: ["How's this? Testing, testing, one, two, prophecy.", "Hear that? That's me, but fancier.", "I sound distinguished. Or haunted. Either way, it works."],
     buy: ["New voice unlocked! I'll use it for all my big announcements.", "Sold! I'll practise my scales in the crystal ball.", "Ahem. Ahem. Yes. This is the voice of destiny now."],
   },
+  persona: {
+    open: ["Personalities! Same wisdom, different delivery. I contain multitudes. Most of them are hilarious.", "Pick how I talk, {name}. The prophecy stays true; the punchlines change.", "Comedy and prophecy have the same secret: timing. Choose mine."],
+    tryon: ["Here's a taste of the {item}.", "One sample of the {item}, coming up.", "The {item}? Let me get into character."],
+    buy: ["The {item} is mine now. You asked for this.", "Sold! I'll be the {item} from now on. No take-backs. Well, you can switch back. But no take-backs emotionally.", "The {item} is unlocked. My agent will be thrilled."],
+  },
   vibe: {
     open: ["Vibes change the whole Chamber: colours, letters and the very sky, one for every reading tradition. Feng shui for the cosmos.", "Redecorating? I adore redecorating. Last time was the Bronze Age.", "The right vibe makes every reading land harder. That's science. Magic science."],
     tryon: ["Oh, the {item}! The whole room just took a deep breath.", "I love what the {item} does to the light. And the letters. And me.", "The {item}. It's giving prophecy. It's giving atmosphere."],
@@ -134,7 +149,7 @@ export const SHOP_TALK = {
   },
 };
 export const FREE = STORE.filter((s) => s.price === 0).map((s) => s.id);
-export function ensureFree(p) { p.owned = p.owned || []; for (const id of FREE) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+export function ensureFree(p) { p.owned = p.owned || []; for (const id of FREE) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;
