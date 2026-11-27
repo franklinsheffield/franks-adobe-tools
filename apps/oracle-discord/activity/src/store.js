@@ -52,6 +52,9 @@ export const STORE = [
   { id: "solomon", kind: "cloth", name: "Seal of Solomon", note: "Interlaced triangles ringed with runes", price: 120, c: ["#3a3a3e", "#1e1e22", "#08080a"], design: "solomon", ink: "#E2B04A" },
   // Crystal balls
   { id: "void", kind: "orb", name: "Void glass", note: "A black mirror that drinks the light", price: 80, f: "grayscale(1) brightness(.55) contrast(1.6)" },
+  { id: "storm", kind: "orb", name: "Storm glass", note: "Clear glass with a thunderstorm trapped inside", price: 140, f: "none" },
+  { id: "galaxy", kind: "orb", name: "Pocket galaxy", note: "A spiral galaxy turning in the glass", price: 160, f: "none" },
+  { id: "ghost", kind: "orb", name: "Ghost glass", note: "Almost invisible. Something in there blinks", price: 120, f: "none" },
   { id: "opal", kind: "orb", name: "Opal", note: "Milky, shifting, softly glowing", price: 100, f: "saturate(.4) brightness(1.35)" },
   // Candles: wax colour, flame colour and a detail (drips, carved sigil, brass dish, skull)
   { id: "goldflame", kind: "flame", name: "Beeswax tapers", note: "Warm gold flames on cream wax", price: 0, wax: ["#efe3cf", "#d8c8ad"], flame: ["#fff", "#FADE8C", "#ff8a3d"], halo: "#FADE8C" },

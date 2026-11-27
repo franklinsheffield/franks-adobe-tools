@@ -17,6 +17,7 @@ import { setVoiceStyle, sampleVoice, checkout } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
+import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -43,6 +44,14 @@ const table = makeTable($("table"), { reduced });
   svg.querySelector('[clip-path="url(#t-faceclip)"]').append(g("av-face")); body.append(g("av-front"));
   svg.querySelector(".o-iris").append(g("av-pupil"));
   svg.append(g("fx-front"));
+  // Crystal ball: tint only the glass (not the stand), add an effects layer inside and a glass rim on top.
+  const ball = svg.querySelector(".o-ball"), clip = ball.querySelector('[clip-path="url(#t-orbclip)"]');
+  const bodyC = ball.querySelector('circle[fill="url(#t-orb)"]'); bodyC.classList.add("o-glass", "o-glassbody"); clip.classList.add("o-glass");
+  clip.after(g("orb-fx", { "clip-path": "url(#t-orbclip)" }));
+  defs.innerHTML += `<radialGradient id="t-fresnel" cx="50%" cy="50%" r="50%"><stop offset=".62" stop-color="#fff" stop-opacity="0"/><stop offset=".92" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></radialGradient>
+    <radialGradient id="t-caustic" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`;
+  const rim = g("orb-rim"); rim.innerHTML = `<circle cx="200" cy="304" r="47" fill="url(#t-fresnel)"/><path d="M166 320 A36 36 0 0 0 214 340" fill="none" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/><ellipse class="o-caustic" cx="200" cy="351" rx="16" ry="3" fill="url(#t-caustic)"/>`;
+  $("orb-fx").after(rim);
   // Remember which parts of the hands are skin, edge and nail, so avatars can recolour them.
   svg.querySelectorAll('.o-hands [fill="#3a2a5c"]').forEach((e) => (e.dataset.skin = "fill"));
   svg.querySelectorAll('.o-hands [stroke="#3a2a5c"]').forEach((e) => (e.dataset.skin = "stroke"));
@@ -290,9 +299,14 @@ function applyLook(over = {}) {
   // table: cloth colours and design, candles
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   const design = c.design || EARNED_DESIGN[c.id] || "", ink = c.ink || EARNED_INK[c.id] || "#E2B04A";
-  setTableDecor({ design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "" });
+  setTableDecor({ design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "",
+    fx: (CLOTH_FX[design] || CLOTH_FX[""])(ink), trim: clothTrim(ink) });
   table.refresh();
   root.style.setProperty("--orb-filter", o ? o.f : "none");
+  const O = orbFx(o ? o.id : "amethyst");
+  svg.querySelector(".o-glassbody").setAttribute("fill-opacity", O.glass);
+  svg.querySelector('[clip-path="url(#t-orbclip)"].o-glass').style.display = O.swirl ? "" : "none";
+  $("orb-fx").innerHTML = O.fx;
   // robe: colours, trim and its element
   const stops = (id, cols) => svg.querySelectorAll(`#${id} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
   stops("t-hood", out.hood);
@@ -310,6 +324,7 @@ function applyLook(over = {}) {
   $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = (av.front || "") + (A.eye || "");
   // vibe: theme, fonts, background, star colours
   root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
+  if (applyLook.vibe !== vibe.id) { applyLook.vibe = vibe.id; $("vfx-o").innerHTML = vibeFx(vibe.id, "o"); $("vfx-t").innerHTML = vibeFx(vibe.id, "t"); }
   const v = item(p.voice); setVoiceStyle(v ? v.v : null);
 }
 

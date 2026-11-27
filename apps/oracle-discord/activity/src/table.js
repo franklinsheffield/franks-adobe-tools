@@ -35,17 +35,20 @@ function tableSvg(inner) {
   <radialGradient id="tb-bone" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#fff8e6"/><stop offset=".7" stop-color="#e6d2a6"/><stop offset="1" stop-color="#b89a62"/></radialGradient>
   <radialGradient id="tb-seed" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#d79b5a"/><stop offset="1" stop-color="#5a2e10"/></radialGradient>
   <radialGradient id="tb-sun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FFF1B8"/><stop offset=".6" stop-color="${G.gold}"/><stop offset="1" stop-color="#c46a16"/></radialGradient>
+  <linearGradient id="tb-sheen" x1="0" y1="0" x2="1" y2="0"><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".12"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <clipPath id="tb-clothclip"><path d="M22 300 L64 104 Q200 88 336 104 L378 300Z"/></clipPath>
   <filter id="tb-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
   <filter id="tb-shadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5"/></filter>
 </defs>
 <path d="M22 300 L64 104 Q200 88 336 104 L378 300Z" fill="url(#tb-cloth)"/>
 <path d="M64 104 Q200 88 336 104" fill="none" stroke="${G.gold}" stroke-width="2"/>
 <path d="M22 300 L64 104 M378 300 L336 104" stroke="${G.gold}" stroke-width="1.2" opacity=".6"/>
-${DECOR.design ? `<g class="t-design" fill="none" stroke="${DECOR.ink}" stroke-width="1.4" opacity=".72" transform="translate(200 204) scale(.84 .42) translate(-200 -200)">${DECOR.design}</g>` : `<g class="t-sigil" fill="none" stroke="${G.gold}" opacity=".38">
+${DECOR.trim || ""}${DECOR.design ? `<g class="t-design" fill="none" stroke="${DECOR.ink}" stroke-width="1.4" opacity=".72" transform="translate(200 204) scale(.84 .42) translate(-200 -200)">${DECOR.design}</g>` : `<g class="t-sigil" fill="none" stroke="${G.gold}" opacity=".38">
   <ellipse cx="200" cy="200" rx="150" ry="74" stroke-width="1.4"/><ellipse cx="200" cy="200" rx="132" ry="64" stroke-width=".8" stroke-dasharray="3 6"/>
   <ellipse cx="200" cy="200" rx="64" ry="31" stroke-width=".8"/>
   <path d="M50 200 H350 M200 126 V274" stroke-width=".6" opacity=".6"/>
 </g>`}
+${DECOR.fx ? `<g class="t-clothfx" transform="translate(200 204) scale(.84 .42) translate(-200 -200)">${DECOR.fx}</g>` : ""}
 ${candle(84, 96, 30)}
 ${candle(316, 102, 24, true)}
 <g id="tb-cast">${inner}</g>
