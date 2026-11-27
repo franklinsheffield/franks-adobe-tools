@@ -1,6 +1,6 @@
 # Science is Magic oracle bot
 
-One Discord app for the server's readings: `/oracle` (the fortune teller), `/humandesign`, `/astrology`, `/iching`, `/numerology`, `/chinesezodiac`, `/mayan`, `/egyptian`, `/celtic`, plus `/profile`.
+One Discord app for the server's readings: `/oracle` (the fortune teller), `/humandesign`, `/astrology`, `/iching`, `/numerology`, `/chinesezodiac`, `/mayan`, `/egyptian`, `/celtic`, `/runes`, `/oraclebones`, `/ifa`, plus `/profile`.
 
 - **Worker** (`worker/index.js`, Cloudflare free tier): checks Discord's signature, defers the reply, seals the options with AES-GCM (`ORACLE_KEY`) and dispatches `.github/workflows/oracle-reading.yml`.
 - **Reading job** (`scripts/job.js`, GitHub Actions): opens the options, runs `src/modules/<name>/index.js`, posts embeds + PNG to Discord. Birth data is never stored or logged.
@@ -24,6 +24,12 @@ All use `/profile` (now with an optional birth name) and the pop-up form, which 
 - `/mayan`: Tzolk'in day sign + tone, kin, trecena, Haab', Long Count, Lord of the Night (GMT 584283), bar-and-dot numerals.
 - `/egyptian`: the modern "Egyptian zodiac" deity plus the birthday in the Coptic (Egyptian) calendar. Labelled as a modern reconstruction.
 - `/celtic`: Graves' tree calendar with ogham letter and fire-festival season. Labelled as a modern reconstruction.
+
+## Cast systems (milestone 2)
+- `/runes`: 24 Elder Futhark runes drawn without replacement; one, three (Norns) or five (cross) spreads; reversible runes land merkstave half the time.
+- `/oraclebones`: a charge (or the Shang routine ten-day charge), paired with its opposite, cracked on turtle plastron or ox scapula; Shang crack notations; dated with today's real day in the 60-day cycle; labelled as a modern reflection in the Shang format.
+- `/ifa`: divining chain with 8 pods, the 16 principal Odù and their marks, 256 combinations; labelled as Ifá-inspired, not a babaláwo consultation; quotes no verses and prescribes no offerings.
+
 Every module returns `headline` (short result) and `reading` (structured data) alongside the embeds, so non-Discord front ends can use it.
 Preview any module: `node scripts/preview.js numerology '{"name":"Ada Lovelace","date":"1815-12-10"}'`.
 
