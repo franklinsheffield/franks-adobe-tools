@@ -9,7 +9,8 @@ import { STARS, FAINT, MILKY_WAY, LINES } from "./sky.gen.js";
 import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
-import { HOPS, hopById, startHop, hop, hopStars, hopTime, settleHop, hopsDone, hopBest } from "./hops.js";
+import { HOPS, hopById, startHop, hop, hopStars, hopTime, settleHop, hopsDone, hopBest, HOP_MESSIER } from "./hops.js";
+import { logObject, byM } from "../messier/engine.js";
 import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock, cityOf, sunRaDec } from "./tonight.js";
 import { PLANETS, planetById, where, track, lightMinutes, skyTonight, fists, astroState, DIGNITY_TEXT, rules, KEYWORD, ASPECT_TEXT, FACTS, FIND, RETRO, PKIND, PSTYLES, planetStyleOf, trackerOf, findReward } from "./planets.js";
 import { LEVELS, TONIGHT, DECK, ALL, dailyPick, dailyScore, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
@@ -443,11 +444,13 @@ export const stars = {
         sky.o.label = nameOf(last) || route.name; sky.o.labelAt = [last[0], last[1]];
         { const all = route.steps.map((st) => starByHip(st.to[0])), [cr, cd] = centroid(all.map((x) => [x[0], x[1]])), span = Math.max(...all.map((x) => sep(x[0], x[1], cr, cd)));
           sky.glide({ ra: cr, dec: cd, fov: Math.max(20, Math.min(80, span * 1.3)) }, 1200); }
-        const r = settleHop(state.prog, { ...run, done: won }); if (relax) { r.xp = half(r.xp); r.essence = half(r.essence); } const aw = award(r.xp, r.essence); state.prog.rooms.stars.plays++; saveProgress(); showStats();
+        const r = settleHop(state.prog, { ...run, done: won }); if (relax) { r.xp = half(r.xp); r.essence = half(r.essence); }
+        const mLog = won ? (HOP_MESSIER[route.id] || []).map((m) => ({ m, ...logObject(state.prog, m) })) : [], mNew = mLog.filter((x) => x.first), mTens = mLog.reduce((a, x) => a + x.tens, 0);
+        const aw = award(r.xp, r.essence + mTens * 50); state.prog.rooms.stars.plays++; saveProgress(); showStats();
         ctx.trophy?.("stars", 1, { won, perfect: won && r.stars === 3 });
         talkThrough([won ? `${pick(["You found your way.", "Every hop true.", "That's how sailors crossed oceans."])} ${route.fact}` : `The sky fades. Here is the way, so you'll know it next time. ${route.fact}`], () => {
           const next = HOPS[(HOPS.indexOf(route) + 1) % HOPS.length];
-          ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${won ? `${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}${r.first ? " · first time" : ""}` : "⏳ time ran out"}</div>${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
+          ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${won ? `${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}${r.first ? " · first time" : ""}` : "⏳ time ran out"}</div>${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${mNew.length ? `<div class="up">🌌 Logged in Messier's Catalogue: ${mNew.map((x) => esc(byM(x.m).label)).join(", ")}${mTens ? ` · +${mTens * 50} 💎` : ""}</div>` : ""}</div>
             <div class="choices"><button class="c main" type="button" id="sl-next">${next.emoji} Next route: ${esc(next.name)}</button><button class="c" type="button" id="sl-again">↻ Try this route again</button><button class="c" type="button" id="sl-routes">🧭 All routes</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
           if (aw.rankUp) chime(2);
           $("sl-next").onclick = () => hopRun(next); $("sl-again").onclick = () => hopRun(route); $("sl-routes").onclick = hops; $("back").onclick = greet; });

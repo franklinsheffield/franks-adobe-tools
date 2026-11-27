@@ -63,3 +63,11 @@ test("messier: room wired with trophy, banter, daily", async () => {
   const src = readFileSync(new URL("../activity/src/messier/room.js", import.meta.url), "utf8");
   assert.match(src, /trophy\?\.\("messier"/); assert.match(src, /finishDaily\(P\(\), "messier"/); assert.match(src, /banter\("messier"/);
 });
+
+test("messier: star-hops past the Pleiades and Andromeda log M45 and M31", async () => {
+  const { HOP_MESSIER, hopById } = await import("../activity/src/stars/hops.js");
+  for (const [id, ms] of Object.entries(HOP_MESSIER)) { assert.ok(hopById(id), id); for (const m of ms) assert.ok(byM(m)); }
+  assert.match(hopById("belt").steps.map((s) => s.say).join(" "), /Pleiades/); assert.match(hopById("andromeda").fact, /Andromeda Galaxy/);
+  const { readFileSync } = await import("node:fs");
+  assert.match(readFileSync(new URL("../activity/src/stars/room.js", import.meta.url), "utf8"), /HOP_MESSIER\[route\.id\]/);
+});
