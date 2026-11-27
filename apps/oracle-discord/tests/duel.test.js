@@ -4,7 +4,7 @@ import { ELEMENTS, EL, poolOf, isNoble } from "../activity/src/duel/elements.js"
 import { COMPOUNDS, BY_ID, BY_KEY, CHAINS, parse, keyOf, pretty } from "../activity/src/duel/compounds.js";
 import { LEVELS, CONDITIONS, START, HAND, GOAL, SHIELD, newGame, compoundOf, formable, cardsFor, balance, fizzleWhy, powerOf, place, unplace, clearBench, playBench, raiseShield, recycle, oracleMove, oracleTurn, glowing, bestHint, settle, room, codexCount, TITLES, rng, copiesOf } from "../activity/src/duel/logic.js";
 import { SHOP, DEFAULT_LOOK, buyOrUse, lookOf, owns } from "../activity/src/duel/shop.js";
-import { sceneSvg, molecule } from "../activity/src/duel/scene.js";
+import { sceneSvg, molecule, kindOf, KIND } from "../activity/src/duel/scene.js";
 import { room as duelRoomDef } from "../activity/src/duel/room.js";
 import { registerShelf, STORE } from "../activity/src/store.js";
 import { fresh, activity } from "../activity/src/game.js";
@@ -159,4 +159,14 @@ test("scene draws every back, bench and reaction", () => {
     const svg = sceneSvg({ look, g, fx }); assert.match(svg, /^<svg/); assert.doesNotMatch(svg, /undefined|NaN/, it.id); } }
   assert.doesNotMatch(sceneSvg({ look: DEFAULT_LOOK, g: null }), /undefined|NaN/);
   assert.equal(molecule(BY_ID.CH4, 0, 0).length, 5);
+});
+
+test("damage phase: every compound gets a reaction kind, every kind draws with flying cards", () => {
+  const seen = new Set(COMPOUNDS.map(kindOf)); for (const k of Object.keys(KIND)) assert.ok(seen.has(k), "some compound is " + k);
+  assert.equal(kindOf(BY_ID.NO), "spark"); assert.equal(kindOf(BY_ID.C2H2), "frost"); assert.equal(kindOf(BY_ID.HCl), "acid"); assert.equal(kindOf(BY_ID.Al2O3), "fire"); assert.equal(kindOf(BY_ID.NaOH), "base");
+  const g = newGame(2, 4);
+  for (const k of Object.keys(KIND)) { const c = COMPOUNDS.find((x) => kindOf(x) === k);
+    for (const side of ["you", "oracle"]) { const svg = sceneSvg({ look: DEFAULT_LOOK, g, fx: { kind: "react", side, c, cards: cards(c.f), dmg: 3, blocked: side === "you" ? 2 : 0 } });
+      assert.match(svg, /du-k-card/); assert.match(svg, new RegExp("k-" + k)); assert.doesNotMatch(svg, /undefined|NaN/, k); } }
+  assert.equal(duelRoomDef.row, "cards", "Element Duel sits with the card decks");
 });

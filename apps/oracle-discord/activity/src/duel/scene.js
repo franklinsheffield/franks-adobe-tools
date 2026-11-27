@@ -18,6 +18,47 @@ const BENCH = {
 };
 export const benchOf = (id) => BENCH[id] || BENCH["bn-school"];
 
+/** The look of a reaction in the damage phase, from the compound's real properties. */
+export const KIND = {
+  frost: { col: "#9fe8ff", glow: "#e8fbff", label: "endothermic: it soaks up heat" },
+  spark: { col: "#ffe14a", glow: "#fffbe0", label: "a spark reaction" },
+  acid: { col: "#8cff5a", glow: "#eaffd8", label: "an acid" },
+  base: { col: "#b8a6ff", glow: "#f1ecff", label: "a base" },
+  fire: { col: "#ff7a1f", glow: "#fff1c2", label: "strongly exothermic" },
+  catalyst: { col: "#66e0c8", glow: "#e4fff8", label: "made over a catalyst" },
+  gas: { col: "#c9d3e6", glow: "#ffffff", label: "a gas" },
+  crystal: { col: "#ff8fd0", glow: "#fff0fa", label: "a solid crystal" },
+};
+export function kindOf(c) {
+  if (c.tags.includes("spark")) return "spark";
+  if (c.endo) return "frost";
+  if (c.tags.includes("acid")) return "acid";
+  if (c.tags.includes("base")) return "base";
+  if (c.dh < -400) return "fire";
+  if (c.tags.includes("cat")) return "catalyst";
+  if (c.gas) return "gas";
+  return "crystal";
+}
+const R = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+/** Effect layers for each kind, centred on (200, 138). */
+function kindFx(k) {
+  const K = KIND[k], c = K.col;
+  if (k === "fire") return R(9, (i) => `<path class="du-k-flame" style="--i:${i};--a:${i * 40}deg" d="M200 138 q-9 -18 0 -40 q9 22 0 40 Z" fill="${i % 2 ? "#ffd27a" : c}" opacity=".85"/>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="40" fill="none" stroke="${c}" stroke-width="6"/>`;
+  if (k === "frost") return R(6, (i) => `<g class="du-k-ice" style="--i:${i};--a:${i * 60}deg"><path d="M200 138 v-52 M200 104 l-8 -8 M200 104 l8 -8 M200 118 l-6 -6 M200 118 l6 -6" stroke="${c}" stroke-width="3" stroke-linecap="round"/></g>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="46" fill="rgba(159,232,255,.12)" stroke="${c}" stroke-width="2" stroke-dasharray="4 5"/>`;
+  if (k === "spark") return R(5, (i) => `<path class="du-k-bolt" style="--i:${i};--a:${i * 72 + 18}deg" d="M200 138 l6 -16 l-9 -4 l8 -22 l-4 18 l9 4 Z" fill="${c}" stroke="#fff" stroke-width="1"/>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="38" fill="none" stroke="${c}" stroke-width="3"/>`;
+  if (k === "acid") return R(10, (i) => `<path class="du-k-drop" style="--i:${i};--dx:${(i - 4.5) * 12}px" d="M${200 + (i - 4.5) * 4} 120 q-5 8 0 12 q5 -4 0 -12 Z" fill="${c}"/>`).join("") + `<ellipse class="du-k-pool" cx="200" cy="186" rx="60" ry="6" fill="${c}" opacity=".5"/>`;
+  if (k === "base") return R(12, (i) => `<circle class="du-k-bub" style="--i:${i};--dx:${((i * 37) % 90) - 45}px" cx="200" cy="160" r="${4 + (i % 4) * 2}" fill="rgba(184,166,255,.18)" stroke="${c}" stroke-width="1.5"/>`).join("");
+  if (k === "catalyst") return `<g class="du-k-gear"><circle cx="200" cy="138" r="44" fill="none" stroke="${c}" stroke-width="5" stroke-dasharray="10 7"/><circle cx="200" cy="138" r="54" fill="none" stroke="${c}" stroke-width="1.5" opacity=".6"/></g>` + R(6, (i) => `<circle class="du-k-orbit" style="--i:${i};--a:${i * 60}deg" cx="200" cy="88" r="3.5" fill="${c}"/>`).join("");
+  if (k === "gas") return R(7, (i) => `<circle class="du-k-cloud" style="--i:${i};--dx:${(i - 3) * 22}px;--dy:${-20 - (i % 3) * 12}px" cx="200" cy="138" r="${16 + (i % 3) * 6}" fill="${c}" opacity=".35"/>`).join("");
+  return R(8, (i) => `<path class="du-k-shard" style="--i:${i};--a:${i * 45}deg" d="M200 138 l5 -14 l-5 -26 l-5 26 Z" fill="${c}" stroke="#fff" stroke-width=".8"/>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="36" fill="none" stroke="${c}" stroke-width="2.5"/>`;
+}
+/** The played cards flying from the hand (bottom) or the Oracle's hand (top) to the middle. */
+function flyingCards(cards, up) {
+  const n = Math.min(cards.length, 7);
+  return cards.slice(0, 7).map((c, i) => { const x = 200 + (i - (n - 1) / 2) * 30;
+    return `<g class="du-k-card" style="--i:${i};--sx:${(i - (n - 1) / 2) * 18}px;--sy:${up ? 150 : -130}px"><rect x="${x - 13}" y="120" width="26" height="36" rx="3" fill="#fbf6ea" stroke="${colourOf(c.s)}" stroke-width="2"/><text x="${x}" y="143" font-size="12" font-weight="800" text-anchor="middle" fill="#1b1430" font-family="system-ui">${c.s}</text></g>`; }).join("");
+}
+
 /** A card back pattern, drawn in a w × h box at (x, y). */
 export function backSvg(id, x, y, w, h) {
   const cx = x + w / 2, cy = y + h / 2, s = Math.min(w, h) / 40;
@@ -82,9 +123,13 @@ export function sceneSvg(s) {
     <text x="339" y="181" font-size="7.5" fill="#d8d0f0" text-anchor="middle" font-family="system-ui">+2 power · +3 💎</text></g>`;
   let centre = `<g class="du-idle" opacity=".55"><path d="M188 120 V146 L170 178 Q166 186 176 186 H224 Q234 186 230 178 L212 146 V120 Z" fill="rgba(200,230,255,.1)" stroke="#cfe6ff" stroke-width="1.6"/><path d="M174 172 H226 L230 180 Q232 186 224 186 H176 Q168 186 170 180 Z" fill="#66e0c8" opacity=".6"/><rect x="184" y="114" width="32" height="6" rx="2" fill="#cfe6ff" opacity=".7"/></g>`;
   if (fx.kind === "react" && fx.c) {
-    const up = fx.side === "you", ty = up ? 106 : 236;
-    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"}"><circle class="du-flash" cx="200" cy="138" r="70" fill="url(#du-flash)"/>${moleculeSvg(fx.c, 200, 138, fx.c.n > 5 ? 0.8 : 1, "du-mol")}
+    const up = fx.side === "you", ty = up ? 106 : 236, k = kindOf(fx.c), K = KIND[k], hitY = up ? 70 : 274;
+    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"} k-${k}" style="--kc:${K.col}">${flyingCards(fx.cards || [], up)}
+      <circle class="du-flash" cx="200" cy="138" r="70" fill="url(#du-flash)"/><g class="du-kfx">${kindFx(k)}</g>${moleculeSvg(fx.c, 200, 138, fx.c.n > 5 ? 0.8 : 1, "du-mol")}
       <text class="du-name" x="200" y="194" font-size="14" fill="#fff" text-anchor="middle" font-weight="700" font-family="system-ui" stroke="#000" stroke-width=".6" paint-order="stroke">${xml(pretty(fx.c.f))} · ${xml(fx.c.name)}</text>
+      <path class="du-beam" d="M200 ${up ? 116 : 160} L200 ${hitY}" stroke="${K.col}" stroke-width="5" stroke-linecap="round"/><circle class="du-orb" cx="200" cy="138" r="7" fill="${K.glow}" stroke="${K.col}" stroke-width="3" style="--ty:${hitY - 138}px"/>
+      ${fx.blocked ? `<circle class="du-block" cx="200" cy="${hitY}" r="26" fill="rgba(95,224,232,.25)" stroke="#5fe0e8" stroke-width="3"/>` : ""}
+      ${fx.dmg ? R(10, (i) => `<circle class="du-impact" style="--a:${i * 36}deg" cx="200" cy="${hitY}" r="3" fill="${K.col}"/>`).join("") : ""}
       <text class="du-dmg" x="200" y="${ty}" font-size="22" fill="${up ? "#ff4fb3" : "#66e0c8"}" text-anchor="middle" font-weight="800" font-family="system-ui" stroke="#000" stroke-width="1" paint-order="stroke">${fx.dmg ? "−" + fx.dmg : fx.blocked ? "🛡 blocked" : "0"}</text></g>`;
   } else if (fx.kind === "fizz") {
     centre = `<g class="du-fizz">${(fx.cards || []).slice(0, 6).map((c, i) => `<g class="du-wob" style="--i:${i}"><circle cx="${200 + (i - (Math.min(6, fx.cards.length) - 1) / 2) * 28}" cy="140" r="12" fill="${colourOf(c.s)}" stroke="#000" stroke-opacity=".5"/><text x="${200 + (i - (Math.min(6, fx.cards.length) - 1) / 2) * 28}" y="144" font-size="10" text-anchor="middle" font-weight="700" fill="#111" font-family="system-ui">${c.s}</text></g>`).join("")}
