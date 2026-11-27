@@ -47,6 +47,9 @@ test("the Oracle speaks over its readings and every reading gets buttons", () =>
   const plain = oracleMessages(r, {}, "Frank", { COMMAND: "iching" }, rand);
   assert.equal(plain[0].content, ""); assert.equal(plain[0].embeds[0].author, undefined);
   assert.ok(greeting("Frank", rand).includes("Frank"));
+  assert.equal(headline({ title: "✨ Astrology · Natal Chart", fields: [{ name: "☉ Sun in Aries, house 10" }, { name: "☽ Moon in Leo" }, { name: "↑ Libra Rising" }] }), "Sun in Aries · Moon in Leo · Libra Rising");
+  assert.equal(headline({ title: "x · y" }, "Life Path 7"), "Life Path 7");
+  assert.equal(headline({}, "The bone leans against the charge."), "The bone leans against the charge");
   assert.ok(speech("unknown", "F", { title: "A · B" }, rand).includes("B"));
 });
 

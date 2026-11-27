@@ -14,6 +14,13 @@ One Discord app for the server's readings: `/oracle` (the fortune teller), `/hum
 - Every reading ends with **Another reading** and **Enter the Chamber** buttons. The Chamber button launches the Oracle Chamber Activity once `ACTIVITY_READY = "true"` in `wrangler.toml`.
 - Portrait: `figure.js` draws her; `node scripts/make-portrait.js` re-renders `assets/oracle.png` and the copy the Worker serves at `/oracle.png`.
 
+## The Oracle Chamber (Discord Activity)
+`activity/`: the full-screen fortune-teller experience. Pick a system, give the Oracle your question or birth details, and she reveals the reading with the chart art, a journal of your last 20 readings (on that device) and your saved `/profile` filled in.
+- Readings run in the browser with the same modules as the bot (`build.mjs` bundles every module in `MODULES`, swapping resvg, `node:fs` and `node:url` for shims in `activity/src/shims/`), so they always match the chat version.
+- `activity/worker.mjs` (Worker `oracle-chamber`): serves the build, swaps the Discord sign-in code for a token (`DISCORD_CLIENT_SECRET`, from repo secret `ORACLE_DISCORD_CLIENT_SECRET`) and returns the member's own saved profile.
+- Discord Developer Portal: Activities on, URL mapping `/` -> the `oracle-chamber` Worker host and `/osm` -> `nominatim.openstreetmap.org`, OAuth2 redirect `https://127.0.0.1`. Then set `ACTIVITY_READY = "true"` in `wrangler.toml` so the bot's **Enter the Chamber** button launches it.
+- Local: `node activity/build.mjs`, then serve `activity/dist/` and open it in a browser (sign-in and profile are skipped outside Discord).
+
 ## Human Design
 `src/humandesign/`: chart (26 activations, design moment at 88° of solar arc, true node), branded bodygraph PNG, and original Science is Magic interpretation text. Verified against Ra Uru Hu's published chart and 400 random charts from an independent engine.
 

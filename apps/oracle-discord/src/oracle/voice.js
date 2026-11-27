@@ -47,16 +47,20 @@ const CLOSE = [
 export const greeting = (name, rand) => fill(pick(GREETINGS, rand), { name });
 export const askLine = (sys, name, rand) => fill(pick(ASK[sys.kind], rand), { name, system: sys.label });
 
-/** Headline of a reading from its first embed title: "🪙 I Ching · 24 · 復 Fù · Return" -> "24 · 復 Fù · Return". */
-export function headline(embed) {
+/** Headline of a reading. A module may return `headline` itself; otherwise it comes from the first embed:
+ *  "🪙 I Ching · 24 · 復 Fù · Return" -> "24 · 復 Fù · Return"; a natal chart -> "Sun in Aries · Moon in Leo · Libra Rising". */
+export function headline(embed, given) {
+  if (given) return String(given).trim().replace(/[.。]+$/, "");
+  const big3 = ((embed && embed.fields) || []).map((f) => f.name).filter((n) => /^[☉☽↑]/.test(n)).map((n) => n.replace(/^\S+\s+/, "").replace(/,\s*house \d+$/, ""));
+  if (big3.length >= 2) return big3.join(" · ");
   const t = String((embed && embed.title) || "").replace(/^\P{L}+/u, "").trim();
   const i = t.indexOf(" · ");
   return (i > 0 ? t.slice(i + 3) : t).trim() || "your reading";
 }
 
 /** The spoken lines placed above a reading: opening, reveal and a closing word. */
-export function speech(command, name, embed, rand = Math.random) {
-  const v = { name, result: headline(embed) };
+export function speech(command, name, embed, rand = Math.random, given) {
+  const v = { name, result: headline(embed, given) };
   const open = OPEN[command] ? fill(pick(OPEN[command], rand), v) : "";
   return [open, fill(pick(REVEAL, rand), v), pick(CLOSE, rand)].filter(Boolean).join(" ");
 }
