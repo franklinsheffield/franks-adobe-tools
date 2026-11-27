@@ -11,4 +11,6 @@ import * as m8 from "../../src/modules/runes/index.js";
 import * as m9 from "../../src/modules/oraclebones/index.js";
 import * as m10 from "../../src/modules/ifa/index.js";
 import * as m11 from "../../src/modules/tarot/index.js";
-export const MODS = { "humandesign": m0, "astrology": m1, "iching": m2, "numerology": m3, "chinesezodiac": m4, "mayan": m5, "egyptian": m6, "celtic": m7, "runes": m8, "oraclebones": m9, "ifa": m10, "tarot": m11 };
+import * as m12 from "../../src/modules/lenormand/index.js";
+import * as m13 from "../../src/modules/magicdeck/index.js";
+export const MODS = { "humandesign": m0, "astrology": m1, "iching": m2, "numerology": m3, "chinesezodiac": m4, "mayan": m5, "egyptian": m6, "celtic": m7, "runes": m8, "oraclebones": m9, "ifa": m10, "tarot": m11, "lenormand": m12, "magicdeck": m13 };

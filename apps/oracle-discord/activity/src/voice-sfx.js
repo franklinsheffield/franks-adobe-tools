@@ -123,3 +123,16 @@ export function rimshot() {
   const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = n; hp.type = "highpass"; hp.frequency.value = 6000; g.gain.value = 0.45;
   src.connect(hp); hp.connect(g); g.connect(out); src.start(t0 + 0.34);
 }
+/** Cards on the table: a riffle shuffle (fast paper ticks), then a soft slide-and-snap for each card dealt,
+ *  timed to the table's deal animation (first card at 1.1 s, then every `step` seconds). */
+export function cardDeal(count = 3, step = 0.2) {
+  if (muted || !ctx || ctx.state !== "running") return;
+  const t0 = ctx.currentTime + 0.05;
+  const burst = (t, dur, freq, vol, q = 1.2) => { const n = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+    const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = n; bp.type = "bandpass"; bp.frequency.value = freq; bp.Q.value = q; g.gain.value = vol;
+    src.connect(bp); bp.connect(g); g.connect(out); src.start(t); };
+  for (let k = 0; k < 26; k++) burst(t0 + 0.3 + k * 0.022 + Math.random() * 0.006, 0.02, 3200 + Math.random() * 1500, 0.32); // riffle
+  burst(t0 + 0.92, 0.09, 900, 0.5, 0.8); // the halves meet
+  for (let i = 0; i < count; i++) { const t = t0 + 1.1 + i * step; burst(t, 0.16, 2400, 0.28, 0.6); burst(t + 0.15, 0.03, 1200, 0.45, 2); }
+}

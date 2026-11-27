@@ -6,7 +6,7 @@ const G = { gold: "#E2B04A", light: "#FADE8C", pink: "#FF4FB3", teal: "#66E0C8",
 const f1 = (n) => Number(n.toFixed(1));
 
 // What the Essence store has put on the table: a cloth design, and the candles' wax, flame and detail.
-let DECOR = { design: "", ink: G.gold, wax: ["#efe3cf", "#d8c8ad"], flame: ["#fff", G.light, "#ff8a3d"], halo: G.light, detail: "" };
+let DECOR = { cardback: "", design: "", ink: G.gold, wax: ["#efe3cf", "#d8c8ad"], flame: ["#fff", G.light, "#ff8a3d"], halo: G.light, detail: "" };
 export function setTableDecor(d) { DECOR = { ...DECOR, ...d }; }
 function candleDetail(x, top, h) {
   const w = DECOR.wax[1], b = top + h;
@@ -65,17 +65,43 @@ const TAROT_POS = {
   five: [[120, 222], [160, 222], [200, 222], [240, 222], [280, 222]],
   celtic: [[150, 220], [172, 220], [161, 258], [126, 220], [161, 182], [196, 220], [262, 270], [262, 238], [262, 206], [262, 174]],
 };
+const LEN_POS = {
+  pair: [[172, 222], [228, 222]],
+  line: [[146, 222], [200, 222], [254, 222]],
+  square: [[164, 186], [200, 186], [236, 186], [164, 226], [200, 226], [236, 226], [164, 266], [200, 266], [236, 266]],
+};
+const MAGIC_POS = { one: TAROT_POS.one, three: TAROT_POS.three, five: TAROT_POS.five };
+/** Card backs: each deck has its own ("deck"), or a store back replaces it on every deck. */
+const BACKS = {
+  tarot: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#2a0f4a" stroke="${G.gold}" stroke-width="1.1"/><rect x="${-cw / 2 + 2.5}" y="${-ch / 2 + 2.5}" width="${cw - 5}" height="${ch - 5}" rx="1.5" fill="none" stroke="${G.gold}" stroke-width=".5" opacity=".7"/><circle r="${cw * 0.18}" fill="none" stroke="${G.light}" stroke-width=".8"/><circle r="${cw * 0.06}" fill="${G.pink}"/>`,
+  lenormand: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#1f4a3a" stroke="#e9d6ae" stroke-width="1.1"/><rect x="${-cw / 2 + 2.5}" y="${-ch / 2 + 2.5}" width="${cw - 5}" height="${ch - 5}" rx="1.5" fill="none" stroke="#e9d6ae" stroke-width=".5" stroke-dasharray="1 1.5"/><path d="M0 ${-ch * 0.2} L${cw * 0.18} 0 L0 ${ch * 0.2} L${-cw * 0.18} 0Z" fill="none" stroke="#e9d6ae" stroke-width=".9"/><circle r="${cw * 0.05}" fill="#c8324a"/>`,
+  magicdeck: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#161030" stroke="${G.gold}" stroke-width="1.1"/><g fill="none" stroke="${G.teal}" stroke-width=".7"><ellipse rx="${cw * 0.3}" ry="${cw * 0.11}"/><ellipse rx="${cw * 0.3}" ry="${cw * 0.11}" transform="rotate(60)"/><ellipse rx="${cw * 0.3}" ry="${cw * 0.11}" transform="rotate(-60)"/></g><circle r="${cw * 0.06}" fill="${G.light}"/>`,
+  "cb-starfield": (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#05051a" stroke="#9fb8ff" stroke-width="1.1"/>${[[-.3, -.35], [.2, -.25], [-.1, -.05], [.28, .1], [-.25, .3], [.1, .35], [0, -.4]].map(([x, y], k) => `<circle cx="${f1(x * cw)}" cy="${f1(y * ch)}" r="${k % 3 ? .5 : .9}" fill="#fff"/>`).join("")}`,
+  "cb-rose": (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#4a0f24" stroke="${G.gold}" stroke-width="1.1"/><rect x="${-cw / 2 + 2}" y="${-ch / 2 + 2}" width="${cw - 4}" height="${ch - 4}" rx="1.5" fill="none" stroke="${G.gold}" stroke-width=".5"/>${[0, 72, 144, 216, 288].map((a) => `<ellipse rx="${cw * 0.09}" ry="${cw * 0.17}" fill="#e0607e" transform="rotate(${a}) translate(0 ${-cw * 0.12})"/>`).join("")}<circle r="${cw * 0.08}" fill="${G.light}"/>`,
+  "cb-moonphase": (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#0e1830" stroke="#c9b8ff" stroke-width="1.1"/>${[-0.3, -0.1, 0.1, 0.3].map((y, k) => `<circle cy="${f1(y * ch)}" r="${f1(cw * 0.1)}" fill="#c9b8ff" opacity="${[0.25, 0.55, 0.8, 1][k]}"/>`).join("")}`,
+  "cb-circuit": (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#061a14" stroke="${G.teal}" stroke-width="1.1"/><path d="M${-cw * .3} ${-ch * .3} H0 V${-ch * .1} H${cw * .3} M${-cw * .3} ${ch * .3} H${-cw * .05} V${ch * .1} H${cw * .3} M0 ${-ch * .1} V${ch * .1}" fill="none" stroke="${G.teal}" stroke-width=".7"/><circle r="${cw * .07}" fill="${G.teal}"/>`,
+  "cb-gilded": (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="${G.gold}" stroke="#8C5E17" stroke-width="1.1"/><rect x="${-cw / 2 + 2}" y="${-ch / 2 + 2}" width="${cw - 4}" height="${ch - 4}" rx="1.5" fill="none" stroke="#fff3c4" stroke-width=".6"/><path d="M0 ${-ch * .25} L${cw * .2} 0 L0 ${ch * .25} L${-cw * .2} 0Z" fill="#8C5E17"/>`,
+};
+const FRONTS = {
+  tarot: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#f6ead0" stroke="${G.gold}" stroke-width="1.1"/><circle r="${cw * 0.26}" fill="url(#tb-sun)"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="#7a4f12" stroke-width="1"/>`,
+  lenormand: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#f6ead0" stroke="${G.gold}" stroke-width="1.1"/><circle cy="${-ch * 0.08}" r="${cw * 0.24}" fill="none" stroke="#2f8a5a" stroke-width="1"/><rect x="${cw * 0.12}" y="${-ch / 2 + 2.5}" width="${cw * 0.3}" height="${ch * 0.24}" rx="1" fill="#fff" stroke="#7a5a2a" stroke-width=".5"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="#7a4f12" stroke-width="1"/>`,
+  magicdeck: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#241a5c" stroke="${G.gold}" stroke-width="1.1"/><circle cy="${-ch * 0.06}" r="${cw * 0.24}" fill="${G.teal}" opacity=".25"/><circle cy="${-ch * 0.06}" r="${cw * 0.1}" fill="${G.light}"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="${G.light}" stroke-width="1"/>`,
+};
+/** Riffle shuffle, then deal face down and turn each card over: shared by every deck on the "By the cards" row. */
+function deckScene(deckKey, pos) {
+  const small = pos.length > 5, w = small ? 17 : 24, h = small ? 28 : 40, DX = 200, DY = 160;
+  const back = BACKS[DECOR.cardback] || BACKS[deckKey], front = FRONTS[deckKey];
+  const deck = (cls, dx) => `<g class="${cls}">${[0, 1, 2, 3].map((k) => `<g transform="translate(${dx + k * 0.6} ${-k * 1.2})">${back(30, 48)}</g>`).join("")}</g>`;
+  const riff = [0, 1, 2, 3, 4, 5].map((k) => `<g class="k-only k-riff" style="animation-delay:${f1(0.35 + k * 0.08)}s" transform="translate(${k % 2 ? 4 : -4} ${-8 - k})">${back(30, 48)}</g>`).join("");
+  const cards = pos.map(([x, y], i) => { const dd = 1.1 + i * (small ? 0.13 : 0.2);
+    return `<g transform="translate(${x} ${y})" class="k-only"><g class="k-deal" style="--d:${f1(dd)}s;--sx:${DX - x}px;--sy:${DY - y}px">${shadow(0, h / 2 - 1, w * 0.55, 3)}<g class="k-turn" style="--d:${f1(dd + 0.45)}s">${back(w, h)}<g class="k-face" style="--d:${f1(dd + 0.65)}s">${front(w, h)}</g></g></g></g>`; }).join("");
+  return `<g transform="translate(${DX} ${DY})">${shadow(0, 26, 26, 6)}${deck("k-riffl", -2)}${deck("k-riffr", 2)}${riff}</g>${cards}`;
+}
+export const CARD_BACKS = Object.keys(BACKS).filter((k) => k.startsWith("cb-"));
 const SCENES = {
-  tarot(o = {}) {
-    const pos = TAROT_POS[o.spread] || TAROT_POS.three, small = pos.length > 5, w = small ? 17 : 24, h = small ? 28 : 40, DX = 200, DY = 160;
-    const back = (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#2a0f4a" stroke="${G.gold}" stroke-width="1.1"/><rect x="${-cw / 2 + 2.5}" y="${-ch / 2 + 2.5}" width="${cw - 5}" height="${ch - 5}" rx="1.5" fill="none" stroke="${G.gold}" stroke-width=".5" opacity=".7"/><circle r="${cw * 0.18}" fill="none" stroke="${G.light}" stroke-width=".8"/><circle r="${cw * 0.06}" fill="${G.pink}"/>`;
-    const front = (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#f6ead0" stroke="${G.gold}" stroke-width="1.1"/><circle r="${cw * 0.26}" fill="url(#tb-sun)"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="#7a4f12" stroke-width="1"/>`;
-    const deck = (cls, dx) => `<g class="${cls}">${[0, 1, 2, 3].map((k) => `<g transform="translate(${dx + k * 0.6} ${-k * 1.2})">${back(30, 48)}</g>`).join("")}</g>`;
-    const riff = [0, 1, 2, 3, 4, 5].map((k) => `<g class="k-only k-riff" style="animation-delay:${f1(0.35 + k * 0.08)}s" transform="translate(${k % 2 ? 4 : -4} ${-8 - k})">${back(30, 48)}</g>`).join("");
-    const cards = pos.map(([x, y], i) => { const dd = 1.1 + i * (small ? 0.13 : 0.2);
-      return `<g transform="translate(${x} ${y})" class="k-only"><g class="k-deal" style="--d:${f1(dd)}s;--sx:${DX - x}px;--sy:${DY - y}px">${shadow(0, h / 2 - 1, w * 0.55, 3)}<g class="k-turn" style="--d:${f1(dd + 0.45)}s">${back(w, h)}<g class="k-face" style="--d:${f1(dd + 0.65)}s">${front(w, h)}</g></g></g></g>`; }).join("");
-    return `<g transform="translate(${DX} ${DY})">${shadow(0, 26, 26, 6)}${deck("k-riffl", -2)}${deck("k-riffr", 2)}${riff}</g>${cards}`;
-  },
+  tarot: (o = {}) => deckScene("tarot", TAROT_POS[o.spread] || TAROT_POS.three),
+  lenormand: (o = {}) => deckScene("lenormand", LEN_POS[o.spread] || LEN_POS.line),
+  magicdeck: (o = {}) => deckScene("magicdeck", MAGIC_POS[o.spread] || MAGIC_POS.three),
   iching() {
     const pos = [[140, 172], [200, 166], [260, 172], [140, 226], [200, 232], [260, 226]];
     return pos.map(([x, y], i) => `<g transform="translate(${x} ${y})">${shadow(0, 14, 15)}<g class="k-drop" ${d(i)}><g class="k-flip" ${d(i)}>

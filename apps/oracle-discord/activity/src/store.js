@@ -91,6 +91,15 @@ export const STORE = [
   { id: "influencer", kind: "persona", name: "Influencer", note: "Hey besties! Destiny, but make it content", price: 140 },
   { id: "chamber", kind: "vibe", name: "Midnight Chamber", note: "Violet night, gold trim, Cinzel letters", price: 0, stars: ["#FADE8C", "#66E0C8"] },
   { id: "v-iching", kind: "vibe", name: "Book of Changes", note: "I Ching: ink-wash mountains, jade and a red seal", price: 150, stars: ["#f4efe2", "#9fd4b0"] },
+  { id: "v-lenormand", kind: "vibe", name: "Parlour Lenormand", note: "Lenormand: green baize, cream cards, a lace border and lamplight", price: 150, stars: ["#e9d6ae", "#7fd6a0"] },
+  { id: "v-magicdeck", kind: "vibe", name: "Laboratory of Wonders", note: "Science is Magic deck: blueprint grid, orbiting atoms, bubbling glass", price: 150, stars: ["#66E0C8", "#ff8fc8"] },
+  // Card backs: change the back of every deck on the table ("Each deck's own" keeps tarot, Lenormand and the Science is Magic deck distinct)
+  { id: "cb-deck", kind: "cardback", name: "Each deck's own", note: "Tarot violet, Lenormand green, Science is Magic atom", price: 0 },
+  { id: "cb-starfield", kind: "cardback", name: "Starfield", note: "Black sky, scattered white stars", price: 60 },
+  { id: "cb-moonphase", kind: "cardback", name: "Moon phases", note: "Four moons waxing down the card", price: 70 },
+  { id: "cb-circuit", kind: "cardback", name: "Circuit board", note: "Teal traces and a glowing core", price: 80 },
+  { id: "cb-rose", kind: "cardback", name: "Gilded rose", note: "Wine velvet with a five-petal rose", price: 90 },
+  { id: "cb-gilded", kind: "cardback", name: "Solid gold", note: "Gold leaf, a dark diamond. Very subtle. Not subtle", price: 160 },
   { id: "v-tarot", kind: "vibe", name: "Gilded Arcana", note: "Tarot: midnight velvet, gilded borders, a fan of cards", price: 150, stars: ["#FADE8C", "#e7a0ff"] },
   { id: "v-runes", kind: "vibe", name: "Northern Lights", note: "Runes: aurora over icy fjords, carved letters", price: 150, stars: ["#c9fff0", "#7ad6ff"] },
   { id: "v-oraclebones", kind: "vibe", name: "Bronze & Bone", note: "Oracle bones: bronze vessels, bone and ember", price: 150, stars: ["#ffd9a8", "#ff8a3d"] },
@@ -103,7 +112,7 @@ export const STORE = [
   { id: "v-egyptian", kind: "vibe", name: "Valley of the Kings", note: "Egyptian: desert dusk, lapis and gold", price: 150, stars: ["#FADE8C", "#6a9cff"] },
   { id: "v-celtic", kind: "vibe", name: "Druid's Grove", note: "Celtic: mossy greens, mist and uncial script", price: 150, stars: ["#c9ffb0", "#7ad65a"] },
 ];
-export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["vibe", "✨ Vibes"]];
+export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["cardback", "🎴 Card backs"], ["vibe", "✨ Vibes"]];
 
 /** The Oracle's lines in the store: one pool per product type, for opening the shelf, trying on, and buying. {item} = the item's name. */
 export const SHOP_TALK = {
@@ -142,6 +151,11 @@ export const SHOP_TALK = {
     tryon: ["Here's a taste of the {item}.", "One sample of the {item}, coming up.", "The {item}? Let me get into character."],
     buy: ["The {item} is mine now. You asked for this.", "Sold! I'll be the {item} from now on. No take-backs. Well, you can switch back. But no take-backs emotionally.", "The {item} is unlocked. My agent will be thrilled."],
   },
+  cardback: {
+    open: ["Card backs, darling. The cards keep their secrets, so the backs might as well look fabulous.", "Every deck I deal wears the back you choose. Fashion for fortunes.", "A good card back says nothing and implies everything. Very me."],
+    tryon: ["The {item} back. Look at that deck sitting there, all mysterious.", "Shuffle in the {item}. Feels luckier already. It isn't. But it feels it.", "{item}! The cards are blushing. Face down, but blushing."],
+    buy: ["The {item} back is yours. Every deck I deal will wear it.", "Sold! Your cards now dress in {item}.", "The {item}. Even the Coffin card looks cheerful in that."],
+  },
   vibe: {
     open: ["Vibes change the whole Chamber: colours, letters and the very sky, one for every reading tradition. Feng shui for the cosmos.", "Redecorating? I adore redecorating. Last time was the Bronze Age.", "The right vibe makes every reading land harder. That's science. Magic science."],
     tryon: ["Oh, the {item}! The whole room just took a deep breath.", "I love what the {item} does to the light. And the letters. And me.", "The {item}. It's giving prophecy. It's giving atmosphere."],
@@ -156,7 +170,7 @@ function migrateIds(p) {
     if (p.voice === old) { p.voice = now; if (!p.owned.includes(now)) p.owned.push(now); }
   }
 }
-export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["cardback", "cb-deck"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;

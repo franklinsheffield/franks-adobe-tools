@@ -13,7 +13,7 @@ import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, mer
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
 import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
-import { setVoiceStyle, sampleVoice, checkout, rimshot } from "./voice-sfx.js";
+import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
@@ -68,7 +68,8 @@ const table = makeTable($("table"), { reduced });
   svg.querySelectorAll(".o-hands .o-nail").forEach((e) => (e.dataset.r = e.getAttribute("r")));
 })();
 const CAST = {
-  tarot: "I shuffle the deck… cut… and deal…",
+  tarot: "I shuffle the deck… cut… and deal…", lenormand: "Thirty-six small pictures… shuffled… laid out in a row…",
+  magicdeck: "Atoms, moons, potions, stars… shuffled… dealt like an experiment…",
   iching: "Six coins leave my hand… spinning… falling…", runes: "I loosen the pouch. Let the stones choose themselves…",
   oraclebones: "The bronze rod is hot. Listen… the shell answers with a crack…", ifa: "The chain falls. Eight seeds, open or closed…",
   astrology: "I turn the heavens back to the hour you arrived…", humandesign: "Your centres are lighting, one by one…",
@@ -211,7 +212,8 @@ async function reveal(sys, options, question = "") {
   let r, err;
   try {
     const mod = MODS[sys.command];
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait(sys.key === "tarot" && options.spread === "celtic" ? 3600 : 3000)]);
+    if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
+    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
   document.body.classList.remove("trance"); cap(sys.emoji + " " + sys.label);
   if (err) {
@@ -338,7 +340,7 @@ function applyLook(over = {}) {
   // table: cloth colours and design, candles
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   const design = c.design || EARNED_DESIGN[c.id] || "", ink = c.ink || EARNED_INK[c.id] || "#E2B04A";
-  setTableDecor({ design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "",
+  setTableDecor({ cardback: p.cardback && p.cardback !== "cb-deck" ? p.cardback : "", design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "",
     fx: (CLOTH_FX[design] || CLOTH_FX[""])(ink), trim: clothTrim(ink) });
   table.refresh();
   root.style.setProperty("--orb-filter", o ? o.f : "none");
@@ -393,6 +395,7 @@ function showStore(tab = "outfit", opener = null) {
   const talk = (kind, act, it) => pickLine((SHOP_TALK[kind] || SHOP_TALK.outfit)[act], { item: it ? it.name : "" });
   $("back").onclick = () => { trying = null; applyLook(); greet(); };
   applyLook(trying ? { [trying.kind]: trying.id } : {});
+  if (tab === "cardback") table.rest(["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]); // show a deck wearing the back
   const sh = shelf(tab); if (sh && sh.preview && trying && trying.kind === tab) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
     const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(tab, "tryon", it)); }));

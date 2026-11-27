@@ -19,6 +19,8 @@ const ASK = {
 const OPEN = {
   iching: ["The coins are falling, {name}… sun, moon, sun…", "Six times the coins have turned. The lines are drawn."],
   tarot: ["I shuffle, {name}. Cut the deck in your mind… there. The cards are coming.", "The deck has been shuffled, cut and dealt. Let us turn them."],
+  lenormand: ["Thirty-six little pictures, {name}, and they speak in pairs. Listen…", "The cards are down. Read them like words in a sentence."],
+  magicdeck: ["The lab is open, {name}. Every card comes with a fact, free of charge.", "Hypothesis, test, result. The deck has done its experiment."],
   runes: ["I reach into the bag, {name}. The staves are cold tonight…", "The runes have left the bag. Let us see how they lie."],
   oraclebones: ["The shell is heating. Listen… there, the crack.", "Fire has written on the bone, {name}."],
   ifa: ["The chain falls, {name}. Eight seeds, open and closed…", "Orunmila's chain has spoken its pattern."],

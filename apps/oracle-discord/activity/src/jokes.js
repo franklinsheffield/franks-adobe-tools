@@ -105,6 +105,26 @@ export const GENERAL = [
 ];
 
 export const BY_SYSTEM = {
+  lenormand: [
+    "Lenormand cards come in pairs, like socks. Unlike socks, they never go missing.",
+    "Mademoiselle Lenormand read for Napoleon's wife, people say. People also say she was very good at marketing.",
+    "The Coffin card isn't scary, {name}. It's just a very dramatic way of saying 'that's done'.",
+    "Fox next to your job card? Check the small print. Then check the smaller print.",
+    "The Mice card means small losses. Usually socks. See the first joke.",
+    "Thirty-six cards and every one is a picture. It's the comic strip of fortune telling.",
+    "Rider plus Letter: you've got mail. Possibly spam. The cards don't filter.",
+    "Sun card. The strongest yes in the deck. I'd put on sunscreen.",
+  ],
+  magicdeck: [
+    "Every card comes with a real fact, {name}. You leave smarter even if the future stays fuzzy.",
+    "The Explosion card is not a safety recommendation.",
+    "I drew The Catalyst. It sped up this joke, but it's still not funny. Science!",
+    "Keeper of Potions wears goggles at all times. Even to bed. Especially to bed.",
+    "This deck was peer reviewed by a cat. The cat knocked it off the table. Approved.",
+    "The Black Hole card just pulled my punchline in. Gone. Past the event horizon.",
+    "The Moon drifts 3.8 cm farther away every year. I think it heard my jokes.",
+    "Hypothesis: you'll smile. Method: this joke. Result: pending.",
+  ],
   tarot: [
     "Seventy-eight cards and not one of them is a joker. I checked. Twice.",
     "I shuffled seven times. Mathematicians say that's enough to truly mix a deck. I say it's enough to feel fancy.",
