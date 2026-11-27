@@ -2,11 +2,12 @@
 import { read, TRIGRAMS } from './engine.js';
 import { HEXAGRAMS } from './hexagrams.js';
 import { renderPng } from './render.js';
+import { analyse } from './insight.js';
 
 export const command = {
   name: 'iching',
   description: 'Flip six Science is Magic coins and receive an I Ching reading',
-  options: [{ type: 3, name: 'question', description: 'What you want guidance on (optional)', required: false, max_length: 200 }],
+  options: [{ type: 3, name: 'question', description: 'What you want to explore (optional)', required: false, max_length: 200 }],
 };
 
 const GOLD = 0xE2B04A, TEAL = 0x66E0C8;
@@ -39,7 +40,7 @@ export function buildReading(question, rand) {
   fields.push({ name: '🔮 Core message', value: cut(`${focus.rule}\n${core.join('\n')}`) });
   if (rel) fields.push({ name: `➜ Where it is heading: ${title(rel)}`, value: cut(`${rel.text.j}\n**Keywords:** ${rel.text.kw.join(', ')}`) });
   fields.push({ name: `🜃 Hidden undercurrent: ${title(nu)}`, value: cut(`Beneath the surface: ${nu.text.kw.join(', ')}. ${nu.text.a}`) });
-  fields.push({ name: '🕯 Advice', value: cut(rel ? `${p.text.a} Then: ${rel.text.a.charAt(0).toLowerCase()}${rel.text.a.slice(1)}` : p.text.a) });
+  fields.push({ name: '🕯 What the text counsels', value: cut(`*The classical counsel attached to ${rel ? 'these hexagrams' : 'this hexagram'}, as the tradition gives it:* ${rel ? `${p.text.a} Then: ${rel.text.a.charAt(0).toLowerCase()}${rel.text.a.slice(1)}` : p.text.a}`) });
 
   const embed = {
     title: `🪙 I Ching · ${title(p)}`,
@@ -55,5 +56,8 @@ export function buildReading(question, rand) {
 export async function run(options = {}, ctx = {}) {
   const question = options.question?.trim() || '';
   const { reading, embed } = buildReading(question, ctx.rand);
-  return { embeds: [embed], files: [{ name: 'iching.png', data: new Uint8Array(renderPng(reading)) }] };
+  const ins = analyse(reading, TRIGRAMS, ctx.user ? `@${ctx.user}` : '');
+  const p = reading.primary, rel = reading.relating;
+  return { embeds: [embed, ins.embed], files: [{ name: 'iching.png', data: new Uint8Array(renderPng(reading)) }], analysis: ins.analysis,
+    headline: `${p.number} ${p.text.en}${rel ? ` changing to ${rel.number} ${rel.text.en}` : ''}` };
 }

@@ -3,6 +3,8 @@ import { bodygraph } from "../../humandesign/chart.js";
 import { bodygraphPng } from "../../humandesign/bodygraph.js";
 import { CENTERS } from "../../humandesign/data.js";
 import { TYPES, SIGNATURE_TEXT, AUTHORITIES, LINES, CENTER_TEXT, DEFINITION_TEXT, CROSS_TEXT, GATES, CHANNEL_TEXT } from "../../humandesign/text.js";
+import { analyse } from "../../humandesign/insight.js";
+import { withInsight } from "../../insight.js";
 import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js";
 
 export const GOLD = 0xE2B04A, TEAL = 0x66E0C8;
@@ -34,7 +36,7 @@ export function readingEmbeds(chart, { who = "you", image = "attachment://bodygr
     title: `${T.emoji} Human Design · ${chart.type}`, color: GOLD,
     description: `*${T.tagline}.* ${T.about}`,
     fields: [
-      { name: "🧪 Strategy", value: `**${chart.strategy}.** ${T.strategy}` },
+      { name: "🧪 Strategy (the system's hypothesis)", value: `**${chart.strategy}.** ${T.strategy}` },
       { name: "⚖️ Signature", value: `**${chart.signature[0]}** vs **${chart.signature[1]}**. ${SIGNATURE_TEXT[chart.type]}` },
       { name: `🧭 Authority · ${chart.authority}`, value: AUTHORITIES[chart.authority] },
       { name: `🎭 Profile · ${chart.profile} ${LINES[pl][0]} / ${LINES[dl][0]}`,
@@ -63,7 +65,6 @@ export function readingEmbeds(chart, { who = "you", image = "attachment://bodygr
       { name: "⊕ Conscious Earth (what grounds you)", value: gate(pEarth) },
       { name: "☉ Unconscious Sun (what others see in you)", value: gate(dSun) },
       { name: "⊕ Unconscious Earth (your hidden ballast)", value: gate(dEarth) },
-      { name: "🔬 Your experiment", value: experiment(chart) },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
   };
@@ -76,13 +77,6 @@ function timeSensitive(chart, birth, zone) {
   const keys = { type: "type", authority: "authority", profile: "profile", definition: "definition", cross: "incarnation cross", channels: "channels" };
   const val = (c, k) => k === "cross" ? c.cross.full : k === "channels" ? c.channels.map((x) => x.key).join() : c[k];
   return Object.keys(keys).filter((k) => ends.some((c) => val(c, k) !== val(chart, k))).map((k) => keys[k]);
-}
-
-function experiment(chart) {
-  const a = { Emotional: "wait out your emotional wave", Sacral: "trust your gut's first sound", Splenic: "act on the first quiet hit of instinct",
-    "Ego Manifested": "say what you want out loud and listen", "Ego Projected": "ask what you truly want", "Self-Projected": "talk it through and hear yourself",
-    "Mental (Outer)": "test the decision in the right place with the right people", Lunar: "give it a full Moon cycle" }[chart.authority];
-  return `For the next two weeks, try one thing: **${chart.strategy.toLowerCase()}**, and before each meaningful decision, **${a}**. Log what happens. Watch for more ${chart.signature[0].toLowerCase()} and less ${chart.signature[1].toLowerCase()}. That's the data.`;
 }
 
 /** Discord options -> { embeds, files, ephemeral }. */
@@ -102,7 +96,9 @@ export async function run(o, ctx = {}) {
   const png = await bodygraphPng(chart, { title: "Human Design", subtitle });
   const embeds = readingEmbeds(chart, { who });
   if (!timeKnown) embeds[0].fields.unshift({ name: "⏱️ Birth time unknown", value: unsure.length
-    ? `This is a noon chart. Across the whole day these could change: **${unsure.join(", ")}**. Treat them as provisional until you find your birth time (birth certificate or hospital record).`
+    ? `This is a noon chart. Across the whole day these could change: **${unsure.join(", ")}**. They are provisional without a birth time (a birth certificate or hospital record usually has it).`
     : "This is a noon chart, but your type, authority, profile, definition, cross and channels stay the same all day, so the core reading holds." });
-  return { embeds, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart };
+  const ins = analyse(chart, { timeKnown, who });
+  return { embeds: withInsight(embeds, ins), analysis: ins.analysis, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart,
+    headline: `${chart.type} · ${chart.profile} · ${chart.authority} authority` };
 }

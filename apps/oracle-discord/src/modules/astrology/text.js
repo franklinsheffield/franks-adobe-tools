@@ -103,9 +103,9 @@ export const aspectLine = (a) => `${capital(CORE[a.a])} ${ASPECT[a.type]} ${CORE
 
 const EL_NOTE = {
   fire: ["Fire leads: you run on enthusiasm and action.", "Little fire: motivation may need outside sparks."],
-  earth: ["Earth leads: you trust what is practical and proven.", "Little earth: routines and the body need deliberate care."],
-  air: ["Air leads: ideas and conversation are your fuel.", "Little air: step back and name things before reacting."],
-  water: ["Water leads: feeling and intuition steer you.", "Little water: emotions may surface late, so check in on purpose."],
+  earth: ["Earth leads: you trust what is practical and proven.", "Little earth: routines and the body may get less automatic attention."],
+  air: ["Air leads: ideas and conversation are your fuel.", "Little air: putting things into words may come after the reaction, not before."],
+  water: ["Water leads: feeling and intuition steer you.", "Little water: emotions may surface late."],
 };
 export function elementLine(el) {
   const sorted = Object.entries(el).sort((a, b) => b[1] - a[1]);

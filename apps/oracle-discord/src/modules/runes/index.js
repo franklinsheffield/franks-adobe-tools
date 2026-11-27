@@ -1,12 +1,14 @@
 // /runes: draw Elder Futhark runes from the bag into a spread. Reversible runes can land merkstave (upside down).
 import { RUNES, SPREADS, AETTIR } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, GOLD, TEAL, FOOTER, cut } from "../../card.js";
 
 export const command = {
   name: "runes",
   description: "Draw Elder Futhark runes from the bag and receive a Science is Magic reading",
   options: [
-    { type: 3, name: "question", description: "What you want guidance on (optional)", max_length: 200 },
+    { type: 3, name: "question", description: "What you want to explore (optional)", max_length: 200 },
     { type: 3, name: "spread", description: "How many runes (default: the three Norns)", choices: [
       { name: "One rune: Odin's rune", value: "one" }, { name: "Three runes: the Norns (past, present, becoming)", value: "three" }, { name: "Five runes: the cross", value: "five" }] },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
@@ -62,7 +64,7 @@ function body(cast, spread, question) {
 
 const AETT_TEXT = [
   "Freyr's aett leads: the reading is about the material and the growing: resources, strength, joy, the journey.",
-  "Hagal's aett leads: the reading is about forces bigger than you: weather, need, timing, fate. Work with them rather than against.",
+  "Hagal's aett leads: the reading is about forces bigger than you: weather, need, timing, fate.",
   "Tyr's aett leads: the reading is about people and principle: justice, partnership, the self and what you inherit.",
 ];
 
@@ -80,14 +82,13 @@ export function readingEmbeds(cast, spreadKey, question, { who = "you" } = {}) {
   const counts = [0, 0, 0]; cast.forEach((d) => counts[d.aett]++);
   const lead = counts.indexOf(Math.max(...counts)), tie = counts.filter((c) => c === counts[lead]).length > 1;
   const merk = cast.filter((d) => d.merk).length;
-  const tone = merk === 0 ? "Every rune landed upright: the current runs with you." : merk === cast.length ? "Every reversible rune landed merkstave: this is a reading about blocks. Name them and the work begins." : `${merk} of ${cast.length} landed merkstave: mixed weather. The upright runes show your strengths; the reversed ones show where to take care.`;
+  const tone = merk === 0 ? "Every rune landed upright: the current runs with you." : merk === cast.length ? "Every reversible rune landed merkstave: tradition reads that as a cast about what is held up, not what is missing." : `${merk} of ${cast.length} landed merkstave: mixed weather. The upright runes show what flows; the reversed ones show where it catches.`;
   const last = cast[cast.length - 1];
   const synth = {
     title: "🪨 Reading the cast", color: TEAL,
     fields: [
       { name: "⚖️ Balance", value: `${tone}\n${tie ? "No single aett dominates: the question touches every part of life." : AETT_TEXT[lead]}` },
-      { name: "🔮 Core message", value: cut(cast.length === 1 ? `${last.rune.n} is the whole answer: ${last.rune.kw[0]}. ${last.merk ? "Upside down, it asks what's blocking that." : "Lean into it."}` : `From **${cast[0].rune.n}** (${cast[0].rune.kw[0]}) toward **${last.rune.n}** (${last.rune.kw[0]}). ${last.merk ? `The end of the cast is reversed, so the outcome isn't fixed: change the middle and you change the ending.` : `The cast ends upright: if you keep going as you are, ${last.rune.kw[0]} is where this lands.`}`) },
-      { name: "🧪 Your experiment", value: `Carve, draw or doodle **${last.rune.ch} ${last.rune.n}** somewhere you'll see it daily for nine days (nine nights is how long Odin hung on the world tree to win the runes). Note each time its theme, ${last.rune.kw[0]}, shows up.` },
+      { name: "🔮 Core message", value: cut(cast.length === 1 ? `${last.rune.n} is the whole answer: ${last.rune.kw[0]}. ${last.merk ? "Upside down, it points to whatever is blocking that." : "Upright, it stands unobstructed."}` : `From **${cast[0].rune.n}** (${cast[0].rune.kw[0]}) toward **${last.rune.n}** (${last.rune.kw[0]}). ${last.merk ? `The end of the cast is reversed, so the outcome reads as unsettled: it depends on how the middle of the cast develops.` : `The cast ends upright: on the present course, ${last.rune.kw[0]} is where this tends.`}`) },
       { name: "📖 About the runes", value: "The Elder Futhark is the oldest runic alphabet, carved roughly 150 to 800 CE. The Roman writer Tacitus describes Germanic peoples casting lots on strips of fruitwood; the meanings used today come from later Norwegian, Icelandic and Old English rune poems and modern practice." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -101,6 +102,7 @@ export async function run(o = {}, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const defs = `<radialGradient id="stone" cx="0.4" cy="0.3" r="0.9"><stop offset="0" stop-color="#4a3d86"/><stop offset="0.6" stop-color="#2a2058"/><stop offset="1" stop-color="#140f2c"/></radialGradient>`;
   const png = await cardPng({ title: "Runes", subtitle: `${SPREADS[key].name} · drawn for ${who}`, tag: "Elder Futhark · 24 runes · merkstave", body: body(cast, SPREADS[key], question), defs, H: 900 });
-  return { embeds: readingEmbeds(cast, key, question, { who }), files: [{ name: "runes.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(cast, SPREADS[key], who);
+  return { embeds: withInsight(readingEmbeds(cast, key, question, { who }), ins), analysis: ins.analysis, files: [{ name: "runes.png", data: png }], ephemeral: !!o.private,
     reading: { spread: key, runes: cast.map((d) => ({ name: d.rune.n, merkstave: d.merk })) }, headline: cast.map((d) => d.rune.n + (d.merk ? " (merkstave)" : "")).join(", ") };
 }

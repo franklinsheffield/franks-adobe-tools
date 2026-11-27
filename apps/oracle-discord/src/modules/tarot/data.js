@@ -116,6 +116,6 @@ export const DECK = [
 export const SPREADS = {
   one: { name: "One card: the heart of it", positions: [["The heart of it", "the core of your question"]] },
   three: { name: "Three cards: past, present, future", positions: [["Past", "what led here"], ["Present", "where you stand"], ["Future", "where this is heading"]] },
-  five: { name: "Five cards: the crossroads", positions: [["Now", "the situation"], ["Challenge", "what crosses you"], ["Root", "what's underneath"], ["Advice", "what to do"], ["Outcome", "where it lands"]] },
+  five: { name: "Five cards: the crossroads", positions: [["Now", "the situation"], ["Challenge", "what crosses you"], ["Root", "what's underneath"], ["Counsel", "the stance tradition suggests"], ["Outcome", "where it lands"]] },
   celtic: { name: "Celtic cross (ten cards)", positions: [["Present", "the heart of the matter"], ["Challenge", "what crosses you"], ["Foundation", "the root"], ["Past", "what's passing"], ["Crown", "the best you can reach"], ["Near future", "what's coming"], ["Self", "how you meet it"], ["Others", "people and surroundings"], ["Hopes/fears", "what you want and dread"], ["Outcome", "where it lands"]] },
 };

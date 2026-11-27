@@ -1,6 +1,7 @@
 import { GENERAL, BY_SYSTEM } from "./jokes.js";
-// The Oracle answers: reads the tone of a reading, gives a straight answer to the member's question in her voice,
-// adds a branded Science is Magic aside, and keeps a store of deeper material for "Go deeper".
+// The Oracle answers: reads the tone of a reading and tells the member what the data shows and what it may mean,
+// in her voice. House rule: she interprets, she does not instruct. No yes/no verdicts and no advice; she says how
+// the reading leans, what may be concluded, and what it leaves open. Jokes (quip) are separate and untouched.
 // No network and no AI: everything comes from the reading itself, so the answer always matches what was drawn.
 
 export const plain = (s) => String(s || "").replace(/\*\*|__|\*|`/g, "").replace(/^>\s?/gm, "").replace(/\s*\n+\s*/g, " ").trim();
@@ -25,49 +26,37 @@ export function tone(text) {
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 const pick = (arr, seed) => arr[seed % arr.length];
 
-const VERDICT = {
-  3: ["Yes. Loudly, and with sparkles.", "Yes. The ball is practically waving at you.", "A clear yes. I checked twice, then once more for fun."],
-  2: ["Yes.", "Yes, and the timing favours you.", "The answer leans hard towards yes."],
-  1: ["Yes, but gently. Don't sprint.", "A quiet yes, with conditions.", "Mostly yes. Read the fine print below."],
-  0: ["Neither yes nor no. It depends on what you do next.", "The glass shows both roads. Your choice tips it.", "Undecided, which means it's still yours to decide."],
-  "-1": ["Not yet.", "Wait a little. The door is not locked, just sticky.", "Hold off. Ask me again after some small steps."],
-  "-2": ["No, not like this.", "Not now. The conditions aren't ripe.", "The answer leans towards no, for the moment."],
-  "-3": ["No. Firmly. Put the kettle on instead.", "A clear no. The ball went foggy out of politeness.", "No. Even my one eye can see that."],
-};
-const WHEN = {
-  pos: ["Sooner than you think. Watch the next few weeks.", "Soon. The pieces are already moving.", "When you stop waiting and make the first move."],
-  mid: ["When the small things are in place. Not before.", "After one more step you've been putting off.", "Later than you want, earlier than you fear."],
-  neg: ["Not soon. Let this season finish first.", "After a pause. Rest, then return to it.", "When the current obstacle clears, and it will."],
-};
+/** How a reading leans, in words. Never a verdict: a description of the evidence. */
+export const lean = (t) => (t >= 2 ? "leans toward openness and movement" : t === 1 ? "leans gently toward movement" : t === 0 ? "is evenly balanced, with no clear lean" : t === -1 ? "leans gently toward caution" : "leans toward caution and delay");
 
 const YESNO = /^(should|shall|will|would|is|are|am|can|could|do|does|did|was|were|has|have|had|may|might|must)\b/i;
 
-/** Pick the most useful sentence of the reading: advice (a sentence that tells you to do something) first, else the first. */
+/** The first full sentence of the reading's own text (used when a reading carries no analysis). */
 export function coreLine(text) {
-  const all = sentences(text);
-  const advice = all.find((s) => /^(work|let|do|don'?t|be|keep|trust|test|try|take|give|stay|wait|move|speak|listen|rest|refine|act|begin|start|choose|use|go|watch|notice|focus|build|hold|release|seek|follow)\b/i.test(s.replace(/^[^:]*:\s*/, "")));
-  const line = (advice || all[0] || "").replace(/^[^:]{0,40}:\s*/, "");
+  const line = (sentences(text)[0] || "").replace(/^[^:]{0,40}:\s*/, "");
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
 
-/** The Oracle's straight answer to a question, from the reading's own text. */
-export function answer(question, text, name = "traveller") {
+/**
+ * The Oracle's reply to a question: how the reading leans, one thing that may be concluded, and one open question.
+ * analysis is the reading's { data, patterns, conclusions, questions, method } (src/insight.js) when it has one.
+ */
+export function answer(question, text, name = "traveller", analysis = null) {
   const q = String(question || "").trim().replace(/\s+/g, " "), t = tone(text), seed = hash(q + text.length);
-  const core = coreLine(text);
-  if (!q) return { tone: t, line: core ? `Here is what matters most, ${name}: ${core}` : `Sit with it, ${name}. The meaning ripens slowly.` };
+  const concl = analysis?.conclusions || [], open = analysis?.questions || [], pats = analysis?.patterns || [];
+  const c = concl.length ? pick(q ? concl : concl.slice(0, 1), seed) : coreLine(text), ask = open.length ? pick(open, seed) : "";
+  const tail = [pats[0] ? `The data: ${pats[0]}` : "", c, ask ? `It leaves this open: ${ask}` : ""].filter(Boolean).join(" ");
+  if (!q) return { tone: t, line: tail ? `Here is what the reading shows, ${name}. ${tail}` : `Sit with it, ${name}. The meaning ripens slowly.` };
   const body = q.replace(/[?.!]+$/, "");
   const or = body.split(/\s+or\s+/i);
   if (or.length === 2 && YESNO.test(or[0])) {
     const a = or[0].replace(YESNO, "").replace(/^\s*(i|we|you|they|it|he|she)\s+/i, "").trim(), b = or[1].trim();
     const choice = t >= 0 ? a : b;
-    return { tone: t, line: `Of the two? **${choice.charAt(0).toUpperCase() + choice.slice(1)}**. ${t >= 0 ? "The reading favours the bolder road." : "The reading favours the steadier road."} ${core}` };
+    return { tone: t, line: `Of the two? The choosing stays with you, ${name}. This reading ${lean(t)}, which sits nearer **${choice.charAt(0).toUpperCase() + choice.slice(1)}** than the other. ${tail}` };
   }
-  if (/^when\b/i.test(body)) {
-    const w = pick(t > 0 ? WHEN.pos : t < 0 ? WHEN.neg : WHEN.mid, seed);
-    return { tone: t, line: `When? ${w} ${core}` };
-  }
-  if (YESNO.test(body)) return { tone: t, line: `My answer: **${pick(VERDICT[t], seed)}** ${core}` };
-  return { tone: t, line: `You asked, so here it is, straight from the glass: ${core || "look at what you already know and act on the smallest true part of it."}` };
+  if (/^when\b/i.test(body)) return { tone: t, line: `When? No reading keeps a calendar, ${name}. What this one shows is that it ${lean(t)}. ${tail}` };
+  if (YESNO.test(body)) return { tone: t, line: `I read evidence, not verdicts, ${name}. This reading **${lean(t)}**. ${tail}` };
+  return { tone: t, line: `You asked, so here is what the reading supports: ${tail || "less than you hoped, which is also data."}` };
 }
 
 // Branded asides (jokes.js). A member hears every joke before any repeat: `heard` is their list of joke ids.
@@ -84,11 +73,26 @@ export function quip(key, name, heard = []) {
 }
 
 const DEEPER_LEADS = ["Look closer.", "There's more.", "Listen.", "Deeper still…", "Now this part.", "Mark this.", "Hmm… and here."];
-/** Everything the Oracle can say when asked to go deeper, as short pages, one part of the reading at a time. */
-export function deeperPages(r, question) {
+const long = (txt, max = 300) => { if (txt.length <= max) return [txt]; const res = []; let cur = ""; for (const part of txt.split(" · ")) { if (cur && (cur + " · " + part).length > max) { res.push(cur); cur = ""; } cur = cur ? cur + " · " + part : part; } if (cur) res.push(cur); return res; };
+/**
+ * Everything the Oracle can say when asked to go deeper, as short pages. The evidence comes first (the member's own
+ * Codex history in `lore`, then the reading's data, patterns, possible conclusions, open questions and method),
+ * then the written reading field by field.
+ */
+export function deeperPages(r, question, lore = []) {
   const out = []; let n = 0;
   const chunk = (txt, max = 300) => { const res = []; let cur = ""; for (const s of sentences(txt)) { if ((cur + " " + s).length > max && cur) { res.push(cur); cur = ""; } cur = cur ? cur + " " + s : s; } if (cur) res.push(cur); return res; };
+  lore.forEach((l, i) => out.push(i ? l : `From your Codex. ${l}`));
+  const A = r.analysis;
+  if (A) {
+    (A.data || []).forEach((d, i) => long(d).forEach((c, j) => out.push(!i && !j ? `The data first. ${c}` : c)));
+    (A.patterns || []).forEach((d, i) => out.push(i ? d : `Patterns in it. ${d}`));
+    (A.conclusions || []).forEach((d, i) => out.push(i ? d : `What may be concluded. ${d}`));
+    (A.questions || []).forEach((d, i) => out.push(i ? d : `What it leaves open. ${d}`));
+    (A.method || []).forEach((d, i) => out.push(i ? d : `How this was produced. ${d}`));
+  }
   for (const e of r.embeds) {
+    if (A && /Reading the data/.test(e.title || "")) continue;
     const desc = plain(e.description).replace(/^Question:\s*[^.?!]*[.?!]?\s*/i, "");
     if (desc && !(question && desc.includes(question))) chunk(desc).forEach((c) => out.push(`${DEEPER_LEADS[n++ % DEEPER_LEADS.length]} ${c}`));
     for (const f of e.fields || []) {

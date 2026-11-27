@@ -2,6 +2,8 @@
 // the living descendant of the ancient Egyptian civil calendar.
 import { parseBirth } from "../../birthplace.js";
 import { GODS, COPTIC, SEASONS } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, GOLD, TEAL, FOOTER, MONTHS, MONTHS_LONG } from "../../card.js";
 
 export const command = {
@@ -83,7 +85,6 @@ export function readingEmbeds(name, c, { who = "you" } = {}) {
     title: "⚖️ The weighing of the heart", color: GOLD,
     fields: [
       { name: "🪶 Ma'at", value: `Egyptians believed every heart would be weighed against the feather of Ma'at: truth, balance, right order. ${name}'s path to balance: ${g.kw[0]} without ${g.shadow.split(/[.:;]/)[0].toLowerCase()}.` },
-      { name: "🧪 Your experiment", value: `For one Egyptian 'week' (a decan of 10 days), end each day with one line: *What did I do today that was ${g.kw[0]}? Where did I tip the scales?* Ten lines, one feather.` },
       { name: "📖 About this reading", value: "The 'Egyptian zodiac' of twelve deity date ranges is a **modern reconstruction**, popular since the 20th century, not an ancient Egyptian system. The gods, myths and calendar here are genuinely ancient; the birthday assignments are not." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -98,5 +99,6 @@ export async function run(o, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Egyptian Zodiac", subtitle: `${name} · reading for ${who}`, tag: "modern reconstruction · ancient gods and calendar", body: body(name, c),
     facts: [["Deity", name], ["Periods", rangeText(GODS[name].ranges)], ["Egyptian date", `${c.day} ${c.name}`], ["Season", c.season]] });
-  return { embeds: readingEmbeds(name, c, { who }), files: [{ name: "egyptian.png", data: png }], ephemeral: !!o.private, reading: { god: name, coptic: c }, headline: `${name}, ${GODS[name].title}` };
+  const ins = analyse(name, c, b, who);
+  return { embeds: withInsight(readingEmbeds(name, c, { who }), ins), analysis: ins.analysis, files: [{ name: "egyptian.png", data: png }], ephemeral: !!o.private, reading: { god: name, coptic: c }, headline: `${name}, ${GODS[name].title}` };
 }

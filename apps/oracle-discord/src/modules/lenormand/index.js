@@ -1,12 +1,14 @@
 // /lenormand: shuffle the 36-card Lenormand and read it the traditional way, in pairs and lines (no reversals).
 import { CARDS, SPREADS } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, GOLD, TEAL, FOOTER, cut, wrap } from "../../card.js";
 
 export const command = {
   name: "lenormand",
   description: "Shuffle the 36-card Lenormand and read the cards in pairs",
   options: [
-    { type: 3, name: "question", description: "What you want guidance on (optional)", max_length: 200 },
+    { type: 3, name: "question", description: "What you want to explore (optional)", max_length: 200 },
     { type: 3, name: "spread", description: "Which spread (default: three-card sentence)", choices: Object.entries(SPREADS).map(([value, s]) => ({ name: s.name, value })) },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
@@ -65,7 +67,7 @@ function body(cast, spread, question) {
 export const pairLine = (a, b) => `**${a.n} + ${b.n}:** ${a.noun} ${b.mod}.`;
 
 export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
-  const sp = SPREADS[key], cards = cast.map((d) => d.card), tone = cards.reduce((t, c) => t + c.tone, 0);
+  const sp = SPREADS[key], cards = cast.map((d) => d.card);
   const fields = key === "square"
     ? [["Past", 0], ["Now", 3], ["Next", 6]].map(([row, i]) => ({ name: `${row}: ${cards[i].n} · ${cards[i + 1].n} · ${cards[i + 2].n}`, value: cut(`${pairLine(cards[i], cards[i + 1])}\n${pairLine(cards[i + 1], cards[i + 2])}`) }))
     : cast.map((d, k) => { const [label, about] = sp.positions[k], c = d.card; return { name: `${k + 1}. ${label}: ${c.n} (${c.num})`, value: cut(`*${about}* · ${c.kw.join(", ")}\n${c.up}`) }; });
@@ -76,13 +78,11 @@ export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
   };
   const core = key === "square" ? cards[4] : cards[key === "line" ? 1 : 0];
   const pairs = cards.slice(0, -1).map((c, i) => pairLine(c, cards[i + 1])).slice(0, key === "square" ? 0 : 2);
-  const lean = tone >= 2 ? "Leaning **yes**: most of these cards are kind." : tone <= -2 ? "Leaning **not yet**: there are hard cards here. Clear them first." : "**Mixed:** it depends on what you do next.";
   const synth = {
     title: "🎴 Reading the cards together", color: TEAL,
     fields: [
       { name: "🔑 The core", value: cut(`**${core.n}** is the centre of it: ${core.up}${key === "square" ? `\nAround it: ${pairLine(cards[3], cards[4])} ${pairLine(cards[4], cards[5])} ${pairLine(cards[1], cards[4])} ${pairLine(cards[4], cards[7])}` : ""}`) },
       ...(pairs.length ? [{ name: "🔗 Pairs", value: cut(pairs.join("\n")) }] : []),
-      { name: "⚖️ Overall", value: lean },
       { name: "📖 About Lenormand", value: "The Petit Lenormand began as a 36-card parlour game sold in the 1800s under the name of Marie Anne Lenormand, a famous Paris fortune teller who died in 1843. Its cards are read in pairs, like words in a sentence. These readings are for reflection and fun, not prediction." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -96,6 +96,7 @@ export async function run(o = {}, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const defs = `<linearGradient id="ln-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf1da"/><stop offset="1" stop-color="#e9d6ae"/></linearGradient>`;
   const png = await cardPng({ title: "Lenormand", subtitle: `${SPREADS[key].name} · dealt for ${who}`, tag: "36 cards · read in pairs", body: body(cast, SPREADS[key], question), defs, H: key === "square" ? 1120 : 760 });
-  return { embeds: readingEmbeds(cast, key, question, { who }), files: [{ name: "lenormand.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(cast, key, SPREADS[key], who);
+  return { embeds: withInsight(readingEmbeds(cast, key, question, { who }), ins), analysis: ins.analysis, files: [{ name: "lenormand.png", data: png }], ephemeral: !!o.private,
     reading: { spread: key, cards: cast.map((d) => ({ name: d.card.n })) }, headline: cast.map((d) => d.card.n).join(", ") };
 }

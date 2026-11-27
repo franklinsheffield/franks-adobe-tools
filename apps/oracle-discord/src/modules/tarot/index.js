@@ -1,12 +1,14 @@
 // /tarot: shuffle the 78-card deck, deal a spread, and read it. Any card can land reversed.
 import { DECK, SUITS, SPREADS } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, GOLD, TEAL, FOOTER, cut, wrap } from "../../card.js";
 
 export const command = {
   name: "tarot",
   description: "Shuffle the tarot, deal a spread and receive a Science is Magic reading",
   options: [
-    { type: 3, name: "question", description: "What you want guidance on (optional)", max_length: 200 },
+    { type: 3, name: "question", description: "What you want to explore (optional)", max_length: 200 },
     { type: 3, name: "spread", description: "Which spread (default: past, present, future)", choices: Object.entries(SPREADS).map(([value, s]) => ({ name: s.name, value })) },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
@@ -94,19 +96,10 @@ export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
     description: question ? `**Question:** ${cut(question, 200)}` : "*An open reading.*",
     fields: fields.slice(0, 25), image: { url: "attachment://tarot.png" }, footer: FOOTER,
   };
-  const majors = cast.filter((d) => d.card.arcana === "major").length, revs = cast.filter((d) => d.rev).length;
-  const suitCount = Object.fromEntries(SUITS.map((s) => [s.key, cast.filter((d) => d.card.suit === s.key).length]));
-  const top = SUITS.slice().sort((a, b) => suitCount[b.key] - suitCount[a.key])[0];
-  const last = cast[cast.length - 1];
-  const weight = majors === 0 ? "No Major Arcana: this is everyday business, fully in your hands." : majors >= Math.ceil(cast.length / 2) ? `${majors} Major Arcana: big forces and life lessons are in play. Go with the current.` : `${majors} Major Arcana: one or two big themes, with plenty you can steer.`;
-  const suit = suitCount[top.key] >= 2 ? `${top.n} lead (${top.el}): the reading is mostly about ${top.theme}.` : "No suit dominates: the question touches every part of life.";
-  const rev = revs === 0 ? "Every card upright: energy flows freely." : revs === cast.length ? "Every card reversed: something is blocked or turned inward. Start there." : `${revs} of ${cast.length} reversed: those are the places to slow down and look inside.`;
   const synth = {
-    title: "🃏 Reading the spread", color: TEAL,
+    title: "🃏 About the cards", color: TEAL,
     fields: [
-      { name: "⚖️ Balance", value: `${weight}\n${suit}\n${rev}` },
-      { name: "🔮 Core message", value: cut(cast.length === 1 ? `${last.card.n} is the whole answer: ${last.card.kw[0]}. ${last.rev ? "Reversed, it asks what's in the way." : "Lean into it."}` : `From **${cast[0].card.n}** (${cast[0].card.kw[0]}) to **${last.card.n}** (${last.card.kw[0]}). ${last.rev ? "The last card is reversed: the outcome is still soft clay. Change the middle and the ending changes." : `The last card is upright: keep going as you are and ${last.card.kw[0]} is where this lands.`}`) },
-      { name: "🧪 Your experiment", value: `Put **${last.card.n}** somewhere you'll see it this week (a sketch, a phone wallpaper, a sticky note). Each time ${last.card.kw[0]} shows up in your day, jot it down. Seven days, then compare notes with the cards.` },
+      { name: "🧭 How to read the lines above", value: "Each card's text is the traditional meaning for that position, written the way tarot books phrase it. Treat it as the tradition's voice describing a theme, not as an instruction." },
       { name: "📖 About tarot", value: "Tarot cards began as a 15th-century Italian card game (tarocchi). They were tied to divination in 18th-century France, and the 1909 Rider-Waite-Smith deck shaped most modern meanings. These readings are original to Science is Magic." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -121,6 +114,7 @@ export async function run(o = {}, ctx = {}) {
   const defs = `<linearGradient id="tc-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2690"/><stop offset="1" stop-color="#1a1240"/></linearGradient>
     <radialGradient id="tc-sun" cx="0.5" cy="0.45" r="0.6"><stop offset="0" stop-color="#FFF1B8"/><stop offset="0.7" stop-color="${PAL.gold}"/><stop offset="1" stop-color="#b07a20"/></radialGradient>`;
   const png = await cardPng({ title: "Tarot", subtitle: `${SPREADS[key].name} · dealt for ${who}`, tag: "78 cards · upright and reversed", body: body(cast, SPREADS[key], question), defs, H: key === "celtic" ? 1060 : key === "one" ? 760 : 720 });
-  return { embeds: readingEmbeds(cast, key, question, { who }), files: [{ name: "tarot.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(cast, SPREADS[key], who);
+  return { embeds: withInsight(readingEmbeds(cast, key, question, { who }), ins), analysis: ins.analysis, files: [{ name: "tarot.png", data: png }], ephemeral: !!o.private,
     reading: { spread: key, cards: cast.map((d) => ({ name: d.card.n, reversed: d.rev })) }, headline: cast.map((d) => d.card.n + (d.rev ? " (reversed)" : "")).join(", ") };
 }

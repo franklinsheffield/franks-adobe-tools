@@ -2,6 +2,8 @@
 // Format: preface (today's sexagenary day) -> the charge, made as a statement, paired with its opposite ->
 // heat applied to drilled hollows -> 卜-shaped cracks read with Shang crack notations -> prognostication -> verification.
 import { pillar, jdn } from "../chinesezodiac/calendar.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, fit, GOLD, TEAL, FOOTER, cut } from "../../card.js";
 
 export const command = {
@@ -19,9 +21,9 @@ export const OMENS = [
   { hz: "大吉", py: "dà jí", en: "great auspice", w: 1, score: 3, text: "The crack ran clean and the branch rose sharply: the strongest favourable sign the diviners carved." },
   { hz: "弘吉", py: "hóng jí", en: "vast auspice", w: 2, score: 2.5, text: "A broad, clear branch: favour that spreads wider than the question itself." },
   { hz: "吉", py: "jí", en: "auspicious", w: 4, score: 2, text: "A good crack: the matter is favoured." },
-  { hz: "小吉", py: "xiǎo jí", en: "slightly auspicious", w: 4, score: 1, text: "A modest crack: favour, but small. Help it along." },
+  { hz: "小吉", py: "xiǎo jí", en: "slightly auspicious", w: 4, score: 1, text: "A modest crack: favour, but small." },
   { hz: "亡尤", py: "wáng yóu", en: "no trouble", w: 4, score: 0.5, text: "Neutral: nothing goes wrong, nothing special happens. The ordinary is protected." },
-  { hz: "有祟", py: "yǒu suì", en: "there will be harm", w: 2, score: -1, text: "A troubled crack: something works against this. The Shang would have made offerings and asked again; you can rethink and ask again." },
+  { hz: "有祟", py: "yǒu suì", en: "there will be harm", w: 2, score: -1, text: "A troubled crack: something works against this. The Shang would have looked for the cause, made offerings and asked again." },
 ];
 const TOTAL = OMENS.reduce((a, o) => a + o.w, 0);
 function rng() { const a = new Uint32Array(1); globalThis.crypto.getRandomValues(a); return a[0] / 2 ** 32; }
@@ -48,11 +50,11 @@ export function divine(charge, rand = rng, now = new Date()) {
 }
 
 const VERDICT = {
-  yes: ["吉", "The bone favours the charge.", "The positive crack clearly outshines its opposite. Move ahead, and keep watching for the verification."],
-  "lean-yes": ["小吉", "The bone leans toward the charge.", "The positive crack is a little stronger. Favourable, but not by a wide margin: act, and stay attentive."],
-  even: ["亡尤", "The bone is silent between the two.", "Both cracks read the same. The Shang often re-divined with a fresh hollow; the answer may depend on what you do next."],
-  "lean-no": ["其", "The bone leans against the charge.", "The opposite crack is a little stronger. Not a no, but a caution: change one thing and ask again."],
-  no: ["有祟", "The bone does not favour the charge.", "The opposite crack clearly wins. Treat it as information: what would have to change for this to go well?"],
+  yes: ["吉", "The bone favours the charge.", "The positive crack clearly outshines its opposite. Here a Shang scribe would carve the favourable notation and wait for the verification."],
+  "lean-yes": ["小吉", "The bone leans toward the charge.", "The positive crack is a little stronger. Favourable, but not by a wide margin: a diviner might well have cracked again."],
+  even: ["亡尤", "The bone is silent between the two.", "Both cracks read the same. The Shang often re-divined with a fresh hollow; an even result settles nothing by itself."],
+  "lean-no": ["其", "The bone leans against the charge.", "The opposite crack is a little stronger. Not a refusal, but the bone does not side with the charge as worded."],
+  no: ["有祟", "The bone does not favour the charge.", "The opposite crack clearly wins. The charge as stated is not supported; diviners took that as information about the matter."],
 };
 
 function plastron(r, bone) {
@@ -113,7 +115,7 @@ export function readingEmbeds(r, { who = "you" } = {}) {
       { name: `🔥 The charge · ${r.pos.omen.hz} ${r.pos.omen.py} (${r.pos.omen.en})`, value: r.pos.omen.text },
       { name: `🔥 Its opposite · ${r.neg.omen.hz} ${r.neg.omen.py} (${r.neg.omen.en})`, value: `Shang diviners often cracked both sides of a question: "it will" and "it may not". ${r.neg.omen.text.replace("the matter is favoured", "the opposite outcome is favoured")}` },
       { name: "📜 Prognostication · 占曰", value: `**${v[1]}** ${v[2]}` },
-      { name: "✍️ Verification · 驗辭", value: "On many bones a scribe later added what actually happened. Come back to this message when you know, and reply with the outcome: that's the oldest feedback loop in Chinese writing." },
+      { name: "✍️ Verification · 驗辭", value: "On many bones a scribe later added what actually happened. A finished inscription is therefore a small record of prediction set against result: the oldest feedback loop in Chinese writing." },
     ],
     image: { url: "attachment://oraclebones.png" }, footer: FOOTER,
   };
@@ -123,7 +125,7 @@ export function readingEmbeds(r, { who = "you" } = {}) {
       { name: "The method", value: "Diviners at the Late Shang court at Anyang (c. 1250–1046 BCE) prepared turtle plastrons and ox shoulder blades by carving rows of hollows into the back. A hot rod applied to a hollow made the bone crack with a sharp report, in a shape like 卜, which is still the Chinese character for divination." },
       { name: "The record", value: "The question, the cracks and sometimes the king's reading and the result were carved beside the cracks. About 150,000 fragments survive. They are the earliest substantial body of Chinese writing, and they record rain, harvests, hunts, childbirth, illness, war and dreams." },
       { name: "This reading", value: "This is a **modern reflection in the Shang format**, not a recreation of a royal rite: there are no ancestors addressed and no offerings asked. The day count is the real 60-day cycle the Shang used, computed for today." },
-      { name: "🧪 Your experiment", value: "Write your charge as a plain statement, as the Shang did (not a question), and notice how that changes what you're really asking. Then record the verification when it comes." },
+      { name: "🧩 Why a statement, not a question", value: "The Shang put matters to the bone as plain statements (\"It will rain\"), then as their opposites (\"It will not rain\"). Wording a matter both ways tends to show which version the asker was hoping for, which is data too." },
     ],
     footer: { text: `${FOOTER.text} · divined for ${who}` },
   };
@@ -136,6 +138,7 @@ export async function run(o = {}, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const defs = `<radialGradient id="bone" cx="0.45" cy="0.35" r="0.8"><stop offset="0" stop-color="#F3E4C0"/><stop offset="0.7" stop-color="#D9C08E"/><stop offset="1" stop-color="#A8895A"/></radialGradient>`;
   const png = await cardPng({ title: "Oracle Bones", subtitle: `${bone === "ox" ? "ox shoulder blade" : "turtle plastron"} · divined for ${who}`, tag: "in the format of Late Shang divination", body: body(r, bone), defs, H: 860 });
-  return { embeds: readingEmbeds(r, { who }), files: [{ name: "oraclebones.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(r, OMENS, who);
+  return { embeds: withInsight(readingEmbeds(r, { who }), ins), analysis: ins.analysis, files: [{ name: "oraclebones.png", data: png }], ephemeral: !!o.private,
     reading: { day: `${r.day.stem.py} ${r.day.branch.py}`, charge: r.charge, charged: r.pos.omen.en, opposite: r.neg.omen.en, verdict: r.verdict }, headline: VERDICT[r.verdict][1] };
 }

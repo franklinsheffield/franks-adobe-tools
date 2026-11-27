@@ -1,6 +1,8 @@
 // /celtic: Celtic tree sign and ogham letter (Graves' tree calendar, a modern reconstruction), plus your fire festival season.
 import { parseBirth } from "../../birthplace.js";
 import { TREES, NAMELESS, FESTIVALS } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, GOLD, TEAL, FOOTER, MONTHS } from "../../card.js";
 
 export const command = {
@@ -75,8 +77,7 @@ export function readingEmbeds(tr, fest, today, { who = "you" } = {}) {
     title: `🔥 Your fire festival · ${fest.name}`, color: TEAL,
     fields: [
       { name: `Born in the season of ${fest.name}`, value: `The Celtic year turned on four fire festivals. You were born in the quarter that opens with **${fest.name}** (${MONTHS[fest.date[0] - 1]} ${fest.date[1]}): ${fest.about}. ${{ Imbolc: "Your season is about first light: hope, inspiration, quiet beginnings.", Beltane: "Your season is about growth in full bloom: passion, vitality, union.", Lughnasadh: "Your season is about the harvest: skill, reward and gratitude.", Samhain: "Your season is about the dark half: depth, ancestors, endings that make room." }[fest.name]}` },
-      { name: `🌲 The tree month now: ${today.tree} ${today.ogham}`, value: today === tr ? "We're in your own tree month right now: a good time to start what matters to you." : `${today.tree} time favours ${today.kw.join(", ")}. As a ${tr.tree}, use it for ${today.kw[0]}.` },
-      { name: "🧪 Your experiment", value: `Find a real ${tr.tree === "The Nameless Day" ? "tree that calls to you" : tr.tree.toLowerCase()} near you. Visit it once a week for a tree month (28 days) and notice what changes, in it and in you.` },
+      { name: `🌲 The tree month now: ${today.tree} ${today.ogham}`, value: today === tr ? "We're in your own tree month right now." : `${today.tree} time is associated with ${today.kw.join(", ")}.` },
       { name: "📖 About this reading", value: "The Celtic tree calendar is a **modern reconstruction**: Robert Graves built it in *The White Goddess* (1948) from medieval Irish ogham lore. The ogham alphabet and the tree lore are genuinely old; the birthday months are not attested in ancient sources." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -93,5 +94,6 @@ export async function run(o, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Celtic Tree Sign", subtitle: `${tr.tree} · reading for ${who}`, tag: "Graves' tree calendar · modern reconstruction", body: body(tr, today),
     facts: [["Tree", tr.tree], ["Ogham", `${tr.letter}`], ["Tree month", rangeOf(tr)], ["Fire festival", fest.name]] });
-  return { embeds: readingEmbeds(tr, fest, today, { who }), files: [{ name: "celtic.png", data: png }], ephemeral: !!o.private, reading: { tree: tr.tree, ogham: tr.letter, festival: fest.name }, headline: `${tr.tree} (${tr.letter})` };
+  const ins = analyse(tr, fest, today, b, who);
+  return { embeds: withInsight(readingEmbeds(tr, fest, today, { who }), ins), analysis: ins.analysis, files: [{ name: "celtic.png", data: png }], ephemeral: !!o.private, reading: { tree: tr.tree, ogham: tr.letter, festival: fest.name }, headline: `${tr.tree} (${tr.letter})` };
 }

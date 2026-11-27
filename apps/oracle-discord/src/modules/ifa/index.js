@@ -2,6 +2,8 @@
 // closed, giving one of 16 principal Odù per leg and 16 x 16 = 256 Odù in all. Respectfully labelled: this is not
 // a consultation with a babaláwo, and it never prescribes offerings (ẹbọ).
 import { ODU, REFLECT } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, GOLD, TEAL, FOOTER, cut } from "../../card.js";
 
 export const command = {
@@ -76,7 +78,7 @@ export function readingEmbeds(c, question, { who = "you" } = {}) {
     fields: [
       { name: `➡️ Right leg · ${R.name} (${sym(c.right)})`, value: `The right leg is read first and leads. **${R.name}** speaks of ${R.gist}.` },
       { name: `⬅️ Left leg · ${L.name} (${sym(c.left)})`, value: meji ? `The left leg mirrors the right: a **Méjì** (doubled) Odù, one of the sixteen principal Odù, where a single theme speaks with its full strength.` : `The left leg supports and colours it. **${L.name}** brings ${L.gist}.` },
-      { name: "🔗 Together", value: meji ? `${R.name} twice over: the whole cast turns on **${R.theme}**. Sit with that one theme rather than looking elsewhere.` : `**${R.theme}** carried by **${L.theme}**. Read the right leg as the matter at hand and the left as the way it moves.` },
+      { name: "🔗 Together", value: meji ? `${R.name} twice over: the whole cast turns on **${R.theme}**. One theme carries the whole cast.` : `**${R.theme}** carried by **${L.theme}**. In this reflection the right leg stands for the matter at hand and the left for the way it moves.` },
       { name: "🪞 Questions to sit with", value: `• ${REFLECT[c.r]}${meji ? "" : `\n• ${REFLECT[c.l]}`}` },
     ],
     image: { url: "attachment://ifa.png" }, footer: FOOTER,
@@ -86,7 +88,7 @@ export function readingEmbeds(c, question, { who = "you" } = {}) {
     fields: [
       { name: "A living tradition", value: "Ifá is the divination system of the Yoruba people, practised in Nigeria, Benin and across the diaspora, from Cuba and Brazil to the US. It is associated with Ọ̀rúnmìlà, the orisha of wisdom, and is carried by trained priests, babaláwo, through a vast body of oral verses. UNESCO recognises it as part of humanity's intangible cultural heritage." },
       { name: "How a real consultation works", value: "A babaláwo casts sixteen palm nuts (ikin) or the divining chain (ọ̀pẹ̀lẹ̀) and marks the result on a tray dusted with powder. The Odù that appears opens many verses; the priest recites them, asks further questions, and may recommend an offering (ẹbọ). That knowledge takes years of training, and this bot does none of it." },
-      { name: "What this reading is", value: "A respectful, **inspired-by** exercise: the chain's 8 pods, the 16 principal Odù and their marks, and short original reflections on their widely known themes. It quotes no verses and prescribes nothing. If Ifá speaks to you, seek out a qualified babaláwo or an established community." },
+      { name: "What this reading is", value: "A respectful, **inspired-by** exercise: the chain's 8 pods, the 16 principal Odù and their marks, and short original reflections on their widely known themes. It quotes no verses and prescribes nothing. Ifá itself is found with qualified babaláwo and established communities, not here." },
     ],
     footer: { text: `${FOOTER.text} · cast for ${who}` },
   };
@@ -99,6 +101,7 @@ export async function run(o = {}, ctx = {}) {
   const defs = `<radialGradient id="tray" cx="0.5" cy="0.4" r="0.7"><stop offset="0" stop-color="#3a2690"/><stop offset="1" stop-color="#1a1238"/></radialGradient>
   <radialGradient id="pod" cx="0.4" cy="0.35" r="0.8"><stop offset="0" stop-color="#8a6236"/><stop offset="1" stop-color="#3b2a18"/></radialGradient>`;
   const png = await cardPng({ title: "Ifá-inspired", subtitle: `${c.name} · cast for ${who}`, tag: "the 256 Odù · not a babaláwo consultation", body: body(c, question), defs, H: 880 });
-  return { embeds: readingEmbeds(c, question, { who }), files: [{ name: "ifa.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(c, who);
+  return { embeds: withInsight(readingEmbeds(c, question, { who }), ins), analysis: ins.analysis, files: [{ name: "ifa.png", data: png }], ephemeral: !!o.private,
     reading: { odu: c.name, number: c.number, right: ODU[c.r].name, left: ODU[c.l].name }, headline: c.name };
 }
