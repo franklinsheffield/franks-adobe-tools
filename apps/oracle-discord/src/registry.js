@@ -1,8 +1,8 @@
 // Slash commands served by the oracle bot. Each name maps to src/modules/<name>/index.js, which exports
 // `command` (Discord command JSON) and `async run(options, ctx)` -> { embeds, files: [{ name, data }], ephemeral? }.
-export const MODULES = ["humandesign", "astrology", "iching"];
+export const MODULES = ["humandesign", "astrology", "iching", "numerology", "chinesezodiac", "mayan", "egyptian", "celtic", "runes", "oraclebones", "ifa"];
 // Commands whose options are personal (birth data): always encrypted end to end, never logged.
-export const PERSONAL = new Set(["humandesign", "astrology"]);
+export const PERSONAL = new Set(["humandesign", "astrology", "numerology", "chinesezodiac", "mayan", "egyptian", "celtic"]);
 
 /** Should the reply be private (ephemeral)? The user's `private` option wins; otherwise each module's default. */
 export function isPrivate(name, options) {

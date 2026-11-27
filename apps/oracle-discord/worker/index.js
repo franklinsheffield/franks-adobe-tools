@@ -42,12 +42,16 @@ async function profileReply(env, userId, o, say) {
   if (o.subcommand === "delete") { await deleteProfile(env, userId); return say("🗑️ Your saved birth details are deleted."); }
   if (o.subcommand === "show") {
     const p = await loadProfile(env, userId);
-    return say(p ? `🪪 Saved: **${p.date}**, ${p.time && p.time !== "unknown" ? `**${p.time}**` : "time unknown"}, **${p.place}**. Change it with \`/profile set\`, remove it with \`/profile delete\`.` : "Nothing saved. Use `/profile set` to save your birth details.");
+    return say(p ? `🪪 Saved: **${p.date}**, ${p.time && p.time !== "unknown" ? `**${p.time}**` : "time unknown"}, ${p.place ? `**${p.place}**` : "no place"}, ${p.name ? `name **${p.name}**` : "no birth name (add one for /numerology)"}. Change it with \`/profile set\`, remove it with \`/profile delete\`.` : "Nothing saved. Use `/profile set` to save your birth details.");
   }
-  const p = { date: o.date, time: o.time || "unknown", place: o.place }, bad = checkBirth(p);
+  const old = (await loadProfile(env, userId)) || {};
+  const p = { date: o.date || old.date, place: o.place || old.place, name: o.name || old.name };
+  p.time = o.time || (o.date && o.date !== old.date ? "unknown" : old.time || "unknown");
+  if (!p.date) return say("🔮 Add your birth date the first time: `/profile set date:1990-04-09`.");
+  const bad = checkBirth(p, ["date", ...(o.place ? ["place"] : []), ...(o.name ? ["name"] : [])]);
   if (bad) return say("🔮 " + bad);
-  await saveProfile(env, userId, p);
-  return say("✅ Saved (encrypted, only used for your own readings). /humandesign and /astrology will use it automatically. `/profile delete` removes it.");
+  await saveProfile(env, userId, p, { merge: false });
+  return say("✅ Saved (encrypted, only used for your own readings). Readings that need birth details use it automatically. `/profile show` checks it, `/profile delete` removes it.");
 }
 
 export default {
@@ -90,7 +94,7 @@ export default {
     } else if (it.type === 5) { // modal submit: replay the command with the entered birth data
       const m = await fromModal(env, it);
       if (!m) return say("That form expired. Run the command again.");
-      const bad = checkBirth(m.profile);
+      const bad = checkBirth({ ...m.profile, time: m.profile.time }, m.need);
       if (bad) return say("🔮 " + bad + " Run the command again to retry.");
       if (m.save && env.PROFILES) await saveProfile(env, user.id, m.profile);
       ({ name, options } = m);
