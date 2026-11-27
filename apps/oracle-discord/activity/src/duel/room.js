@@ -5,6 +5,8 @@
 // Mounted via ROOMS (main.js): room.open(ctx), codexHtml, shop. Rules in logic.js, data in elements.js/compounds.js,
 // drawing in scene.js, sounds in sfx.js, cosmetics in shop.js.
 import { EL, FAMILY, isNoble } from "./elements.js";
+import { openFactFib } from "../party/factfib-ui.js";
+import { kit as fibKit } from "./factfib.js";
 import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
 import { sceneSvg, kindOf, KIND, powerTier, structureSvg } from "./scene.js";
@@ -104,7 +106,7 @@ export const room = {
         ${dailyBtn()}
         <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button>${ctx.study ? `<button class="c small" type="button" id="du-chem">📚 Chemistry notes</button>` : ""}<button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
         <div class="note">Every compound is real, and its power comes from its real enthalpy of formation. Cards show each element's usual charges.</div>
-        <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        <div class="choices"><button class="c" type="button" id="ff-open">🎭 Fact or Fib (party)</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => start(LEVELS[+b.dataset.l - 1])));
       $("ui").querySelectorAll("[data-rv]").forEach((b) => (b.onclick = () => start(LEVELS[2], false, b.dataset.rv)));
       $("du-friend").onclick = () => { if (!canJoin(state)) return say("Duel a friend works inside a Discord voice call: open the Chamber in the call, and you both open Element Duel and press Duel a friend."); gen++; g = null; fx = null; clearReading(); friendDuel(ctx, { look, back: () => lobby(false) }); };
@@ -114,7 +116,7 @@ export const room = {
       $("du-codex").onclick = () => toggle(codexPage);
       if ($("du-chem")) $("du-chem").onclick = () => { gen++; ctx.study("duel", () => { state.inRoom = "duel"; lobby(false); }); };
       $("du-shop").onclick = () => shop();
-      $("back").onclick = leave;
+      $("back").onclick = leave; $("ff-open").onclick = () => openFactFib(ctx, fibKit(tableEl), () => lobby(false));
     }
     /** The rivals ladder (Master level): beat each chemist to unlock the next. */
     function rivalsHtml() {
