@@ -281,6 +281,18 @@ export const BANTER = {
     pirate: G("Mixin' powders! Careful, that one's for the cannons.", "Smelt it hot, like the sun on the Spanish Main!", "A new treasure from the pot! Into the chest!", "Arr, nothin'. Just smoke and a smell o' bilge."),
     influencer: G("Experiment vlog! Rate this combo one to ten!", "This crucible is giving cottagecore alchemist.", "New discovery unlocked! Adding it to my highlights.", "Flop era. Deleting that one from the grid."),
   },
+  fireworks: {
+    mystic: G("Fire remembers the metal it was born from. Watch.", "Every star in the sky was a salt in a jar first.", "Your sky bloomed true. The metals sang their colours.", "The shell spoke in the wrong colour. Listen closer."),
+    deadpan: G("Metal salt, oxidiser, fuse. Then loud.", "Blue is hard. Everyone says so. Including me.", "It went up. It was the right colour. Good.", "That was not the colour on the order sheet."),
+    drama: G("The FUSE is LIT! Stand BACK, darling!", "Copper and chlorine! Will the BLUE finally appear?!", "A SKY of COLOUR! The crowd WEEPS with joy!", "The shell fizzled! The heavens are DISAPPOINTED!"),
+    standup: G("Fireworks: chemistry class, but with an audience.", "Strontium walks into a bar. Bar turns red.", "Big finish! That's how you end a set, folks!", "That burst got fewer oohs than my opening joke."),
+    grumpy: G("Check your oxidiser twice. Light it once.", "Kids today want blue. Blue is the hardest one.", "Hmph. Clean colours. Mostly no smoke.", "Wrong salt. I could see it from the shed."),
+    sports: G("Shell's packed! Rocket on the launch line!", "Timing is everything on show night! Hit the beat!", "PERFECT burst! The crowd is on its FEET!", "Missed the cue! Back to the workshop, team!"),
+    conspiracy: G("Why is blue so hard? Ask who sells the copper.", "The show music's tempo is a signal. Probably.", "Red, green, gold. That's a code. I'm sure of it.", "That dud was sabotage. Big Sparkler wants it."),
+    bard: G("Lo, the fuse is kindled and the shell takes flight!", "Of copper blue and strontium red the poets sing!", "A crown of fire across the dark, and all is song!", "The rocket faltered and the verse fell silent."),
+    pirate: G("Powder in the shell! That's me favourite part!", "Arr, sodium yellow. Like doubloons in the sky.", "A broadside of colour! Captain's proud of ye!", "Damp powder, matey. Happens to the best crews."),
+    influencer: G("Going live from the launch site! Hit like!", "Bestie, this blue is SO hard to get. Content!", "This sky is literally my new profile picture!", "Okay, that burst did NOT match my aesthetic."),
+  },
   commissions: {
     mystic: G("Each letter is a thread. Follow it to its weaver.", "What you make leaves your hands and changes a life.", "Sealed and sent. Your work travels where you cannot.", "The client waits. Some gifts need another day."),
     deadpan: G("Client wants a thing. You have a thing. Business.", "Wax seal. Very fancy. Still just a parcel.", "Delivered. Someone, somewhere, is mildly pleased.", "Not made yet. The client will survive."),
