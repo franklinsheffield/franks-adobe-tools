@@ -3,6 +3,7 @@
 // public assets repo. In the Discord Activity everything goes through our Worker (/.proxy/api/lib/...), because the
 // Activity frame may only reach its own origin; elsewhere (desktop, local web) the files load straight from GitHub.
 const DIRECT = {
+  textures: "https://raw.githubusercontent.com/franklinsheffield/web-pipeline-assets/main/textures/",
   index: "https://raw.githubusercontent.com/franklinsheffield/franks-adobe-tools/main/apps/pixel-scape-discord/data/models-index.json",
 };
 const PROXY = "/.proxy/api/lib";
@@ -53,4 +54,12 @@ export async function download(m, onProgress) {
   const total = +r.headers.get("content-length") || m.bytes, reader = r.body.getReader(), parts = []; let got = 0;
   for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onProgress(got, total); }
   const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; } return out.buffer;
+}
+export async function byId(id) { const idx = await load(); return idx.models.find((m) => m.id === id) || null; }
+// a texture set's file from the library (skin links): <id>/color.webp under textures/
+export async function downloadTexture(path) {
+  if (!/^[\w.-]+\/[\w.-]+\.webp$/.test(path) || path.includes("..")) throw new Error("bad texture path");
+  await load();
+  const r = await fetch(IDX.proxy ? PROXY + "/tex/" + path : DIRECT.textures + path); if (!r.ok) throw new Error("texture download failed (HTTP " + r.status + ")");
+  return r.arrayBuffer();
 }
