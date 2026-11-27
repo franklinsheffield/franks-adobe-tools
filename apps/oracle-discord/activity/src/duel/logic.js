@@ -10,6 +10,7 @@
 import { EL, poolOf, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_KEY, BY_ID, compoundsOf, keyOf, pretty, CHAINS } from "./compounds.js";
 import { RIVAL, rivalTaste, RIVAL_PRIZE } from "./rivals.js";
+import { MILESTONES } from "./uses.js";
 
 export const START = 20, HAND = 7, GOAL = 5, SHIELD = 4, MAX_ROUNDS = 30;
 export const LEVELS = [
@@ -280,6 +281,8 @@ export function settle(p, g) {
   const essence = (won ? Math.round(10 * L.mult) : 0) + newCodex.length * 2 + g.you.bonusHits * 3 + newChains.length * 10;
   let newRival = null;
   if (won && g.rival) { const rv = (r.rivals ||= {}); if (!rv[g.rival]) newRival = g.rival; rv[g.rival] = (rv[g.rival] || 0) + 1; }
-  return { xp, essence: essence + (newRival ? RIVAL_PRIZE : 0), newCodex, newChains, won, newRival };
+  const count = Object.keys(r.codex).length, before = count - newCodex.length;
+  const newMilestones = MILESTONES.filter((m) => before < m.at && count >= m.at);
+  return { xp, essence: essence + (newRival ? RIVAL_PRIZE : 0) + newMilestones.reduce((n, m) => n + m.essence, 0), newCodex, newChains, won, newRival, newMilestones };
 }
 export { COMPOUNDS, BY_ID, CHAINS, pretty };
