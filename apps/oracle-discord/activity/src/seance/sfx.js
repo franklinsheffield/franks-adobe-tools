@@ -79,3 +79,20 @@ export function deal() {
   const c = ac(); if (!c) return;
   for (let i = 0; i < 4; i++) noise(c, { t: i * 0.09, d: 0.07, peak: 0.25, f: 3000, q: 1.5 });
 }
+
+/** Each ghost avatar's own cry (seance/ghostlooks.js), heard when it rises and when you try it on in the store. */
+export const GHOST_CRIES = ["gh-sheet", "gh-cat", "gh-ecto", "gh-wisp", "gh-gent", "gh-polter", "gh-banshee"];
+export function ghostCry(id = "gh-sheet") {
+  const c = ac(); if (!c) return;
+  if (id === "gh-cat") { tone(c, { type: "triangle", f: 520, f2: 880, a: 0.12, d: 0.35, peak: 0.25, lp: 2400 }); tone(c, { type: "triangle", f: 880, f2: 600, t: 0.42, a: 0.05, d: 0.3, peak: 0.2, lp: 2000 }); return; }
+  if (id === "gh-ecto") { [0, 0.14, 0.26, 0.4].forEach((t, i) => tone(c, { f: 180 + i * 40, f2: 520 + i * 90, t, a: 0.01, d: 0.1, peak: 0.35 })); return; }
+  if (id === "gh-wisp") { [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, { f, t: i * 0.08, a: 0.005, d: 0.9, peak: 0.12 })); noise(c, { d: 0.5, peak: 0.06, f: 3000, f2: 6000, q: 0.8 }); return; }
+  if (id === "gh-gent") { tone(c, { type: "sawtooth", f: 150, f2: 120, a: 0.02, d: 0.16, peak: 0.12, lp: 700 }); tone(c, { type: "sawtooth", f: 135, f2: 100, t: 0.2, a: 0.02, d: 0.22, peak: 0.12, lp: 700 });
+    [0.6, 0.78, 0.96].forEach((t) => tone(c, { type: "triangle", f: 220, f2: 190, t, a: 0.01, d: 0.12, peak: 0.16, lp: 1200 })); return; }
+  if (id === "gh-polter") { for (let i = 0; i < 7; i++) noise(c, { t: i * 0.07 + Math.random() * 0.03, d: 0.05, peak: 0.4, f: 1800 + Math.random() * 2400, q: 6 }); tone(c, { f: 2400, f2: 2300, t: 0.55, a: 0.004, d: 0.6, peak: 0.12 }); return; }
+  if (id === "gh-banshee") { const at = c.currentTime, o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain(), lp = c.createBiquadFilter();
+    o.type = "sawtooth"; lp.type = "lowpass"; lp.frequency.value = 2600; lfo.frequency.value = 9; lg.gain.value = 30; lfo.connect(lg); lg.connect(o.frequency);
+    o.frequency.setValueAtTime(600, at); o.frequency.exponentialRampToValueAtTime(1320, at + 0.5); o.frequency.exponentialRampToValueAtTime(700, at + 1.5);
+    env(g, at, 0.14, 0.2, 1.4); o.connect(lp); lp.connect(g); g.connect(out); o.start(at); lfo.start(at); o.stop(at + 1.7); lfo.stop(at + 1.7); return; }
+  wail(true);
+}

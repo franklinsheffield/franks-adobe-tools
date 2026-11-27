@@ -4,6 +4,7 @@
 // or ask for four to pick from. Rules in logic.js, decks in practices.js and ghosts.js. Mounted via ROOMS (main.js).
 import { FIELDS } from "./ghosts.js";
 import { shop, candleLook } from "./shop.js";
+import { ghostShop, ghostBody } from "./ghostlooks.js";
 import * as sfx from "./sfx.js";
 import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST } from "./logic.js";
 
@@ -21,7 +22,7 @@ const UNKNOWN = ["The spirits don't recognise that name. Try a full name, or che
 /** The séance table in the Chamber's table pane: candles (lit or out), the ghost, and its reveal. */
 // fx: "summon" (ghost rises), "knock" (table jolts), "no" (ghost shakes its head), "nod", "yes" (sparkles),
 // "dark" (last candle out). was = candles lit before this draw, so newly snuffed flames animate out.
-function sceneSvg(g, run, revealed = false, candle, fx = "", was = null) {
+function sceneSvg(g, run, revealed = false, candle, fx = "", was = null, ghost = "") {
   const fl = candleLook(candle);
   const lit = run ? run.candles : CANDLES, xs = [84, 136, 200, 264, 316];
   const candles = xs.map((x, i) => { const on = i < lit, y = i === 0 || i === 4 ? 214 : i === 2 ? 226 : 221;
@@ -50,8 +51,7 @@ ${motes}
 ${candles}</g>
 <g class="sc-prop${revealed ? " show" : ""}"><circle cx="200" cy="120" r="46" fill="#66E0C8" opacity=".14"/><text x="200" y="140" font-size="56" text-anchor="middle">${g ? g.emoji : ""}</text>
   <g transform="translate(200 180)"><g class="sc-stamp"><rect x="-145" y="-17" width="290" height="32" rx="6" fill="#160b2c" stroke="#E2B04A" stroke-width="2"/><text y="6" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="${name.length > 28 ? 11 : name.length > 20 ? 13 : 16}" fill="#FADE8C" text-anchor="middle" letter-spacing="1">${name}</text></g></g></g>
-<g class="sc-ghost${revealed ? " gone" : ""}"><g class="sc-gb"><path d="M200 46 C236 46 252 76 252 114 L252 180 L240 170 L228 182 L214 170 L200 182 L186 170 L172 182 L160 170 L148 180 L148 114 C148 76 164 46 200 46Z" fill="url(#sc-sheet)" stroke="#fff" stroke-width="1.2" opacity=".9"/>
-  <g class="sc-eyes"><ellipse cx="184" cy="106" rx="7" ry="10" fill="#160b2c"/><ellipse cx="216" cy="106" rx="7" ry="10" fill="#160b2c"/></g><ellipse class="sc-mouth" cx="200" cy="134" rx="9" ry="7" fill="#160b2c"/>
+<g class="sc-ghost${revealed ? " gone" : ""}"><g class="sc-gb sg-${ghost || "gh-sheet"}">${ghostBody(ghost)}
   <text class="sc-q" x="250" y="64" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="30" fill="#FADE8C">?</text></g></g>
 ${sparks}
 <rect x="-600" y="-400" width="1600" height="1100" fill="#000" opacity="${dim.toFixed(2)}" pointer-events="none"/>
@@ -67,17 +67,19 @@ const INTRO = {
   3: "A famous name is knocking. Each clue is a true fact from their life and work.",
 };
 
-shop.draw = (id) => sceneSvg(null, null, false, id);
+shop.draw = (id, prog) => sceneSvg(null, null, false, id, "", null, prog?.ghost);
+ghostShop.draw = (id, prog) => sceneSvg(null, null, false, prog?.[shop.kind], "summon", null, id);
+ghostShop.cry = (id) => setTimeout(() => sfx.ghostCry(id), 700);
 
 export const seance = {
-  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️", shop,
+  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️", shop, shops: [ghostShop],
   blurb: "Guess what kind of science or magic the ghost practised",
   open(ctx) {
     const { $, esc, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
     const prog = () => seanceOf(state.prog);
     let lastLit = CANDLES; // candles lit at the last draw, so newly snuffed ones animate out
     const draw = (g, run, rev, fx = "") => { const was = run && run.candles < lastLit ? lastLit : null; lastLit = run ? run.candles : CANDLES;
-      tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(g, run, rev, state.prog[shop.kind], reduced ? "" : fx, was); };
+      tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(g, run, rev, state.prog[shop.kind], reduced ? "" : fx, was, state.prog.ghost); };
     const stats = () => { const n = solvedCount(state.prog), t = titleOf(n), nx = nextTitle(n);
       return `<div class="cx-top"><b>🕯️ ${esc(t.name)}</b> · ${n} / ${ALL.length} ghosts named${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
 
@@ -103,7 +105,7 @@ export const seance = {
 
     function summon(L, g) {
       const run = start(g, L);
-      lastLit = CANDLES; clearReading(); cap(`🕯️ Level ${L.n} · a ghost is knocking…`); draw(g, run, false, "summon"); sfx.summon();
+      lastLit = CANDLES; clearReading(); cap(`🕯️ Level ${L.n} · a ghost is knocking…`); draw(g, run, false, "summon"); sfx.summon(); setTimeout(() => sfx.ghostCry(state.prog.ghost), 900);
       talkThrough([pick(["Hands on the table, please. Spirit, are you there? …Knock once for yes.", "The candles lean. Someone is here.", "Shh. Listen. Raps, from under the table. Our guest has arrived."]) + " " + INTRO[L.n], `First clue: “${g.clues[0]}”`], () => askField(L, g, run));
     }
 

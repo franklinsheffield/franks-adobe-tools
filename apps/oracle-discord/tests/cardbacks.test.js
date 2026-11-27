@@ -1,4 +1,6 @@
 // One set of card backs for every deck (activity/src/cardbacks.js) and the store's departments (store.js).
+import { ghostShop } from "../activity/src/seance/ghostlooks.js";
+import { shop as candleShop } from "../activity/src/seance/shop.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CARD_BACK, CARD_BACK_ITEMS, OLD_BACKS, migrateBacks, cardBackSvg, equippedBack } from "../activity/src/cardbacks.js";
@@ -33,9 +35,8 @@ test("store departments: Cards and Ghosts exist and every shelf has a home", () 
   const d = departments(); assert.deepEqual(d.map((x) => x.id), DEPTS.map((x) => x.id)); assert.ok(d.some((x) => x.id === "cards") && d.some((x) => x.id === "ghosts"));
   assert.deepEqual(d.find((x) => x.id === "cards").kinds, ["cardback"]);
   for (const [k] of KINDS) assert.equal(d.filter((x) => x.kinds.includes(k)).length, 1, k + " is in exactly one department");
-  const haunted = goodsOf("haunted"); assert.ok(haunted.length >= 4); for (const it of haunted) assert.ok(it.ghost && it.kind !== "haunted");
-  assert.equal(deptOf("haunted").id, "ghosts"); assert.equal(deptOf("cardback").id, "cards"); assert.match(kindLabel("haunted"), /Haunted/);
-  for (const act of ["open", "tryon", "buy"]) assert.ok(SHOP_TALK.haunted[act].length >= 2);
+  registerShelf(ghostShop); registerShelf(candleShop); assert.equal(deptOf("ghost").id, "ghosts"); assert.equal(deptOf("seancecandle").id, "ghosts"); assert.equal(deptOf("cardback").id, "cards");
+  assert.deepEqual(DEPTS.find((x) => x.id === "ghosts").kinds, ["ghost", "seancecandle"], "Ghosts sells the ghost's looks, not a haunted theme");
   const before = STORE.length; registerShelf({ kind: "cardback", items: [{ id: "x", price: 1 }] }); registerShelf({ kind: "rummyback", items: [{ id: "y", price: 1 }] }); assert.equal(STORE.length, before, "rooms can't add a second set of card backs");
   registerShelf({ kind: "testroom", label: "🧪 Test", items: [{ id: "tr-1", name: "t", price: 5 }] }); assert.equal(deptOf("testroom").id, "rooms");
 });

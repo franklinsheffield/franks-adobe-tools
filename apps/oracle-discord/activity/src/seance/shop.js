@@ -29,6 +29,6 @@ export const shop = {
     tryon: ["{item}. Every element burns its own colour, because its electrons give off light at their own wavelengths.", "Try {item}. Chemists used flame colours like these to discover new elements."],
     buy: ["{item}: yours. Your séance table will burn with it from now on.", "{item} is lit. The spirits approve of good chemistry."],
   },
-  preview(id, ctx) { if (shop.draw) { ctx.tableEl.className = "table seance"; ctx.tableEl.innerHTML = shop.draw(id); ctx.cap("🕯️ " + (shop.items.find((x) => x.id === id)?.name || "")); } },
+  preview(id, ctx) { if (shop.draw) { ctx.tableEl.className = "table seance"; ctx.tableEl.innerHTML = shop.draw(id, ctx.prog); ctx.cap("🕯️ " + (shop.items.find((x) => x.id === id)?.name || "")); } },
   draw: null, // set by room.js (the scene drawing lives there)
 };
