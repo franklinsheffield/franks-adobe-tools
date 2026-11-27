@@ -38,6 +38,8 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
+import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
 import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
@@ -552,7 +554,7 @@ function showCodex() {
   const sys = available(MODULES);
   const rows = sys.map((s) => { const d = CODEX[s.key], have = (p.codex[s.key] || []), n = have.length, t = d ? d.total : 0;
     return `<div class="cx"><div class="cx-h"><span>${s.emoji} ${esc(s.label)}</span><span class="note">${n} / ${t} ${d ? esc(d.label) : ""}</span></div>
-      <div class="bar"><i style="width:${t ? Math.min(100, (n / t) * 100) : 0}%"></i></div>${n ? `<div class="chips">${have.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
+      <div class="bar"><i style="width:${t ? Math.min(100, (n / t) * 100) : 0}%"></i></div>${n ? `<div class="chips">${have.map((x) => s.key === "magicdeck" && EXPLAIN[x] ? `<button type="button" class="chip-x" data-mx="${esc(x)}" title="Open the explainer">🔬 ${esc(x)}</button>` : `<span>${esc(x)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
   const look = (kind) => UNLOCKS.filter((u) => u.kind === kind).map((u) => { const own = p.unlocked.includes(u.id), on = p[kind] === u.id;
     return `<button class="c wear${on ? " on" : ""}" type="button" data-w="${u.id}" ${own ? "" : "disabled"} title="${esc(u.how)}">${own ? (on ? "✓ " : "") : "🔒 "}${esc(u.name)}<span class="note"> · ${esc(u.how)}</span></button>`; }).join("");
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
@@ -563,6 +565,17 @@ function showCodex() {
     <div class="group">Crystal ball</div><div class="choices">${look("orb")}</div>`);
   $("back").onclick = greet;
   $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { wear(b.dataset.w); showCodex(); }));
+  $("ui").querySelectorAll("[data-mx]").forEach((b) => (b.onclick = () => explainCard(b.dataset.mx)));
+}
+/** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */
+function explainCard(name) {
+  const c = MAGIC_DECK.find((x) => x.n === name), x = EXPLAIN[name]; if (!c || !x) return;
+  const su = MAGIC_SUITS.find((q) => q.key === c.suit); chime(1);
+  cap(`🔬 ${name}`); say(`${name}. ${x.link}`);
+  ui(`<div class="choices"><button class="c" type="button" id="mx-back">◂ Back to the Codex</button></div>
+    <article class="emb teal mx-page"><h2>✦ ${esc(name)} · ${esc(su.n)} ${c.num === "K" ? "Keeper" : c.num}</h2><p><i>${esc(c.kw.join(", "))}</i></p>
+      <h3>The card</h3><p>${esc(c.up)}</p><h3>🔬 The fact</h3><p>${esc(c.fact)}</p><h3>The science</h3><p>${esc(x.sci)}</p><h3>Why it fits</h3><p>${esc(x.link)}</p></article>`);
+  $("mx-back").onclick = showCodex;
 }
 $("codex-btn").onclick = showCodex;
 
