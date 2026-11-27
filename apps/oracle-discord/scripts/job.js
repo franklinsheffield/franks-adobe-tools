@@ -2,6 +2,8 @@
 // Env: TOKEN, COMMAND, PAYLOAD, PRIVATE, ORACLE_KEY, DISCORD_APP_ID.
 import { open } from "../src/seal.js";
 import { MODULES } from "../src/registry.js";
+import { speech } from "../src/oracle/voice.js";
+import { author, readingButtons } from "../src/oracle/chat.js";
 
 const E = process.env, base = `https://discord.com/api/v10/webhooks/${E.DISCORD_APP_ID}/${E.TOKEN}`;
 const size = (e) => JSON.stringify([e.title, e.description, (e.fields || []).map((f) => [f.name, f.value]), e.footer && e.footer.text, e.author && e.author.name]).length;
@@ -11,6 +13,20 @@ export function pack(embeds, limit = 5800) {
   const msgs = []; let cur = [], n = 0;
   for (const e of embeds) { const s = size(e); if (cur.length && (n + s > limit || cur.length === 10)) { msgs.push(cur); cur = []; n = 0; } cur.push(e); n += s; }
   if (cur.length) msgs.push(cur);
+  return msgs;
+}
+
+/** Reading -> Discord messages. Readings asked through /oracle open with the Oracle speaking; every reading ends with its buttons. */
+export function oracleMessages(r, options = {}, user = "traveller", env = {}, rand = Math.random) {
+  const embeds = r.embeds.map((e) => ({ ...e }));
+  let content = r.content || "";
+  if (options.via_oracle && embeds.length) {
+    content = ("🔮 *" + speech(env.COMMAND, user, embeds[0], rand) + "*").slice(0, 1900) + (content ? "\n" + content : "");
+    embeds[0].author = author(env);
+  }
+  const msgs = pack(embeds).map((embeds) => ({ embeds }));
+  msgs[0].content = content;
+  msgs[msgs.length - 1].components = readingButtons();
   return msgs;
 }
 
@@ -34,9 +50,9 @@ async function main() {
     return;
   }
   const priv = E.PRIVATE === "true" || r.ephemeral;
-  const [first, ...rest] = pack(r.embeds);
-  await send("PATCH", base + "/messages/@original", { content: r.content || "", embeds: first }, r.files || []);
-  for (const embeds of rest) await send("POST", base, { embeds, flags: priv ? 64 : 0 });
+  const msgs = oracleMessages(r, options, user, E);
+  await send("PATCH", base + "/messages/@original", msgs[0], r.files || []);
+  for (const m of msgs.slice(1)) await send("POST", base, { ...m, flags: priv ? 64 : 0 });
   console.log(`posted ${E.COMMAND}: ${r.embeds.length} embeds in ${1 + rest.length} message(s)`);
 }
 
