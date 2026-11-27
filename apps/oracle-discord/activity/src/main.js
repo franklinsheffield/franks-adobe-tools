@@ -201,10 +201,10 @@ function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "â€
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
-  clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
+  clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
   if (!keep) $("said").innerHTML = "";
   /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { const over = el.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 14; if (over > 0) box.scrollBy({ top: over, behavior: "instant" }); };
+  const follow = () => { box.scrollTop = box.scrollHeight; };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
