@@ -34,9 +34,9 @@ export const BOOKS = {
 export const ROOM_BOOKS = {
   alchemy: ["silberer", "sherman"], bench: ["silberer", "sherman"], flametest: ["sherman", "silberer"], minerals: ["silberer", "sherman"], commissions: ["silberer", "sherman"],
   duel: ["artofwar", "sherman"], grimoire: ["fernie", "daniel"],
-  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"],
+  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"],
   timeline: ["frazer", "hall"], decoder: ["emerald", "mathers"], cipherdesk: ["mathers", "emerald"], inscriptions: ["emerald", "mathers"], memory: ["cambridge", "dreams"],
-  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
+  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
 };
 const SHELF = ["kybalion", "hall", "crystal", "tealeaves"];
 /** Each host's way of saying it. {book}, {forum}, {name}. */

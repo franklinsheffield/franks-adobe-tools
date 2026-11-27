@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "cipherdesk", "workshop", "bookings"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "cipherdesk", "workshop", "bookings", "darkseance"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -160,7 +160,7 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
   setHost(P); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "MADAME ROOK · Madame Rook's hand · Séance Parlour");
   assert.equal(rename("Open the Record Player · Reach Oracle-touched, or try /oracle"), "Open the Spirit Trumpet Gramophone · Reach Oracle-touched, or try /oracle");
-  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "seance", "timeline"]);
+  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "seance", "timeline"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
   assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "decoder", "memory"]);
@@ -236,4 +236,22 @@ test("book pokes: after some lost rounds the host recommends a real book from th
   assert.match(s, /Sherman's The Chemistry of Food and Nutrition/); assert.match(s, /#📚・apothecary/);
   assert.equal(L.bookPoke("alchemist", "flametest", "Frank", { rand: () => 0, now: 1e6 + 60000 }), null, "not twice within 3 minutes");
   assert.ok(L.bookPoke("observatory", "comet", "Frank", { rand: () => 0, now: 1e6 + 200000 }).includes("arcana"));
+});
+
+test("Parlour Phase 1: parlour scene dims at night, bell jar, poses, reactions, séance emotes, gowns", async () => {
+  const D = await import("../activity/src/hosts/parlour-room.js");
+  const { parlour } = await import("../activity/src/hosts/parlour.js");
+  const { EMOTES } = await import("../activity/src/character.js");
+  assert.ok(D.gloom(1) > 0.99 && D.gloom(13) < 0.01);
+  const html = D.parlourSceneHtml(new Date(2026, 10, 27, 22).getTime(), { motes: 0 });
+  for (const t of ["cabinet", "trumpet"]) assert.match(html, new RegExp(`data-tap="${t}"`), t);
+  assert.equal(Object.keys(D.POSES).length, 8); assert.equal(new Set(Object.values(D.POSES)).size, 8);
+  assert.match(D.bellJarSvg("t"), /pb-bell/);
+  assert.deepEqual(Object.keys(D.SEANCE_EMOTES).sort(), EMOTES.map((e) => e.id).sort());
+  for (const k of ["poke-eye", "poke-orb", "perfect", "lose"]) assert.ok(D.REACT[k], k);
+  assert.equal(D.GOWNS.length, 7); assert.equal(D.GOWNS[0].price, 0);
+  const c = D.gownShop.items.find((i) => i.id === D.DEBUNKER); assert.ok(c.earned && c.how && c.price === undefined, "never sold");
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("gown"));
+  assert.ok(D.grantDebunker({}).owned.includes(D.DEBUNKER));
+  assert.equal(parlour.scene, D.parlourSceneHtml); assert.equal(parlour.emotes, D.SEANCE_EMOTES); assert.ok(parlour.shelves.includes(D.gownShop));
 });
