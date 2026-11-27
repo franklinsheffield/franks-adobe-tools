@@ -40,8 +40,12 @@ export const UNLOCKS = [
   { id: "sunfire", kind: "orb", name: "Sunfire", how: "Reach the rank of Adept", ok: (p) => p.xp >= 200, f: "hue-rotate(120deg) saturate(1.6) brightness(1.15)" },
 ];
 
+<<<<<<< HEAD
 export const fresh = () => ({ v: 1, xp: 0, readings: 0, tokens: 0, streak: 0, best: 0, last: "", systems: {}, codex: {}, unlocked: ["velvet", "amethyst"], cloth: "velvet", orb: "amethyst",
   essence: 0, owned: ["midnight", "classic", "goldflame", "classic-voice"], outfit: "midnight", avatar: "classic", flame: "goldflame", voice: "classic-voice", day: null });
+=======
+export const fresh = () => ({ v: 1, xp: 0, readings: 0, tokens: 0, streak: 0, best: 0, last: "", systems: {}, codex: {}, unlocked: ["velvet", "amethyst"], cloth: "velvet", orb: "amethyst" });
+>>>>>>> origin/main
 
 const today = (d = new Date()) => d.toLocaleDateString("en-CA");
 const yesterday = (d = new Date()) => today(new Date(d.getTime() - 86400000));
@@ -66,7 +70,10 @@ export function record(p, key, r, now = new Date()) {
   for (const u of UNLOCKS) if (!p.unlocked.includes(u.id) && u.ok(p)) { p.unlocked.push(u.id); out.unlocked.push(u); }
   const after = rankOf(p.xp).name;
   if (after !== before) out.rankUp = after;
+<<<<<<< HEAD
   out.essence = out.xp + (out.rankUp ? 25 : 0); p.essence = (p.essence || 0) + out.essence;
+=======
+>>>>>>> origin/main
   return out;
 }
 
