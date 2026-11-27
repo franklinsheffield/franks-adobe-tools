@@ -106,6 +106,13 @@ function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, 
 // ---- the conversation ----
 const cap = (t) => { $("table-cap").textContent = t || ""; };
 const clearReading = () => { $("reading-body").innerHTML = ""; $("box").scrollTop = 0; };
+/** Discord's Activity iframe blocks <form> submission, so forms are plain divs: the #go button and Enter in a field run the div's onsubmit. */
+function bindGo(id) {
+  const box = $(id), run = () => { const bad = [...box.querySelectorAll("input[required]")].find((i) => !i.value.trim());
+    if (bad) { bad.focus(); bad.reportValidity?.(); return; } box.onsubmit?.({ preventDefault() {} }); };
+  $("go").onclick = run;
+  box.querySelectorAll("input").forEach((i) => (i.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); run(); } }));
+}
 function greet() {
   clearReading(); table.idle(); cap("");
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
@@ -142,8 +149,8 @@ function choose(sys) {
   say(line(P(), "ask", { name: state.name, system: sys.label }) || askLine(sys, state.name));
   if (sys.kind === "cast") {
     const spreadSel = sys.spreads ? `<label for="sp">Spread<select id="sp">${sys.spreads.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("")}</select></label>` : "";
-    ui(`<form class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label>${spreadSel}</form>
-      <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>`);
+    ui(`<div class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label>${spreadSel}</div>
+      <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>`);
     $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(), extra = q ? { [sys.ask || "question"]: q } : {};
       if ($("sp")) extra.spread = $("sp").value;
       reveal(sys, optionsFor(sys, extra), q); };
@@ -156,8 +163,8 @@ function choose(sys) {
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
     rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
-    ui(`<form class="form" id="f">${rows.join("")}</form>
-      <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
+    ui(`<div class="form" id="f">${rows.join("")}</div>
+      <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
       <div class="note">${PREVIEW ? PREVIEW.note + " " : state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
     $("f").onsubmit = (e) => { e.preventDefault();
       const o = optionsFor(sys), v = (id) => ($(id) ? $(id).value.trim() : "");
@@ -167,6 +174,7 @@ function choose(sys) {
       if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
       reveal(sys, o, v("bq")); };
   }
+  bindGo("f");
   $("back").onclick = greet;
 }
 
@@ -239,8 +247,8 @@ function goDeeper() {
 /** Ask another question: cast systems cast again; birth systems answer from the same chart. */
 function askAgain() {
   const L = state.last;
-  ui(`<form class="form one" id="qf"><label for="q2">What else would you like to know?<input id="q2" maxlength="200" autocomplete="off" placeholder="Should I…, When will…, What do I need to…"></label></form>
-    <div class="choices"><button class="c main" type="submit" form="qf">✦ Ask</button><button class="c" type="button" id="cancel">Never mind</button></div>`);
+  ui(`<div class="form one" id="qf"><label for="q2">What else would you like to know?<input id="q2" maxlength="200" autocomplete="off" placeholder="Should I…, When will…, What do I need to…"></label></div>
+    <div class="choices"><button class="c main" type="button" id="go">✦ Ask</button><button class="c" type="button" id="cancel">Never mind</button></div>`);
   setTimeout(() => $("q2").focus(), 50);
   $("cancel").onclick = afterReading;
   $("qf").onsubmit = (e) => { e.preventDefault(); const q = $("q2").value.trim(); if (!q) return;
@@ -249,6 +257,7 @@ function askAgain() {
     setTimeout(() => { document.body.classList.remove("trance");
       talkThrough([deliver(pid(), answer(q, L.text, state.name).line, { name: state.name }), joke(L.sys.key)], afterReading); }, reduced ? 0 : 2000);
   };
+  bindGo("qf");
 }
 
 let talkKey = null;
