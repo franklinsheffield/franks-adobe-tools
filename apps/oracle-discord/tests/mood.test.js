@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MOOD_EMOJI, MOODS, VS_ROOMS, moodForOutcome, moodForTone, flickFor, POKE, pokeMood, pokeLine } from "../activity/src/mood.js";
+import { MOOD_EMOJI, MOODS, VS_ROOMS, moodForOutcome, moodForTone, flickFor, POKE, pokeMood, pokeLine, HAND_BEATS, GESTURES } from "../activity/src/mood.js";
 import { EMOTE_SFX } from "../activity/src/voice-sfx.js";
 
 const css = readFileSync(new URL("../activity/src/chamber.css", import.meta.url), "utf8");
@@ -27,4 +27,10 @@ test("poking: each spot answers, then she gets cross, then sulks", () => {
   assert.equal(pokeMood("hood", 5), "angry"); assert.equal(pokeMood("orb", 8), "sulk");
   assert.ok(POKE.angry.includes(pokeLine("eye", 6, "Ada"))); assert.ok(!pokeLine("hood", 1, "Ada", () => 0.3).includes("{name}"));
   for (const pool of Object.values(POKE)) for (const l of pool) assert.ok(l.length <= 60, l);
+});
+
+test("hands: every mood but nod and wink has a hand pose, beats use real sounds, gestures have CSS", () => {
+  for (const m of Object.keys(MOODS)) if (!["nod", "wink"].includes(m)) assert.ok(new RegExp(`\\[data-mood="${m}"\\][^{]*\\.o-hand`).test(css), "hand pose for " + m);
+  for (const [m, beats] of Object.entries(HAND_BEATS)) { assert.ok(MOODS[m], m); for (const [k] of beats) assert.ok(["slam", "snap", "clap", "swat"].includes(k), k); }
+  for (const g of Object.keys(GESTURES)) assert.ok(css.includes(`[data-gesture="${g}"]`), "gesture css " + g);
 });
