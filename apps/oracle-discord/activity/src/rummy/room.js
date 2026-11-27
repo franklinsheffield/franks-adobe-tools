@@ -276,7 +276,7 @@ export const rummy = {
     function mySet() {
       if (busy || sel.length < 3) return;
       const m = layDown(g, "me", sel);
-      if (!m) { badSfx(); say(levelOf(g).labels ? "Those stars don't make a set." : `The stars disagree. That's not a set. One point lost (${g.misses} so far).`); hand({ shake: true }); return; }
+      if (!m) { badSfx(); say(levelOf(g).labels ? "Those stars don't make a set." : `The stars disagree. That's not a set. One point lost (${g.miss.me || 0} so far).`); hand({ shake: true }); return; }
       meldSfx(m.cards.length, Math.max(...m.cards.map((c) => pts(c.hip)))); sel = []; say(lore(m));
       $("reading-body").innerHTML = `<div class="cr-info">${m.cards.map((c) => `<b>${esc(CARD[c.hip].name)}</b>: ${esc(CARD[c.hip].fact)}`).join("<br>")}</div>`;
       paint({ fresh: m.id, burst: true }); if (g.over) return end(); hand();
