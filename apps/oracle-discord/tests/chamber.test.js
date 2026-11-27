@@ -14,7 +14,7 @@ test("the Chamber builds with every registered module", () => {
   for (const m of MODULES) assert.ok(gen.includes(`/modules/${m}/index.js`), m);
 });
 
-class KV { m = new Map(); async get(k) { return this.m.get(k) ?? null; } async put(k, v) { this.m.set(k, v); } }
+class KV { m = new Map(); async get(k) { return this.m.get(k) ?? null; } async put(k, v) { this.m.set(k, v); } async delete(k) { this.m.delete(k); } }
 test("Chamber worker: sign-in, own profile only, static files", async () => {
   const KEY = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
   const env = { ORACLE_KEY: KEY, PROFILES: new KV(), DISCORD_APP_ID: "1", ASSETS: { fetch: () => new Response("static") } };
@@ -27,6 +27,8 @@ test("Chamber worker: sign-in, own profile only, static files", async () => {
   try {
     const r = await chamber.fetch(new Request("https://x/.proxy/api/profile", { headers: { authorization: "Bearer tok" } }), env);
     assert.equal((await r.json()).profile.place, "Phoenix");
+    const del = await chamber.fetch(new Request("https://x/.proxy/api/profile", { method: "DELETE", headers: { authorization: "Bearer tok" } }), env);
+    assert.equal((await del.json()).ok, true); assert.equal(await env.PROFILES.get("profile:42"), null);
     assert.deepEqual((await exchange({ ...env, DISCORD_CLIENT_SECRET: "s" }, "c")).body, { access_token: "tok" });
   } finally { globalThis.fetch = real; }
   assert.equal(await (await chamber.fetch(new Request("https://x/"), env)).text(), "static");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 test("trophies: tiers, one-time payouts, prismatic, sets, oracle readings, showcase", async () => {
   const T = await import("../activity/src/trophies.js");
-  assert.equal(T.TROPHIES.length, 19);
+  assert.equal(T.TROPHIES.length, 21);
   const p = { essence: 0 };
   assert.equal(T.recordWin(p, "seance", 1, { won: true }), null, "needs 3 wins");
   T.recordWin(p, "seance", 1, { won: true }); const n = T.recordWin(p, "seance", 1, { won: true, perfect: true });
@@ -25,7 +25,7 @@ test("trophies: tiers, one-time payouts, prismatic, sets, oracle readings, showc
 
 test("trophies: every game room reports to the Trophy Case", async () => {
   const { readFileSync } = await import("node:fs");
-  for (const r of ["seance", "decoder", "alchemy", "timeline", "stars", "calendar", "grimoire", "duel", "memory", "rummy", "watch"])
+  for (const r of ["seance", "decoder", "alchemy", "timeline", "stars", "calendar", "grimoire", "duel", "memory", "rummy", "watch", "comet"])
     assert.match(readFileSync(new URL(`../activity/src/${r}/room.js`, import.meta.url), "utf8"), new RegExp(`trophy\\?\\.\\("${r}"`), r);
 });
 

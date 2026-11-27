@@ -1,5 +1,6 @@
 // /astrology: natal chart wheel + branded reading from real ephemeris data.
-import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js";
+import { geocode, timeZoneAt, parseBirth } from "../../birthplace.js";
+import { birthMoment } from "../../moment.js";
 import { castChart, NAMES } from "./chart.js";
 import { wheelSvg, GLYPH } from "./wheel.js";
 import { castNow, skyContext, transits, transitLine } from "./now.js";
@@ -7,7 +8,7 @@ import { analyse } from "./insight.js";
 import { SUN, MOON, RISING, planetLine, aspectLine, elementLine, formula } from "./text.js";
 
 const CHART_OPTS = [
-  { type: 3, name: "date", description: "Birth date, year-month-day (1990-07-14). Blank = saved profile or form", required: false },
+  { type: 3, name: "date", description: "Birth date, DD/MM/YYYY (14/07/1990). Blank = saved profile or form", required: false },
   { type: 3, name: "place", description: "Birth town or city (Phoenix, AZ). Blank = saved profile or form", required: false },
   { type: 3, name: "time", description: "Birth time (08:45 or 8:45 am). Leave out if unknown", required: false },
   { type: 3, name: "name", description: "Name shown on the chart", required: false },
@@ -49,11 +50,11 @@ const head = (p) => `${GLYPH[p.key] || ""} ${p.name} in ${p.sign} ${deg(p)}${p.h
 /** Build the reading. options: { date, place, time?, name?, houses?, private? }. ctx: { fetch?, geocoded? } */
 export async function run(options, ctx = {}) {
   if (options.subcommand === "now") return runNow(options, ctx);
-  const { chart: c, where } = await natalFrom(options, ctx);
+  const { chart: c, where, moment } = await natalFrom(options, ctx);
   const nowChart = castNow(ctx.now || new Date(), null);
-  const out = render(c, options, where, nowChart), ins = analyse(c, { who: ctx.user ? `@${ctx.user}` : "you" });
+  const out = render(c, options, where, nowChart), ins = analyse(c, { who: ctx.user ? `@${ctx.user}` : "you", moment, detail: out.ephemeral || !!ctx.birthDetail });
   out.embeds.push(ins.embed);
-  return withPng({ chart: c, ...out, analysis: ins.analysis, headline: `Sun in ${c.get("sun").sign}, Moon in ${c.get("moon").sign}${c.cusps ? `, ${c.get("asc").sign} rising` : ""}` });
+  return withPng({ chart: c, moment, ...out, analysis: ins.analysis, headline: `Sun in ${c.get("sun").sign}, Moon in ${c.get("moon").sign}${c.cusps ? `, ${c.get("asc").sign} rising` : ""}` });
 }
 
 async function natalFrom(options, ctx) {
@@ -61,14 +62,9 @@ async function natalFrom(options, ctx) {
   const birth = parseBirth(options.date, timeKnown ? options.time : "12:00");
   const where = ctx.geocoded || await geocode(options.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${options.place}". Try "City, Country".`);
-  const zone = timeZoneAt(where.lat, where.lon);
-  let utc = localToUtc(birth, zone);
-  // Before standard time zones (zone offset is the zone city's local mean time, not a whole quarter hour),
-  // use local mean time at the birthplace itself, as astrologers do.
-  const wall = Date.UTC(birth.year, birth.month - 1, birth.day, birth.hour, birth.minute);
-  if (Math.round((wall - utc) / 60000) % 15 !== 0) utc = new Date(wall - (where.lon / 15) * 3600000);
-  const chart = castChart({ utc, lat: where.lat, lon: where.lon, houses: options.houses || "whole", timeKnown });
-  return { chart, where };
+  const moment = birthMoment(birth, where, timeKnown); // zone rules, daylight time and local mean time live in moment.js
+  const chart = castChart({ utc: moment.utc, lat: where.lat, lon: where.lon, houses: options.houses || "whole", timeKnown });
+  return { chart, where, moment };
 }
 
 /** /astrology now: current sky wheel + context, plus transits when birth details are given. */

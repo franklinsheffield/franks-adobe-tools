@@ -9,7 +9,7 @@ export const command = {
   name: "celtic",
   description: "Your Celtic tree sign and ogham letter (a modern reconstruction) from your birth date",
   options: [
-    { type: 3, name: "date", description: "Birth date as year-month-day (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
 };
