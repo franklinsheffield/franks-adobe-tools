@@ -40,7 +40,7 @@ test("typed names: every alias matches within its level, small typos forgiven", 
   assert.equal(whichPlant("St Johns Wort", L2)?.id, "stjohns");
   assert.equal(whichPlant("deadly night shade", L3)?.id, "belladonna");
   assert.equal(whichPlant("wolfsbane", L3)?.id, "monkshood");
-  assert.equal(whichPlant("tomato", L1), null);
+  assert.equal(whichPlant("cucumber", L1), null);
   assert.equal(whichPlant("", L1), null);
 });
 

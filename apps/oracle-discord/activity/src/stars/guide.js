@@ -4,9 +4,11 @@ export const GUIDE = {
   title: "Star Lore study guide",
   sections: [
     { h: "How to play", p: [
-      "The Oracle names something in the sky and tells you how to find it. Tap it on the chart. You have <b>3 lanterns</b>: a wrong tap or a hint costs one. Each lantern left is worth points when you find it, then one question on the real astronomy earns a bonus.",
-      "<b>Level 1</b> shows the stick figures; pick the right shape. <b>Level 2</b> hides them; star-hop from patterns you know to one famous star. <b>Level 3</b> asks for what other cultures saw, by their own names and stories.",
-      "The chart is drawn the way the sky looks when you face it overhead: <b>north up and east to the left</b>. That is why it looks flipped compared with a map of Earth.",
+      "The Oracle asks you to <b>find and draw</b> a constellation. The sky starts somewhere else, so you have to look for it: <b>drag</b> to roam the whole sky, <b>pinch, scroll or tap + and -</b> to zoom.",
+      "When you find it, <b>drag from star to star</b> (or tap one star, then the next) to draw each line of its figure. The little shape in the corner shows what to draw. As each line goes in, the Oracle tells you the next part of a <b>fable</b> about it, picked from a pool of stories from different cultures.",
+      "A line that is not in the figure is a <b>mistake</b>. Finish with 0 or 1 mistakes for 3 stars, up to 4 for 2 stars. <b>Hint</b> points the way or flashes the next line, and counts as a mistake. Then one question on the real astronomy earns a bonus.",
+      "<b>Level 1</b> draws every constellation's figure on the sky, so you look for the right shape. <b>Level 2</b> hides all figures: find the pattern in the stars themselves. <b>Level 3</b> is a photo-real sky with the Milky Way and thousands of faint stars, as it looks from a dark site.",
+      "The sky is drawn the way it looks when you face it overhead: <b>north up and east to the left</b>. That is why it looks flipped compared with a map of Earth.",
     ] },
     { h: "What a constellation is", p: [
       "A <b>constellation</b> is an area of the sky. In 1922 the International Astronomical Union fixed the list at <b>88</b>, and in 1930 drew official borders, so every star belongs to exactly one.",

@@ -7,6 +7,8 @@
 // evidence: strong = real, well-studied effect; some = some trial evidence, not settled; little = little or no good evidence.
 // look: how sketch.js draws the specimen (habit, leaf, flower, colours, roots, berries).
 
+import { KITCHEN_2, MEADOW_2, POISON_2 } from "./plants2.js";
+
 export const DANGER = {
   gentle: { emoji: "🌿", name: "Gentle", what: "Safe as food or tea in normal amounts" },
   care: { emoji: "⚠️", name: "Handle with care", what: "Real effects, real risks: interactions, toxic parts or toxic in excess" },
@@ -234,7 +236,7 @@ export const MEADOW = [
     claim: { t: "Aspirin is still made by extracting it from the bark of this tree.", fact: false, why: "Aspirin has been made by chemical synthesis since 1899. The bark was only the starting clue." } },
 
   { id: "foxglove", name: "Foxglove", latin: "Digitalis purpurea", family: "Plantain family", emoji: "🔔", danger: ["poison"], evidence: "strong",
-    look: { habit: "tall", leaf: "oval", lc: "#7a9a6a", flower: "spire", fc: "#c45aa6" },
+    look: { habit: "tall", leaf: "oval", lc: "#7a9a6a", flower: "spire", fc: "#c45aa6", basal: true },
     aliases: ["foxglove", "foxgloves", "common foxglove", "purple foxglove", "digitalis", "digitalis purpurea"],
     clues: [
       "A tall spire of drooping, tube-shaped purple flowers, speckled inside, all hanging from one side of the stem. The leaves are soft and wrinkly.",
@@ -354,7 +356,7 @@ export const MEADOW = [
     claim: { t: "It is the same plant as the French and African marigolds in bedding displays.", fact: false, why: "Those are Tagetes, from the Americas. This one is Calendula, from southern Europe. Same nickname, different genus." } },
 
   { id: "comfrey", name: "Comfrey", latin: "Symphytum officinale", family: "Borage family", emoji: "🦴", danger: ["care", "poison"], evidence: "some",
-    look: { habit: "tall", leaf: "lance", big: true, lc: "#4f7f45", flower: "bell", fc: "#9a5aa8" },
+    look: { habit: "tall", leaf: "lance", big: true, lc: "#4f7f45", flower: "bell", fc: "#9a5aa8", basal: true },
     aliases: ["comfrey", "common comfrey", "symphytum", "symphytum officinale", "knitbone", "boneset"],
     clues: [
       "Big, hairy, lance-shaped leaves and drooping clusters of bell-shaped flowers in purple, pink or cream, curled like a scorpion's tail.",
@@ -597,4 +599,6 @@ export const POISON = [
     claim: { t: "Its cancer drugs were found while testing a folk remedy for diabetes.", fact: true, why: "Researchers testing its folk use for diabetes noticed it killed white blood cells, which led to vinblastine and vincristine." } },
 ];
 
+// the second shelf (plants2.js) joins each level
+KITCHEN.push(...KITCHEN_2); MEADOW.push(...MEADOW_2); POISON.push(...POISON_2);
 export const ALL_PLANTS = [...KITCHEN, ...MEADOW, ...POISON];

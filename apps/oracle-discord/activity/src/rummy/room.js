@@ -137,7 +137,7 @@ export const shop = {
 };
 
 export const rummy = {
-  id: "rummy", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle and learn their myths", shop,
+  id: "rummy", row: "cards", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle and learn their myths", shop,
   open(ctx) {
     const { $, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
     styleOnce();
@@ -213,7 +213,7 @@ export const rummy = {
     function lore(m) {
       if (m.type === "col") return `A colour set! ${CLASSES[m.key].fact}`;
       const c = CONS[m.key], x = c.lore[tell++ % c.lore.length];
-      return `${c.emoji} ${c.name}! In ${x.c}: ${x.t}`;
+      return `${c.emoji} ${c.name}! ${x.c}, "${x.title}": ${x.t}`;
     }
     function mySet() {
       if (busy || sel.length < 3) return;
@@ -278,7 +278,7 @@ export const rummy = {
         <div class="choices"><button class="c main" type="button" id="cr-again">🃏 Deal again</button>${played.length ? `<button class="c" type="button" id="cr-myths">📜 Hear the myths (${played.length})</button>` : ""}<button class="c" type="button" id="cr-lobby">Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (fresh && (titled || aw.rankUp)) chime(2);
       $("cr-again").onclick = () => deal(L); $("cr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
-      if ($("cr-myths")) $("cr-myths").onclick = () => { const pages = played.flatMap((c) => [`${CONS[c].emoji} ${CONS[c].name}.`, ...CONS[c].lore.map((x) => `${x.c}: ${x.t}`), CONS[c].science[0]]);
+      if ($("cr-myths")) $("cr-myths").onclick = () => { const pages = played.flatMap((c) => [`${CONS[c].emoji} ${CONS[c].name}.`, ...CONS[c].lore.slice(0, 2).flatMap((x) => [`${x.c}: ${x.title}.`, ...x.parts]), CONS[c].science[0]]);
         talkThrough(pages, () => { say("Those are the stories of tonight's sky."); results(false); }); };
     }
 

@@ -3,7 +3,7 @@
 // multiple star, the brightest member). Facts are original text for Science is Magic; name meanings follow the IAU
 // Working Group on Star Names and the usual Arabic, Greek and Latin sources.
 import { STARS, LINES, CON_NAMES } from "../stars/sky.gen.js";
-import { SHAPES } from "../stars/lore.js";
+import { DECK } from "../stars/lore.js";
 
 /** [hip, name, constellation, spectral class, fact] */
 const RAW = [
@@ -59,7 +59,10 @@ const RAW = [
 
 /** Each constellation: abbreviation, name, emoji, the lore (cultures) from Star Lore Navigator, and its stick figure. */
 export const CONS = {};
-for (const g of SHAPES) if (g.target && g.target.con) CONS[g.target.con] = { con: g.target.con, name: CON_NAMES[g.target.con], short: g.name, emoji: g.emoji, lore: g.lore, science: g.science };
+const IN_DECK = new Set(RAW.map((r) => r[2]));
+for (const g of DECK) if (g.con && IN_DECK.has(g.con)) CONS[g.con] = { con: g.con, name: CON_NAMES[g.con], short: g.name, emoji: g.emoji, science: g.science,
+  // each fable: culture, title, parts; t = a short telling (first and last part) for the middle of a game
+  lore: g.fables.map((f) => ({ c: f.c, title: f.t, parts: f.parts, t: f.parts.length > 2 ? f.parts[0] + " … " + f.parts[f.parts.length - 1] : f.parts.join(" ") })) };
 
 const star = (hip) => STARS.find((s) => s[4] === hip);
 /** The 48 cards: { hip, name, con, cls, fact, ra, de, mag, bv } */

@@ -21,6 +21,7 @@ import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
 import { stars as starLore, starsCodex } from "./stars/room.js";
+import { room as duel, duelCodex } from "./duel/room.js";
 import { rummy, rummyCodex } from "./rummy/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
@@ -133,6 +134,7 @@ function idleTick() {
 }
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
 
+const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`;
 function greet() {
   state.inRoom = null; idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
@@ -141,16 +143,16 @@ function greet() {
   say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast" && !s.row).map(btn).join("")}
-    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}
+    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}${ROOMS.filter((r) => r.row === "cards").map(roomBtn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
-    <div class="group">Investigate &amp; learn</div>${ROOMS.map((r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`).join("")}</div>`);
+    <div class="group">Investigate &amp; learn</div>${ROOMS.filter((r) => r.row !== "cards").map(roomBtn).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
 }
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...rummy, codexHtml: rummyCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) registerShelf(r.shop); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {

@@ -37,6 +37,7 @@ export const NOTEBOOK = [
   ] },
   { h: "Safety: why you shouldn't try these", p: [
     "Many alchemical substances are dangerous. Mercury vapour, lead and its compounds (including sugar of lead), arsenic and antimony are poisons; strong acids burn; chlorine is a toxic gas; potassium explodes in water. Some alchemists were poisoned by their own work.",
+    "In the Lab, some real dangerous mixtures will explode and end your experiment: water poured into oil of vitriol, strong nitric acid with alcohol, hydrogen near a flame, and saltpetre heated with sulfur. Each one is a true accident chemists learned to avoid.",
     "Enjoy the experiments here, in the Lab. Real chemistry belongs in a proper lab with a teacher, goggles and a fume hood.",
   ] },
 ];

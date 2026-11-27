@@ -1,16 +1,15 @@
-// Star Lore Navigator rules and sky maths, kept pure for tests. Progress lives in prog.rooms.stars:
-//   { plays, found: { "<level>:<id>": bestScore }, owned: [shop ids], style: { chart, extras[] }, last }
-// Each search has 3 lanterns. A wrong tap or a hint costs one. Finding the target scores 4 per lantern left, then one
-// quiz question on the real astronomy adds 5. Points scale with the level. First finds pay ✦ and 💎; replays pay only
-// the improvement on your best.
-import { STARS, LINES, CON_NAMES, STAR_NAMES } from "./sky.gen.js";
-import { LEVELS } from "./lore.js";
+// Star Lore Navigator rules and sky maths, kept pure for tests. The player roams the whole sky, finds the constellation
+// the Oracle asks for and draws its stick figure star to star while the Oracle tells a fable about it.
+// Progress lives in prog.rooms.stars: { plays, found: { "<level>:<id>": bestScore }, heard: ["<id>:<fable>"], last }
+// Mistakes (a line that isn't part of the figure, or a hint) lower the stars: 0-1 → ★★★, 2-4 → ★★, 5+ → ★.
+// Score = 10 per star + 5 for the quiz, ×1 / ×1.5 / ×2 by level. First finds pay ✦ and 💎; replays pay the improvement.
+import { STARS, LINES, FIGURES, CON_NAMES, STAR_NAMES } from "./sky.gen.js";
+import { DECK, LEVELS } from "./lore.js";
 
-export { LEVELS };
-export const LANTERNS = 3, PER_LANTERN = 4, QUIZ_PTS = 5;
-export const ALL = LEVELS.flatMap((L) => L.deck.map((g) => ({ L, g })));
+export { LEVELS, DECK };
+export const ALL = LEVELS.flatMap((L) => DECK.map((g) => ({ L, g })));
 export const keyOf = (L, g) => L.n + ":" + g.id;
-export const TITLES = [{ at: 0, name: "Stargazer" }, { at: 6, name: "Sky Watcher" }, { at: 14, name: "Star Hopper" }, { at: 24, name: "Navigator" }, { at: ALL.length, name: "Keeper of Star Lore" }];
+export const TITLES = [{ at: 0, name: "Stargazer" }, { at: 6, name: "Sky Watcher" }, { at: 16, name: "Star Joiner" }, { at: 32, name: "Navigator" }, { at: ALL.length, name: "Keeper of Star Lore" }];
 
 const D = Math.PI / 180;
 /** Angular distance between two sky points, degrees. */
@@ -28,89 +27,110 @@ export function project(ra, de, ra0, de0) {
 export function centroid(pts) {
   let x = 0, y = 0, z = 0;
   for (const [r, d] of pts) { x += Math.cos(d * D) * Math.cos(r * D); y += Math.cos(d * D) * Math.sin(r * D); z += Math.sin(d * D); }
-  const ra = (Math.atan2(y, x) / D + 360) % 360, de = Math.atan2(z, Math.hypot(x, y)) / D;
-  return [ra, de];
+  return [(Math.atan2(y, x) / D + 360) % 360, Math.atan2(z, Math.hypot(x, y)) / D];
 }
 
-export const starByHip = (hip) => STARS.find((s) => s[4] === hip);
-export const nameOf = (s) => STAR_NAMES[s[4]] || "";
-/** The stars that count as the target, and the sky point at its middle. */
-export function targetStars(g) {
-  const t = g.target;
-  if (t.con) return STARS.filter((s) => s[5] === t.con);
-  if (t.hip) return t.hip.map(starByHip).filter(Boolean);
-  return [];
+// ---- the view: centre, and zoom as the half-height of the screen in degrees ----
+export const ZOOM_MIN = 12, ZOOM_MAX = 80;
+const scaleOf = (v, w, h) => (Math.min(w, h) / 2) / (2 * Math.tan(((v.fov || 45) * D) / 2));
+/** Screen point (px) for a sky point. */
+export function toScreen(v, w, h, ra, de) {
+  const S = scaleOf(v, w, h), p = project(ra, de, v.ra, v.dec);
+  return { X: w / 2 + p.x * S, Y: h / 2 - p.y * S, front: p.front && sep(ra, de, v.ra, v.dec) < 110 };
 }
-export function targetCentre(g) {
-  const t = g.target;
-  if (t.near) return [t.near[0], t.near[1]];
-  if (t.con && LINES[t.con]) return centroid(LINES[t.con].flat());
-  return centroid(targetStars(g).map((s) => [s[0], s[1]]));
+/** Sky point under a screen point. */
+export function toSky(v, w, h, X, Y) {
+  const S = scaleOf(v, w, h), x = (X - w / 2) / S, y = -(Y - h / 2) / S, rho = Math.hypot(x, y);
+  if (rho < 1e-9) return [v.ra, v.dec];
+  const c = 2 * Math.atan(rho / 2), s0 = Math.sin(v.dec * D), c0 = Math.cos(v.dec * D);
+  const de = Math.asin(Math.cos(c) * s0 + (y * Math.sin(c) * c0) / rho) / D;
+  const ra = v.ra - Math.atan2(x * Math.sin(c), rho * c0 * Math.cos(c) - y * s0 * Math.sin(c)) / D;
+  return [((ra % 360) + 360) % 360, de];
 }
-/** Does a tap on this star (or this sky point) find the target? */
-export function isHit(g, star, point) {
-  const t = g.target;
-  if (t.near) return !!point && sep(point[0], point[1], t.near[0], t.near[1]) <= t.near[2];
-  if (!star) return false;
-  if (t.con) return star[5] === t.con;
-  return t.hip.includes(star[4]);
+/** Drag the sky: the point that was under (X0, Y0) moves to (X1, Y1). Returns a new view. */
+export function pan(v, w, h, X0, Y0, X1, Y1) {
+  const a = toSky(v, w, h, X0, Y0), b = toSky(v, w, h, X1, Y1);
+  let dec = v.dec + (a[1] - b[1]); dec = Math.max(-88, Math.min(88, dec));
+  let dra = a[0] - b[0]; if (dra > 180) dra -= 360; if (dra < -180) dra += 360;
+  return { ...v, ra: (((v.ra + dra) % 360) + 360) % 360, dec };
 }
+export const zoom = (v, f) => ({ ...v, fov: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (v.fov || 45) * f)) });
 
-// ---- the chart view: the target is never dead centre, so you have to look ----
-const hash = (s) => [...String(s)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
-export const FIELD = 50; // degrees from the view centre to the chart edge (short side)
-/** View centre for a search: offset 12 to 24 degrees from the target in a direction set by seed. */
-export function viewFor(g, seed = 0) {
-  const [ra, de] = targetCentre(g), h = hash(g.id + ":" + seed), ang = (h % 360) * D, off = 12 + (h % 13);
-  let dec = de + off * Math.sin(ang);
-  dec = Math.max(-82, Math.min(82, dec));
-  const r = (ra + (off * Math.cos(ang)) / Math.max(0.25, Math.cos(de * D)) + 360) % 360;
-  return { ra: r, dec, scale: 1 };
-}
-/** Stars on the chart at width w, height h (px): [{ s, X, Y, r }], brightest first. */
-export function chartStars(view, w, h) {
-  const S = (Math.min(w, h) / 2) / (2 * Math.tan((FIELD * D) / 2)), out = [];
-  for (const s of STARS) {
-    if (sep(s[0], s[1], view.ra, view.dec) > 95) continue;
-    const p = project(s[0], s[1], view.ra, view.dec); if (!p.front) continue;
-    const X = w / 2 + p.x * S, Y = h / 2 - p.y * S;
-    if (X < -10 || Y < -10 || X > w + 10 || Y > h + 10) continue;
-    out.push({ s, X, Y, r: Math.max(0.7, 3.6 - 0.62 * s[2]) });
+/** Bright stars on screen: [{ s, X, Y }]. */
+export function onScreen(v, w, h, list = STARS) {
+  const out = [], reach = (v.fov || 45) * Math.hypot(w, h) / Math.min(w, h) * 1.2 + 5;
+  for (const s of list) {
+    if (sep(s[0], s[1], v.ra, v.dec) > reach) continue;
+    const p = toScreen(v, w, h, s[0], s[1]);
+    if (p.front && p.X > -20 && p.Y > -20 && p.X < w + 20 && p.Y < h + 20) out.push({ s, X: p.X, Y: p.Y });
   }
   return out;
 }
-/** Screen point for any sky point (for lines, labels and the Milky Way). */
-export function toScreen(view, w, h, ra, de) {
-  const S = (Math.min(w, h) / 2) / (2 * Math.tan((FIELD * D) / 2)), p = project(ra, de, view.ra, view.dec);
-  return { X: w / 2 + p.x * S, Y: h / 2 - p.y * S, front: p.front && sep(ra, de, view.ra, view.dec) < 100 };
-}
-/** Inverse of toScreen: which sky point is under a tap. */
-export function toSky(view, w, h, X, Y) {
-  const S = (Math.min(w, h) / 2) / (2 * Math.tan((FIELD * D) / 2)), x = (X - w / 2) / S, y = -(Y - h / 2) / S;
-  const rho = Math.hypot(x, y); if (rho < 1e-9) return [view.ra, view.dec];
-  const c = 2 * Math.atan(rho / 2), s0 = Math.sin(view.dec * D), c0 = Math.cos(view.dec * D);
-  const de = Math.asin(Math.cos(c) * s0 + (y * Math.sin(c) * c0) / rho) / D;
-  const ra = view.ra - Math.atan2(x * Math.sin(c), rho * c0 * Math.cos(c) - y * s0 * Math.sin(c)) / D;
-  return [(ra + 360) % 360, de];
-}
-/** The star a tap means: the nearest within reach px, preferring brighter stars when close. */
-export function nearestStar(stars, X, Y, reach = 16) {
+/** The star a tap means: the nearest within reach px (brighter stars are easier to hit). */
+export function nearestStar(list, X, Y, reach = 18) {
   let best = null, bd = Infinity;
-  for (const p of stars) { const d = Math.hypot(p.X - X, p.Y - Y) - p.r * 0.8; if (d < bd) { bd = d; best = p; } }
+  for (const p of list) { const d = Math.hypot(p.X - X, p.Y - Y) - Math.max(0, 2.5 - p.s[2]) * 1.5; if (d < bd) { bd = d; best = p; } }
   return bd <= reach ? best : null;
 }
 
-/** The galactic equator (the middle of the Milky Way) as RA/Dec points, J2000. */
-export function galacticEquator(step = 4) {
-  const ra0 = 192.85948 * D, de0 = 27.12825 * D, l0 = 122.93192 * D, pts = [];
-  for (let l = 0; l <= 360; l += step) {
-    const q = l0 - l * D; // b = 0: sin δ = cos δ_NGP · cos(l_NCP − l)
-    const dec = Math.asin(Math.cos(de0) * Math.cos(q)) / D;
-    const ra = (ra0 + Math.atan2(Math.sin(q), -Math.sin(de0) * Math.cos(q))) / D;
-    pts.push([((ra % 360) + 360) % 360, dec]);
-  }
-  return pts;
+// ---- the figure to draw ----
+export const starByHip = (hip) => STARS.find((s) => s[4] === hip);
+export const nameOf = (s) => STAR_NAMES[s[4]] || "";
+export const conName = (abbr) => CON_NAMES[abbr] || abbr;
+export const edgeKey = (a, b) => (a < b ? a + "-" + b : b + "-" + a);
+/** The stick figure's edges [[hipA, hipB]] (limited to g.fig's stars when given). */
+export function figureEdges(g) {
+  const all = FIGURES[g.con] || [];
+  return g.fig ? all.filter(([a, b]) => g.fig.includes(a) && g.fig.includes(b)) : all;
 }
+export const figureStars = (g) => [...new Set(figureEdges(g).flat())];
+export function figureCentre(g) { return centroid(figureStars(g).map((h) => starByHip(h)).map((s) => [s[0], s[1]])); }
+/** Where a search starts: well away from the target (60 to 120 degrees), so it has to be found. */
+export function startView(g, seed = 0) {
+  const [ra, de] = figureCentre(g), h = hash(g.id + ":" + seed);
+  for (let i = 0; i < 40; i++) {
+    const r = (ra + 70 + ((h + i * 37) % 120)) % 360, d = Math.max(-60, Math.min(60, de * -0.3 + (((h >> 3) + i * 13) % 80) - 40));
+    if (sep(r, d, ra, de) >= 60) return { ra: r, dec: d, fov: 45 };
+  }
+  return { ra: (ra + 180) % 360, dec: 0, fov: 45 };
+}
+const hash = (s) => [...String(s)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+export const start = (g, L, seed = Math.floor(Math.random() * 1e6)) => ({ id: g.id, level: L.n, drawn: [], mistakes: 0, hints: 0, done: false, quiz: null, seed, total: figureEdges(g).length });
+/** Try a line from star a to star b (HIP numbers). "edge" new line | "again" already drawn | "miss" not in the figure | "done" last line. */
+export function attempt(run, g, a, b) {
+  if (run.done || a === b) return null;
+  const k = edgeKey(a, b), ok = figureEdges(g).some(([x, y]) => edgeKey(x, y) === k);
+  if (!ok) { run.mistakes++; return "miss"; }
+  if (run.drawn.includes(k)) return "again";
+  run.drawn.push(k);
+  if (run.drawn.length >= run.total) { run.done = true; return "done"; }
+  return "edge";
+}
+/** A hint: the next line to draw (one touching what's drawn, if any). Costs a mistake. */
+export function hintEdge(run, g) {
+  if (run.done) return null;
+  const left = figureEdges(g).filter(([a, b]) => !run.drawn.includes(edgeKey(a, b)));
+  const touched = new Set(run.drawn.flatMap((k) => k.split("-").map(Number)));
+  const e = left.find(([a, b]) => touched.has(a) || touched.has(b)) || left[0];
+  run.hints++; run.mistakes++; return e || null;
+}
+export const starsFor = (m) => (m <= 1 ? 3 : m <= 4 ? 2 : 1);
+/** How many parts of an n-part fable have been told after this much drawing (the first at the start, the last at the end). */
+export const partsTold = (run, n) => (run.done ? n : Math.min(n - 1, 1 + Math.floor((run.drawn.length / Math.max(1, run.total)) * (n - 1))));
+/** Pick a fable for this constellation, preferring one not heard yet. */
+export function pickFable(p, g, rnd = Math.random) {
+  const heard = room(p).heard, fresh = g.fables.map((f, i) => i).filter((i) => !heard.includes(g.id + ":" + i));
+  const pool = fresh.length ? fresh : g.fables.map((f, i) => i);
+  return pool[Math.floor(rnd() * pool.length)];
+}
+
+// ---- quiz ----
+export function quizChoices(g) {
+  const k = hash(g.id) % 4, w = g.quiz.wrong, all = [g.quiz.a, ...w];
+  return [...all.slice(1, 1 + k), all[0], ...all.slice(1 + k)].slice(0, 4);
+}
+export function answer(run, g, choice) { if (run.quiz !== null) return run.quiz; run.quiz = choice === g.quiz.a; return run.quiz; }
 
 // ---- real-sky facts computed from position ----
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -119,60 +139,52 @@ export function bestMonth(ra) {
   const sunRa = ((ra / 15 - 9) % 24 + 24) % 24, days = (sunRa / 24) * 365.25, d = new Date(Date.UTC(2025, 2, 20) + days * 864e5);
   return MONTHS[d.getUTCMonth()];
 }
-/** Where on Earth a sky point ever rises: latitudes from -90 to 90 - dec (north) or dec + 90 (south). */
+/** Where on Earth a sky point ever rises. */
 export function seenFrom(dec) {
   const d = Math.round(dec);
   if (d >= 0) return d >= 2 ? `Visible from everywhere north of about ${90 - d}°S.` : "Visible from almost everywhere on Earth.";
   return d <= -2 ? `Visible from everywhere south of about ${90 + d}°N.` : "Visible from almost everywhere on Earth.";
 }
-export const conName = (abbr) => CON_NAMES[abbr] || abbr;
+/** The galactic equator (the middle of the Milky Way) as RA/Dec points, J2000. */
+export function galacticEquator(step = 4) {
+  const ra0 = 192.85948 * D, de0 = 27.12825 * D, l0 = 122.93192 * D, pts = [];
+  for (let l = 0; l <= 360; l += step) {
+    const q = l0 - l * D; // b = 0: sin δ = cos δ_NGP · cos(l_NCP − l)
+    pts.push([(((ra0 + Math.atan2(Math.sin(q), -Math.sin(de0) * Math.cos(q))) / D) % 360 + 360) % 360, Math.asin(Math.cos(de0) * Math.cos(q)) / D]);
+  }
+  return pts;
+}
 
 // ---- progress and scoring ----
 export const room = (p) => {
-  const r = ((p.rooms ||= {}).stars ||= { plays: 0, found: {}, owned: [], style: { chart: "classic", extras: [] }, last: null });
-  r.found ||= {}; r.owned ||= []; r.style ||= { chart: "classic", extras: [] }; r.style.extras ||= []; return r;
+  const r = ((p.rooms ||= {}).stars ||= { plays: 0, found: {}, heard: [], last: null });
+  r.found ||= {}; r.heard ||= []; return r;
 };
-export const foundCount = (p, L) => (L ? L.deck.filter((g) => room(p).found[keyOf(L, g)]).length : ALL.filter(({ L: l, g }) => room(p).found[keyOf(l, g)]).length);
+export const foundCount = (p, L) => (L ? DECK.filter((g) => room(p).found[keyOf(L, g)]).length : ALL.filter(({ L: l, g }) => room(p).found[keyOf(l, g)]).length);
 export const titleOf = (n) => TITLES.reduce((a, t) => (n >= t.at ? t : a), TITLES[0]);
 export const nextTitle = (n) => TITLES.find((t) => t.at > n) || null;
-export const byId = (id, L) => L.deck.find((g) => g.id === id);
+export const byId = (id) => DECK.find((g) => g.id === id);
 export function nextTarget(p, L, after) {
-  const open = L.deck.filter((g) => !room(p).found[keyOf(L, g)] && g.id !== after);
-  const pool = open.length ? open : L.deck.filter((g) => g.id !== after);
-  return pool[Math.floor(Math.random() * pool.length)] || L.deck[0];
+  const open = DECK.filter((g) => !room(p).found[keyOf(L, g)] && g.id !== after);
+  const pool = open.length ? open : DECK.filter((g) => g.id !== after);
+  return pool[Math.floor(Math.random() * pool.length)] || DECK[0];
 }
-
-export const start = (g, L) => ({ id: g.id, level: L.n, lanterns: LANTERNS, hinted: false, misses: 0, found: false, done: false, quiz: null, seed: Math.floor(Math.random() * 1e6) });
-/** Use the hint (once): costs a lantern but never the last one. */
-export function useHint(run) { if (run.hinted || run.done || run.lanterns <= 1) return false; run.hinted = true; run.lanterns--; return true; }
-/** A tap: "found" | "miss" | "out" | null. */
-export function tap(run, g, star, point) {
-  if (run.done || run.found) return null;
-  if (isHit(g, star, point)) { run.found = true; return "found"; }
-  run.misses++; run.lanterns--;
-  if (run.lanterns <= 0) { run.done = true; return "out"; }
-  return "miss";
-}
-/** Four quiz answers, stable per target, the right one at a varying place. */
-export function quizChoices(g) {
-  const k = hash(g.id) % 4, w = g.quiz.wrong;
-  const all = [g.quiz.a, ...w]; return [...all.slice(1, 1 + k), all[0], ...all.slice(1 + k)].slice(0, 4);
-}
-export function answer(run, g, choice) { if (run.quiz !== null) return run.quiz; run.quiz = choice === g.quiz.a; run.done = true; return run.quiz; }
-
 const levelOf = (run) => LEVELS[run.level - 1];
-export const findPts = (run) => (run.found ? Math.round(PER_LANTERN * run.lanterns * levelOf(run).mult) : 0);
-export const quizPts = (run) => (run.quiz ? Math.round(QUIZ_PTS * levelOf(run).mult) : 0);
-export const scoreOf = (run) => findPts(run) + quizPts(run);
-/** Settle a finished search into progress. Returns { xp, essence, first, best, score }. */
-export function settle(p, run) {
+export const drawPts = (run) => (run.done ? Math.round(10 * starsFor(run.mistakes) * levelOf(run).mult) : 0);
+export const quizPts = (run) => (run.quiz ? Math.round(5 * levelOf(run).mult) : 0);
+export const scoreOf = (run) => drawPts(run) + quizPts(run);
+/** Settle a finished drawing into progress. Returns { xp, essence, first, best, score }. */
+export function settle(p, run, fable) {
   const r = room(p), k = run.level + ":" + run.id; r.plays++; r.last = run.id;
+  if (fable != null && !r.heard.includes(run.id + ":" + fable)) r.heard.push(run.id + ":" + fable);
   const out = { xp: 0, essence: 0, first: false, best: false, score: scoreOf(run) };
-  if (!run.found) { out.xp = 2; return out; }
+  if (!run.done) { out.xp = 2; return out; }
   const prev = r.found[k] || 0; out.first = !prev;
   if (out.score > prev) { out.best = !!prev; out.xp = out.essence = out.score - prev; r.found[k] = out.score; }
   return out;
 }
+export const fablesHeard = (p) => room(p).heard.length;
+export const FABLE_COUNT = DECK.reduce((n, g) => n + g.fables.length, 0);
 
 // ---- the Observatory shelf in the Essence store (store.js registerShelf): one sky theme equipped at a time ----
 export const KIND = "stars";
@@ -184,7 +196,8 @@ export const THEMES = [
   { id: "st-twinkle", name: "Twinkling sky", note: "Stars shimmer the way Earth's moving air makes them twinkle", price: 60 },
   { id: "st-grid", name: "Navigator's grid", note: "Lines of right ascension and declination, the sky's longitude and latitude", price: 70 },
   { id: "st-meteors", name: "Meteor shower", note: "Shooting stars: grains of comet dust burning up about 100 km above us", price: 100 },
-  { id: "st-milkyway", name: "Milky Way glow", note: "The band of our galaxy, drawn along its true path, the galactic equator", price: 150 },
+  { id: "st-milkyway", name: "Milky Way glow", note: "The band of our galaxy, drawn along its true path, on levels 1 and 2 too", price: 150 },
 ];
 /** The equipped theme id (prog.stars, set by the store), falling back to the free one. */
 export const themeOf = (p) => (THEMES.some((t) => t.id === p[KIND]) && (p[KIND] === "st-classic" || (p.owned || []).includes(p[KIND])) ? p[KIND] : "st-classic");
+export { LINES };
