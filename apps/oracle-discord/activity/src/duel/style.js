@@ -14,18 +14,18 @@ export const CSS = `
 .du-glow{animation:du-pulse 2.4s ease-in-out infinite}
 .du-fan{animation:du-deal .5s cubic-bezier(.2,.8,.3,1) calc(var(--i) * .08s) both}
 .du-atom{transform-box:fill-box;transform-origin:center}
-.du-rx .du-atom{animation:du-fly .55s cubic-bezier(.2,.8,.3,1.2) calc(var(--i) * .06s) both}
+.du-rx .du-atom{animation:du-fly .5s cubic-bezier(.2,.8,.3,1.2) calc(.45s + var(--i) * .05s) both}
 .du-rx.from-you .du-atom{--fy:120px}.du-rx.from-oracle .du-atom{--fy:-120px}
 @keyframes du-fly{from{opacity:0;transform:translateY(var(--fy)) scale(.4)}}
-.du-mol{animation:du-spin 2.6s .7s ease-in-out both;transform-box:fill-box;transform-origin:center}
+.du-mol{animation:du-spin 2.6s 1s ease-in-out both;transform-box:fill-box;transform-origin:center}
 @keyframes du-spin{0%{transform:none}50%{transform:rotate(8deg) scale(1.05)}100%{transform:none}}
-.du-flash{opacity:0;animation:du-flash .8s .55s ease-out both;transform-box:fill-box;transform-origin:center}
+.du-flash{opacity:0;animation:du-flash .8s .8s ease-out both;transform-box:fill-box;transform-origin:center}
 @keyframes du-flash{0%{opacity:0;transform:scale(.2)}25%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
-.du-name{animation:du-up .4s .7s ease-out both}
+.du-name{animation:du-up .4s 1s ease-out both}
 @keyframes du-up{from{opacity:0;transform:translateY(8px)}}
-.du-dmg{opacity:0;animation:du-dmg 1.4s .85s ease-out both}
+.du-dmg{opacity:0;animation:du-dmg 1.4s 1.55s ease-out both}
 @keyframes du-dmg{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.25)}70%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
-.du-hit-oracle .du-o,.du-hit-you .du-y{animation:du-shake .5s .9s ease-in-out both}
+.du-hit-oracle .du-o,.du-hit-you .du-y{animation:du-shake .55s 1.45s ease-in-out both}
 @keyframes du-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .du-wob{animation:du-wob .25s ease-in-out calc(var(--i) * .05s) 4 alternate;transform-box:fill-box;transform-origin:center}
 @keyframes du-wob{to{transform:translateY(-4px) rotate(10deg)}}
@@ -69,5 +69,39 @@ export const CSS = `
 .du-log{font-size:.84rem;color:var(--muted);margin:4px 0}
 .du-chips{display:flex;flex-wrap:wrap;gap:5px}
 .du-chips span{border:1px solid var(--line);border-radius:8px;padding:1px 7px;font-size:.8rem;background:var(--deep)}
-@media (prefers-reduced-motion: reduce){.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
+
+/* damage phase: cards fly in, the reaction plays its own effect, an orb flies to the target and bursts */
+.du-k-card{opacity:0;animation:du-kcard .55s cubic-bezier(.3,.7,.3,1) calc(var(--i) * .05s) both;transform-box:fill-box;transform-origin:center}
+@keyframes du-kcard{0%{opacity:0;transform:translate(var(--sx),var(--sy)) rotate(-12deg) scale(.8)}35%{opacity:1}80%{opacity:1;transform:none}100%{opacity:0;transform:scale(.3)}}
+.du-kfx>*{transform-box:view-box;transform-origin:200px 138px}
+.du-k-ring{opacity:0;animation:du-kring 1s .8s ease-out both}
+@keyframes du-kring{0%{opacity:0;transform:scale(.2)}30%{opacity:1}100%{opacity:0;transform:scale(1.9)}}
+.du-k-flame{opacity:0;animation:du-kflame 1.1s calc(.8s + var(--i) * .03s) ease-out both}
+@keyframes du-kflame{0%{opacity:0;transform:rotate(var(--a)) scale(.2)}30%{opacity:.95;transform:rotate(var(--a)) scale(1.3)}100%{opacity:0;transform:rotate(var(--a)) translateY(-30px) scale(1.6)}}
+.du-k-ice{opacity:0;animation:du-kice 1.3s calc(.8s + var(--i) * .05s) ease-out both}
+@keyframes du-kice{0%{opacity:0;transform:rotate(var(--a)) scale(.1)}40%{opacity:1;transform:rotate(var(--a)) scale(1)}80%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) scale(1.1)}}
+.du-k-bolt{opacity:0;animation:du-kbolt .9s calc(.8s + var(--i) * .06s) steps(2) both}
+@keyframes du-kbolt{0%{opacity:0;transform:rotate(var(--a)) scale(.5)}20%,60%{opacity:1;transform:rotate(var(--a)) scale(1.6)}40%,80%{opacity:.2;transform:rotate(var(--a)) scale(1.7)}100%{opacity:0;transform:rotate(var(--a)) scale(1.8)}}
+.du-k-drop{opacity:0;animation:du-kdrop 1.1s calc(.85s + var(--i) * .05s) cubic-bezier(.5,0,1,1) both}
+@keyframes du-kdrop{0%{opacity:0;transform:none}20%{opacity:1}100%{opacity:.2;transform:translate(var(--dx),60px)}}
+.du-k-pool{opacity:0;animation:du-kpool 1.4s 1.2s ease-out both;transform-box:fill-box;transform-origin:center}
+@keyframes du-kpool{0%{opacity:0;transform:scaleX(.2)}40%{opacity:.6}100%{opacity:0;transform:scaleX(1.3)}}
+.du-k-bub{opacity:0;animation:du-kbub 1.5s calc(.8s + var(--i) * .06s) ease-out both}
+@keyframes du-kbub{0%{opacity:0;transform:none}20%{opacity:1}90%{opacity:1;transform:translate(var(--dx),-90px) scale(1.4)}100%{opacity:0;transform:translate(var(--dx),-95px) scale(2)}}
+.du-k-gear{opacity:0;animation:du-kgear 1.5s .8s ease-out both}
+@keyframes du-kgear{0%{opacity:0;transform:rotate(0) scale(.5)}30%{opacity:1}100%{opacity:0;transform:rotate(240deg) scale(1.2)}}
+.du-k-orbit{opacity:0;animation:du-korbit 1.5s .8s linear both}
+@keyframes du-korbit{0%{opacity:0;transform:rotate(var(--a))}20%{opacity:1}100%{opacity:0;transform:rotate(calc(var(--a) + 360deg))}}
+.du-k-cloud{opacity:0;animation:du-kcloud 1.6s calc(.8s + var(--i) * .05s) ease-out both}
+@keyframes du-kcloud{0%{opacity:0;transform:scale(.3)}30%{opacity:.45}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(2)}}
+.du-k-shard{opacity:0;animation:du-kshard 1s calc(.8s + var(--i) * .03s) cubic-bezier(.2,.8,.3,1) both}
+@keyframes du-kshard{0%{opacity:0;transform:rotate(var(--a)) scale(.2)}30%{opacity:1;transform:rotate(var(--a)) translateY(-6px) scale(1.2)}100%{opacity:0;transform:rotate(var(--a)) translateY(-40px) scale(.8)}}
+.du-beam{opacity:0;animation:du-beam .45s 1.25s ease-out both}
+@keyframes du-beam{0%{opacity:0}40%{opacity:.8}100%{opacity:0}}
+.du-orb{opacity:0;animation:du-orb .4s 1.15s cubic-bezier(.5,0,1,1) forwards;transform-box:view-box}
+@keyframes du-orb{0%{opacity:1;transform:none}88%{opacity:1;transform:translateY(var(--ty))}100%{opacity:0;transform:translateY(var(--ty)) scale(1.5)}}
+.du-impact{opacity:0;animation:du-impact .7s 1.5s ease-out both;transform-box:fill-box;transform-origin:center}
+@keyframes du-impact{0%{opacity:1;transform:rotate(var(--a)) translateX(0)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
+.du-block{opacity:0;animation:du-kring .8s 1.45s ease-out both;transform-box:fill-box;transform-origin:center}
+@media (prefers-reduced-motion: reduce){.du-k-card,.du-kfx,.du-beam,.du-orb,.du-impact,.du-block{display:none}.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
 `;

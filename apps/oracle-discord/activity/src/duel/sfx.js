@@ -30,10 +30,30 @@ export const SFX = {
   place(i = 0) { const c = ctx(); if (!c) return; const t = c.currentTime; tone(c, 660 * Math.pow(1.122, i), t, 0.12, { type: "triangle", vol: 0.25 }); },
   /** Back into the hand. */
   unplace() { const c = ctx(); if (!c) return; const t = c.currentTime; tone(c, 520, t, 0.1, { type: "triangle", vol: 0.18, to: 380 }); },
-  /** A reaction: a rising whoosh, then a boom sized by its power. */
-  react(power = 5) { const c = ctx(); if (!c) return; const t = c.currentTime; hiss(c, t, 0.35, { from: 400, to: 5000, vol: 0.3 });
-    const v = Math.min(0.8, 0.3 + power * 0.05); tone(c, 140, t + 0.35, 0.6, { vol: v, to: 40 }); hiss(c, t + 0.35, 0.5, { from: 2000, to: 200, vol: v * 0.6, q: 0.5 });
-    [523, 784, 1047].forEach((f, i) => tone(c, f, t + 0.4 + i * 0.05, 0.4, { vol: 0.1 })); },
+  /**
+   * The damage phase, timed to the table animation: cards swish in (0 s), the atoms fuse (0.5 s), the reaction plays its
+   * own sound by kind (0.8 s), an orb launches (1.15 s) and lands with a hit, or a clang on a shield (1.5 s).
+   */
+  react(power = 5, kind = "crystal", { dmg = 1, blocked = 0 } = {}) {
+    const c = ctx(); if (!c) return; const t = c.currentTime;
+    for (let i = 0; i < 3; i++) hiss(c, t + i * 0.07, 0.12, { from: 2500, to: 6000, vol: 0.18, q: 1.5 });
+    [523, 659].forEach((f, i) => tone(c, f, t + 0.5 + i * 0.06, 0.25, { type: "triangle", vol: 0.12 }));
+    const k = t + 0.8, v = Math.min(0.8, 0.3 + power * 0.05);
+    ({
+      fire: () => { hiss(c, k, 0.9, { from: 300, to: 1800, vol: v * 0.8, q: 0.4 }); tone(c, 110, k, 0.8, { vol: v, to: 45 }); for (let i = 0; i < 6; i++) hiss(c, k + 0.1 + Math.random() * 0.6, 0.04, { from: 3000, to: 5000, vol: 0.2, q: 4 }); },
+      frost: () => { for (let i = 0; i < 8; i++) tone(c, 1800 + Math.random() * 1600, k + i * 0.07, 0.25, { vol: 0.09 }); hiss(c, k, 1, { from: 6000, to: 9000, vol: 0.12, q: 2 }); tone(c, 220, k, 0.9, { type: "triangle", vol: 0.15, to: 110 }); },
+      spark: () => { for (let i = 0; i < 3; i++) { tone(c, 90, k + i * 0.12, 0.08, { type: "sawtooth", vol: 0.35 }); hiss(c, k + i * 0.12, 0.08, { from: 6000, to: 2000, vol: 0.4, q: 0.6 }); } tone(c, 60, k + 0.35, 0.6, { vol: 0.5, to: 35 }); },
+      acid: () => { hiss(c, k, 1.1, { from: 5000, to: 3000, vol: 0.3, q: 1.2 }); for (let i = 0; i < 6; i++) tone(c, 600 + Math.random() * 400, k + 0.1 + i * 0.12, 0.05, { vol: 0.1, to: 300 }); },
+      base: () => { for (let i = 0; i < 9; i++) tone(c, 400 + Math.random() * 700, k + i * 0.08, 0.08, { vol: 0.14, to: 900 + Math.random() * 600 }); },
+      catalyst: () => { tone(c, 220, k, 1.2, { type: "sawtooth", vol: 0.06, to: 880 }); [440, 554, 659, 880].forEach((f, i) => tone(c, f, k + 0.2 + i * 0.1, 0.4, { vol: 0.12 })); },
+      gas: () => { hiss(c, k, 1.2, { from: 800, to: 2400, vol: 0.35, q: 0.5 }); tone(c, 150, k, 0.5, { vol: 0.2, to: 90 }); },
+      crystal: () => { [1568, 2093, 1760, 2637].forEach((f, i) => tone(c, f, k + i * 0.06, 0.6, { vol: 0.12 })); tone(c, 130, k, 0.5, { vol: v * 0.7, to: 60 }); },
+    }[kind] || (() => {}))();
+    tone(c, 300, t + 1.15, 0.35, { type: "triangle", vol: 0.12, to: 900 }); hiss(c, t + 1.15, 0.35, { from: 1200, to: 4000, vol: 0.18 });
+    const h = t + 1.5;
+    if (blocked) { [880, 1320].forEach((f) => tone(c, f, h, 0.6, { type: "square", vol: 0.07 })); hiss(c, h, 0.2, { from: 3000, to: 1500, vol: 0.2, q: 3 }); }
+    if (dmg) { tone(c, 90, h, 0.35, { vol: Math.min(0.8, 0.35 + dmg * 0.05), to: 45 }); hiss(c, h, 0.15, { from: 600, to: 200, vol: 0.35, q: 0.7 }); }
+  },
   /** A fizzle: bubbling then a sad hiss. */
   fizz() { const c = ctx(); if (!c) return; const t = c.currentTime; for (let i = 0; i < 6; i++) tone(c, 300 + Math.random() * 500, t + i * 0.05, 0.06, { vol: 0.12 }); hiss(c, t + 0.3, 0.6, { from: 4000, to: 800, vol: 0.25 }); },
   /** Getting hit: a low thud. */

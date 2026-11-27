@@ -7,7 +7,7 @@
 import { EL, FAMILY, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
-import { sceneSvg } from "./scene.js";
+import { sceneSvg, kindOf, KIND } from "./scene.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
 import { SFX } from "./sfx.js";
@@ -52,7 +52,7 @@ const GUIDE = [
 const guideHtml = () => `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">⚛️ How to play Element Duel</h3>${GUIDE.map(([h, ps], i) => `<details${i < 2 ? " open" : ""}><summary>${h}</summary>${ps.map((p) => `<p>${p}</p>`).join("")}</details>`).join("")}</div>`;
 
 export const room = {
-  id: "duel", label: "Element Duel", emoji: "⚛️",
+  id: "duel", row: "cards", label: "Element Duel", emoji: "⚛️",
   blurb: "A card battle with the periodic table: make real compounds to out-react the Oracle",
   shop: { kind: "duel", label: "⚛️ Element Duel", items: SHOP.map(({ id, name, note, price }) => ({ id, name, note, price })), talk: SHELF_TALK,
     preview(id, { tableEl, cap }) { const it = shopItem(id); if (!it) return; styleOnce();
@@ -170,9 +170,9 @@ export const room = {
     }
     /** Animate a reaction and open its Codex page. */
     function show(out) {
-      fx = { kind: "react", side: out.side, c: out.c, dmg: out.dmg, blocked: out.blocked, hit: out.dmg ? (out.side === "you" ? "oracle" : "you") : null }; draw();
-      SFX.react(out.power); if (out.dmg) setTimeout(() => SFX.hit(), 900);
-      if (out.side === "you" && out.isNew) SFX.discover(); if (out.chain && out.chain.k > 0) SFX.chain(out.chain.k);
+      fx = { kind: "react", side: out.side, c: out.c, cards: out.cards, dmg: out.dmg, blocked: out.blocked, hit: out.dmg ? (out.side === "you" ? "oracle" : "you") : null }; draw();
+      SFX.react(out.power, kindOf(out.c), out);
+      if (out.side === "you" && out.isNew) setTimeout(() => SFX.discover(), 1300); if (out.chain && out.chain.k > 0) SFX.chain(out.chain.k);
       $("reading-body").innerHTML = pageHtml(out.c, esc, out.side === "you" && out.isNew && !duelRoom(state.prog).codex[out.c.id] ? `<span class="du-tag new">✨ new for your Codex</span>` : out.side === "oracle" ? `<span class="du-tag">🔮 the Oracle made it</span>` : "");
     }
     /** The Oracle's turn, then the next round. */
