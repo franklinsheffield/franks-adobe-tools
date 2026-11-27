@@ -149,6 +149,18 @@ export const BANTER = {
     pirate: G("Darkness at noon, matey! Batten the hatches!", "Columbus used a lunar eclipse to scare his hosts. Arr.", "Ye called the eclipse true! The sky be yours!", "Missed the shadow. Back to the charts, ye dog."),
     influencer: G("Eclipse glasses are THE accessory this season.", "Corona reveal coming in three, two...", "Totality! Literally the moment of the year!", "The eclipse left me on read. Rude."),
   },
+  navigator: {
+    mystic: G("The sky is the oldest map. Read it slowly.", "Polaris waits at the pole, as it has for sailors before you.", "The stars have brought you home. They remember you now.", "The sea keeps its secrets tonight. The stars will wait."),
+    deadpan: G("You hold an angle. The angle is a place.", "Fifteen degrees an hour. The Earth is very punctual.", "Correct. We are not lost. Mildly impressive.", "Wrong. We are now somewhere. Exactly where is unclear."),
+    drama: G("The SEA is ENDLESS and the STARS are our ONLY hope!", "The chronometer TICKS! Every second is a MILE!", "LAND HO! We LIVE! I'm kissing the sand!", "LOST! Adrift! Somebody fetch a better clock!"),
+    standup: G("GPS? Never heard of her. Hand me the sextant.", "Longitude: the first problem solved by a very good watch.", "Nailed it! Captain material, or at least first mate.", "Missed. That's not Jamaica, that's open sea."),
+    grumpy: G("Steady hands. The horizon won't hold still for you.", "Read the almanac. All of it. Yes, the small print.", "Fine. Harrison spent 30 years on that clock. You took ten seconds.", "Wrong. In my day, that meant scurvy."),
+    sports: G("Arm's moving, star's dropping, here comes the sight!", "Noon on the dot, and the navigator steps up!", "LANDFALL! What a voyage, what a finish!", "Off course! The ship drifts out of bounds!"),
+    conspiracy: G("Why is Greenwich zero? Who decided that?", "Polaris barely moves. Suspiciously convenient.", "You found the port. They didn't want you to.", "Lost at sea. Exactly as they planned."),
+    bard: G("By Polaris we steer, the pole star ever true.", "The Sun at noon doth tell us where we roam.", "Land ho! The stars have sung thee safely home!", "Alas, the waves have swallowed up our way."),
+    pirate: G("Shoot the star, matey, and mark it true!", "Greenwich time in the box, our noon in the sky. Arr.", "Land ho! Drop anchor and break out the grog!", "Lost, blast it! Back to dead reckonin'!"),
+    influencer: G("Analogue navigation is so aesthetic right now.", "This sextant is giving vintage explorer vibes.", "Landfall! Pinning this voyage to my travel board!", "Lost at sea. Not the content I wanted."),
+  },
   comet: {
     mystic: G("What wanders is never truly lost. Watch the blink.", "A comet is a letter from the edge of the Sun's realm.", "You caught a wanderer. The sky whispers your name.", "It slipped behind the stars. It will pass again."),
     deadpan: G("Two pictures of dots. Spot the different dot.", "It moved. Slowly. Like everything in astronomy.", "Found it. The comet does not care, but I do. A little.", "Missed. The comet is now in a different place. Classic."),

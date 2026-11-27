@@ -13,6 +13,7 @@ import { PLACES, cityOf, clock } from "../stars/tonight.js";
 import { dailySeed, dailyState, finishDaily, todayKey, dayNumber } from "../daily.js";
 import { GUIDE } from "./guide.js";
 import * as S from "../stars/sfx.js";
+import { grantRoyal } from "../hosts/observatory-dome.js";
 
 const KIND = "plateframe";
 export const FRAMES = [
@@ -134,7 +135,7 @@ export const watch = {
     const sky = (sel = null) => { tableEl.className = "table watch"; tableEl.innerHTML = domeSvg(view ? view.up : [], { sel, logged: (id) => logged(P(), id) }) + `<div class="nw-dark${adapted ? " on" : ""}" id="nw-dark"></div>`;
       tableEl.querySelectorAll(".tgt").forEach((g) => (g.onclick = () => target(g.dataset.t))); };
     const loadView = () => { const place = placeOf(P()), { at, night } = watchTime(place); view = { place, at, night, up: upNow(place, at) }; return view; };
-    const stats = () => { const rep = repOf(P()), nx = nextRep(P());
+    const stats = () => { const rep = repOf(P()), nx = nextRep(P()); if (rep.name === "Astronomer Royal") grantRoyal(P());
       return `<div class="cx-top"><b>🔭 ${esc(rep.name)}</b> · ${logCount(P())} logged · ${plateCount(P())} plates · ${messierLogged(P())} / ${MESSIER_COUNT} Messier${nx ? ` · ${nx.at - R().jobsDone} jobs to ${esc(nx.name)}` : ""}</div>`; };
 
     function lobby(first) {
@@ -252,7 +253,7 @@ export const watch = {
       say(`${j.client}: ${q.q}`);
       ui(`<div class="choices">${q.choices.map((c) => `<button class="c" type="button" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>${back()}`); wireBack();
       $("ui").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => {
-        const ok = b.dataset.c === q.a, before = repOf(P()).name, res = deliver(P(), day, j, ok);
+        const ok = b.dataset.c === q.a, before = repOf(P()).name, res = deliver(P(), day, j, ok); if (repOf(P()).name === "Astronomer Royal") grantRoyal(P());
         S.verdict(ok); C.trophy?.("watch", 3, { won: ok, perfect: ok && !!j.needs });
         let g = "";
         if (res.paid) { const [xp, es] = res.hard ? PAY.hard : PAY.job, up = repOf(P()).name !== before ? ` · 🎖️ Reputation: <b>${esc(repOf(P()).name)}</b>` : ""; g = gain(xp, es, up); if (up) setTimeout(S.discover, 400); }
