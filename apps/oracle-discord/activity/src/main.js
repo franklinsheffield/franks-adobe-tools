@@ -19,6 +19,7 @@ import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
+import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
 
 const $ = (id) => document.getElementById(id);
@@ -113,7 +114,18 @@ function bindGo(id) {
   $("go").onclick = run;
   box.querySelectorAll("input").forEach((i) => (i.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); run(); } }));
 }
+// ---- idle chatter: after 30 s with no click or key, the chosen personality pipes up (first 3 lines chained, then shuffled) ----
+const idle = { t: null, step: 0, used: [], on: false };
+function idleReset() { clearTimeout(idle.t); idle.step = 0; if (idle.on) idle.t = setTimeout(idleTick, IDLE_AFTER); }
+function idleTick() {
+  const b = document.body.classList, busy = state.inRoom || b.contains("talking") || b.contains("trance") || $("more") || document.hidden;
+  if (!busy) say(idleLine(pid(), idle.step++, idle.used, state.name));
+  idle.t = setTimeout(idleTick, IDLE_AFTER);
+}
+["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
+
 function greet() {
+  state.inRoom = null; idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
@@ -140,6 +152,7 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
+  state.inRoom = id;
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award });
 }
 
