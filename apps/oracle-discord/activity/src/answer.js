@@ -1,3 +1,4 @@
+import { GENERAL, BY_SYSTEM } from "./jokes.js";
 // The Oracle answers: reads the tone of a reading, gives a straight answer to the member's question in her voice,
 // adds a branded Science is Magic aside, and keeps a store of deeper material for "Go deeper".
 // No network and no AI: everything comes from the reading itself, so the answer always matches what was drawn.
@@ -69,46 +70,17 @@ export function answer(question, text, name = "traveller") {
   return { tone: t, line: `You asked, so here it is, straight from the glass: ${core || "look at what you already know and act on the smallest true part of it."}` };
 }
 
-// Branded asides: the Science is Magic Oracle is wise, a little smug, and fond of the lab.
-const QUIPS = [
-  "Science is Magic, {name}. Magic is just science that hasn't filed its paperwork yet.",
-  "My one eye sees everything. Depth perception, sadly, not included.",
-  "This crystal ball is forty percent mist, sixty percent vibes, and fully peer reviewed. By me.",
-  "Hypothesis: you already knew the answer. Experiment: you asked me anyway. Conclusion: good instincts.",
-  "No refunds on destiny, {name}. Store credit only.",
-  "I've been doing this for five thousand years. The pyramid face is not a costume.",
-  "If anyone asks, the lab results were inconclusive. Between us? They were very conclusive.",
-  "Results may vary. Mine don't, but yours might.",
-  "Remember: correlation is not causation. Unless I say so.",
-  "I ran the numbers twice. The numbers ran away. Rude.",
-  "The universe sent a memo. I just read it out loud with better lighting.",
-  "This reading is gluten free, cruelty free and almost entirely free of nonsense.",
-  "Trust the process. I am the process.",
-  "Please do not tap the glass. It frightens the mist.",
-  "In the Chamber we call this 'applied wonder'. Outside, they call it Thursday.",
-  "Do I know the future? Let's say I've read the spoilers.",
-  "Write this down. Not because you'll forget, but because it looks very mystical.",
-  "Fun fact: the mist in here is ninety percent sparkle by volume.",
-  "Every great discovery started with someone saying 'huh, that's odd'. Your reading says 'huh, that's odd' in a good way.",
-  "That's a five-star omen, {name}. I'd leave a review but I already know what it says.",
-];
-const SYS_QUIPS = {
-  iching: ["Three thousand years old and still undefeated. The coins, not me. Well, also me."],
-  runes: ["The runes don't do small talk. Neither do I, usually. You're special."],
-  oraclebones: ["Kings used to pay a fortune for a crack like that. You got it free."],
-  ifa: ["Two hundred and fifty-six Odù, and you drew this one. The chain has opinions."],
-  astrology: ["The planets were all where they were meant to be. Mostly. Mercury did its thing."],
-  humandesign: ["Your design was set at birth. No firmware updates, I'm afraid."],
-  numerology: ["Numbers never lie. They just occasionally exaggerate for drama."],
-  chinesezodiac: ["The animals argued about who got you. This one won."],
-  mayan: ["The Maya built a calendar that outlived empires. Your appointment still stands."],
-  egyptian: ["I'm on very good terms with the gods. We go way back. Pyramid way back."],
-  celtic: ["The druids would have planted you next to the good oak. That's a compliment."],
-};
-export function quip(key, name, n = 0) {
-  const pool = [...(SYS_QUIPS[key] || []), ...QUIPS];
-  const i = (hash(key + name) + n * 7) % pool.length;
-  return pool[i].replace(/\{name\}/g, name);
+// Branded asides (jokes.js). A member hears every joke before any repeat: `heard` is their list of joke ids.
+export function quip(key, name, heard = []) {
+  const ids = [...(BY_SYSTEM[key] || []).map((_, i) => key + i), ...GENERAL.map((_, i) => "g" + i)];
+  let fresh = ids.filter((id) => !heard.includes(id));
+  if (!fresh.length) { for (const id of ids) { const i = heard.indexOf(id); if (i >= 0) heard.splice(i, 1); } fresh = ids; }
+  // Favour this system's own jokes a little, then anything new.
+  const own = fresh.filter((id) => id.startsWith(key)), pool = own.length && Math.random() < 0.35 ? own : fresh;
+  const id = pool[Math.floor(Math.random() * pool.length)];
+  heard.push(id);
+  const text = id.startsWith("g") && !id.startsWith(key) && /^g\d+$/.test(id) ? GENERAL[+id.slice(1)] : BY_SYSTEM[key][+id.slice(key.length)];
+  return text.replace(/\{name\}/g, name);
 }
 
 const DEEPER_LEADS = ["Look closer.", "There's more.", "Listen.", "Deeper still…", "Now this part.", "Mark this.", "Hmm… and here."];

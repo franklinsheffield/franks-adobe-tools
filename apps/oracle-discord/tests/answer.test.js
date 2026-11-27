@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { GENERAL, BY_SYSTEM } from "../activity/src/jokes.js";
 import { tone, answer, quip, deeperPages, coreLine } from "../activity/src/answer.js";
 
 const good = "Supreme success. Growth and good fortune. Begin now; the way is open.";
@@ -20,9 +21,13 @@ test("yes/no, when, either/or and open questions get direct answers", () => {
 test("core line prefers advice", () => {
   assert.equal(coreLine("The image: wind over sky. Keep moving and refine."), "Keep moving and refine.");
 });
-test("quips are branded and vary", () => {
-  const q = new Set([0, 1, 2, 3, 4].map((n) => quip("iching", "Frank", n)));
-  assert.ok(q.size >= 3);
+test("no joke repeats until a member has heard them all", () => {
+  const heard = [], n = GENERAL.length + BY_SYSTEM.iching.length;
+  assert.ok(GENERAL.length >= 100);
+  const seen = new Set(Array.from({ length: n }, () => quip("iching", "Frank", heard)));
+  assert.equal(seen.size, n);
+  assert.ok(![...seen].some((t) => t.includes("{name}")));
+  quip("iching", "Frank", heard); assert.ok(heard.length <= n);
 });
 test("deeper pages cover every field", () => {
   const r = { embeds: [{ description: "Question: x? A long road.", fields: [{ name: "The situation", value: "One. Two." }, { name: "The image", value: "Three." }] }] };
