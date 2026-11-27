@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { SECRETS, findSecret, found, toRunes, CIPHER, cipherSolved, calendarPage, moonAge, monthGrid, weekRecap, recapLine, searchLog, diary, CREED, INK, inkLit } from "../activity/src/secrets.js";
 import { BOOKS } from "../activity/src/book.js";
 
-test("seven secrets, each pays once; the two secret bindings exist", () => {
-  assert.equal(SECRETS.length, 7); const p = { essence: 0 };
+test("eight secrets, each pays once; the two secret bindings exist", () => {
+  assert.equal(SECRETS.length, 8); const p = { essence: 0 };
   const pay = findSecret(p, "gilded"); assert.ok(pay > 0 && p.essence === pay && found(p, "gilded"));
   assert.equal(findSecret(p, "gilded"), 0); assert.equal(p.essence, pay);
   for (const s of SECRETS.filter((x) => x.id === "cipher" || x.id === "sealed")) assert.ok(BOOKS.some((b) => b.secret === s.id), s.id);

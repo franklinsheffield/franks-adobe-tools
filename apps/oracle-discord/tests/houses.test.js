@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier", "phantasmagoria", "starparty", "roguesgallery", "possession"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -160,10 +160,10 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
   setHost(P); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "MADAME ROOK · Madame Rook's hand · Séance Parlour");
   assert.equal(rename("Open the Record Player · Reach Oracle-touched, or try /oracle"), "Open the Spirit Trumpet Gramophone · Reach Oracle-touched, or try /oracle");
-  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "seance", "timeline"]);
+  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "roguesgallery", "seance", "timeline", "possession"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
-  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "decoder", "memory"]);
+  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "decoder", "memory", "possession"]);
   const voices = HOSTS.map((h) => `${h.voice?.type}${h.voice?.base}`).filter((v) => v !== "undefinedundefined"); assert.equal(new Set(voices).size, voices.length, "each House sounds different");
   assert.equal(new Set(HOSTS.map((h) => h.accent)).size, HOSTS.length, "each House has its own accent");
   setHost(null);
@@ -276,4 +276,24 @@ test("House records with audio join the record player and unlock by their House 
   assert.ok(checkUnlocks(p).some((t) => t.id === "bubble-and-brass")); assert.ok(hasTrack(p, trackOf("bubble-and-brass")));
   p.houses.parlour = { lv: ["seance-3"] };
   assert.ok(checkUnlocks(p).some((t) => t.id === "knock-once-for-yes"));
+});
+
+test("Observatory Phase 4 shelves: eyepieces and night skies, each with a free default", async () => {
+  const { SCOPES, SKIES, scopeShop, skyShop, skyHtml, scopeOf } = await import("../activity/src/hosts/observatory-shelves.js"), { observatory } = await import("../activity/src/hosts/observatory.js"), { DEPTS } = await import("../activity/src/store.js").catch(() => ({}));
+  assert.ok(observatory.shelves.includes(scopeShop) && observatory.shelves.includes(skyShop));
+  for (const L of [SCOPES, SKIES]) { assert.equal(L[0].price, 0); assert.ok(L.length >= 6); for (const x of L) assert.ok(x.note && x.name, x.id); }
+  assert.equal(skyHtml("sky-clear"), ""); assert.ok(skyHtml("sky-perseids").includes("<i ")); assert.equal(scopeOf("nope").id, "sc-brass");
+  if (DEPTS) assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("obssky"));
+});
+
+test("Parlour M7: six new relics with art, and the gold cameo after the Final Séance", async () => {
+  const { parlour } = await import("../activity/src/hosts/parlour.js"), { NEW_PARLOUR_RELICS } = await import("../activity/src/parlour/relics.js");
+  for (const r of NEW_PARLOUR_RELICS) { const x = parlour.relics.find((y) => y.id === r.id); assert.ok(x && x.price === r.price && x.art().includes("<") && x.w > 0, r.id); }
+  assert.equal(new Set(parlour.relics.map((r) => r.id)).size, parlour.relics.length);
+});
+
+test("Parlour finale: gold cameo and the Curtain Call label on the gramophone", async () => {
+  const { gramophoneSvg } = await import("../activity/src/hosts/parlour.js");
+  assert.ok(!gramophoneSvg(null, false, {}).includes("Curtain Call"));
+  assert.ok(gramophoneSvg(null, false, { houses: { parlour: { finale: { done: true } } } }).includes("Curtain Call"));
 });

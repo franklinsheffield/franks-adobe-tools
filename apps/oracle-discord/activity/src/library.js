@@ -32,11 +32,11 @@ export const BOOKS = {
 };
 /** Game room -> books on its subject. Rooms not listed get the general shelf. */
 export const ROOM_BOOKS = {
-  alchemy: ["silberer", "sherman"], bench: ["silberer", "sherman"], flametest: ["sherman", "silberer"], minerals: ["silberer", "sherman"], commissions: ["silberer", "sherman"], fireworks: ["sherman", "silberer"],
+  alchemy: ["silberer", "sherman"], bench: ["silberer", "sherman"], flametest: ["sherman", "silberer"], minerals: ["silberer", "sherman"], commissions: ["silberer", "sherman"], fireworks: ["sherman", "silberer"], leadgold: ["silberer", "sherman"],
   duel: ["artofwar", "sherman"], grimoire: ["fernie", "daniel"],
-  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"], mentalist: ["panchadasi", "crystal"], phantasmagoria: ["besant", "crystal"],
+  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"], mentalist: ["panchadasi", "crystal"], phantasmagoria: ["besant", "crystal"], roguesgallery: ["besant", "panchadasi"], possession: ["frazer", "besant"],
   timeline: ["frazer", "hall"], decoder: ["emerald", "mathers"], cipherdesk: ["mathers", "emerald"], inscriptions: ["emerald", "mathers"], memory: ["cambridge", "dreams"],
-  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], navigator: ["reade", "blavatsky"], messier: ["blavatsky", "reade"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
+  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], navigator: ["reade", "blavatsky"], messier: ["blavatsky", "reade"], starparty: ["reade", "blavatsky"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
 };
 const SHELF = ["kybalion", "hall", "crystal", "tealeaves"];
 /** Each host's way of saying it. {book}, {forum}, {name}. */

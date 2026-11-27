@@ -70,17 +70,46 @@ test("numerology says that time and place change nothing", async () => {
   assert.match(r.analysis.method.join(" "), /time|place/i);
 });
 
-test("intake: time and place are offered, never required, for the date-only systems", async () => {
-  for (const name of Object.keys(SYSTEMS)) {
-    const f = BIRTH_FIELDS[name];
-    assert.deepEqual(f.need, ["date"]); assert.deepEqual(f.opt, ["time", "place"]);
-    assert.equal(needsForm({ date: "1990-04-09" }, f), false, "the date alone is enough");
-    const modal = await birthModal({}, name, {}, f), rows = modal.data.components.map((r) => r.components[0]);
+test("intake: only the birthday is required; a blank optional field warns once, then the reading runs", async () => {
+  const { missingOptional, accuracyWarning, fromModal, accuracyPrompt, pendingBirth } = await import("../src/profiles.js");
+  class KV { m = new Map(); async get(k) { return this.m.get(k) ?? null; } async put(k, v) { this.m.set(k, v); } async delete(k) { this.m.delete(k); } }
+  const env = { PROFILES: new KV(), ORACLE_KEY: Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64") };
+  for (const [name, f] of Object.entries(BIRTH_FIELDS)) {
+    assert.deepEqual(f.need, ["date"], name);
+    const modal = await birthModal(env, name.split(":")[0], name.includes(":") ? { subcommand: name.split(":")[1] } : {}, f), rows = modal.data.components.map((r) => r.components[0]);
     assert.ok(rows.length <= 5, "Discord allows five rows");
-    assert.equal(rows.find((c) => c.custom_id === "date").required, true);
-    assert.equal(rows.find((c) => c.custom_id === "time").required, false);
-    assert.equal(rows.find((c) => c.custom_id === "place").required, false);
-    const o = {}; fillFromProfile(o, f, { date: "1990-04-09", time: "21:30", place: "Phoenix, USA" });
-    assert.equal(o.time, "21:30"); assert.equal(o.place, "Phoenix, USA");
+    for (const c of rows) assert.equal(!!c.required, c.custom_id === "date", `${name}: ${c.custom_id}`);
   }
+  const f = BIRTH_FIELDS.humandesign;
+  assert.equal(needsForm({ date: "1990-04-09" }, f), true, "typed with blanks: the form is offered once");
+  assert.equal(needsForm({ date: "1990-04-09", accuracy_ok: true }, f), false, "after Continue anyway it runs");
+  assert.equal(needsForm({ date: "1990-04-09", time: "21:30", place: "Phoenix" }, f), false);
+  assert.deepEqual(missingOptional({ date: "1990-04-09", place: "Phoenix" }, f), ["time"]);
+  assert.match(accuracyWarning(["time", "place"]), /less accurate without the birth time .*and the birth city/);
+  const o = {}; fillFromProfile(o, f, { date: "1990-04-09", time: "21:30", place: "Phoenix, USA" });
+  assert.equal(o.time, "21:30"); assert.equal(o.place, "Phoenix, USA");
+  // the Discord flow: submit with blanks -> one warning with two buttons -> the details wait for "Continue anyway"
+  const modal = await birthModal(env, "humandesign", {}, f);
+  const m = await fromModal(env, { data: { custom_id: modal.data.custom_id, components: [{ components: [{ custom_id: "date", value: "09/04/1990" }] }, { components: [{ custom_id: "time", value: "" }] }, { components: [{ custom_id: "place", value: "" }] }, { components: [{ custom_id: "save", value: "" }] }] } });
+  assert.deepEqual(m.missing, ["time", "place"]); assert.equal(m.options.time_unknown, true);
+  const warn = await accuracyPrompt(env, m), btn = warn.data.components[0].components;
+  assert.match(warn.data.content, /less accurate/); assert.equal(warn.data.flags, 64);
+  assert.match(btn[0].custom_id, /^birthfix:/); assert.match(btn[1].custom_id, /^birthgo:/);
+  const back = await pendingBirth(env, btn[1].custom_id.split(":")[1]);
+  assert.equal(back.name, "humandesign"); assert.equal(back.options.date, "09/04/1990");
+});
+
+test("every birth system runs from the birthday alone and says what is less accurate", async () => {
+  const { run: astrology } = await import("../src/modules/astrology/index.js");
+  const { run: humandesign } = await import("../src/modules/humandesign/index.js");
+  const { run: chinese } = await import("../src/modules/chinesezodiac/index.js");
+  const c = { user: "tester", now: new Date("2026-11-27T12:00:00Z"), fetch: () => { throw new Error("no lookup without a city"); } };
+  const a = await astrology({ subcommand: "chart", date: "09/04/1990" }, c);
+  assert.match(a.headline, /^Sun in Aries, Moon in \w+$/); assert.match(JSON.stringify(a.embeds), /Birth city not given/); assert.match(text(a), /noon universal time/);
+  const h = await humandesign({ date: "09/04/1990" }, c);
+  assert.match(JSON.stringify(h.embeds), /Birth city not given/); assert.equal(h.moment, null);
+  const z = await chinese({ date: "09/04/1990" }, c);
+  assert.match(text(z), /no birthplace given/);
+  const n = await numerology({ date: "09/04/1990" }, c);
+  assert.match(JSON.stringify(n.embeds), /No birth name given/); assert.match(text(n), /Not included/); assert.doesNotMatch(JSON.stringify(n.embeds), /Expression ·|undefined|null/);
 });

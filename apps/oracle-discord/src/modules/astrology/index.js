@@ -52,7 +52,7 @@ export async function run(options, ctx = {}) {
   if (options.subcommand === "now") return runNow(options, ctx);
   const { chart: c, where, moment } = await natalFrom(options, ctx);
   const nowChart = castNow(ctx.now || new Date(), null);
-  const out = render(c, options, where, nowChart), ins = analyse(c, { who: ctx.user ? `@${ctx.user}` : "you", moment, detail: out.ephemeral || !!ctx.birthDetail });
+  const out = render(c, options, where, nowChart), ins = analyse(c, { who: ctx.user ? `@${ctx.user}` : "you", moment, detail: out.ephemeral || !!ctx.birthDetail, noPlace: !where });
   out.embeds.push(ins.embed);
   return withPng({ chart: c, moment, ...out, analysis: ins.analysis, headline: `Sun in ${c.get("sun").sign}, Moon in ${c.get("moon").sign}${c.cusps ? `, ${c.get("asc").sign} rising` : ""}` });
 }
@@ -60,6 +60,10 @@ export async function run(options, ctx = {}) {
 async function natalFrom(options, ctx) {
   const timeKnown = !options.time_unknown && !!(options.time && String(options.time).trim());
   const birth = parseBirth(options.date, timeKnown ? options.time : "12:00");
+  if (!options.place || !String(options.place).trim()) { // no birth city: a noon chart in UTC. Signs of the slow bodies stand; angles, houses and the exact Moon do not.
+    const chart = castChart({ utc: new Date(Date.UTC(birth.year, birth.month - 1, birth.day, 12, 0)), lat: 0, lon: 0, houses: "whole", timeKnown: false });
+    return { chart, where: null, moment: null };
+  }
   const where = ctx.geocoded || await geocode(options.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${options.place}". Try "City, Country".`);
   const moment = birthMoment(birth, where, timeKnown); // zone rules, daylight time and local mean time live in moment.js
@@ -109,14 +113,15 @@ export function render(c, options, where, nowChart = null) {
   const pad = (n) => String(n).padStart(2, "0");
   const b = parseBirth(options.date, c.timeKnown ? options.time : "12:00");
   const when = `${b.year}-${pad(b.month)}-${pad(b.day)}${c.timeKnown ? ` · ${pad(b.hour)}:${pad(b.minute)}` : " · time unknown"}`;
-  const place = String(where.name || options.place).split(",").slice(0, 2).join(",").trim();
+  const place = where ? String(where.name || options.place).split(",").slice(0, 2).join(",").trim() : "birth city not given";
   const title = (options.name || "Natal Chart").toUpperCase().slice(0, 40);
 
   const fields = [];
   fields.push({ name: `☉ Sun in ${sun.sign}${sun.house ? `, house ${sun.house}` : ""}`, value: SUN[sun.sign] });
   fields.push({ name: `☽ Moon in ${moon.sign}${moon.house ? `, house ${moon.house}` : ""}`,
-    value: MOON[moon.sign] + (c.timeKnown ? "" : " (Birth time unknown: the Moon could sit up to 7° either side, so this may belong to a neighbouring sign.)") });
+    value: MOON[moon.sign] + (c.timeKnown ? "" : " (Birth time unknown: the Moon could sit up to 7° either side, so this may belong to a neighbouring sign.)") .replace("7°", where ? "7°" : "13°") });
   if (asc) fields.push({ name: `↑ ${asc.sign} Rising`, value: RISING[asc.sign] });
+  if (!where) fields.unshift({ name: "📍 Birth city not given", value: "This is a noon chart in universal time. The Sun sign and the slower planets hold. The rising sign, houses and angles need the birth city and time, and the Moon may sit up to 13° either side, so its sign may belong to a neighbour." });
 
   const inst = ["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "node"].map((k) => `**${head(c.get(k))}**\n${planetLine(c.get(k))}`);
   const half = Math.ceil(inst.length / 2);

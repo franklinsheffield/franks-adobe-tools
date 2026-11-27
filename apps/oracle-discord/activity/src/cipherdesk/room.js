@@ -9,6 +9,7 @@ import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse
 import { deskHtml, cipherHtml, inscriptionHtml, CSS } from "./scene.js";
 import { script } from "../inscriptions/data.js";
 import * as sfx from "./sfx.js";
+import { openSplitKey } from "./splitkey-room.js";
 import { host } from "../hosts/index.js";
 import { finishDaily, postDaily, boardOf, boardHtml, dailyState } from "../daily.js";
 
@@ -21,7 +22,7 @@ export const cipherdesk = {
   blurb: "Break 100 real ciphers, inscriptions and forgeries",
   shop: { kind: "cipherdesk", label: "🗝️ Cipher Desk", items: SHOP.map(({ id, name, note, price }) => ({ id, name, note, price })), talk: SHELF_TALK,
     preview(id, { tableEl, cap }) { const it = shopItem(id); if (!it) return; styleOnce(); tableEl.className = "table cipherdesk";
-      tableEl.innerHTML = deskHtml({ look: { ...DEFAULT_LOOK, [it.slot]: id }, doc: cipherHtml("caesar3", "YHQL YLGL YLFL", "VENI VIDI VICI") }); cap && cap("👁 " + it.name); } },
+      tableEl.innerHTML = (it.slot === "banner" ? `<div class="sk-flag" style="--tc:#e05a4f;position:absolute;top:6px;left:8px;padding:4px 10px;border-radius:2px 10px 10px 2px;color:#fff;font-weight:700;background:#e05a4f;z-index:3">🪶 Team Quill ${{ "cd-cabinet": "⚜️", "cd-hut": "🛖" }[id] || ""}</div>` : "") + deskHtml({ look: { ...DEFAULT_LOOK, [it.slot]: id }, doc: cipherHtml("caesar3", "YHQL YLGL YLFL", "VENI VIDI VICI") }); tableEl.style.position = "relative"; cap && cap("👁 " + it.name); } },
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     styleOnce();
@@ -44,11 +45,12 @@ export const cipherdesk = {
       ui(`<div class="cx-top"><b>🗝️ Cipher Desk</b> · ${readCount(P())} / ${TOTAL_DOCS} documents read</div><div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">${ROUND} documents a round, ${INK} ink drops each. A wrong method, key or clue costs a drop. Read ${WIN_AT} to win. The Caesar wheel and the letter count are free.</div>
         <button class="c level${ds.played ? " done" : ""}" type="button" id="cd-daily"><b>📅 Daily Bundle${ds.played ? " · done ✓" : ""}</b><span>Today: Level ${dd.L.n}, the same ${ROUND} documents for everyone${ds.streak ? ` · streak ${ds.streak}` : ""}</span></button>
-        <div class="choices"><button class="c main" type="button" id="cd-ins">📜 Inscriptions (${openIns} / ${INSCRIPTIONS.length} open)</button><button class="c" type="button" id="cd-shop">🧰 Desk kit</button><button class="c" type="button" id="back">✦ Back</button></div>`);
+        <div class="choices"><button class="c main" type="button" id="cd-ins">📜 Inscriptions (${openIns} / ${INSCRIPTIONS.length} open)</button><button class="c" type="button" id="cd-split">🔀 Split Key (team race)</button><button class="c" type="button" id="cd-shop">🧰 Desk kit</button><button class="c" type="button" id="back">✦ Back</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => begin(start(LEVELS[+b.dataset.l - 1]))));
       $("cd-daily").onclick = () => { const d = dailyOf(); begin(start(d.L, { seed: d.seed, daily: d.day })); };
       $("cd-ins").onclick = () => insList();
       $("cd-shop").onclick = shop;
+      $("cd-split").onclick = () => openSplitKey(ctx, () => lobby(false));
       $("back").onclick = greet;
     }
 

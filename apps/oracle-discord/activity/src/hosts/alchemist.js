@@ -97,6 +97,8 @@ body[data-house="alchemist"] .gate-title{color:#E89A55;font-family:"IM Fell Engl
 @keyframes hv-glint{0%,80%,100%{opacity:.15}88%{opacity:.75}}
 @media (prefers-reduced-motion: reduce){.ph.playing .ph-b,.ph.playing .ph-horn,.h-vell .hv-glint,[class^="hr-"],[class*=" hr-"]{animation:none}}`;
 
+/** The Magnum Opus red stone, set in her goggle rim once the Great Work is finished (opus.js). */
+const RUBEDO_GEM = `<g class="hv-rubedo"><circle cx="240" cy="132" r="7" fill="#e3173e" stroke="#7a4f12" stroke-width="1.4"/><circle cx="238" cy="130" r="2.2" fill="#fff" opacity=".7"/></g>`;
 /** Dress the shared figure as Magister Vell: copper mask, brass goggle, gear badge, lens colour. */
 function paint(svg, prog, id = "t") {
   if (!svg) return;
@@ -110,7 +112,7 @@ function paint(svg, prog, id = "t") {
   const rivets = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return `<circle cx="${(200 + 47 * Math.cos(a)).toFixed(1)}" cy="${(152 + 34 * Math.sin(a)).toFixed(1)}" r="2.6" fill="#FADE8C" stroke="#7a4f12" stroke-width=".6"/>`; }).join("");
   g.innerHTML = `${sootSvg()}<path d="M118 150 L153 150 M247 150 L282 150" stroke="#3b2414" stroke-width="9" stroke-linecap="round"/>
     <g class="hv-goggle"><ellipse cx="200" cy="152" rx="47" ry="34" fill="none" stroke="#C88A3A" stroke-width="8"/>
-    <ellipse cx="200" cy="152" rx="52" ry="39" fill="none" stroke="#7a4f12" stroke-width="1.6"/>${rivets}
+    <ellipse cx="200" cy="152" rx="52" ry="39" fill="none" stroke="#7a4f12" stroke-width="1.6"/>${rivets}${prog && prog.houses && prog.houses.alchemist && prog.houses.alchemist.opus ? RUBEDO_GEM : ""}
     <ellipse class="hv-glint" cx="200" cy="152" rx="42" ry="29" fill="${L.iris[1]}" opacity=".15"/>
     <path d="M168 136 A38 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <g transform="translate(200 92)"><circle r="11" fill="#C88A3A" stroke="#7a4f12"/>${Array.from({ length: 8 }, (_, i) => `<rect x="-2.4" y="-15" width="4.8" height="6" fill="#C88A3A" transform="rotate(${i * 45})"/>`).join("")}<circle r="4" fill="#3b2414"/></g>`;
@@ -137,7 +139,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const alchemist = {
   id: "alchemist", name: "Magister Vell", house: "The Alchemist's House", emoji: "⚗️", accent: "#E89A55",
   channelIds: ["1575967994633396544"], // #⚗️-laboratory
-  readings: false, rooms: ["alchemy", "duel", "grimoire", "bench", "commissions", "fireworks", "flametest", "minerals"], daily: "alchemy",
+  readings: false, rooms: ["alchemy", "duel", "grimoire", "bench", "commissions", "fireworks", "leadgold", "flametest", "minerals", "possession"], daily: "alchemy",
   // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass",
     sting: { type: "triangle", glide: 1.5, notes: [[392, 0, 0.09], [494, 0.08, 0.09], [587, 0.16, 0.09], [784, 0.24, 0.22, 0.35]] } }, // door sting: three bubbles pop, then a bright brass note
@@ -160,9 +162,11 @@ export const alchemist = {
       "Alchemists wanted to turn lead into gold. Physicists have managed it in particle accelerators. It costs far more than the gold. Classic."],
   },
   banter: {
+    possession: G("Ben Jonson's comedy The Alchemist opened in 1610. Its alchemist was a con man too.", "The Chymical Wedding of 1616 told alchemy as a story. You're writing the sequel.", "A tale well brewed, {name}! Every Great Work needs a good story.", "The flask cooled before the tale was done. Stir it again, colleague."),
     alchemy: G("Stir gently. The flask doesn't mind, but I do.", "Smell that? That's either sulfur or progress.", "It worked! Write it in the lab book before you forget!", "No reaction. Very scientific of it. Try again."),
     duel: G("Careful, I've balanced more equations than you've had breakfasts.", "A noble gas! Lovely. Unreactive, but lovely.", "Beaten! My compounds came apart. Well played, {name}.", "My reaction wins! Don't worry, it was exothermic. You'll warm up."),
     bench: G("Test it, note it, test again. That is the whole method.", "Scheele found oxygen around 1771, but Priestley published first, in 1774.", "Discovered and logged! The bench remembers good work, {name}.", "Not this time. Even Boyle filled notebooks with failed trials."),
+    leadgold: G("Change the protons and you change the element. That is the whole secret.", "Alpha drops two places, beta climbs one. Keep count, {name}.", "Gold! Real gold-197! My old masters would faint.", "The nucleus wins this round. Count your protons again."),
     fireworks: G("Each colour is a metal. Strontium red, copper blue. Pick yours.", "Blue needs chlorine with the copper, {name}. The hardest colour.", "A true sky! Every burst was the right salt. Lovely work.", "Wrong colour in the sky. Back to the salts, and check the oxidiser."),
     commissions: G("A client is waiting. Read the order twice, mix once.", "Royal warrants go back to 1155, when Henry II chartered the Weavers.", "Delivered! The client is thrilled, {name}. Stones well earned.", "Order failed. Assayers checked gold on a touchstone. Check yours."),
     flametest: G("Watch the colour. A Bunsen flame barely glows, so the metal's colour shows.", "Bunsen and Kirchhoff found caesium in 1860 by two blue lines in its light.", "Named it by its colour! Bunsen would be proud.", "Wrong metal. Sodium's yellow sneaks into everything, even the best chemists' flames."),

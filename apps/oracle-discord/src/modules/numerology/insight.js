@@ -9,6 +9,7 @@ const chain = (v) => (v.chain.length > 1 ? v.chain.join(" → ") : String(v.valu
 const nm = (n) => N[n].name.replace(/^The /, "");
 
 export function analyse(r, showName, who) {
+  if (r.nameless) return dateOnly(r, showName, who);
   const flat = r.letters.flat(), vowels = flat.filter((l) => l.vowel).length;
   const freq = Array.from({ length: 9 }, (_, i) => flat.filter((l) => l.v === i + 1).length);
   const missing = freq.map((c, i) => (c ? 0 : i + 1)).filter(Boolean), top = Math.max(...freq), peak = freq.map((c, i) => (c === top ? i + 1 : 0)).filter(Boolean);
@@ -65,4 +66,39 @@ export function analyse(r, showName, who) {
     "The letter-number table is modern (early 1900s, popularised by L. Dow Balliett), not from Pythagoras. No controlled study has found that these numbers predict personality; they are a framework for reflection.",
   ];
   return insight({ data, patterns, conclusions, questions, method, who });
+}
+
+/** No birth name: only the numbers that come from the date. Says plainly what is missing. */
+function dateOnly(r, showName, who) {
+  const lp = r.lifePath, cur = r.current;
+  return insight({
+    data: [
+      ["Life Path", showName ? `month ${lp.parts.month} + day ${lp.parts.day} + year ${lp.parts.year} = ${lp.total}${lp.chain.length > 1 ? ` → ${lp.chain.slice(1).join(" → ")}` : ""}` : `birth month, day and year each reduced, then added: ${chain(lp)}`],
+      ["Timing", `age ${r.age} · Personal Year ${r.personalYear.value} (${r.personalYear.year}) · Personal Month ${r.personalMonth} · Pinnacle ${cur.n} of 4 (number ${cur.pinnacle}, challenge ${cur.challenge})`],
+      ["Not included", "Expression, Soul Urge, Personality, Maturity and the letter counts: these come from the full birth name, which was not given"],
+    ],
+    patterns: [
+      N[lp.value].master ? `Life Path ${lp.value} is a master number: a sum that landed on 11, 22 or 33 and is left unreduced by convention.` : "",
+      lp.karmic ? `The Life Path passed through the karmic-debt sum ${lp.karmic} on the way down.` : "",
+      r.personalYear.value === base(lp.value) ? `The Personal Year (${r.personalYear.value}) matches the Life Path root this year.` : "",
+      cur.to != null ? `Pinnacle ${cur.n} runs to age ${cur.to}; ${cur.to - r.age === 0 ? "it changes at the next birthday" : `${plural(cur.to - r.age + 1, "year")} remain`}.` : "The fourth pinnacle has no end date.",
+      "Of the five core numbers a full chart uses, this reading has one. Comparisons between numbers (repeats, gaps, odd and even) are not possible without the name.",
+    ],
+    conclusions: [
+      `Life Path ${lp.value} is called ${N[lp.value].name} (${N[lp.value].kw.join(", ")}). In this system the birth date describes the kind of situations a life keeps returning to, so those themes may recur more than others.`,
+      `Personal Year ${r.personalYear.value} places ${r.personalYear.year} at step ${r.personalYear.value} of a nine-year cycle. Tradition reads ${r.personalYear.value <= 3 ? "the early steps as starting and building momentum" : r.personalYear.value <= 6 ? "the middle steps as work, change and responsibility" : "the late steps as review, harvest and completion"}.`,
+      "A date-only reading is shared by everyone born on the same day, so it may be read as the outline of a chart, not the whole of it.",
+    ],
+    questions: [
+      `Where does "${N[lp.value].kw[0]}" already show up as a recurring situation, and where does it not fit at all?`,
+      "Would the description feel just as accurate if a different number had come up? That is the fair test of any personality system.",
+    ],
+    method: [
+      "Numerology uses only the calendar date and the letters of the name. Birth time and birthplace change nothing here, except that the date is the calendar date at the birthplace.",
+      "Each number is added digit by digit until one digit remains (11, 22 and 33 are kept).",
+      `If totals were evenly spread, each root from 1 to 9 would turn up about 1 time in 9 (11%). Sharing a Life Path with ${who === "you" ? "you" : who} is therefore common: roughly 1 person in 9.`,
+      "No controlled study has found that these numbers predict personality; they are a framework for reflection.",
+    ],
+    who,
+  });
 }

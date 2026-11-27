@@ -75,10 +75,58 @@ test("every House emcees in its own voice, with every line kind filled", () => {
   for (const id of ["oracle", "alchemist", "observatory", "parlour", "scriptorium"]) { assert.ok(EMCEE[id], id);
     for (const k of kinds) assert.ok(EMCEE[id][k].length >= 2 && EMCEE[id][k].every((l) => l.length > 10), id + " " + k); }
   const all = Object.values(EMCEE).flatMap((E) => Object.values(E).flat()); assert.equal(new Set(all).size, all.length);
-  assert.match(emcee("truth", { year: "1848" }), /1848/); assert.match(emcee("fooled", { name: "Ada", n: 2 }), /Ada/);
+  assert.match(emcee("truth", { answer: "1848" }), /1848/); assert.match(emcee("fooled", { name: "Ada", n: 2 }), /Ada/);
 });
 
 test("Fact or Fib has its own store item on the timeline shelf", () => {
   const it = SHOP.find((x) => x.id === "tl-masquerade"); assert.ok(it && it.price > 0 && THEMES[it.id]);
   assert.ok(EVENTS.length > 0);
+});
+
+import * as DU from "../activity/src/duel/factfib.js";
+import * as GR from "../activity/src/grimoire/factfib.js";
+import * as ST from "../activity/src/stars/factfib.js";
+import * as CF from "../activity/src/casefiles/factfib.js";
+import { pickPrompt, seeded } from "../activity/src/party/pick.js";
+import { ROOM_BOOKS } from "../activity/src/library.js";
+
+test("Element Duel: atomic numbers only, never given away by the fact, house fibs are other real numbers", () => {
+  assert.equal(DU.parseZ("26"), 26); for (const b of ["0", "119", "2.5", "iron", ""]) assert.equal(DU.parseZ(b), null, b);
+  assert.ok(DU.usable().length >= 40);
+  for (const e of DU.usable()) { const P = DU.promptOf(e); assert.ok(!new RegExp(`\\b${e.z}\\b`).test(e.fact)); const h = P.house(rng(e.z));
+    assert.ok(h.length >= 4); assert.ok(h.every((z) => z !== e.z && z >= 1 && z <= 118)); }
+  assert.equal(DU.dealFib(rng(4)).length, DU.PROMPTS);
+});
+
+test("pick kits: clues never name the answer, the menu is the same for everyone and never holds the truth", () => {
+  for (const [M, min] of [[GR, 40], [ST, 12], [CF, 30]]) {
+    assert.ok(M.usable().length >= min); const d = M.dealFib(undefined, rng(8)); assert.equal(d.length, M.PROMPTS); assert.equal(new Set(d.map((p) => p.id)).size, M.PROMPTS);
+    for (const P of d) { const again = M.promptById(P.id); assert.deepEqual(again.options, P.options); assert.ok(!P.options.includes(P.truth)); assert.ok(P.options.length >= 4);
+      assert.equal(P.parse(P.options[0]), P.options[0]); assert.equal(P.parse("made up"), null); assert.equal(P.parse(P.truth), P.truth); }
+  }
+  for (const x of GR.usable()) { const t = (x.p.clues[0] + x.p.clues[1]).toLowerCase(); assert.ok(!t.includes(x.p.name.toLowerCase()), x.p.name); }
+  for (const g of ST.usable()) assert.ok(!g.find.toLowerCase().includes(g.name.replace(/^The /, "").toLowerCase().split(" ")[0]), g.name);
+  const a = pickPrompt({ id: "x", truth: "T", pool: ["a", "b", "c", "T"] }); assert.ok(!a.house(seeded("y")).includes("T"));
+});
+
+test("a pick match runs end to end, and choosing the truth as a fib is refused", () => {
+  const prompts = GR.dealFib({}, rng(2)), st = V.startMatch(prompts.map((p) => ({ id: p.id })), M("a", "b")), P = () => GR.promptById(st.prompts[st.i]);
+  assert.equal(V.submit(st, P(), "a", P().truth), "truth"); assert.equal(V.submit(st, P(), "a", P().options[1]), "ok");
+  while (!st.over) V.advance(st, P(), [], rng(st.i + 3));
+  assert.equal(st.log.length, GR.PROMPTS);
+});
+
+test("audience bonus: fooled audience pays the fib's writer, found truths pay the watcher in gems (capped)", () => {
+  const prompts = dealFib({}, rng(6)), st = V.startMatch(prompts.map((p) => ({ id: p.id })), M("a")), P = () => promptById(st.prompts[st.i]);
+  for (let k = 0; k < PROMPTS; k++) {
+    if (st.phase === "write") { const e = P().ev; V.submit(st, P(), "a", String(e.year > 1000 ? e.year - 77 : e.year + 77)); V.openVote(st, P(), rng(k)); }
+    const fib = st.choices.find((c) => c.by.includes("a")), truth = st.choices.find((c) => c.truth);
+    V.vote(st, "w1", fib.key); V.vote(st, "w2", truth.key); const before = st.score.a; V.reveal(st);
+    assert.equal(st.score.a - before, V.AUD_FOOL * V.mult(st)); V.next(st, []);
+  }
+  assert.equal(V.audienceReward(st, "w2"), V.AUD_GEMS); assert.equal(V.audienceReward(st, "w1"), 0);
+});
+
+test("every room with Fact or Fib already has its trophy, books and banter", () => {
+  for (const id of ["timeline", "duel", "grimoire", "stars", "casefiles"]) assert.ok(ROOM_BOOKS[id], id);
 });

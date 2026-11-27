@@ -8,6 +8,7 @@ import { secrets as DARK_SKY } from "../watch/darksky.js";
 import { domeSceneHtml, astrolabeSvg, propsSvg, headSvg, react, SKY_EMOTES, DOME_CSS, obsCoatOf, obsCoatShop } from "./observatory-dome.js";
 import { coatOverlay } from "./alchemist-lab.js";
 import { harmonyDone } from "../obsprog.js";
+import { scopeOf, scopeShop, skyShop } from "./observatory-shelves.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -129,7 +130,7 @@ function paint(svg, prog, id = "t") {
   svg.querySelector(".h-altair")?.remove();
   const M = starMapOf(prog && prog.starmap), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-altair");
   const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(200 + 44 * Math.cos(a)).toFixed(1)} ${(152 + 33 * Math.sin(a)).toFixed(1)}L${(200 + 49 * Math.cos(a)).toFixed(1)} ${(152 + 37 * Math.sin(a)).toFixed(1)}" stroke="#6b3f12" stroke-width="1.4"/>`; }).join("");
-  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
+  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="${scopeOf(prog && prog.obsscope).ring}" stroke-width="7"/>${scopeOf(prog && prog.obsscope).deco}${ticks}
     <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
     <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
     <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
@@ -183,13 +184,13 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
-  readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "messier", "stars", "calendar", "rummy"], daily: "stars",
+  readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "messier", "starparty", "stars", "calendar", "rummy", "possession"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
   css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS + DOME_CSS, paint, scene: domeSceneHtml, react, emotes: SKY_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
-  shelves: [starMapShop, obsCoatShop],
+  shelves: [starMapShop, obsCoatShop, scopeShop, skyShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },
   relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
   strayIntro: "Something just rolled out of the telescope tube:",
@@ -206,10 +207,12 @@ export const observatory = {
       "A day on Venus is longer than its year. Imagine the paperwork."],
   },
   banter: {
+    possession: G("Ptolemy's Almagest listed 48 constellations. Tonight we add one more.", "Aratus wrote a whole poem on the constellations in the 3rd century BCE.", "Logged, {name}! The sky has had 88 official constellations since 1922. Plus yours.", "Clouds over the story tonight. Even Ptolemy had cloudy nights."),
     watch: G("Let your eyes settle. Faint things need a slow look.", "Hipparchus ranked star brightness by eye: 1st to 6th magnitude.", "Logged! Every plate needs a night someone stayed up for.", "Clouded out. Even Herschel lost nights. Try again, {name}."),
     eclipse: G("A Saros cycle is about 18 years 11 days. Eclipses repeat on it.", "Next big one: 2 August 2027, with totality over Luxor for over 6 minutes.", "Right in the shadow, {name}! Totality can last up to about 7.5 minutes.", "Clouded out. And never watch the partial phase without eclipse glasses."),
     navigator: G("Polaris sits about as high above the horizon as your latitude.", "Harrison's H4 watch solved longitude on a 1761 voyage to Jamaica.", "Landfall, {name}! A sextant and a good clock still get you home.", "Off course. The Southern Cross points toward the south celestial pole."),
     messier: G("M1 is the Crab Nebula, the wreck of a star seen exploding in 1054.", "M31, Andromeda, is about 2.5 million light-years away, and naked-eye too.", "Logged, {name}! Messier hunted comets; his list of nuisances became a classic.", "Missed it. Many Messier objects need dark skies, far from city lights."),
+    starparty: G("Stellafane in Vermont has held telescope makers' star parties since 1926.", "Red torches only: white light ruins everyone's night vision for half an hour.", "Clear skies, {name}! Galileo first saw Saturn's rings in 1610, as 'ears'.", "Clouded out. Dark-sky parks keep light pollution low for nights like this."),
     comet: G("Sweep slowly. A new comet looks like a faint fuzzy star.", "Charles Messier listed 110 fuzzy things so comet hunters could skip them.", "A comet! Report it fast. Discoverers get their name on it.", "Just a smudge, {name}. Messier made that mistake too."),
     stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
     calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),

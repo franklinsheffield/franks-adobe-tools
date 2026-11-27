@@ -40,3 +40,11 @@ export function truth() { if (!ready()) return; const t = ac.currentTime; [523, 
 /** The match ends: a fanfare, brighter for a win. */
 export function fanfare(won) { if (!ready()) return; const t = ac.currentTime, ch = won ? [392, 523, 659, 784, 1047] : [392, 349, 330];
   ch.forEach((f, k) => tone(f, t + k * 0.11, 0.7, { type: "triangle", vol: 0.15 })); }
+/** Glass smashing on the floor (a bottle off the shelf). */
+export function crash() { if (!ready()) return; const t = ac.currentTime; noise(t, 0.4, { f: 4000, to: 1500, vol: 0.3 }); [2600, 3300, 4100].forEach((f, k) => tone(f, t + 0.03 * k, 0.15, { vol: 0.06 })); }
+/** A short alarm whoop. */
+export function siren() { if (!ready()) return; const t = ac.currentTime; tone(600, t, 0.35, { type: "square", vol: 0.06, to: 1200 }); tone(600, t + 0.4, 0.35, { type: "square", vol: 0.06, to: 1200 }); }
+/** A comic pop (sabotage card played). */
+export function pop() { if (!ready()) return; const t = ac.currentTime; tone(300, t, 0.12, { type: "sine", vol: 0.2, to: 900 }); }
+/** A firework: whistle up, then a crackling burst. */
+export function firework() { if (!ready()) return; const t = ac.currentTime; tone(500, t, 0.6, { vol: 0.08, to: 1800 }); noise(t + 0.6, 0.7, { f: 2500, to: 600, vol: 0.35 }); }
