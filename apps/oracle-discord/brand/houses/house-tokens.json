@@ -60,12 +60,12 @@
       "crest": "crests/alchemists-house-crest.svg"
     },
     "observatory": {
-      "status": "proposed",
+      "status": "live (PR #190)",
       "house": "The Observatory",
       "host": "Keeper Altair",
       "pronoun": "he",
       "emoji": "🔭",
-      "channel": "new #🔭-observatory",
+      "channel": "1575975395692642596",
       "rooms": [
         "stars",
         "calendar",
@@ -94,12 +94,12 @@
       "crest": "crests/observatory-crest.svg"
     },
     "parlour": {
-      "status": "proposed",
+      "status": "approved; channel created",
       "house": "The Séance Parlour",
       "host": "Madame Rook",
       "pronoun": "she",
       "emoji": "🕯️",
-      "channel": "new #🕯️-parlour",
+      "channel": "1575977181622829158",
       "rooms": [
         "seance",
         "timeline"
@@ -128,12 +128,12 @@
       "crest": "crests/seance-parlour-crest.svg"
     },
     "scriptorium": {
-      "status": "proposed",
+      "status": "approved; channel created",
       "house": "The Scriptorium",
       "host": "Archivist Wren",
       "pronoun": "they",
       "emoji": "🪶",
-      "channel": "new #🪶-scriptorium",
+      "channel": "1575977195048927232",
       "rooms": [
         "decoder",
         "memory"
