@@ -76,23 +76,23 @@ export const N = {
 };
 
 export const PERSONAL_YEAR = {
-  1: "**New cycle.** A nine-year arc begins. Plant seeds, start the project, make the move. What you begin now sets the tone for years.",
-  2: "**Patience and partnership.** Things grow underground. Collaborate, listen, refine, and let relationships deepen. Slow is not stuck.",
-  3: "**Expression.** Social, creative, visible. Share your work, say yes to invitations, and watch for scattered energy.",
-  4: "**Foundations.** Head down, build. Health routines, finances, home and work systems pay off out of proportion this year.",
-  5: "**Change.** Doors swing open. Travel, new people, a shift of direction. Stay flexible and keep one anchor.",
+  1: "**New cycle.** A nine-year arc begins. Tradition reads it as a year of planting, starting and first moves, whose beginnings set the tone for the years after.",
+  2: "**Patience and partnership.** Things grow underground. Tradition gives the year to collaboration, listening and refining, and to relationships deepening. Slow is not stuck.",
+  3: "**Expression.** Social, creative, visible. Tradition reads it as a year when work gets shared and invitations multiply, with scattered energy as its risk.",
+  4: "**Foundations.** A head-down, building year. Health routines, finances, home and work systems pay off out of proportion this year.",
+  5: "**Change.** Doors swing open. Travel, new people, a shift of direction. Tradition pairs the year's flexibility with the value of one fixed anchor.",
   6: "**Home and heart.** Family, love, responsibility and beauty take centre stage. Commitments made now carry weight.",
   7: "**Reflection.** A quieter, inward year. Study, rest, research, spiritual practice. Answers come through stillness, not hustle.",
-  8: "**Harvest and power.** Career, money and recognition move. Step into authority and handle resources wisely.",
-  9: "**Completion.** Clear out, forgive, finish. Let go of what's done so the next cycle starts light.",
+  8: "**Harvest and power.** Career, money and recognition move. Tradition reads it as a year of authority and of how resources are handled.",
+  9: "**Completion.** A year of clearing out, forgiving and finishing. What is let go now is what lets the next cycle start light.",
 };
 export const PERSONAL_MONTH = {
-  1: "start something", 2: "cooperate and wait", 3: "create and connect", 4: "organise and work", 5: "change it up",
-  6: "tend relationships", 7: "go inward", 8: "push for results", 9: "finish and release",
+  1: "starting things", 2: "cooperation and waiting", 3: "creating and connecting", 4: "organising and steady work", 5: "change and variety",
+  6: "tending relationships", 7: "turning inward", 8: "pushing for results", 9: "finishing and release",
 };
 
 export const CHALLENGE = {
-  0: "the challenge of choice: every door is open, so you have to pick one and own it",
+  0: "the challenge of choice: every door is open, so one has to be picked and owned",
   1: "learning to stand up for yourself without steamrolling anyone",
   2: "sensitivity: not taking everything personally",
   3: "expressing feelings instead of joking past them",

@@ -17,18 +17,18 @@ export const SIGN = {
 };
 
 export const SUN = {
-  Aries: "Your core runs on ignition. You learn by starting things and you feel most alive at the edge of a new attempt. Test it: notice how your energy spikes the moment you choose to go first.",
-  Taurus: "Your core runs on slow, reliable fuel. You build value by staying with things long after others drift off. Test it: notice how much calmer you are when your hands and senses are busy.",
-  Gemini: "Your core runs on information. Two ideas rubbing together is your idea of a good time, and you are lit up by conversation. Test it: track how often your best insight arrives mid-sentence.",
-  Cancer: "Your core runs on belonging. You are strongest when you are protecting something you love, and you remember everything. Test it: notice how your confidence rises when your home base feels secure.",
-  Leo: "Your core runs on self-expression. You were built to be seen doing what you love, and your warmth is contagious. Test it: notice how creative you get when someone is genuinely watching.",
-  Virgo: "Your core runs on improvement. You see the small fix that changes everything, and being useful feels like being yourself. Test it: notice the calm that follows one well-finished task.",
-  Libra: "Your core runs on harmony. You think best in dialogue and you instinctively weigh both sides. Test it: notice how a decision clears once you have talked it through with someone you trust.",
-  Scorpio: "Your core runs on depth. Surfaces bore you; you want the hidden mechanism and the real motive. Test it: notice how your focus sharpens when something is secret, risky or true.",
-  Sagittarius: "Your core runs on meaning. You need a horizon, a big question and room to roam. Test it: notice how quickly your mood lifts when you are learning something or going somewhere.",
-  Capricorn: "Your core runs on purpose. You think in long timelines and you respect what is earned. Test it: notice the satisfaction of a goal reached the slow, real way.",
-  Aquarius: "Your core runs on originality. You see the system from slightly outside it and you want to upgrade it. Test it: notice how energised you get when an idea is strange and also right.",
-  Pisces: "Your core runs on imagination. Borders between ideas, people and feelings dissolve around you. Test it: notice how often your best results start as a daydream.",
+  Aries: "Your core runs on ignition. You learn by starting things and you feel most alive at the edge of a new attempt. A claim that can be checked: your energy spikes the moment you choose to go first.",
+  Taurus: "Your core runs on slow, reliable fuel. You build value by staying with things long after others drift off. A claim that can be checked: you are calmer when your hands and senses are busy.",
+  Gemini: "Your core runs on information. Two ideas rubbing together is your idea of a good time, and you are lit up by conversation. A claim that can be checked: your best insight often arrives mid-sentence.",
+  Cancer: "Your core runs on belonging. You are strongest when you are protecting something you love, and you remember everything. A claim that can be checked: your confidence rises when your home base feels secure.",
+  Leo: "Your core runs on self-expression. You were built to be seen doing what you love, and your warmth is contagious. A claim that can be checked: you get more creative when someone is genuinely watching.",
+  Virgo: "Your core runs on improvement. You see the small fix that changes everything, and being useful feels like being yourself. A claim that can be checked: calm follows one well-finished task.",
+  Libra: "Your core runs on harmony. You think best in dialogue and you instinctively weigh both sides. A claim that can be checked: a decision clears once you have talked it through with someone you trust.",
+  Scorpio: "Your core runs on depth. Surfaces bore you; you want the hidden mechanism and the real motive. A claim that can be checked: your focus sharpens when something is secret, risky or true.",
+  Sagittarius: "Your core runs on meaning. You need a horizon, a big question and room to roam. A claim that can be checked: your mood lifts quickly when you are learning something or going somewhere.",
+  Capricorn: "Your core runs on purpose. You think in long timelines and you respect what is earned. A claim that can be checked: a goal reached the slow, real way satisfies you most.",
+  Aquarius: "Your core runs on originality. You see the system from slightly outside it and you want to upgrade it. A claim that can be checked: you get energised when an idea is strange and also right.",
+  Pisces: "Your core runs on imagination. Borders between ideas, people and feelings dissolve around you. A claim that can be checked: your best results often start as a daydream.",
 };
 
 export const MOON = {
@@ -84,7 +84,7 @@ const ASPECT = {
   sextile: "opens doors for", quincunx: "keeps adjusting to",
 };
 const ASPECT_NOTE = {
-  conjunction: "One signal, amplified.", opposition: "Balance comes from using both ends.", trine: "A natural talent; use it on purpose.",
+  conjunction: "One signal, amplified.", opposition: "Balance comes from using both ends.", trine: "A natural talent, easy to take for granted.",
   square: "Friction that builds strength.", sextile: "An opportunity that rewards effort.", quincunx: "An awkward pairing that asks for small, steady tweaks.",
 };
 const CORE = { sun: "your identity", moon: "your emotional needs", mercury: "your mind", venus: "your affections", mars: "your drive",
