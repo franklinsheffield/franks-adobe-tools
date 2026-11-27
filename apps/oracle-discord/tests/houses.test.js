@@ -91,10 +91,12 @@ test("every House's starting voice is its own and branded: never the Oracle's bl
   const others = HOSTS.filter((h) => h.id !== "oracle");
   for (const h of others) {
     assert.ok(h.voice && h.voice.brand, `${h.id} names its voice brand`);
+    assert.ok(h.voice.sting && h.voice.sting.notes.length >= 3, `${h.id} has its own door sting`);
     assert.ok(h.voice.type !== BASE.type || h.voice.base !== BASE.base, `${h.id} differs from the Oracle`);
   }
   const sig = (v) => JSON.stringify([v.type, v.base, v.sweep || 0, v.harm || 0, v.vib || 0, v.lp]);
   assert.equal(new Set(others.map((h) => sig(h.voice))).size, others.length, "no two Houses sound alike");
+  assert.equal(new Set(others.map((h) => JSON.stringify(h.voice.sting))).size, others.length, "no two door stings alike");
 });
 
 test("Alchemist Phase 1: lab scene, flask, poses, reactions, lab emotes, stone as a rock", async () => {
