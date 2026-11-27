@@ -158,3 +158,29 @@ export function trophyWin(tier = 1, upgrade = false) {
     g.gain.setValueAtTime(0.0001, tb); g.gain.exponentialRampToValueAtTime(0.3 * a, tb + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, tb + 1.8);
     o.connect(g); g.connect(out); o.start(tb); o.stop(tb + 1.85); });
 }
+
+/** Little wordless sounds for the Oracle's moods (mood.js), sung in whatever voice is equipped: each note is
+ *  [pitch ratio, seconds, glide-to ratio?]. Pitched around the voice's own base so every voice emotes differently. */
+export const EMOTE_SFX = {
+  joy: [[1, 0.07], [1.26, 0.07], [1.5, 0.07], [2, 0.14]], cheer: [[1, 0.06], [1.26, 0.06], [1.5, 0.06], [2, 0.06], [2.52, 0.22]],
+  love: [[1.5, 0.1], [2, 0.1], [1.5, 0.1], [2.25, 0.22]], laugh: [[1.7, 0.06, 1.4], [1.55, 0.06, 1.3], [1.4, 0.06, 1.15], [1.3, 0.06, 1.05], [1.15, 0.12, 0.9]],
+  wow: [[1, 0.24, 2.3]], curious: [[1, 0.12, 1.35]], think: [[1, 0.14, 0.94], [1.19, 0.22, 1.26]], nod: [[1, 0.08], [1.33, 0.13]], shake: [[1.33, 0.08], [1, 0.13]],
+  wink: [[2, 0.05], [3, 0.12]], flinch: [[1.9, 0.07, 1.2]], sad: [[1.2, 0.2, 1], [0.9, 0.36, 0.7]], sulk: [[0.7, 0.12, 0.6], [0.6, 0.24, 0.5]],
+  smug: [[1.1, 0.08], [1.3, 0.16, 1.42]], angry: [[0.5, 0.1], [0.5, 0.1], [0.45, 0.28, 0.38]], sleepy: [[1, 0.55, 0.6]],
+};
+export function emoteSfx(mood) {
+  if (muted || !ctx || ctx.state !== "running") return;
+  if (mood === "orb") { // a finger on the glass: two bright pings
+    [[1568, 0], [2349, 0.07]].forEach(([f, dt]) => { const t = ctx.currentTime + dt, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.75); });
+    return; }
+  const notes = EMOTE_SFX[mood]; if (!notes) return;
+  const V = style, base = Math.max(90, V.base); let t = ctx.currentTime + 0.01;
+  for (const [r, d, to] of notes) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter(); o.type = mood === "angry" ? "sawtooth" : V.type;
+    o.frequency.setValueAtTime(base * r, t); if (to) o.frequency.exponentialRampToValueAtTime(base * to, t + d);
+    lp.type = "lowpass"; lp.frequency.value = V.lp || 2600;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(V.gain || 0.45, t + 0.006); g.gain.setValueAtTime(V.gain || 0.45, t + d * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.02); t += d + 0.025;
+  }
+}

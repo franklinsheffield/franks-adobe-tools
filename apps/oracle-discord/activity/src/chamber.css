@@ -705,3 +705,77 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .cb-fan i{position:absolute;left:50%;top:50%;width:21%;aspect-ratio:60/84;margin:-17% 0 0 -10.5%;transform-origin:50% 135%;transform:rotate(var(--r));border-radius:7px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.6);animation:cb-fanin .6s cubic-bezier(.2,.9,.3,1.1) calc(var(--i) * 80ms) both;transition:transform .2s}
 .cb-fan i:hover{transform:rotate(var(--r)) translateY(-9%)}
 @keyframes cb-fanin{from{opacity:0;transform:rotate(0deg) translateY(30%)}}
+
+/* ---- The Oracle's moods (mood.js): the eye follows you, lids and brow pose, the hood and hands move ---- */
+.teller{cursor:pointer}
+.teller .o-track{transform:translate(calc(var(--lx,0px) + var(--mx,0px)),calc(var(--ly,0px) + var(--my,0px))) scale(var(--is,1));transition:transform .16s ease-out}
+.teller.tracking .o-iris{animation:none}
+.teller .o-lidtop,.teller .o-lidbot,.teller .o-brow{transition:transform .22s cubic-bezier(.3,1.5,.5,1)}
+.teller .o-eyeglow{transition:fill .25s,opacity .25s}
+.teller .o-tear{opacity:0}
+.teller[data-mood] .o-iris{animation:none}
+.teller[data-mood] .o-hands,.teller[data-mood] .o-sleeves{transition:transform .3s cubic-bezier(.3,1.5,.5,1)}
+/* talking flicks */
+.teller[data-flick="ex"] .o-lid{animation:none;transform:scale(1.16)}.teller[data-flick="ex"] .o-brow{transform:translateY(-6px)}
+.teller[data-flick="q"] .o-brow{transform:translateY(-4px) rotate(-7deg)}.teller[data-flick="q"]{--mx:4px;--my:-3px}
+.teller[data-flick="dots"] .o-lidtop{transform:translateY(7px)}.teller[data-flick="dots"]{--my:3px}
+/* happy family */
+.teller[data-mood="joy"] .o-body,.teller[data-mood="love"] .o-body{animation:m-hop .5s ease-out 3}
+.teller[data-mood="cheer"] .o-body{animation:m-hop .42s ease-out 6}
+.teller[data-mood="joy"] .o-lidbot,.teller[data-mood="cheer"] .o-lidbot,.teller[data-mood="love"] .o-lidbot{transform:translateY(-14px)}
+.teller[data-mood="joy"] .o-brow,.teller[data-mood="cheer"] .o-brow,.teller[data-mood="love"] .o-brow{transform:translateY(-5px)}
+.teller[data-mood="joy"] .o-hands,.teller[data-mood="love"] .o-hands{animation:none;transform:translateY(-44px)}
+.teller[data-mood="joy"] .o-sleeves,.teller[data-mood="love"] .o-sleeves{animation:none;transform:translateY(-18px)}
+.teller[data-mood="cheer"] .o-hands{animation:none;transform:translateY(-80px) scale(1.05)}.teller[data-mood="cheer"] .o-sleeves{animation:none;transform:translateY(-34px)}
+.teller[data-mood="joy"] .o-hand,.teller[data-mood="cheer"] .o-hand{animation:m-clap .24s ease-in-out infinite}
+.teller[data-mood="joy"] .o-eyeglow,.teller[data-mood="cheer"] .o-eyeglow{fill:#FADE8C;opacity:.95}
+.teller[data-mood="love"]{--is:1.25}.teller[data-mood="love"] .o-eyeglow{fill:#ff7fc8;opacity:.95}
+.teller[data-mood="laugh"] .o-body{animation:m-laugh .15s linear infinite}
+.teller[data-mood="laugh"] .o-lidbot{transform:translateY(-15px)}.teller[data-mood="laugh"] .o-lidtop{transform:translateY(6px)}
+.teller[data-mood="laugh"] .o-hand{animation:tremble .16s ease-in-out infinite}
+.teller[data-mood="nod"] .o-body{animation:m-nod .42s ease-in-out 3}.teller[data-mood="nod"] .o-lidbot{transform:translateY(-7px)}
+.teller[data-mood="wink"] .o-lid{animation:m-wink .55s ease-in-out}.teller[data-mood="wink"] .o-brow{transform:translateY(3px)}
+/* surprised and curious */
+.teller[data-mood="wow"]{--is:.68}.teller[data-mood="wow"] .o-lid{animation:none;transform:scale(1.24)}
+.teller[data-mood="wow"] .o-brow{transform:translateY(-10px)}.teller[data-mood="wow"] .o-body{animation:m-jolt .35s ease-out}
+.teller[data-mood="wow"] .o-hand{animation:none;transform:translateX(-12px) rotate(-6deg)}
+.teller[data-mood="flinch"] .o-lid{animation:none;transform:scaleY(.08)}.teller[data-mood="flinch"] .o-body{animation:m-jolt .3s ease-out}.teller[data-mood="flinch"] .o-brow{transform:translateY(5px)}
+.teller[data-mood="curious"]{--is:1.18}.teller[data-mood="curious"] .o-lid{animation:none;transform:scale(1.1)}
+.teller[data-mood="curious"] .o-brow{transform:translateY(-6px) rotate(-5deg)}.teller[data-mood="curious"] .o-body{animation:m-lean 1.5s ease-in-out}
+.teller[data-mood="think"]{--mx:-7px;--my:-5px}.teller[data-mood="think"] .o-brow{transform:translateY(-3px) rotate(-6deg)}
+.teller[data-mood="think"] .o-lidtop{transform:translateY(6px)}.teller[data-mood="think"] .o-swirl{animation-duration:1.4s}.teller[data-mood="think"] .o-swirl2{animation-duration:2s}
+/* low moods */
+.teller[data-mood="sad"]{--my:5px}.teller[data-mood="sad"] .o-lidtop{transform:translateY(10px)}.teller[data-mood="sad"] .o-brow{transform:translateY(-3px) scaleY(1.3)}
+.teller[data-mood="sad"] .o-body{animation:m-slump 2.6s ease-in-out}.teller[data-mood="sad"] .o-eyeglow{fill:#7fb4ff;opacity:.5}
+.teller[data-mood="sad"] .o-tear{animation:m-tear 1.5s ease-in .3s 2}.teller[data-mood="sad"] .o-hands{animation:none;transform:translateY(8px)}
+.teller[data-mood="shake"] .o-body{animation:m-shake .38s ease-in-out 3}.teller[data-mood="shake"] .o-brow{transform:translateY(3px)}.teller[data-mood="shake"] .o-lidtop{transform:translateY(5px)}
+.teller[data-mood="sulk"]{--mx:9px;--my:2px}.teller[data-mood="sulk"] .o-lidtop{transform:translateY(11px)}.teller[data-mood="sulk"] .o-brow{transform:translateY(5px) rotate(5deg)}
+.teller[data-mood="sulk"] .o-body{animation:m-turn 2.6s ease-in-out}.teller[data-mood="sulk"] .o-hands{animation:none;transform:translateY(8px)}.teller[data-mood="sulk"] .o-eyeglow{opacity:.3}
+.teller[data-mood="smug"]{--mx:6px}.teller[data-mood="smug"] .o-lidtop{transform:translateY(10px)}.teller[data-mood="smug"] .o-lidbot{transform:translateY(-6px)}
+.teller[data-mood="smug"] .o-brow{transform:translateY(-2px) rotate(-6deg)}.teller[data-mood="smug"] .o-body{animation:m-nod 1.1s ease-in-out 2}
+.teller[data-mood="angry"]{--is:.8}.teller[data-mood="angry"] .o-brow{transform:translateY(8px) scaleY(.5)}.teller[data-mood="angry"] .o-lidtop{transform:translateY(8px)}
+.teller[data-mood="angry"] .o-eyeglow{fill:#ff3b3b;opacity:1}.teller[data-mood="angry"] .o-body{animation:m-tremble .09s linear infinite}
+.teller[data-mood="angry"] .o-face{filter:saturate(1.5) hue-rotate(-28deg) brightness(.95)}.teller[data-mood="angry"] .o-hand{animation:tremble .14s ease-in-out infinite}
+.teller[data-mood="sleepy"]{--my:4px}.teller[data-mood="sleepy"] .o-lidtop{transform:translateY(15px)}.teller[data-mood="sleepy"] .o-lidbot{transform:translateY(-5px)}
+.teller[data-mood="sleepy"] .o-body{animation:m-breathe 4s ease-in-out infinite}.teller[data-mood="sleepy"] .o-eyeglow{opacity:.2}.teller[data-mood="sleepy"] .o-f{animation-duration:9s}
+.teller.orb-flare .o-orbglow{animation:m-flare .9s ease-out}.teller.orb-flare .o-swirl{animation-duration:.5s}.teller.orb-flare .o-swirl2{animation-duration:.7s}
+@keyframes m-hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px) scale(1.015,.985)}70%{transform:translateY(2px) scale(.99,1.01)}}
+@keyframes m-laugh{0%,100%{transform:translateY(0)}50%{transform:translateY(-3.5px)}}
+@keyframes m-nod{0%,100%{transform:translateY(0)}50%{transform:translateY(8px) scale(1,.985)}}
+@keyframes m-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px) rotate(-1.6deg)}75%{transform:translateX(8px) rotate(1.6deg)}}
+@keyframes m-jolt{0%{transform:translateY(0)}30%{transform:translateY(-11px) scale(1.03)}100%{transform:translateY(0)}}
+@keyframes m-lean{0%,100%{transform:rotate(0)}30%,70%{transform:rotate(-2.4deg) translateX(-4px)}}
+@keyframes m-turn{0%,100%{transform:rotate(0)}15%,85%{transform:rotate(2.6deg) translateX(5px)}}
+@keyframes m-slump{0%,100%{transform:translateY(0)}20%,85%{transform:translateY(7px) scale(1,.985)}}
+@keyframes m-tremble{0%,100%{transform:translateX(-1.6px)}50%{transform:translateX(1.6px)}}
+@keyframes m-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012,1.022) translateY(-2px)}}
+@keyframes m-clap{0%,100%{transform:translateX(0)}50%{transform:translateX(15px)}}
+@keyframes m-wink{0%,100%{transform:scaleY(1)}35%,65%{transform:scaleY(.06)}}
+@keyframes m-tear{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(48px)}}
+@keyframes m-flare{0%{opacity:.28;transform:scale(1)}25%{opacity:.95;transform:scale(1.35)}100%{opacity:.28;transform:scale(1)}}
+.emote{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.emote i{position:absolute;left:var(--x);top:var(--y);font-style:normal;font-size:clamp(16px,2.6vw,28px);opacity:0;animation:m-rise 1.5s ease-out var(--d,0s) forwards;filter:drop-shadow(0 0 5px rgba(250,222,140,.7))}
+@keyframes m-rise{0%{opacity:0;transform:translate(0,12px) scale(.3)}20%{opacity:1;transform:translate(0,0) scale(1.15)}100%{opacity:0;transform:translate(var(--dx,0),-64px) scale(.9)}}
+.o-bubble{position:absolute;left:57%;top:7%;max-width:41%;padding:7px 11px;border-radius:14px 14px 14px 3px;background:#fff8ea;color:#1a0b2e;font-size:clamp(.72rem,1.25vw,.92rem);line-height:1.25;box-shadow:0 4px 14px rgba(0,0,0,.5),0 0 0 2px var(--gold,#E2B04A);pointer-events:none;transform-origin:0 100%;z-index:3}
+.o-bubble.in{animation:m-bub .28s cubic-bezier(.3,1.6,.5,1)}
+@keyframes m-bub{from{opacity:0;transform:scale(.4)}}
