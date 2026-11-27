@@ -2,6 +2,7 @@
 // observing poses, his reactions, his 8 sky emotes and his observing coats. Every fact in a line is real.
 import { coatOverlay } from "./alchemist-lab.js";
 import { houseRank } from "../obsprog.js";
+import { skyHtml, SHELVES_CSS } from "./observatory-shelves.js";
 
 // ---- the dome: slit open at night (real Moon phase in the slit), shutters closed by day; the telescope tracks slowly ----
 const SYNODIC = 29.530588853, NEW_MOON = Date.UTC(2000, 0, 6, 18, 14); // a known new moon (6 January 2000, 18:14 UTC)
@@ -32,7 +33,7 @@ export function domeSceneHtml(at = Date.now(), { prog = {}, motes = 14, rnd = Ma
     <ellipse cx="62" cy="40" rx="10" ry="4" fill="none" stroke="#e8eef4" stroke-opacity=".5" stroke-width=".7"/><circle cx="58" cy="40" r="1.4" fill="#FADE8C"/></svg>`;
   const desk = `<div class="od-desk"></div><svg class="od-torch" viewBox="0 0 30 40" aria-hidden="true"><rect x="10" y="12" width="10" height="24" rx="3" fill="#3a3a44"/><rect x="8" y="6" width="14" height="8" rx="2" fill="#5a1414"/><circle cx="15" cy="8" r="4" fill="#ff3a3a" class="od-red"/></svg>`;
   const dust = Array.from({ length: motes }, () => `<i style="--x:${(rnd() * 100).toFixed(0)}%;--y:${(30 + rnd() * 60).toFixed(0)}%;--d:${(rnd() * 9).toFixed(1)}s;--t:${(9 + rnd() * 9).toFixed(1)}s"></i>`).join("");
-  return `<div class="sc dome${open ? " open" : ""}${full ? " fullmoon" : ""}" data-phase="${ph}">${dome}${scope}${board}${desk}<div class="sc-dust">${dust}</div><div class="od-redglow"></div></div>`;
+  return `<div class="sc dome${open ? " open" : ""}${full ? " fullmoon" : ""}" data-phase="${ph}">${skyHtml(prog.obssky)}${dome}${scope}${board}${desk}<div class="sc-dust">${dust}</div><div class="od-redglow"></div></div>`;
 }
 
 // ---- his figure: the astrolabe where the crystal ball was, pose props, reaction pieces (400 x 400 figure space) ----
@@ -87,7 +88,7 @@ export const SKY_EMOTES = {
 
 const MOOD_GLOW = { joy: "#FADE8C", cheer: "#FFB400", love: "#FF6AB8", laugh: "#8BD630", wow: "#e9f0ff", curious: "#7AD7FF", think: "#B57BE8", nod: "#8FB8FF", shake: "#c4ccd6",
   wink: "#FF4FB3", flinch: "#ffffff", sad: "#5a8cff", sulk: "#6a6a8a", smug: "#E2B04A", angry: "#e3173e", sleepy: "#3a3a6a", nervous: "#ff5a5a", dizzy: "#ff7a1f" };
-export const DOME_CSS = `.ha-star{animation:ha-tw 3.2s ease-in-out infinite;transform-origin:226px 134px}@keyframes ha-tw{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}@media (prefers-reduced-motion: reduce){.ha-star{animation:none}}
+export const DOME_CSS = SHELVES_CSS + `.ha-star{animation:ha-tw 3.2s ease-in-out infinite;transform-origin:226px 134px}@keyframes ha-tw{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}@media (prefers-reduced-motion: reduce){.ha-star{animation:none}}
 
 body[data-house="observatory"]{--aglow:#8FB8FF}
 ${Object.entries(MOOD_GLOW).map(([m, c]) => `body[data-house="observatory"] [data-mood="${m}"]{--aglow:${c}}`).join("")}
