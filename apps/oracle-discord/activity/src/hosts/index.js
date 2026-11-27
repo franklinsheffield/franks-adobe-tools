@@ -6,6 +6,7 @@
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
+import { tokensLeft, houseRelicsHtml, TOKEN_CSS } from "./tokens.js";
 
 export const HOSTS = [oracle, alchemist];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
@@ -48,7 +49,14 @@ export function dressHouse(doc = document) {
   doc.title = h === oracle ? "Oracle Chamber" : h.house;
   const sp = doc.querySelector(".speaker"); if (sp) sp.textContent = h.name.toUpperCase();
   const t = doc.getElementById("teller"); if (t && h !== oracle) t.setAttribute("aria-label", `${h.name}, ${h.house}'s host`);
-  if (h.css && !doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = h.css; doc.head.appendChild(st); }
+  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + (h.css || ""); doc.head.appendChild(st); }
 }
 /** Paint the host onto a copy of the shared figure (the teller, or the door's portrait). */
-export const paintHost = (svg, prog, id = "t") => { if (current.paint) current.paint(svg, prog || {}, id); };
+export function paintHost(svg, prog, id = "t") {
+  if (!svg) return; if (current.paint) current.paint(svg, prog || {}, id);
+  const pane = id === "t" && current.relics && svg.closest(".pane"); if (!pane) return; // House relics sit in the host's pane, behind the host
+  let layer = pane.querySelector("#house-relics"); if (!layer) { layer = svg.ownerDocument.createElement("div"); layer.id = "house-relics"; layer.setAttribute("aria-hidden", "true"); pane.prepend(layer); }
+  const key = JSON.stringify(((prog || {}).houses || {})[current.id]?.relics || []); if (layer.dataset.k !== key) { layer.dataset.k = key; layer.innerHTML = houseRelicsHtml(prog || {}, current); }
+}
+/** The House token in the stats bar (the Oracle's 🌙 is already there). */
+export const houseChip = (p) => (current.token && current.token.id !== "moon" ? `<span title="${current.token.plural} to spend on ${current.house}'s relics. Earn them with your first visit each day and by beating game levels here.">${current.token.emoji} ${tokensLeft(p, current)}</span>` : "");

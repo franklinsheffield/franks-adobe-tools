@@ -37,6 +37,28 @@ export const lensShop = {
   preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(lensDisc(lensOf(id))); ctx.cap("🥽 " + lensOf(id).name); },
 };
 
+
+/** Lab relics: permanent fixtures in Vell's House, bought only with 🔴 philosopher's stones. Notes are real history. */
+const CU = `<linearGradient id="hrc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FADE8C"/><stop offset=".5" stop-color="#C87533"/><stop offset="1" stop-color="#5E2D10"/></linearGradient>`;
+export const LAB_RELICS = [
+  { id: "st-alembic", e: "⚗️", name: "Copper alembic", price: 4, note: "A still for distilling. The word reached English through Arabic al-anbiq.", x: 80, y: 58, w: 17, vb: "0 0 120 110",
+    art: () => `<defs>${CU}</defs><ellipse cx="44" cy="104" rx="34" ry="4" fill="#000" opacity=".35"/><circle cx="44" cy="74" r="28" fill="url(#hrc)" stroke="#5E2D10"/><path d="M36 48h16v-14h-16z" fill="url(#hrc)"/><path d="M30 34q14 -22 28 0z" fill="url(#hrc)" stroke="#5E2D10"/><path d="M56 30L110 58" stroke="url(#hrc)" stroke-width="5" stroke-linecap="round"/><ellipse cx="44" cy="80" rx="18" ry="10" fill="#66E0C8" opacity=".35"/>${[0, 1, 2].map((i) => `<circle class="hr-bub" style="--d:${i * 0.7}s" cx="${38 + i * 6}" cy="84" r="2.2" fill="#C9FFF2"/>`).join("")}<path d="M110 58v10" stroke="#66E0C8" stroke-width="2" class="hr-drip"/>` },
+  { id: "st-athanor", e: "🧱", name: "Athanor furnace", price: 6, note: "The alchemist's slow furnace, built to hold an even heat for days.", x: 2, y: 54, w: 17, vb: "0 0 100 140",
+    art: () => `<ellipse cx="50" cy="136" rx="40" ry="4" fill="#000" opacity=".35"/><path d="M18 136V40q32 -30 64 0v96z" fill="#7a3a22" stroke="#3a1a0c" stroke-width="2"/>${Array.from({ length: 8 }, (_, i) => `<path d="M18 ${48 + i * 11}H82" stroke="#3a1a0c" stroke-width="1" opacity=".6"/>`).join("")}<path d="M36 136v-30q14 -14 28 0v30z" fill="#1a0a04"/><path class="hr-fire" d="M40 134q10 -28 20 0z" fill="#ff8a1a"/><path class="hr-fire" style="--d:.4s" d="M45 134q5 -16 10 0z" fill="#ffe08a"/><path d="M44 14h12v12h-12z" fill="#3a1a0c"/>` },
+  { id: "st-tablet", e: "🟩", name: "The Emerald Tablet", price: 8, note: "A short, cryptic text credited to Hermes Trismegistus. Its oldest known versions are in Arabic.", x: 80, y: 14, w: 13, vb: "0 0 80 110",
+    art: () => `<defs><linearGradient id="hre" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9dffc2"/><stop offset=".5" stop-color="#1fae5a"/><stop offset="1" stop-color="#0a4a24"/></linearGradient></defs><path d="M8 20q32 -22 64 0v86h-64z" fill="url(#hre)" stroke="#E2B04A" stroke-width="2.5"/>${Array.from({ length: 7 }, (_, i) => `<path d="M18 ${34 + i * 10}h${28 + ((i * 13) % 17)}" stroke="#063018" stroke-width="2" opacity=".7"/>`).join("")}<path class="hr-glint" d="M16 24l10 -6" stroke="#fff" stroke-width="3" opacity=".6"/>` },
+  { id: "st-ouroboros", e: "🐍", name: "Ouroboros banner", price: 10, note: "The snake eating its tail, drawn in old Greek alchemical manuscripts beside the words 'the all is one'.", x: 24, y: 2, w: 10, vb: "0 0 100 140",
+    art: () => `<rect x="4" y="2" width="92" height="4" rx="2" fill="#C88A3A"/><g class="hr-sway"><path d="M12 6h76v120l-38 12l-38 -12z" fill="#3b1220" stroke="#E2B04A" stroke-width="1.5"/><g class="hr-spin" style="transform-origin:50px 64px"><circle cx="50" cy="64" r="24" fill="none" stroke="#1fae5a" stroke-width="7"/><circle cx="50" cy="64" r="24" fill="none" stroke="#9dffc2" stroke-width="1.4" stroke-dasharray="3 5"/><path d="M72 56l8 -6l-2 10z" fill="#1fae5a"/><circle cx="74" cy="56" r="1.4" fill="#ff4f4f"/></g></g>` },
+  { id: "st-crucible", e: "🫕", name: "Golden crucible", price: 12, note: "A pot that survives the furnace, used to melt and assay metals.", x: 18, y: 84, w: 9, vb: "0 0 100 90",
+    art: () => `<ellipse cx="50" cy="86" rx="36" ry="4" fill="#000" opacity=".35"/><path d="M24 86L36 50M76 86L64 50M50 86V54" stroke="#3a2a1a" stroke-width="4"/><path d="M26 30h48l-8 30h-32z" fill="#7a6a5a" stroke="#3a2a1a" stroke-width="2"/><ellipse cx="50" cy="30" rx="24" ry="6" fill="#ffcf3a" class="hr-glow"/><ellipse cx="50" cy="30" rx="16" ry="3.4" fill="#fff4b0"/>` },
+  { id: "st-pile", e: "🔋", name: "Voltaic pile", price: 15, note: "Volta's battery of 1800, stacked zinc and copper discs. Davy used a big one to isolate potassium and sodium in 1807.", x: 92, y: 42, w: 6, vb: "0 0 70 120",
+    art: () => `<ellipse cx="35" cy="116" rx="26" ry="3" fill="#000" opacity=".35"/><rect x="10" y="108" width="50" height="6" fill="#5a3a1a"/>${Array.from({ length: 12 }, (_, i) => `<rect x="18" y="${100 - i * 7}" width="34" height="3.6" rx="1" fill="${["#C87533", "#b8c2d0", "#e8d8b0"][i % 3]}"/>`).join("")}<path d="M14 18V108M56 18V108" stroke="#7a5a3a" stroke-width="2"/><path class="hr-spark" d="M30 10l6 -8l-2 7l6 -1l-8 10l2 -7z" fill="#bfe6ff"/>` },
+  { id: "st-table", e: "📜", name: "Mendeleev's chart", price: 20, note: "Mendeleev's 1869 table left gaps for elements nobody had found yet, and predicted their properties.", x: 62, y: 3, w: 13, vb: "0 0 120 100",
+    art: () => `<rect x="2" y="2" width="116" height="96" rx="4" fill="#efe0bd" stroke="#7a4f12" stroke-width="2"/>${Array.from({ length: 6 }, (_, r) => Array.from({ length: 9 }, (_, c) => (r === 0 && c > 0 && c < 8) || (r === 1 && c > 1 && c < 7) ? "" : `<rect x="${8 + c * 12}" y="${10 + r * 14}" width="10" height="12" fill="${(r * 9 + c) % 7 === 3 ? "none" : ["#C87533", "#1fae5a", "#5fa8ff", "#E2B04A"][(r + c) % 4]}" stroke="#5a3a1a" stroke-width=".6" ${(r * 9 + c) % 7 === 3 ? 'stroke-dasharray="2 1.5" class="hr-gap"' : 'opacity=".75"'}/>`).join("")).join("")}` },
+  { id: "st-stone", e: "🔴", name: "The Philosopher's Stone", price: 30, note: "The legendary stone said to turn base metal into gold. Nobody made one, but the search built chemistry's tools.", x: 83, y: 84, w: 14, vb: "0 0 140 70",
+    art: () => `<defs><radialGradient id="hrs" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="#ffd0d0"/><stop offset=".45" stop-color="#e3173e"/><stop offset="1" stop-color="#5a0414"/></radialGradient><radialGradient id="hrh"><stop offset="0" stop-color="#ff4f4f" stop-opacity=".55"/><stop offset="1" stop-color="#ff4f4f" stop-opacity="0"/></radialGradient></defs><ellipse cx="70" cy="36" rx="60" ry="30" fill="url(#hrh)" class="hr-glow"/><path d="M40 68h60l-8 -16h-44z" fill="#C88A3A" stroke="#5E2D10"/><path class="hr-pulse" style="transform-origin:70px 34px" d="M70 12l18 14l-6 22h-24l-6 -22z" fill="url(#hrs)" stroke="#ffb3b3" stroke-width="1"/>` },
+];
+
 /** The brass phonograph: the Alchemist's own player for the shared music pool. Same classes as the turntable (tt, tt-disc). */
 export function phonographSvg(t, playing) {
   const disc = t ? `<g transform="translate(46 70) scale(1.0)">${vinylSvg(t, 100).replace(/<svg[^>]*>|<\/svg>/g, "")}</g>` : `<circle cx="96" cy="120" r="48" fill="#26262c"/>`;
@@ -65,8 +87,11 @@ body[data-house="alchemist"] .gate-title{color:#E89A55}
 @keyframes ph-rise{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-22px)}}
 @keyframes ph-thrum{to{transform:scale(1.03)}}
 .h-vell .hv-glint{animation:hv-glint 6s ease-in-out infinite}
+.hr-bub{animation:ph-rise 2s linear infinite;animation-delay:var(--d,0s)}.hr-fire{animation:hr-flick .35s ease-in-out infinite alternate;animation-delay:var(--d,0s);transform-origin:50px 134px}
+@keyframes hr-flick{to{transform:scaleY(1.18)}}.hr-glow{animation:hv-glint 3s ease-in-out infinite}.hr-pulse{animation:hr-pulse 2.4s ease-in-out infinite}@keyframes hr-pulse{50%{transform:scale(1.08)}}
+.hr-spark{animation:hv-glint 1.2s steps(2) infinite}.hr-spin{animation:hr-spin 24s linear infinite}@keyframes hr-spin{to{transform:rotate(360deg)}}.hr-gap{animation:hv-glint 2s ease-in-out infinite}
 @keyframes hv-glint{0%,80%,100%{opacity:.15}88%{opacity:.75}}
-@media (prefers-reduced-motion: reduce){.ph.playing .ph-b,.ph.playing .ph-horn,.h-vell .hv-glint{animation:none}}`;
+@media (prefers-reduced-motion: reduce){.ph.playing .ph-b,.ph.playing .ph-horn,.h-vell .hv-glint,[class^="hr-"],[class*=" hr-"]{animation:none}}`;
 
 /** Dress the shared figure as Magister Vell: copper mask, brass goggle, gear badge, lens colour. */
 function paint(svg, prog, id = "t") {
@@ -101,12 +126,15 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 
 export const alchemist = {
   id: "alchemist", name: "Magister Vell", house: "The Alchemist's House", emoji: "⚗️", accent: "#E89A55",
-  channelIds: [], // set to #⚗️-laboratory's id
+  channelIds: ["1575967994633396544"], // #⚗️-laboratory
   readings: false, rooms: ["alchemy", "duel", "grimoire"], daily: "alchemy",
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200 },
   css: ALCHEMIST_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Brass Phonograph", deck: phonographSvg },
   shelves: [lensShop],
+  token: { id: "stone", emoji: "🔴", name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
+  relics: LAB_RELICS, relicLabel: "🔴 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
+  strayIntro: "Something just fell out of the flask:",
   lines: {
     greet: ["{name}! Goggles on, gloves on, curiosity on. Welcome to the Alchemist's House.", "Ah, {name}. Mind the bench, it's still warm. What shall we mix today?",
       "Welcome back to the lab, {name}. Nothing has exploded since you left. Nothing important, anyway."],
