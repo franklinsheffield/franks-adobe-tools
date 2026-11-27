@@ -104,3 +104,16 @@ export function bookSfx(kind = "page") {
     src.connect(f).connect(g).connect(AC.destination); src.start(t);
   } catch { /* no audio */ }
 }
+
+/** The store try-on: the binding closed, then opening on a sample spread in its own paper (drawn in the table box). */
+export function bookPreviewHtml(b) {
+  const tiles = ["The Star", "The Moon", "?", "The Atom", "?", "Fehu"].map((n, i) => `<span class="bkp-tile${n === "?" ? " lock" : ""}" style="--i:${i}">${n}</span>`).join("");
+  const lines = [["9:12 AM", "🃏", "Tarot: The Star, The Moon"], ["1:40 PM", "⭐", "Séance, Level 2: won"], ["8:05 PM", "📖", "Saved a reading"]]
+    .map(([t, e, x], i) => `<div class="bkp-line" style="--i:${i}"><i>${t}</i><span>${e} ${x}</span></div>`).join("");
+  return `<div class="bk-stage bkp" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
+    <div class="bkp-book"><div class="bkp-pages">
+      <div class="bkp-pg"><h4>📜 The Codex</h4><div class="bkp-tiles">${tiles}</div></div>
+      <div class="bkp-pg"><h4>🗓️ Today</h4>${lines}</div>
+      <div class="bkp-leaf"></div></div>
+      <div class="bkp-cover">${coverSvg(b, "Your Grimoire", "bkp")}</div></div></div>`;
+}

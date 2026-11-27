@@ -38,7 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
-import { BOOKS, bookOf, coverSvg, bookShop, addLog, byDay, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
+import { BOOKS, bookOf, coverSvg, bookShop, bookPreviewHtml, addLog, byDay, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
@@ -240,6 +240,7 @@ function openStudy(roomId, back) {
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
+bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 registerShelf(recordShop); registerShelf(bookShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
@@ -534,6 +535,7 @@ function showStore(tab = "outfit", opener = null) {
     if (CARD_BACK[bid]) { const t = $("table"); t.className = "table cb-show"; t.innerHTML = `<div class="cb-fan">${[-2, -1, 0, 1, 2].map((r, i) => `<i style="--r:${r * 13}deg;--i:${i}">${cardBackSvg(bid)}</i>`).join("")}</div>`; } // the back, fanned out
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
   const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc, prog: state.prog });
+  else if (tab === "book") bookShop.preview(bookOf(state.prog).id, { table, tableEl: $("table"), cap: () => {}, esc, prog: state.prog }); // the binding you own, on the table
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
     const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; if (!off) mood.emote("curious"); showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); if (!off) flourish(it.kind); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
