@@ -20,19 +20,22 @@ function styleOnce() {
   st.textContent = f("dec-runic", FONTS.runic) + f("dec-ogham", FONTS.ogham) + f("dec-egy", FONTS.egy) + CSS;
   document.head.append(st);
 }
+// The board is drawn into the reading table (ctx.tableEl); the Chamber's greet() puts the table back.
 function mountBoard() {
-  const pane = $("table-pane"); pane.classList.add("dec-on");
-  if (!board || !board.isConnected) { board = document.createElement("div"); board.className = "dec-board"; board.setAttribute("aria-live", "polite"); pane.append(board); }
+  const t = C.tableEl || $("table"); t.className = "table decoder";
+  t.innerHTML = `<div class="dec-board" aria-live="polite"></div>`; board = t.firstChild;
 }
-function leave() { $("table-pane").classList.remove("dec-on"); board && board.remove(); board = null; C.greet(); }
+function leave() { C.greet(); }
 const show = (html) => { board.innerHTML = html; };
 const starRow = (n, of = 3) => `<span class="dec-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}<i>${"★".repeat(of - n)}</i></span>`;
 const save = () => { try { C.saveProgress(); } catch {} };
 
-/** The Codex page for this room (main.js shows it in 📜 Codex). */
+/** This room's part of the 📜 Codex: one row per script. */
 export function decoderCodex(prog, e = esc) {
-  const d = dec(prog), have = new Set(d.codex);
-  return SCRIPT_ORDER.map((k) => `<div class="group">${e(SCRIPTS[k].emoji)} ${e(SCRIPTS[k].name)} · ${scriptStars(prog, k)} / ${levelsOf(k).length * 3} ★</div><div class="codex-items">${levelsOf(k).map((l) => have.has(l.codex) ? `<span class="got">${e(l.codex)}</span>` : `<span class="dim">???</span>`).join(" · ")}</div>`).join("");
+  const d = dec(prog);
+  return SCRIPT_ORDER.map((k) => { const ls = levelsOf(k), got = ls.filter((l) => d.codex.includes(l.codex)), st = scriptStars(prog, k), of = ls.length * 3;
+    return `<div class="cx"><div class="cx-h"><span>${e(SCRIPTS[k].emoji)} Decoded: ${e(SCRIPTS[k].name)}</span><span class="note">${st} / ${of} ★</span></div>
+      <div class="bar"><i style="width:${(st / of) * 100}%"></i></div>${got.length ? `<div class="chips">${got.map((l) => `<span>${e(l.codex)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
 }
 
 function open(ctx) { C = ctx; styleOnce(); mountBoard(); home(); }
@@ -101,13 +104,14 @@ function strip(l, picks, { wrongAt = -1, peek = false } = {}) {
     if (!sg) { cells.push(`<div class="dec-cell sep ${s.font}">${g === " " ? "&#x1680;" : esc(g)}<b>&nbsp;</b></div>`); continue; }
     const v = picks[k]; cells.push(`<div class="dec-cell${k === picks.length ? " now" : ""}${k === wrongAt ? " bad" : ""}"><span class="${s.font}">${esc(g)}</span><b>${v ? esc(v) : peek ? `<i>${esc(sg.v)}</i>` : "&nbsp;"}</b></div>`); k++;
   }
-  return `<div class="dec-strip ${l.script}${l.cartouche ? " cartouche" : ""}">${cells.join("")}</div>`;
+  return `<div class="dec-strip ${l.script}${l.cartouche ? " cartouche" : ""}${k > 8 ? " long" : ""}">${cells.join("")}</div>`;
 }
 
 function puzzle(l) {
   const s = SCRIPTS[l.script], st = { picks: [], peeks: 0, hints: 0, misses: 0, book: false };
   const draw = (wrongAt = -1) => {
     show(strip(l, st.picks, { wrongAt }) + (st.book ? codebook(l) : `<div class="dec-progress">${st.picks.length} / ${target(l).length}</div>`));
+    const now = board.querySelector(".now"); now && now.scrollIntoView && now.scrollIntoView({ block: "nearest" });
   };
   C.say(l.script === "maya" ? "Read each number on the table. Tap its value." : "Tap the sound of each sign, in order. Use the codebook if memory fails you. It costs a star.");
   C.ui(`<div class="dec-tiles ${l.script === "maya" ? "nums" : ""}">${tiles(l).map((v) => `<button class="c dec-tile" type="button" data-v="${esc(v)}">${esc(v)}</button>`).join("")}</div>

@@ -15,6 +15,7 @@ import { answer, quip, deeperPages } from "./answer.js";
 import { STORE, KINDS, SHOP_TALK, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
+import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 
 const $ = (id) => document.getElementById(id);
@@ -107,7 +108,7 @@ function greet() {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }];
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;

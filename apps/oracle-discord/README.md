@@ -25,6 +25,10 @@ One Discord app for the server's readings: `/oracle` (the fortune teller), `/hum
 
 The Chamber hosts rooms, small games listed under "Investigate & learn" (registry `ROOMS` in `activity/src/main.js`; each room lives in `activity/src/<room>/` and keeps progress in `prog.rooms.<id>`). The first room is **Skeptic's Séance** (`activity/src/seance/`): 12 real historical hoaxes, from the Fox sisters (1848) to Forer's Barnum-effect test (1948). Players spend 4 candles on clues and guesses, name the method, then pick the Skeptic's Toolkit idea that cracked it. First solves pay ✦ and 💎, and replays only pay improvements. Hoaxes exposed and Toolkit both appear in the Codex. Séance cases don't use daily readings.
 
+### Rooms: Rune & Glyph Decoder
+
+**Rune & Glyph Decoder** (`activity/src/decoder/`) teaches four real scripts in 19 levels: Elder Futhark (the futhark, the bracteate words alu and laþu, the Einang Stone, the Gallehus horn), Ogham (letter names, OGAM, the MAQI MUCOI formula), Egyptian hieroglyphs (rn, the cartouches of Ptolemy, Cleopatra and Tutankhamun) and Maya numbers (bar and dot, 13.0.0.0.0, Pakal's birth 9.8.9.13.0). The Oracle teaches each new sign, the inscription is laid on the table, and the player taps the sound of each glyph, then answers what it means and gets its history and source. Each script also has a make-your-own level: your name in runes, Ogham or a cartouche, or your birthday in the Long Count (from `src/modules/mayan/calendar.js`). Stars: ★★★ from memory, ★★ with the codebook, ★ with hints. Each new star earns 5 ✦ and 5 💎, plus 5 more for a first clear. Codex entries appear under "Decoded". Glyph fonts are OFL Noto subsets embedded in `fonts.gen.js`. Decoder levels don't use daily readings.
+
 ## Human Design
 `src/humandesign/`: chart (26 activations, design moment at 88° of solar arc, true node), branded bodygraph PNG, and original Science is Magic interpretation text. Verified against Ra Uru Hu's published chart and 400 random charts from an independent engine.
 
