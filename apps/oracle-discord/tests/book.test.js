@@ -7,7 +7,7 @@ test("the book shelf has a free default and every binding draws", () => {
   assert.equal(BOOKS.find((b) => b.id === DEFAULT_BOOK).price, 0);
   assert.equal(new Set(BOOKS.map((b) => b.id)).size, BOOKS.length);
   assert.equal(bookOf({}).id, DEFAULT_BOOK); assert.equal(bookOf({ book: "bk-atlas" }).id, "bk-atlas");
-  assert.equal(bookShop.kind, "book"); assert.equal(bookShop.items.length, BOOKS.length);
+  assert.equal(bookShop.kind, "book"); assert.equal(bookShop.items.length, BOOKS.filter((b) => !b.secret).length); assert.ok(BOOKS.some((b) => b.secret) && !bookShop.items.some((i) => BOOKS.find((b) => b.id === i.id).secret), "secret bindings are never sold");
   for (const b of BOOKS) assert.match(coverSvg(b), /^<svg[\s\S]*YOUR GRIMOIRE[\s\S]*<\/svg>$/);
 });
 

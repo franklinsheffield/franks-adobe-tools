@@ -3,6 +3,7 @@
 //   GET  /api/profile  Bearer <access_token> -> { profile } (the member's own saved /profile, opened with ORACLE_KEY)
 //   GET/PUT /api/progress  Bearer <access_token> -> { progress }  (the Chamber game layer: codex, streak, unlocks)
 //   GET/POST /api/daily/<game>  Bearer <access_token> -> today's shared daily-challenge board (src/daily.js)
+//   POST /api/share  Bearer <access_token> { channelId, title, lines, color } -> { ok }  (a Grimoire page posted by the bot)
 //   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
 //   GET  /api/tables?game=&instance=  (WebSocket) -> the call's shared table for a game room (tables.mjs, multiplayer)
 import { loadProfile } from "../src/profiles.js";
@@ -58,6 +59,20 @@ async function daily(req, env, game, url) {
 }
 
 /** Is this member boosting the guild? The bot reads their member record (premium_since); each boost pays once. */
+/** Post a Grimoire page to the Activity's channel as an embed, from the bot. Text only, trimmed; one per member per minute. */
+export async function sharePage(env, me, body, fetchImpl = fetch) {
+  const { channelId, title, lines, color } = body || {};
+  if (!env.DISCORD_BOT_TOKEN || !/^\d{5,25}$/.test(String(channelId || ""))) return { ok: false, error: "sharing is not available here" };
+  if (env.PROFILES) { const k = "share:" + me.id, last = await env.PROFILES.get(k, "json"); if (last && Date.now() - last.at < 60000) return { ok: false, error: "one page a minute" }; await env.PROFILES.put(k, JSON.stringify({ at: Date.now() })); }
+  const clean = (t, n) => String(t || "").replace(/@(everyone|here)/gi, "@\u200b$1").replace(/<@[!&]?\d+>/g, "").slice(0, n);
+  const desc = (Array.isArray(lines) ? lines : []).slice(0, 14).map((l) => clean(l, 140)).join("\n");
+  const name = me.global_name || me.username || "A seeker";
+  const embed = { title: clean(`📖 ${title || "A page from Your Grimoire"}`, 200), description: desc || "…", color: /^#?[0-9a-f]{6}$/i.test(String(color || "")) ? parseInt(String(color).replace("#", ""), 16) : 0xe2b04a,
+    footer: { text: clean(`From ${name}'s Grimoire · Science is Magic Oracle Chamber`, 120) } };
+  const r = await fetchImpl(`https://discord.com/api/v10/channels/${channelId}/messages`, { method: "POST", headers: { authorization: "Bot " + env.DISCORD_BOT_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ embeds: [embed], allowed_mentions: { parse: [] } }) }).catch(() => null);
+  return r && r.ok ? { ok: true } : { ok: false, error: "the bot could not post in this channel" };
+}
+
 export async function boostCheck(env, userId, guildId, fetchImpl = fetch) {
   if (!env.DISCORD_BOT_TOKEN || !/^\d{5,25}$/.test(String(guildId || ""))) return { boosting: false, fresh: false, reward: 0 };
   const r = await fetchImpl(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, { headers: { authorization: "Bot " + env.DISCORD_BOT_TOKEN } });
@@ -112,6 +127,14 @@ export default {
       if (!me || !me.id) return json({ error: "sign in first" }, 401);
       const { guildId } = await req.json().catch(() => ({}));
       return json(await boostCheck(env, me.id, guildId));
+    }
+    if (path === "/api/share") {
+      if (req.method !== "POST") return json({ error: "POST only" }, 405);
+      const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
+      const me = await whoIs(token);
+      if (!me || !me.id) return json({ error: "sign in first" }, 401);
+      return json(await sharePage(env, me, await req.json().catch(() => ({}))));
     }
     if (path === "/api/tables") return tableRoute(req, env, url);
     if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, profiles: !!env.PROFILES, tables: !!env.TABLES });

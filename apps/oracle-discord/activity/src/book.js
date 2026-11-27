@@ -12,6 +12,9 @@ export const BOOKS = [
   { id: "bk-bone", ghost: true, name: "Bone and ink", note: "Black leather, a bone clasp, ink that creeps across grey pages", price: 140, cover: ["#26222b", "#0b090d"], foil: "#e8e0cc", page: "ash", emblem: "skull", clasp: "bone", fx: "ink" },
   { id: "bk-lab", name: "Science is Magic lab book", note: "Teal hard cover with a spinning atom, gridded lab pages", price: 180, cover: ["#0f6b63", "#063a35"], foil: "#66E0C8", page: "grid", emblem: "atom", clasp: "steel", fx: "atom" },
   { id: "bk-prism", name: "Prismatic codex", note: "Holographic cover that shifts colour as it turns, pearl pages", price: 260, cover: ["#ff4fb3", "#3d8bff"], foil: "#ffffff", page: "pearl", emblem: "eye", clasp: "prism", fx: "holo" },
+  // secret bindings: never sold, earned inside the book (secrets.js)
+  { id: "bk-rune", secret: "cipher", name: "Runebound codex", note: "Slate stone covers cut with glowing runes. Earned by breaking the margin cipher.", price: 0, cover: ["#4a4f57", "#1b1e23"], foil: "#7fe3ff", page: "vellum", emblem: "rune", clasp: "steel", fx: "twinkle" },
+  { id: "bk-crown", secret: "sealed", name: "Star-crowned grimoire", note: "Black and gold, crowned with stars. Earned by opening the sealed chapter.", price: 0, cover: ["#1a1426", "#05030a"], foil: "#FADE8C", page: "night", emblem: "crown", clasp: "gold", fx: "stars" },
 ];
 export const DEFAULT_BOOK = "bk-notebook";
 export const bookOf = (p) => BOOKS.find((b) => b.id === (p && p.book)) || BOOKS[0];
@@ -22,6 +25,8 @@ const EMBLEM = {
   flask: (c) => `<path d="M-7 -26 H7 V-8 L22 20 Q24 26 16 26 H-16 Q-24 26 -22 20 L-7 -8Z" fill="none" stroke="${c}" stroke-width="3" stroke-linejoin="round"/><path d="M-15 12 H15 L19 21 H-19Z" fill="${c}"/>`,
   star: (c) => { let d = ""; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, r = k % 2 ? 11 : 27; d += `${k ? "L" : "M"}${(r * Math.cos(a)).toFixed(1)} ${(r * Math.sin(a)).toFixed(1)}`; } return `<path d="${d}Z" fill="${c}"/>`; },
   skull: (c) => `<path d="M-20 4 Q-22 -24 0 -24 Q22 -24 20 4 Q20 12 12 14 V22 H-12 V14 Q-20 12 -20 4Z" fill="${c}"/><circle cx="-8" cy="-2" r="5" fill="#0b090d"/><circle cx="8" cy="-2" r="5" fill="#0b090d"/>`,
+  rune: (c) => `<g fill="none" stroke="${c}" stroke-width="3.2" stroke-linecap="round"><path d="M-14 -26 V26 M-14 -26 L10 -12 L-14 2 L12 26"/><circle r="30" stroke-width="1.4" opacity=".7"/></g>`,
+  crown: (c) => `<path d="M-26 14 L-30 -16 L-14 -2 L0 -26 L14 -2 L30 -16 L26 14Z" fill="${c}"/><rect x="-26" y="16" width="52" height="7" rx="2" fill="${c}"/><circle cy="-26" r="3.5" fill="#fff"/>`,
   atom: (c) => `<g class="bk-spin" fill="none" stroke="${c}" stroke-width="3"><ellipse rx="28" ry="10"/><ellipse rx="28" ry="10" transform="rotate(60)"/><ellipse rx="28" ry="10" transform="rotate(-60)"/></g><circle r="5" fill="${c}"/>`,
 };
 /** The cover, drawn 200 x 280. */
@@ -46,7 +51,7 @@ export function coverSvg(b, title = "Your Grimoire", uid = "bk") {
 export const bookShop = {
   kind: "book",
   label: "📖 Grimoire books",
-  items: BOOKS.map(({ id, name, note, price, ghost }) => ({ id, name, note, price, ...(ghost ? { ghost } : {}) })),
+  items: BOOKS.filter((b) => !b.secret).map(({ id, name, note, price, ghost }) => ({ id, name, note, price, ...(ghost ? { ghost } : {}) })),
   talk: {
     open: ["A book for everything the Chamber shows you. Pick the binding; the secrets are free.", "Every seeker needs a grimoire. Leather, velvet, brass… or something that shimmers."],
     tryon: ["{item}. Run a hand over the cover. Feel that? That's craftsmanship. And a little dust.", "{item}. Your Codex will look very serious in that."],
@@ -117,3 +122,4 @@ export function bookPreviewHtml(b) {
       <div class="bkp-leaf"></div></div>
       <div class="bkp-cover">${coverSvg(b, "Your Grimoire", "bkp")}</div></div></div>`;
 }
+export const emblemSvg = (b) => `<svg viewBox="-34 -34 68 68" aria-hidden="true">${(EMBLEM[b.emblem] || EMBLEM.eye)(b.foil)}</svg>`;
