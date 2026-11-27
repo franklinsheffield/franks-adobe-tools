@@ -3,7 +3,9 @@
 // history, level 2 two neighbouring eras, level 3 a single era with close dates. Each era has a 📖 study guide.
 // Rules in logic.js, the deck in events.js, guides in guide.js, store themes in shop.js. Mounted via ROOMS (main.js).
 import { ERAS, KINDS, EVENTS, eraOf, eventsOf } from "./events.js";
-import { LEVELS, SANDS, TOTAL, room as tlOf, chronicled, titleOf, nextTitle, levelOf, pts, deal, start, current, place, perfect, scoreOf, settle } from "./logic.js";
+import { LEVELS, DAILY, DECK, SANDS, TOTAL, MYTH_PTS, room as tlOf, chronicled, titleOf, nextTitle, levelOf, pts, deal, start, current, place, perfect, scoreOf, settle, rng, pinRange, pinpoint, answerMyth, yearText } from "./logic.js";
+import { DECKS, deckOf, MYTHS, mythById, LINKS } from "./events2.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { GUIDES } from "./guide.js";
 import { themeOf, SHOP, TALK } from "./shop.js";
 
@@ -75,6 +77,13 @@ const CSS = `
 @keyframes tl-cardin{from{transform:rotateX(80deg) translateY(-10px);opacity:0}}
 @keyframes tl-rowin{from{transform:translateX(-14px);opacity:0}}
 @keyframes tl-wobble{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.tl-pin-box{margin:8px 0;padding:10px 12px;border:1px dashed rgba(102,224,200,.6);border-radius:12px;background:rgba(102,224,200,.06);animation:tl-rowin .4s ease-out both}
+.tl-pin-box input[type=range]{width:100%;accent-color:var(--teal)}.tl-pin-yr{font-size:1.4rem;font-weight:700;color:var(--gold2);text-align:center;font-variant-numeric:tabular-nums}
+.tl-pin-ends{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+.tl-myth{margin:8px 0;padding:12px 14px;border:1px solid #ff4fb3;border-radius:12px;background:linear-gradient(135deg,rgba(255,79,179,.14),rgba(102,224,200,.06));animation:tl-cardin .5s cubic-bezier(.3,1.3,.5,1) both}
+.tl-myth b{font-family:var(--display);color:var(--gold2)}.tl-myth p{margin:6px 0 0;font-size:1rem}
+.tl-share{width:100%;min-height:66px;font:inherit;font-size:.85rem;background:rgba(0,0,0,.3);color:inherit;border:1px solid var(--line);border-radius:8px;padding:6px}
+.tl-badges{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.tl-badges span{font-size:.78rem;padding:3px 8px;border:1px solid var(--line);border-radius:999px}.tl-badges span.on{border-color:var(--gold);color:var(--gold2)}
 @media (prefers-reduced-motion:reduce){.tl-scene *,.tl-card,.tl-row,.tl-fact{animation:none!important;opacity:revert}.tl-burst{display:none}}
 @media (max-width:520px){.tl-eras{grid-template-columns:1fr}.tl-row .tl-y{min-width:72px}}
 `;
@@ -95,7 +104,7 @@ export function xOf(year, eras, x0 = 24, w = 352) {
 /** The table pane: the era ribbon, the cards placed so far as pins, the hourglasses, and the card in hand.
  * Animation options: unroll (ribbon unrolls, pins drop in), hi (just placed: flies in from the hand, sparkles if
  * right, the ribbon shakes and an hourglass flips if wrong), hand (card waiting to be placed, floats), party (confetti). */
-export function sceneSvg(run, theme, { hi = null, bad = false, hand = null, unroll = false, party = false } = {}) {
+export function sceneSvg(run, theme, { hi = null, bad = false, hand = null, unroll = false, party = false, hide = null } = {}) {
   const T = themeOf(theme), eras = run ? run.eras : ERAS.map((e) => e.id), bw = 352 / eras.length;
   const bands = eras.map((id, i) => { const E = eraOf(id), x = 24 + i * bw;
     return `<g class="tl-band" style="--d:${(i * 0.18).toFixed(2)}s"><rect x="${x}" y="150" width="${bw}" height="22" fill="${T.band[ERAS.indexOf(E) % 4]}" opacity=".85"/>
@@ -111,7 +120,7 @@ export function sceneSvg(run, theme, { hi = null, bad = false, hand = null, unro
     return `<g class="tl-pin${cls}" style="${style}"><line x1="${x}" y1="${up ? 132 : 172}" x2="${x}" y2="${up ? 150 : 210}" stroke="${col}" stroke-width="${on ? 2.5 : 1.5}"/>
       <circle cx="${x}" cy="161" r="${on ? 6 : 4.5}" fill="${col}" stroke="${T.ink}" stroke-width="1.5"/>
       <g class="tl-flyer"><text x="${x}" y="${y}" font-size="16" text-anchor="middle">${c.emoji}</text>
-      <text x="${x}" y="${up ? 132 : 240}" font-size="8.5" font-weight="700" fill="${col}" text-anchor="middle" font-family="${T.font}">${svgEsc(c.when.replace("c. ", "~"))}</text></g>${fx}</g>`; }).join("");
+      <text x="${x}" y="${up ? 132 : 240}" font-size="8.5" font-weight="700" fill="${col}" text-anchor="middle" font-family="${T.font}">${c.id === hide ? "? ? ?" : svgEsc(c.when.replace("c. ", "~"))}</text></g>${fx}</g>`; }).join("");
   const sand = Array.from({ length: SANDS }, (_, i) => { const full = run ? i < run.sands : true, x = 356 - i * 20, lost = bad && run && i === run.sands;
     return `<g transform="translate(${x} 22)"><g class="tl-glass${full ? " full" : ""}${lost ? " lost" : ""}" opacity="${full || lost ? 1 : 0.3}"><path d="M-6 -10 H6 L1 0 L6 10 H-6 L-1 0Z" fill="none" stroke="${T.ribbon}" stroke-width="1.5"/>
       ${full ? `<path class="tl-top" d="M-4 -8 H4 L0 -2Z" fill="${T.sand}"/><path d="M-4 8 H4 L0 3Z" fill="${T.sand}"/><path class="tl-stream" d="M0 -2 V8" stroke="${T.sand}" stroke-width="1" stroke-dasharray="1.5 2"/>` : lost ? `<path d="M-4 -8 H4 L0 -2Z" fill="${T.sand}"/>` : ""}</g></g>`; }).join("");
@@ -151,49 +160,70 @@ export const timeline = {
     styleOnce();
     const prog = () => tlOf(state.prog), theme = () => state.prog.timeline;
     const draw = (run, o) => { tableEl.className = "table timeline"; tableEl.innerHTML = sceneSvg(run, theme(), o); };
-    const stats = () => { const n = chronicled(state.prog), t = titleOf(n), nx = nextTitle(n);
-      return `<div class="cx-top"><b>⏳ ${esc(t.name)}</b> · ${n} / ${TOTAL} events in your Chronicle${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
-    const guide = (id, btn) => { const rb = $("reading-body"), on = !rb.querySelector(`.tl-guide[data-era="${id}"]`);
+    const stats = () => { const n = chronicled(state.prog), t = titleOf(n), nx = nextTitle(n), m = Object.keys(prog().myths).length;
+      return `<div class="cx-top"><b>⏳ ${esc(t.name)}</b> · ${n} / ${TOTAL} events in your Chronicle${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}${m ? ` · 🧐 ${m} myths sorted` : ""}${prog().bulls ? ` · 🎯 ${prog().bulls} bullseyes` : ""}</div>`; };
+    const label = (id) => { const E = eraOf(id); if (E) return `${E.emoji} ${esc(E.name)}`; const d = deckOf(id.replace("deck-", "")); return d ? `${d.emoji} ${esc(d.name)}` : esc(id); };
+    const guide = (id) => { const rb = $("reading-body"), on = !rb.querySelector(`.tl-guide[data-era="${id}"]`);
       rb.innerHTML = on ? guideHtml(id, esc).replace('class="tl-guide"', `class="tl-guide" data-era="${id}"`) : "";
       if (on) rb.firstChild.scrollIntoView({ behavior: "smooth", block: "start" }); };
-    const guideBtns = (ids) => `<div class="group">📖 Study guides</div><div class="choices">${ids.map((id) => { const E = eraOf(id); return `<button class="c small" type="button" data-g="${id}">${E.emoji} ${esc(E.name)}</button>`; }).join("")}</div>`;
-    const wireGuides = () => $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => guide(b.dataset.g, b)));
+    const guideBtns = (ids) => `<div class="group">📖 Study guides</div><div class="choices">${ids.map((id) => `<button class="c small" type="button" data-g="${id}">${label(id)}</button>`).join("")}</div>`;
+    const wireGuides = () => $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => guide(b.dataset.g)));
+    const modeName = (L, run) => (L.n === DAILY.n ? `📅 Daily Chronicle #${dayNumber()}` : L.n === DECK.n ? `${deckOf(run.deck).emoji} ${deckOf(run.deck).name}` : `Level ${L.n}`);
 
     function lobby(first) {
       clearReading(); cap("⏳ History of Magic"); draw(null, { unroll: true });
       say(first && !prog().plays
-        ? `Welcome to the History of Magic, ${state.name}. Every card is a real moment: oracles, alchemists, stage magicians and the skeptics who caught the frauds. I deal them, you put them in order. Three hourglasses per game. Read a study guide first if you like; I won't tell.`
-        : chronicled(state.prog) >= TOTAL ? `Your Chronicle is complete, ${state.name}. You know magic's history better than most magicians. Play again to beat your best.` : `Which stretch of history shall we sort tonight, ${state.name}?`);
-      const best = (L) => prog().best[L.n] ? ` · best ${prog().best[L.n]}${prog().perfect[L.n] ? " ★" : ""}` : "";
-      ui(`${stats()}<div class="levels">${LEVELS.map((L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⏳".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${L.cards} cards · ${pts(L)} per card${best(L)}</span></button>`).join("")}</div>
-        <div class="note">The first card is laid down for you. For each next card, tap the gap where it belongs. A wrong place empties an hourglass; lose all ${SANDS} and the game ends.</div>
-        ${guideBtns(ERAS.map((e) => e.id))}
-        <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        ? `Welcome to the History of Magic, ${state.name}. Every card is a real moment: oracles, alchemists, stage magicians and the skeptics who caught the frauds. I deal them, you put them in order, then guess the year for a bonus. Three hourglasses per game. Read a study guide first if you like; I won't tell.`
+        : chronicled(state.prog) >= TOTAL ? `Your Chronicle is complete, ${state.name}. You know magic's history better than most magicians. Play again to beat your best.` : `Which stretch of history shall we sort today, ${state.name}?`);
+      const best = (k) => prog().best[k] ? ` · best ${prog().best[k]}${prog().perfect[k] ? " ★" : ""}` : "";
+      const d = dailyState(state.prog, "timeline");
+      const deckBtn = (D) => { const have = D.ids.filter((id) => prog().cards[id]).length;
+        return `<button class="c" type="button" data-d="${D.id}"><b>${D.emoji} ${esc(D.name)}${prog().decks[D.id] ? " 🏅" : ""}</b><span>${esc(D.what)} · ${have} / ${D.ids.length}${best("deck-" + D.id)}</span></button>`; };
+      ui(`${stats()}
+        <div class="group">📅 Daily Chronicle #${dayNumber()}</div><div class="levels"><button class="c level" type="button" id="tl-daily"><b>${d.played ? "🔁 Replay today's Chronicle" : "📅 Play today's Chronicle"}</b><span>The same 6 cards for everyone today${d.played ? ` · your score: ${d.today.score} (replays don't count)` : " · your first run counts"}${d.streak ? ` · 🔥 ${d.streak}-day streak` : ""}</span></button></div>
+        <div class="group">⏳ Levels</div><div class="levels">${LEVELS.map((L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⏳".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${L.cards} cards · ${pts(L)} per card${best(L.n)}</span></button>`).join("")}</div>
+        <div class="group">🃏 Themed decks</div><div class="tl-eras">${DECKS.map(deckBtn).join("")}</div>
+        <div class="note">The first card is laid down for you. For each next card, tap the gap where it belongs, then 🎯 pinpoint its year for bonus points. One 🧐 Myth or Fact? card turns up each game. A wrong place empties an hourglass; lose all ${SANDS} and the game ends.</div>
+        ${guideBtns([...ERAS.map((e) => e.id), ...DECKS.map((D) => "deck-" + D.id)])}
+        <div class="choices"><button class="c small" type="button" id="tl-board">🏆 Today's board</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = levelOf(+b.dataset.l); L.n === 1 ? begin(L) : chooseEra(L); }));
+      $("ui").querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => begin(DECK, { deck: b.dataset.d })));
+      $("tl-daily").onclick = () => begin(DAILY, { daily: true }); $("tl-board").onclick = () => showBoard();
       wireGuides(); $("back").onclick = greet;
+    }
+
+    async function showBoard(scroll) {
+      const rb = $("reading-body"), d = dailyState(state.prog, "timeline");
+      rb.innerHTML = `<div class="tl-guide"><h3>🏆 Daily Chronicle #${dayNumber()}</h3><div class="note">Loading the board…</div></div>`;
+      const b = await boardOf(state, "timeline");
+      rb.innerHTML = `<div class="tl-guide"><h3>🏆 Daily Chronicle #${dayNumber()}</h3>${boardHtml(b, esc, { unit: "pts", local: d.today })}<div class="note">Same 6 cards and the same myth for everyone. New cards every day at midnight UTC.</div></div>`;
+      if (scroll) rb.firstChild.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function chooseEra(L) {
       say(L.n === 2 ? "Pick an era. I'll mix in its neighbour, so the dates get closer together." : "Pick one era. Every card will come from it, and some are only a few years apart.");
-      ui(`<div class="tl-eras">${ERAS.map((E) => `<button class="c" type="button" data-e="${E.id}"><b>${E.emoji} ${esc(E.name)}</b><span>${esc(E.span)} · ${chronicled(state.prog, E.id)} / ${eventsOf(E.id).length} chronicled</span></button>`).join("")}</div>
+      ui(`<div class="tl-eras">${ERAS.map((E) => `<button class="c" type="button" data-e="${E.id}"><b>${E.emoji} ${esc(E.name)}${prog().seals[E.id] ? " 🏅" : ""}</b><span>${esc(E.span)} · ${chronicled(state.prog, E.id)} / ${eventsOf(E.id).length} chronicled</span></button>`).join("")}</div>
         <div class="choices"><button class="c main" type="button" id="tl-any">🎲 Surprise me</button><button class="c small" type="button" id="tl-lobby">↩ Levels</button></div>`);
-      $("ui").querySelectorAll("[data-e]").forEach((b) => (b.onclick = () => begin(L, b.dataset.e)));
+      $("ui").querySelectorAll("[data-e]").forEach((b) => (b.onclick = () => begin(L, { era: b.dataset.e })));
       $("tl-any").onclick = () => begin(L); $("tl-lobby").onclick = () => lobby(false);
     }
 
-    function begin(L, era) {
-      const run = start(L, deal(L, { era, seen: prog().cards })), first = run.line[0];
-      clearReading(); cap(`⏳ Level ${L.n} · ${run.eras.map((id) => eraOf(id).name).join(" + ")}`); draw(run, { hi: first.id, unroll: true });
-      talkThrough([pick(["The scroll unrolls. The centuries are waiting.", "Dust off your sandals, time traveller.", "Hourglasses turned. Let history begin."]) + ` ${L.cards} cards. I'll lay the first one down for you.`,
+    function begin(L, { era, deck, daily } = {}) {
+      const r = daily ? rng(dailySeed("timeline")) : Math.random;
+      const run = start(L, deal(L, { era, deck, seen: daily ? {} : prog().cards, r })), first = run.line[0];
+      run.daily = !!daily;
+      clearReading(); cap(`⏳ ${modeName(L, run)}${L.n <= 3 ? " · " + run.eras.map((id) => eraOf(id).name).join(" + ") : ""}`); draw(run, { hi: first.id, unroll: true });
+      const intro = daily ? `Today's Chronicle: the same ${L.cards} cards for everyone in the server. Only your first run counts.` : deck ? `${deckOf(run.deck).name}: ${L.cards} cards from one story.` : `${L.cards} cards.`;
+      talkThrough([pick(["The scroll unrolls. The centuries are waiting.", "Dust off your sandals, time traveller.", "Hourglasses turned. Let history begin."]) + ` ${intro} I'll lay the first one down for you.`,
         `${first.emoji} ${first.title}, ${first.when}. ${first.fact}`], () => turn(L, run));
     }
 
     const cardBox = (c) => `<div class="tl-card"><span class="tl-e">${c.emoji}</span><div><b>${esc(c.title)}</b><div class="tl-k">${KINDS[c.kind].emoji} ${esc(KINDS[c.kind].name)}</div><p>${esc(c.what)}</p></div></div>`;
-    const row = (c, cls = "") => `<div class="tl-row ${cls}"><span class="tl-y">${esc(c.when)}</span><span>${c.emoji} ${esc(c.title)}</span></div>`;
-    const bar = (L, run) => `<div class="cx-top">Level ${L.n} · ⏳ ${"●".repeat(run.sands)}${"○".repeat(SANDS - run.sands)} · card ${Math.min(run.line.length + (run.done ? 0 : 1), L.cards)} of ${L.cards} · ${run.right.length * pts(L)} points</div>`;
+    const row = (c, cls = "", hide = false) => `<div class="tl-row ${cls}"><span class="tl-y">${hide ? "? ? ?" : esc(c.when)}</span><span>${c.emoji} ${esc(c.title)}</span></div>`;
+    const bar = (L, run) => `<div class="cx-top">${modeName(L, run)} · ⏳ ${"●".repeat(run.sands)}${"○".repeat(SANDS - run.sands)} · card ${Math.min(run.line.length + (run.done ? 0 : 1), L.cards)} of ${L.cards} · ${scoreOf(run)} points</div>`;
 
     function turn(L, run) {
-      const c = current(run); draw(run, { hand: c }); cap(`⏳ Level ${L.n} · where does this go?`);
+      const c = current(run); draw(run, { hand: c }); cap(`⏳ ${modeName(L, run)} · where does this go?`);
       say(pick(["Where does this one belong?", "Here's your next card. Before or after?", "Into the timeline it goes. Where?", "Think about what came first."]));
       const slot = (i) => `<button class="c tl-slot" type="button" data-s="${i}">⤵ ${i === 0 ? "Earliest" : i === run.line.length ? "Latest" : "Here"}</button>`;
       ui(`${bar(L, run)}${cardBox(c)}<div class="tl-line">${slot(0)}${run.line.map((x, i) => row(x) + slot(i + 1)).join("")}</div>
@@ -202,32 +232,94 @@ export const timeline = {
       $("tl-leave").onclick = () => lobby(false);
     }
 
+    // After placing: right or wrong first, then 🎯 pinpoint the year between its new neighbours, then the reveal.
     function placed(L, run, r) {
-      if (!r) return; chime(r.ok ? 1 : 0); draw(run, { hi: r.card.id, bad: !r.ok });
-      say(`${r.ok ? pick(RIGHT) : pick(WRONG)} ${r.card.title}: ${r.card.when}.`);
-      const next = run.done ? (run.sands <= 0 && run.queue.length ? "⌛ Out of sand: see results" : "✦ See results") : "▸ Next card";
+      if (!r) return; chime(r.ok ? 1 : 0); draw(run, { hi: r.card.id, bad: !r.ok, hide: r.card.id });
+      const { lo, hi } = pinRange(run, r.card), mid = Math.round((lo + hi) / 2);
+      say(`${r.ok ? pick(RIGHT) : pick(WRONG)} Now, can you pinpoint the year?`);
+      ui(`${bar(L, run)}<div class="tl-line">${run.line.map((x) => row(x, x.id === r.card.id ? (r.ok ? "new" : "bad") : "", x.id === r.card.id)).join("")}</div>
+        <div class="tl-pin-box"><b>🎯 ${r.card.emoji} ${esc(r.card.title)}</b><div class="tl-pin-yr" id="tl-yr">${yearText(mid)}</div>
+          <input type="range" id="tl-range" min="${lo}" max="${hi}" value="${mid}" step="1" aria-label="Year">
+          <div class="tl-pin-ends"><span>${yearText(lo)}</span><span>${yearText(hi)}</span></div>
+          <div class="note">Bullseye: ${Math.round(6 * L.mult)} points and 2 💎. Close: ${Math.round(3 * L.mult)} points.</div></div>
+        <div class="choices"><button class="c main" type="button" id="tl-pin">🎯 Lock in the year</button><button class="c small" type="button" id="tl-nopin">Skip</button></div>`);
+      const rg = $("tl-range"); rg.oninput = () => { $("tl-yr").textContent = yearText(+rg.value); };
+      rg.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); $("tl-pin").click(); } };
+      $("tl-pin").onclick = () => reveal(L, run, r, pinpoint(run, r.card, +rg.value));
+      $("tl-nopin").onclick = () => reveal(L, run, r, null);
+    }
+
+    function reveal(L, run, r, pin) {
+      draw(run, { hi: r.card.id, bad: !r.ok });
+      const pinLine = !pin ? "" : pin.grade === "bull" ? `🎯 Bullseye! ${pin.err ? `Only ${pin.err} year${pin.err === 1 ? "" : "s"} off.` : "Spot on."} +${pin.pts}.` : pin.grade === "close" ? `Close: ${pin.err} years off. +${pin.pts}.` : `${pin.err} years off. No bonus this time.`;
+      if (pin && pin.grade === "bull") chime(2);
+      say(`${r.card.title}: ${r.card.when}. ${pinLine}`);
+      const myth = run.myth && run.myth.said === null && !run.done && run.line.length >= 3;
+      const next = run.done ? (run.sands <= 0 && run.queue.length ? "⌛ Out of sand: see results" : "✦ See results") : myth ? "🧐 Myth or fact?" : "▸ Next card";
       ui(`${bar(L, run)}<div class="tl-fact"><b>${r.card.emoji} ${esc(r.card.title)} · ${esc(r.card.when)}</b><br>${esc(r.card.fact)}</div>
         <div class="tl-line">${run.line.map((x) => row(x, x.id === r.card.id ? (r.ok ? "new" : "bad") : "")).join("")}</div>
         <div class="choices"><button class="c main" type="button" id="tl-next">${next}</button></div>`);
-      $("tl-next").onclick = () => (run.done ? finish(L, run) : turn(L, run));
+      $("tl-next").onclick = () => (run.done ? finish(L, run) : myth ? mythTurn(L, run) : turn(L, run));
     }
+
+    function mythTurn(L, run) {
+      const m = mythById(run.myth.id); draw(run); cap(`⏳ ${modeName(L, run)} · myth or fact?`);
+      say(pick(["Before the next card, a story. Did this really happen?", "Time for a little myth-busting. True or tall tale?", "Everyone's heard this one. But is it true?"]));
+      ui(`${bar(L, run)}<div class="tl-myth"><b>🧐 Myth or fact?</b><p>${m.emoji} ${esc(m.claim)}</p></div>
+        <div class="choices"><button class="c main" type="button" id="tl-fact">✅ Fact</button><button class="c main" type="button" id="tl-mythb">🦄 Myth</button></div>
+        <div class="note">Right answer: +${Math.round(MYTH_PTS * L.mult)} points, and 3 💎 the first time.</div>`);
+      const go = (said) => { const ok = answerMyth(run, said); chime(ok ? 2 : 0);
+        say(`${ok ? pick(["Correct!", "Exactly right.", "Well spotted."]) : pick(["Not quite.", "Ah, the story fooled you.", "History is sneakier than that."])} ${m.truth.split(".")[0]}.`);
+        ui(`${bar(L, run)}<div class="tl-myth"><b>${m.fact ? "✅ Fact" : "🦄 Myth"}</b><p>${esc(m.truth)}</p></div><div class="choices"><button class="c main" type="button" id="tl-next">▸ Next card</button></div>`);
+        $("tl-next").onclick = () => turn(L, run); };
+      $("tl-fact").onclick = () => go(true); $("tl-mythb").onclick = () => go(false);
+    }
+
+    const shareText = (L, run, res) => {
+      const marks = (run.log || []).map((x) => (x ? "✅" : "❌")).join("") + "⬛".repeat(run.queue.length);
+      const pins = (run.pins || []).map((x) => (x.grade === "bull" ? "🎯" : x.grade === "close" ? "🟡" : "⚪")).join("");
+      return `⏳ History of Magic · Daily Chronicle #${dayNumber()}\n${marks}${pins ? "\n" + pins : ""}${run.myth && run.myth.said !== null ? (run.myth.right ? " 🧐✅" : " 🧐❌") : ""}\n${scoreOf(run)} pts${res && res.streak ? ` · 🔥 ${res.streak}` : ""}`;
+    };
+    const GHOST_NAMES = { roberthoudin: "Robert-Houdin", pepper: "John Henry Pepper", dee: "John Dee", newton: "Isaac Newton", faraday: "Michael Faraday", galileo: "Galileo", kepler: "Kepler", paracelsus: "Paracelsus", maskelyne: "Maskelyne", houdini: "Houdini", benfranklin: "Benjamin Franklin" };
+    const linkBtns = (run) => {
+      const seen = new Set(), out = [];
+      for (const c of run.line) { const l = LINKS[c.id]; if (!l) continue;
+        if (l.seance && !seen.has("s" + l.seance)) { seen.add("s" + l.seance); out.push(`<button class="c small" type="button" data-go="seance" data-arg="${l.seance}">🕯️ Meet ${esc(GHOST_NAMES[l.seance] || "the ghost")} in the Séance</button>`); }
+        if (l.decoder && !seen.has("d" + l.decoder)) { seen.add("d" + l.decoder); out.push(`<button class="c small" type="button" data-go="decoder" data-arg="${l.decoder}">🗝️ Read ${esc({ egyptian: "hieroglyphs", futhark: "runes", ogham: "Ogham", maya: "Maya numbers" }[l.decoder])} in the Decoder</button>`); } }
+      return out.length ? `<div class="group">🔗 Meet them in other rooms</div><div class="choices">${out.join("")}</div>` : "";
+    };
 
     function finish(L, run) {
       const before = chronicled(state.prog), r = settle(state.prog, run);
+      let dl = null;
+      if (run.daily) { const score = scoreOf(run), won = run.queue.length === 0, detail = `${run.right.length}/${L.cards - 1} placed · ${(run.pins || []).filter((x) => x.grade === "bull").length} 🎯`;
+        dl = { score, ...finishDaily(state.prog, "timeline", { score, won, detail }) };
+        if (dl.first) postDaily(state, "timeline", { score, won, detail }).then(() => showBoard(false)); else showBoard(false); }
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
       const after = chronicled(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name, all = perfect(run);
-      ctx.trophy?.("timeline", L.n, { won: all || run.right.length * 2 >= L.cards - 1, perfect: all }); // Trophy Case (trophies.js)
-      draw(run, { party: all }); cap(`⏳ Level ${L.n} · ${all ? "a perfect chronicle" : "the scroll rolls up"}`);
+      ctx.trophy?.("timeline", Math.min(L.n, 3) === L.n ? L.n : 2, { won: all || run.right.length * 2 >= L.cards - 1, perfect: all }); // Trophy Case (trophies.js)
+      draw(run, { party: all || r.seals.length + r.decks.length > 0 }); cap(`⏳ ${modeName(L, run)} · ${all ? "a perfect chronicle" : "the scroll rolls up"}`);
       say(all ? `Every card in its place, ${state.name}. Herodotus would weep with joy.` : run.queue.length ? `The sand has run out, ${state.name}. History will wait for you.` : `${run.right.length} of ${L.cards - 1} placed right. Not bad for a time traveller.`);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`, `score ${r.score}${r.best ? " · new best" : ""}`];
       if (r.fresh.length) bits.push(`${r.fresh.length} new in your Chronicle`);
-      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${r.perfectFirst ? `<div class="up">★ First perfect game at Level ${L.n}: +${10 * L.n} 💎</div>` : ""}${titled ? `<div class="up">⏳ Chronicle title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
+      if (r.bulls) bits.push(`🎯 ${r.bulls} bullseye${r.bulls === 1 ? "" : "s"}`);
+      const ups = [r.perfectFirst ? `★ First perfect game at Level ${L.n}: +${10 * L.n} 💎` : "", r.mythNew ? "🧐 Myth sorted, added to your Codex: +3 💎" : "",
+        ...r.seals.map((id) => `🏅 Era seal: <b>${esc(eraOf(id).name)}</b>, every card chronicled! +25 💎`), ...r.decks.map((id) => `🏅 Deck badge: <b>${esc(deckOf(id).name)}</b> complete! +25 💎`),
+        titled ? `⏳ Chronicle title: <b>${esc(t.name)}</b>` : "", aw.rankUp ? `🏅 You are now <b>${esc(aw.rankUp)}</b>` : "",
+        dl ? `📅 Daily Chronicle #${dayNumber()}: <b>${dl.score} pts</b>${dl.first ? ` · 🔥 ${dl.streak}-day streak` : " · practice run (your first run today counts)"}` : ""].filter(Boolean).map((x) => `<div class="up">${x}</div>`).join("");
+      const share = run.daily ? `<div class="group">📣 Share your result</div><textarea class="tl-share" id="tl-share" readonly>${esc(shareText(L, run, dl))}</textarea><div class="choices"><button class="c small" type="button" id="tl-copy">📋 Copy</button></div>` : "";
+      const again = run.daily ? "" : `<button class="c main" type="button" id="tl-again">⏳ Play again</button>`;
+      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${ups}</div>${share}
         <div class="tl-line">${run.line.map((x) => row(x, run.wrong.includes(x.id) ? "bad" : run.right.includes(x.id) ? "new" : "")).join("")}</div>
-        ${guideBtns(run.eras)}
-        <div class="choices"><button class="c main" type="button" id="tl-again">⏳ Another Level ${L.n} game</button><button class="c" type="button" id="tl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        ${linkBtns(run)}${guideBtns(run.deck ? ["deck-" + run.deck] : run.eras)}
+        <div class="choices">${again}<button class="c" type="button" id="tl-lobby">📜 Choose a game</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp || all) chime(2);
       wireGuides();
-      $("tl-again").onclick = () => (L.n === 1 ? begin(L) : begin(L, run.eras[0] === run.eras.at(-1) ? run.eras[0] : undefined));
+      if ($("tl-copy")) $("tl-copy").onclick = async () => { const ta = $("tl-share"); let ok = false;
+        try { await navigator.clipboard.writeText(ta.value); ok = true; } catch { ta.select(); try { ok = document.execCommand("copy"); } catch {} }
+        $("tl-copy").textContent = ok ? "✓ Copied: paste it in chat" : "Select the text and copy it"; };
+      $("ui").querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => (ctx.go ? ctx.go(b.dataset.go, b.dataset.go === "seance" ? { ghost: b.dataset.arg } : { script: b.dataset.arg }) : greet())));
+      if ($("tl-again")) $("tl-again").onclick = () => (L.n === 1 ? begin(L) : run.deck ? begin(DECK, { deck: run.deck }) : begin(L, { era: run.eras[0] === run.eras.at(-1) ? run.eras[0] : undefined }));
       $("tl-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
 
@@ -235,11 +327,15 @@ export const timeline = {
   },
 };
 
-/** For the Codex page: events chronicled, by era. */
+/** For the Codex page: events chronicled by era (🏅 = era seal), themed-deck badges and myths sorted. */
 export function codexHtml(p, esc) {
   const r = tlOf(p);
-  return ERAS.map((E) => { const list = eventsOf(E.id), have = list.filter((e) => r.cards[e.id]);
-    return `<div class="cx"><div class="cx-h"><span>⏳ ${E.emoji} ${esc(E.name)}</span><span class="note">${have.length} / ${list.length}</span></div>
+  const eras = ERAS.map((E) => { const list = eventsOf(E.id), have = list.filter((e) => r.cards[e.id]);
+    return `<div class="cx"><div class="cx-h"><span>⏳ ${E.emoji} ${esc(E.name)}${r.seals[E.id] ? " 🏅" : ""}</span><span class="note">${have.length} / ${list.length}</span></div>
     <div class="bar"><i style="width:${(have.length / list.length) * 100}%"></i></div>${have.length ? `<div class="chips">${have.map((e) => `<span title="${esc(e.when)}">${e.emoji} ${esc(e.title)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
+  const decks = `<div class="cx"><div class="cx-h"><span>⏳ 🃏 Themed deck badges</span><span class="note">${Object.keys(r.decks).length} / ${DECKS.length}</span></div><div class="tl-badges">${DECKS.map((d) => `<span class="${r.decks[d.id] ? "on" : ""}">${r.decks[d.id] ? "🏅" : "○"} ${d.emoji} ${esc(d.name)} · ${d.ids.filter((id) => r.cards[id]).length}/${d.ids.length}</span>`).join("")}</div></div>`;
+  const myths = MYTHS.filter((m) => r.myths[m.id]);
+  const mythRow = `<div class="cx"><div class="cx-h"><span>⏳ 🧐 Myths and facts sorted</span><span class="note">${myths.length} / ${MYTHS.length}</span></div>${myths.length ? `<div class="chips">${myths.map((m) => `<span title="${esc(m.truth)}">${m.fact ? "✅" : "🦄"} ${esc(m.claim)}</span>`).join("")}</div>` : ""}</div>`;
+  return eras + decks + mythRow;
 }
 export { EVENTS };
