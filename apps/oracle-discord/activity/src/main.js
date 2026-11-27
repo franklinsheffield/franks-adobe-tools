@@ -68,6 +68,7 @@ function say(text, done) {
   };
   step();
 }
+const heard = () => (state.prog.heard ||= []);
 const ui = (html) => { $("ui").innerHTML = html; };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
 function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * 6.28; return `<i style="--x:${Math.cos(a) * 110}px;--y:${Math.sin(a) * 70}px"></i>`; }).join("");
@@ -146,7 +147,7 @@ async function reveal(sys, options, question = "") {
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
   useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
   const a = answer(question, text, state.name);
-  const pages = [words, a.line, quip(sys.key, state.name, state.last.quips++)];
+  const pages = [words, a.line, quip(sys.key, state.name, heard())];
   talkThrough(pages, () => { afterReading(); reward(gain, sys); });
 }
 
@@ -179,7 +180,7 @@ function goDeeper() {
   const pages = L.deeper.slice(L.di, L.di + 2); L.di += pages.length;
   if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
   if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
-  else pages.push(quip(L.sys.key, state.name, L.quips++));
+  else pages.push(quip(L.sys.key, state.name, heard()));
   talkThrough(pages, afterReading);
 }
 
@@ -194,7 +195,7 @@ function askAgain() {
     if (L.sys.kind === "cast") { reveal(L.sys, optionsFor(L.sys, { [L.sys.ask || "question"]: q }), q); return; }
     clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); $("say").textContent = "…"; ui("");
     setTimeout(() => { document.body.classList.remove("trance");
-      talkThrough([answer(q, L.text, state.name).line, quip(L.sys.key, state.name, L.quips++)], afterReading); }, reduced ? 0 : 2000);
+      talkThrough([answer(q, L.text, state.name).line, quip(L.sys.key, state.name, heard())], afterReading); }, reduced ? 0 : 2000);
   };
 }
 
