@@ -40,10 +40,21 @@ export const CSS = `
 .gr-tells{margin:4px 0 0 18px;padding:0}.gr-tells li{margin:3px 0}
 @media (max-width:560px){.gr-notes{grid-template-columns:1fr}}
 .c.main.gr-daily .note,#gr-twins .note{color:inherit;opacity:.72}
+.gr-herb{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin:6px 0}
+.gr-tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(#f3e6c4,#d2b98a);color:#3a2716;font-size:.74rem;line-height:1.15;text-align:center;cursor:pointer;animation:btnin .3s ease-out both}
+.gr-tile.unfound{background:rgba(243,227,195,.06);color:var(--muted);cursor:default}
+.gr-tile .gr-thumb{width:100%;height:78px}
+.gr-thumb.ghost{filter:brightness(0) invert(.85) opacity(.4)}
+.gr-tile:not(.unfound):hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(226,176,74,.35)}
+.gr-tile b{font-weight:700}
+.gr-tile .note{color:#6b4e2e;opacity:1}.gr-tile.unfound .note{color:inherit}
+.gr-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.gr-bar{height:8px;border-radius:6px;background:rgba(243,227,195,.12);overflow:hidden;margin:4px 0}.gr-bar i{display:block;height:100%;background:linear-gradient(90deg,#7fbf6a,var(--gold));transition:width .6s ease-out}
+.gr-tabs .c.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
 .gr-share{white-space:pre-wrap;font-family:inherit;font-size:.95rem;line-height:1.5;border:1px dashed var(--gold);border-radius:12px;padding:8px 12px;margin:6px 0;background:rgba(226,176,74,.08);user-select:all}
 .gr-guide h3{font-family:var(--display);color:var(--gold2);margin:0 0 6px;font-size:1.02rem}
 .gr-guide details{border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:6px 0;background:var(--deep)}
 .gr-guide summary{cursor:pointer;color:var(--teal);font-weight:600}
 .gr-guide p{margin:6px 0;font-size:.92rem;line-height:1.45}
-@media (prefers-reduced-motion: reduce){.gr-spec,.gr-spec.turn,.gr-sway,.gr-stamp,.gr-sec,.gr-claim,.gr-spark circle,.table.grimoire.gr-shake > svg{animation:none}.gr-fall{display:none}}
+@media (prefers-reduced-motion: reduce){.gr-spec,.gr-spec.turn,.gr-sway,.gr-stamp,.gr-sec,.gr-claim,.gr-tile,.gr-spark circle,.table.grimoire.gr-shake > svg{animation:none}.gr-fall{display:none}}
 `;
