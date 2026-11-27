@@ -10,7 +10,8 @@ import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { HOPS, hopById, startHop, hop, hopStars, hopTime, settleHop, hopsDone, hopBest } from "./hops.js";
-import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock } from "./tonight.js";
+import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock, cityOf, sunRaDec } from "./tonight.js";
+import { PLANETS, planetById, where, track, lightMinutes, skyTonight, fists, astroState, DIGNITY_TEXT, rules, KEYWORD, ASPECT_TEXT, FACTS, FIND, RETRO, PKIND, PSTYLES, planetStyleOf, trackerOf, findReward } from "./planets.js";
 import { LEVELS, TONIGHT, DECK, ALL, dailyPick, dailyScore, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
   pickFable, quizChoices, answer, settle, drawPts, quizPts, startView, figureEdges, figureStars, figureCentre, toScreen, toSky, pan, zoom, onScreen,
   nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, centroid, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
@@ -98,6 +99,7 @@ class Sky {
       c.globalAlpha = a; c.fillStyle = col; c.beginPath(); c.arc(X, Y, r, 0, 7); c.fill();
     }
     c.globalAlpha = 1;
+    if (o.planets) this.drawPlanets(c, P, t);
     if (this.hz) this.drawGround(c, P);
     if (run) this.drawRun(c, P, t);
     if (this.ball) this.drawBall(P);
@@ -140,6 +142,49 @@ class Sky {
       const w = c.measureText(o.label).width + 20, y = Math.min(this.h - 30, p.Y + 40); c.fillStyle = "rgba(11,8,32,.82)"; c.strokeStyle = P.gold; c.lineWidth = 1;
       c.beginPath(); c.roundRect ? c.roundRect(p.X - w / 2, y - 16, w, 24, 6) : c.rect(p.X - w / 2, y - 16, w, 24); c.fill(); c.stroke(); c.fillStyle = P.gold; c.fillText(o.label, p.X, y + 1); }
   }
+  /** The Moon and planets (o.planets: [{ p, x: [ra, dec] in the display frame, mag, phase, found, trail }]). Unfound ones are plain steady points,
+   *  so you find them the way you would outdoors; found ones wear the equipped marker style (o.pstyle) and their name. o.track: an animated path. */
+  drawPlanets(c, P, t) {
+    const o = this.o, v = this.view, st = o.pstyle || "pl-disc", big = o.big ? 1.4 : 1; this.pvis = [];
+    const line = (pts, col, k, w) => { c.save(); c.setLineDash([3, 5]); c.strokeStyle = col; c.globalAlpha = k; c.lineWidth = w; c.beginPath(); this.path(pts); c.stroke(); c.restore(); };
+    if (st === "pl-trails") for (const q of o.planets) if (q.found && q.trail) line(q.trail, q.p.colour, 0.35, 1);
+    if (o.track) { const k = reducedMotion() ? 1 : Math.min(1, (performance.now() - o.track.at) / 2600), pts = o.track.pts, n = Math.max(2, Math.ceil(pts.length * k));
+      line(pts.slice(0, n), o.track.col, 0.9, 1.8);
+      c.font = "600 10px sans-serif"; c.textAlign = "center"; c.fillStyle = o.track.col;
+      for (const [i, txt, dy] of [[0, o.track.from, 16], [pts.length - 1, o.track.to, -10]]) { if (i >= n) continue; const p = toScreen(v, this.w, this.h, pts[i][0], pts[i][1]); if (p.front) c.fillText(txt, p.X, p.Y + dy); } }
+    const sun = o.sunAt && toScreen(v, this.w, this.h, o.sunAt[0], o.sunAt[1]), labels = [];
+    for (const q of o.planets) {
+      if (this.hz && q.x[1] < 0) continue;
+      const p = toScreen(v, this.w, this.h, q.x[0], q.x[1]); if (!p.front || p.X < -20 || p.Y < -20 || p.X > this.w + 20 || p.Y > this.h + 20) continue;
+      this.pvis.push({ q, X: p.X, Y: p.Y });
+      const r = (q.p.id === "moon" ? 11 : Math.max(2.2, Math.min(7, 4.6 - 0.45 * q.mag))) * big, col = P.ink || q.p.colour;
+      if (!q.found) { c.fillStyle = col; c.beginPath(); c.arc(p.X, p.Y, Math.min(r, 5.5 * big), 0, 7); c.fill(); continue; }
+      if (st === "pl-halo") { const k = 0.55 + 0.2 * Math.sin(t * 2 + q.mag), hr = r * 4.5, hg = c.createRadialGradient(p.X, p.Y, 0, p.X, p.Y, hr);
+        hg.addColorStop(0, col); hg.addColorStop(1, "rgba(0,0,0,0)"); c.globalAlpha = k * 0.5; c.fillStyle = hg; c.beginPath(); c.arc(p.X, p.Y, hr, 0, 7); c.fill(); c.globalAlpha = 1; }
+      if (st === "pl-scope") this.scopeDisc(c, q, p, q.p.id === "moon" ? r : r * 1.5, col, sun);
+      else { c.fillStyle = col; c.beginPath(); c.arc(p.X, p.Y, r, 0, 7); c.fill(); }
+      c.strokeStyle = P.gold; c.lineWidth = 1; c.globalAlpha = 0.7; c.beginPath(); c.arc(p.X, p.Y, r * (st === "pl-scope" ? 1.5 : 1) + 4, 0, 7); c.stroke(); c.globalAlpha = 1;
+      c.font = "600 12px Cinzel, Georgia, serif"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = P.gold;
+      const txt = st === "pl-glyph" ? `${q.p.glyph} ${q.p.name}` : q.p.name, lx = p.X + r * (st === "pl-scope" ? 1.5 : 1) + 8, lw = c.measureText(txt).width; let ly = p.Y;
+      while (labels.some((b) => lx < b[0] + b[2] && lx + lw > b[0] && Math.abs(ly - b[1]) < 15)) ly += 15; // keep close planets' names apart
+      labels.push([lx, ly, lw]); c.fillText(txt, lx, ly); c.textBaseline = "alphabetic";
+    }
+  }
+  /** The telescope look: Saturn's rings, Jupiter's belts, and the lit fraction of the Moon, Mercury and Venus turned toward the Sun. */
+  scopeDisc(c, q, p, r, col, sun) {
+    const id = q.p.id; c.save(); c.translate(p.X, p.Y);
+    if (id === "saturn") { c.strokeStyle = col; c.lineWidth = Math.max(1.2, r * 0.25); c.beginPath(); c.ellipse(0, 0, r * 2.1, r * 0.7, -0.35, 0, 7); c.stroke(); }
+    if (["moon", "mercury", "venus"].includes(id) && q.phase != null) {
+      const ang = sun && sun.front ? Math.atan2(sun.Y - p.Y, sun.X - p.X) : 0, f = q.phase; c.rotate(ang);
+      c.fillStyle = "rgba(40,40,52,.9)"; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill();
+      c.fillStyle = col; c.beginPath(); c.arc(0, 0, r, -Math.PI / 2, Math.PI / 2); c.fill();
+      c.fillStyle = f >= 0.5 ? col : "rgba(40,40,52,1)"; c.beginPath(); c.ellipse(0, 0, Math.max(0.01, r * Math.abs(1 - 2 * f)), r, 0, 0, 7); c.fill();
+    } else { c.fillStyle = col; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); }
+    if (id === "jupiter") { c.strokeStyle = "rgba(150,100,60,.8)"; c.lineWidth = Math.max(1, r * 0.18); for (const y of [-0.3, 0.25]) { const hw = r * Math.sqrt(1 - y * y); c.beginPath(); c.moveTo(-hw, y * r); c.lineTo(hw, y * r); c.stroke(); } }
+    c.restore();
+  }
+  /** The planet nearest a tap, within reach pixels. */
+  nearPlanet(x, y, reach) { let best = null, bd = reach; for (const v of this.pvis || []) { const d = Math.hypot(v.X - x, v.Y - y); if (d < bd) { bd = d; best = v.q; } } return best; }
   /** Tonight's sky: the ground below the horizon (a soft low-resolution mask, cached per view), the horizon line and compass points. */
   drawGround(c, P) {
     const v = this.view, key = [v.ra, v.dec, v.fov, this.w, this.h].map((x) => Math.round(x * 10)).join(), s = 6, m = (this.gm ||= document.createElement("canvas"));
@@ -219,6 +264,7 @@ class Sky {
       else if (mode === "draw" && moved > 8) { if (this.o.sel !== startStar.s[4]) this.o.sel = startStar.s[4]; this.o.rubber = p; last = p; } });
     const up = (e) => { if (!pts.has(e.pointerId)) return; const p = at(e); pts.delete(e.pointerId);
       if (mode === "pinch") { if (!pts.size) mode = null; return; }
+      if (this.o.onPlanet && moved <= 8) { const q = this.nearPlanet(p[0], p[1], this.o.big ? 30 : 22); if (q) { this.o.rubber = null; mode = null; return this.o.onPlanet(q); } }
       if (mode === "draw") { const end = nearestStar(this.vis || [], p[0], p[1], this.o.big ? 30 : 22); this.o.rubber = null;
         if (moved > 8 && end && end.s[4] !== startStar.s[4]) onDragLine(startStar.s, end.s); else if (moved <= 8) onTapStar(startStar.s); }
       else if ((mode === "pan" || mode === "idle") && moved <= 6) onTapStar(null);
@@ -251,6 +297,9 @@ const CSS = `
 .sl-shake{animation:sl-shake .45s ease-in-out}@keyframes sl-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .sl-facts{display:grid;gap:4px;margin:6px 0;font-size:.85rem}.sl-facts span{border:1px solid var(--line,#3a2f6a);border-radius:8px;padding:5px 8px;background:rgba(22,16,48,.6)}
 .sl-up{display:flex;flex-wrap:wrap;gap:6px}.sl-up span{flex:0 1 auto}
+.sl-pcard h4{font-family:var(--display,Cinzel,serif);color:var(--gold2,#FADE8C);margin:10px 0 4px;font-size:.95rem}.sl-pcard h4 i{font-family:sans-serif;font-weight:400;font-size:.75rem;color:var(--muted,#b9b2cc)}
+.sl-pcard .astro span{border-color:rgba(200,150,255,.45);background:rgba(40,20,64,.6)}
+.sl-plist{display:grid;gap:6px;margin:6px 0}.sl-plist .c{text-align:left}.sl-plist span{display:block;font-size:.85rem;padding:5px 8px;border:1px dashed var(--line,#3a2f6a);border-radius:8px;color:var(--muted,#b9b2cc)}
 .sl-fable{font-style:italic;color:var(--muted,#b9b2cc);font-size:.85rem;margin:4px 0}
 @media (prefers-reduced-motion: reduce){.sl-time.low,.sl-arrow,.sl-lant,.sl-shake{animation:none}}
 `;
@@ -283,8 +332,24 @@ export const shop = {
     new Sky(t, { view: { ra, dec, fov: 40 }, theme: id, figures: true }); if (ctx.cap) ctx.cap("🔭 " + (THEMES.find((x) => x.id === id) || {}).name); },
 };
 
+/** Marks for the Moon and planets in the chart, from the current sky (J2000 RA/Dec), all shown as found. */
+const planetMarks = (ms, conv = (r, d) => [r, d], found = () => true) => PLANETS.map((p) => { const w = where(p, ms);
+  return { p, x: conv(w.ra, w.dec), mag: w.mag, phase: w.phase, found: found(p.id) }; });
+export const planetShop = {
+  kind: PKIND, label: "🪐 Planet markers", items: PSTYLES,
+  talk: {
+    open: ["The wanderers! Seven lights the ancients watched, and two they never saw. Dress them up.", "Planets don't twinkle, darling. They need a little help to sparkle."],
+    tryon: ["The {item}. Jupiter is preening already.", "Ooh, the {item}. Saturn says the rings were always the point."],
+    buy: ["The {item} is yours. Go and find a planet to wear it.", "Sold! The {item}. Open the Planet Tracker and look up."],
+  },
+  preview(id, ctx) { styleOnce(); const t = ctx.tableEl; t.className = "table stars"; const now = Date.now(), marks = planetMarks(now), j = marks.find((m) => m.p.id === "jupiter");
+    if (id === "pl-trails") for (const m of marks) m.trail = track(m.p, now, 60, 60, 4).map(([r, d]) => [r, d]);
+    new Sky(t, { view: { ra: j.x[0], dec: j.x[1], fov: 110 }, theme: "st-classic", figures: true, planets: marks, pstyle: id, sunAt: sunRaDec(now) });
+    if (ctx.cap) ctx.cap("🪐 " + (PSTYLES.find((x) => x.id === id) || {}).name); },
+};
+
 export const stars = {
-  id: "stars", label: "Star Lore Navigator", emoji: "🔭", blurb: "Find and draw the constellations while the Oracle tells their fables", shop,
+  id: "stars", label: "Star Lore Navigator", emoji: "🔭", blurb: "Find and draw the constellations while the Oracle tells their fables", shop, shops: [planetShop],
   open(ctx) {
     const { $, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     styleOnce();
@@ -311,11 +376,11 @@ export const stars = {
         : foundCount(state.prog) >= ALL.length ? `You've drawn the whole sky, ${state.name}. Draw again any time: there are more fables to hear.` : `Clear skies tonight, ${state.name}. Which sky shall we open?`);
       const lvl = (L) => { const n = foundCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
-      ui(`${stats()}${dailyHtml()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
+      ui(`${stats()}${dailyHtml()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button><button class="c level" type="button" id="sl-planets"><b>🪐 Planet Tracker</b><span>Where the Moon and planets really are in your sky tonight, and what astrology says about each one's position · ${trackerOf(prog()).ever.length} / ${PLANETS.length} found</span></button></div>
         ${optsHtml()}<div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
         <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; search(L, nextTarget(state.prog, L, prog().last)); }));
-      $("sl-tonight").onclick = () => tonight(); $("sl-hops").onclick = () => hops(); wireOpts(() => lobby(false));
+      $("sl-tonight").onclick = () => tonight(); $("sl-planets").onclick = () => planets(); $("sl-hops").onclick = () => hops(); wireOpts(() => lobby(false));
       $("sl-daily").onclick = () => { const seed = dailySeed("stars"); search(LEVELS[1], dailyPick(seed), null, seed); }; $("sl-board").onclick = () => showBoard(); $("back").onclick = greet; wireGuide();
     }
 
@@ -390,7 +455,12 @@ export const stars = {
     }
 
     // ---- tonight's real sky ----
-    const placeNow = () => prog().place || placeForZone(zone());
+    /** Where the player is: only ever a city they picked (or the one for their device's time zone). Never a precise location. */
+    const placeNow = () => cityOf(prog().place) || placeForZone(zone());
+    const CITIES = [...PLACES].sort((a, b) => a.name.localeCompare(b.name));
+    const citySel = (place) => `<select id="sl-place" aria-label="Your nearest city">${CITIES.map((p) => `<option${p.name === place.name ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>`;
+    const cityNote = `<div class="note">📍 Pick the big city nearest you: that's accurate enough for the sky, and I never ask for anything more personal.</div>`;
+    const wireCity = (go) => { $("sl-place").onchange = (e) => { const p = cityOf({ name: e.target.value }); if (!p) return; prog().place = { name: p.name }; saveProgress(); go({ place: p }); }; };
     const pointsOf = (g) => figureStars(g).map((h) => { const s = starByHip(h); return [s[0], s[1]]; });
     const upNow = (tn) => { const up = upTonight(DECK, pointsOf, tn.place, tn.at); return up.length ? up : upTonight(DECK, pointsOf, tn.place, tn.at, 12); };
     const aim = (place) => ({ ra: place.lat >= 0 ? 180 : 0, dec: 38, fov: 70 }); // face the equator: south from the north, north from the south
@@ -401,21 +471,118 @@ export const stars = {
       const ups = () => upNow(tn), mins = Math.max(15, Math.round((night.end - night.start) / 6e4));
       const list = () => { const up = ups(); return up.length ? up.slice(0, 12).map((u) => `<span>${u.g.emoji} ${esc(u.g.name)} <i class="note">${Math.round(u.alt)}° up, ${compass(u.az)}</i></span>`).join("") : `<span class="note">Nothing from the deck is high enough right now. Try a later hour.</span>`; };
       say(night.bright ? `From ${place.name} the sky never gets fully dark this time of year, so I'll show you the darkest hour. These are up then.` : `This is the real sky over ${place.name} tonight, ${state.name}. Turn with the ball, slide the hour, and I'll ask you for one you could step outside and see.`);
-      ui(`${stats()}<div class="cx-top">🌙 Tonight from <select id="sl-place" aria-label="Your place">${(prog().place && !PLACES.some((p) => p.name === prog().place.name) ? [prog().place] : []).concat(PLACES).map((p) => `<option${p.name === place.name ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select> at <b id="sl-at">${esc(clock(tn.at, place))}</b></div>
+      ui(`${stats()}<div class="cx-top">🌙 Tonight from ${citySel(place)} at <b id="sl-at">${esc(clock(tn.at, place))}</b></div>${cityNote}
         <input type="range" id="sl-hour" min="0" max="${mins}" step="15" value="${Math.round((tn.at - night.start) / 6e4)}" aria-label="Hour of the night" style="width:100%">
         <div class="note">Dusk ${esc(clock(night.start, place))} to dawn ${esc(clock(night.end, place))}, ${esc(place.name)} time.</div>
         <div class="sl-facts sl-up" id="sl-up">${list()}</div>
-        <div class="choices"><button class="c main" type="button" id="sl-find">🔭 Ask me for one</button><button class="c" type="button" id="sl-geo">📍 Use my location</button>${guideBtn}<button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
+        <div class="choices"><button class="c main" type="button" id="sl-find">🔭 Ask me for one</button>${guideBtn}<button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
       const refresh = () => { sky.setFrame(tn); $("sl-at").textContent = clock(tn.at, place); $("sl-up").innerHTML = list(); };
       $("sl-hour").oninput = (e) => { tn.at = night.start + +e.target.value * 6e4; refresh(); };
-      $("sl-place").onchange = (e) => { const p = PLACES.find((x) => x.name === e.target.value) || prog().place; prog().place = p; saveProgress(); tonight({ place: p }); };
-      $("sl-geo").onclick = () => { const b = $("sl-geo"); if (!navigator.geolocation) { b.textContent = "📍 Not available here"; return; } b.textContent = "📍 Asking…";
-        navigator.geolocation.getCurrentPosition((pos) => { const p = { name: "Your location", lat: +pos.coords.latitude.toFixed(2), lon: +pos.coords.longitude.toFixed(2), tz: zone() }; prog().place = p; saveProgress(); tonight({ place: p }); },
-          () => { b.textContent = "📍 Not shared: pick a city"; }, { timeout: 8000, maximumAge: 36e5 }); };
+      wireCity(tonight);
       $("sl-find").onclick = () => { const up = ups(); if (!up.length) return say("Nothing I can ask for is up at that hour. Slide to later in the night.");
         const open = up.filter((u) => !prog().found[keyOf(TONIGHT, u.g)] && u.g.id !== prog().last), pool = (open.length ? open : up).slice(0, 6);
         search(TONIGHT, pick(pool).g, tn); };
       $("sl-leave").onclick = () => lobby(false); wireGuide();
+    }
+
+    // ---- the Planet Tracker: find the Moon and planets in the real sky tonight, then learn where astrology places them ----
+    const tracker = () => trackerOf(prog());
+    const night0 = (tn) => { const place = (tn && tn.place) || placeNow(), night = nightOf(place); return { place, at: tn && tn.at >= night.start && tn.at <= night.end ? tn.at : night.at, night }; };
+    /** Chart marks for tonight: planets above the horizon in the horizon frame, found ones with their four-month trail. */
+    const marksFor = (tn) => { const conv = frame(tn.place, tn.at), pl = tracker();
+      return planetMarks(tn.at, conv, (id) => pl.found.includes(id)).map((m) => (m.found && planetStyleOf(state.prog) === "pl-trails" ? { ...m, trail: trailOf(m.p, tn) } : m)); };
+    const trailOf = (p, tn) => { const conv = frame(tn.place, tn.at); return (p.id === "moon" ? track(p, tn.at, 2, 2, 0.25) : track(p, tn.at, 60, 60, 3)).map(([r, d]) => conv(r, d)); };
+    const altTxt = (r) => `${Math.round(r.alt)}° up in the ${r.dir} (about ${fists(r.alt)} fist${fists(r.alt) > 1 ? "s" : ""} above the horizon)`;
+    function planets(tn) {
+      clearReading(); cap("🪐 Planet Tracker"); tn = night0(tn); const place = tn.place, night = tn.night, pl = tracker();
+      const sky = mount({ view: aim(place), figures: true, controls: true, horizon: tn, planets: marksFor(tn), pstyle: planetStyleOf(state.prog), sunAt: frame(place, tn.at)(...sunRaDec(tn.at)) });
+      sky.input(() => {}, () => {}); sky.o.onPlanet = (q) => (q.found ? card(q.p.id, tn) : say("That steady light is one of the wanderers. Pick it from the list and I'll tell you which."));
+      const mins = Math.max(15, Math.round((night.end - night.start) / 6e4));
+      const rank = (r) => (r.see ? 0 : r.up ? 1 : 2);
+      const list = () => { const rows = skyTonight(place, tn.at).sort((a, b) => rank(a) - rank(b) || (a.rise || 0) - (b.rise || 0));
+        return rows.map((r) => { const g = `${r.p.glyph} <b>${esc(r.p.name)}</b>`, done = pl.found.includes(r.p.id) ? " ✓" : "";
+          if (r.see) return `<button class="c" type="button" data-pl="${r.p.id}">${g}${done}: ${esc(altTxt(r))}${r.p.eye ? "" : " · 🔭 binoculars"}</button>`;
+          if (r.up) return `<span>${g}: up, but ${esc(r.alt <= 3 ? "right on the horizon" : r.why)}</span>`;
+          return `<span>${g}: below the horizon${r.rise ? `, rises at ${esc(clock(r.rise, place))}` : ""}</span>`; }).join(""); };
+      const seen = () => skyTonight(place, tn.at).filter((r) => r.see);
+      say(pl.ever.length ? `The wanderers again, ${state.name}. Slide the hour, pick one, and step outside with me.`
+        : `The planets were the ancients' "wandering stars": they drift against the fixed stars. Tell me your nearest city, and I'll show you where each one is over ${place.name} tonight. Find it, and I'll tell you what astronomers know, and what astrological tradition says about where it sits.`);
+      ui(`${stats()}<div class="cx-top">🪐 From ${citySel(place)} at <b id="sl-at">${esc(clock(tn.at, place))}</b> · found today ${pl.found.length}</div>${cityNote}
+        <input type="range" id="sl-hour" min="0" max="${mins}" step="15" value="${Math.round((tn.at - night.start) / 6e4)}" aria-label="Hour of the night" style="width:100%">
+        <div class="note">Dusk ${esc(clock(night.start, place))} to dawn ${esc(clock(night.end, place))}, ${esc(place.name)} time. Directions are compass points; a fist held at arm's length covers about 10° of sky.</div>
+        <div class="sl-plist" id="sl-up">${list()}</div>
+        <div class="choices"><button class="c main" type="button" id="sl-pnext">🪐 Find the next one</button><button class="c" type="button" id="sl-guide">📖 Study guide</button><button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
+      const wire = () => $("ui").querySelectorAll("[data-pl]").forEach((b) => (b.onclick = () => hunt(b.dataset.pl, tn)));
+      $("sl-hour").oninput = (e) => { tn.at = night.start + +e.target.value * 6e4; sky.setFrame(tn); sky.o.planets = marksFor(tn); sky.o.sunAt = frame(place, tn.at)(...sunRaDec(tn.at)); $("sl-at").textContent = clock(tn.at, place); $("sl-up").innerHTML = list(); wire(); };
+      wireCity(planets); wire();
+      $("sl-pnext").onclick = () => { const s = seen(); if (!s.length) return say("No planet is up and clear of the Sun's glare at that hour. Slide to another time of night.");
+        const open = s.filter((r) => !pl.found.includes(r.p.id)); hunt((open.length ? open : s)[0].p.id, tn); };
+      $("sl-leave").onclick = () => lobby(false); wireGuide();
+    }
+    function hunt(id, tn) {
+      const r = skyTonight(tn.place, tn.at).find((x) => x.p.id === id); if (!r || !r.see) return planets(tn);
+      const p = r.p, x = [360 - r.az, r.alt], off = 110 + Math.random() * 100;
+      const sky = mount({ view: { ra: (x[0] + off) % 360, dec: 25, fov: 70 }, figures: true, controls: true, dome: true, horizon: tn, planets: marksFor(tn), pstyle: planetStyleOf(state.prog), sunAt: frame(tn.place, tn.at)(...sunRaDec(tn.at)) });
+      let misses = 0, over = false; domeOpen(); clearReading(); cap(`🪐 Find ${p.name}`);
+      const status = () => { ui(`<div class="cx-top">🪐 Find <b>${esc(p.name)}</b> ${p.glyph} · misses ${misses}</div>
+          <div class="note">Outdoors: face the <b>${esc(r.dir)}</b> and look ${Math.round(r.alt)}° up. ${esc(FIND[id])} On the chart: turn with the ball (bottom left) until the compass letter ${esc(r.dir.split("-").map((w) => w[0].toUpperCase()).join(""))} is on the horizon, then tap the planet.</div>
+          <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a miss)</button><button class="c small" type="button" id="sl-reveal">Show me</button><button class="c small" type="button" id="sl-leave">↩ Planet Tracker</button></div>`);
+        $("sl-hint").onclick = () => { misses++; shimmer(); sky.o.aimAt = x; sky.o.arrowUntil = performance.now() + 5000; status(); say(pick(["Follow the golden arrow.", "That way. Planets keep close to the Sun's path, the ecliptic.", "Turn with the arrow, then look for a steady light."])); };
+        $("sl-reveal").onclick = () => got(true); $("sl-leave").onclick = () => planets(tn); };
+      sky.input((s) => { if (!s || over) return; misses++; gutter(); status();
+        say(`${nameOf(s) ? `That's ${nameOf(s)}, a star` : "That's a star"} in ${conName(s[5])}. ${pick(["Stars twinkle; planets shine with a steadier light.", `Face the ${r.dir} and look ${Math.round(r.alt)}° up.`, "Planets stay close to the ecliptic, the Sun's yearly path through the zodiac."])}`); }, () => {});
+      sky.o.onPlanet = (q) => { if (over) return; if (q.p.id === id) return got(false); misses++; gutter(); status(); say(`That's another wanderer, not ${p.name}. Face the ${r.dir}, ${Math.round(r.alt)}° up.`); };
+      say(`${pick(["Step outside with me.", "Let your eyes adjust to the dark…", "Look up."])} At ${clock(tn.at, tn.place)} over ${tn.place.name}, ${p.name} is ${altTxt(r)}. ${FIND[id]} Find it on the chart and tap it.`);
+      status();
+      function got(shown) {
+        over = true; sky.o.aimAt = null; const pl = tracker(), rw = findReward(pl, id, misses, shown), q = sky.o.planets.find((m) => m.p.id === id);
+        if (q) q.found = true; discover();
+        sky.o.track = { pts: trailOf(p, tn), at: performance.now() + 900, col: p.colour, from: id === "moon" ? "2 days ago" : "60 days ago", to: id === "moon" ? "in 2 days" : "in 60 days" };
+        const span = Math.max(...sky.o.track.pts.map(([a, d]) => sep(a, d, x[0], x[1])));
+        sky.glide(sky.keepUp({ ra: x[0], dec: x[1], fov: Math.max(10, Math.min(70, span * 2.6)) }), 1100, () => { sky.fx.push({ kind: "spark", at2: x, at: performance.now(), dur: 1200 }); sky.meteor(); });
+        cap(`${p.glyph} ${p.name}`);
+        const aw = award(rw.xp, rw.essence); saveProgress(); showStats(); if (aw.rankUp) chime(2);
+        const all = skyTonight(tn.place, tn.at).filter((x2) => x2.see).every((x2) => pl.found.includes(x2.p.id));
+        if (!shown && all && pl.all !== pl.day) { pl.all = pl.day; saveProgress(); ctx.trophy?.("stars", 2, { won: true, perfect: !misses }); } // Trophy Case: every planet up tonight found
+        const A = astroState(tn.at).planets[id], w = where(p, tn.at);
+        const pages = [shown ? `There: ${p.name}, ${altTxt(r)}.` : `${pick(["Found it!", "Yes, that's it.", "Good eyes."])} That's ${p.name}, ${altTxt(r)}. ${id === "moon" ? "" : `It's in front of the stars of ${w.con}.`}`,
+          pick(FACTS[id]), ...(A.retro ? [RETRO.sky] : []), "The dotted line is its real path against the stars from two months ago to two months ahead.",
+          `Now the astrological tradition, which is a tradition of meaning, not science. Astrologers place ${p.name} in the sign of ${A.sign}, at ${A.text}. ${A.sign !== w.con ? `Notice the sign isn't the constellation it's really in, ${w.con}: the signs are measured from the equinox, and precession has slid them about a whole constellation away from the stars they were named after.` : ""}`];
+        card(id, tn, rw, shown);
+        talkThrough(pages, () => after(rw, shown, all));
+      }
+      function after(rw, shown, all) {
+        const bits = shown ? ["shown, not found: no points"] : [`<b>+${rw.xp} ✦${rw.essence ? ` · +${rw.essence} 💎` : ""}</b>`, rw.first ? `first time you've found ${p.name}` : rw.today ? "found today" : "already found today"];
+        const nx = skyTonight(tn.place, tn.at).filter((x2) => x2.see && !tracker().found.includes(x2.p.id));
+        ui(`<div class="reward"><div>${bits.join(" · ")}</div>${all && !shown ? `<div class="up">🪐 Every planet up at this hour, found!</div>` : ""}</div>
+          <div class="choices">${nx.length ? `<button class="c main" type="button" id="sl-pgo">🪐 Find ${esc(nx[0].p.name)} next</button>` : ""}${ctx.reading ? `<button class="c" type="button" id="sl-read">🔮 My astrology reading</button>` : ""}<button class="c" type="button" id="sl-ptrack">🪐 Planet Tracker</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        if ($("sl-pgo")) $("sl-pgo").onclick = () => hunt(nx[0].p.id, tn);
+        if ($("sl-read")) $("sl-read").onclick = () => ctx.reading("astrology");
+        $("sl-ptrack").onclick = () => planets(tn); $("sl-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      }
+    }
+    /** The planet's card: the astronomy, then (clearly labelled) the astrological tradition. */
+    function card(id, tn) {
+      const p = planetById(id), w = where(p, tn.at), st = astroState(tn.at), A = st.planets[id], r = skyTonight(tn.place, tn.at).find((x) => x.p.id === id);
+      const name = (k) => (k === "sun" ? "the Sun" : planetById(k).name), glyph = (k) => (k === "sun" ? "☉" : planetById(k).glyph);
+      const dist = id === "moon" ? `${Math.round(w.dist * 149597870.7).toLocaleString("en")} km away: its light takes ${(w.dist * 499.005).toFixed(1)} seconds to reach you` : `${w.dist.toFixed(2)} AU away: its light left ${Math.round(lightMinutes(w.dist))} minutes ago`;
+      const asp = st.aspects.filter((a) => a.a === id || a.b === id).map((a) => { const o = a.a === id ? a.b : a.a;
+        return `<span>${glyph(id)} ${a.symbol} ${glyph(o)} <b>${esc(a.type)}</b> with ${esc(name(o))} (within ${a.orb}°): tradition says they ${esc(ASPECT_TEXT[a.type] || "interact")}</span>`; });
+      const ru = rules(id);
+      $("reading-body").innerHTML = `<div class="sl-pcard"><h4>🔭 Astronomy</h4><div class="sl-facts">
+        <span>📍 ${r && r.up ? `At ${esc(clock(tn.at, tn.place))} from ${esc(tn.place.name)}: ${esc(altTxt(r))}` : `Below the horizon from ${esc(tn.place.name)} at ${esc(clock(tn.at, tn.place))}`}</span>
+        <span>✳️ Really in front of the constellation <b>${esc(w.con)}</b></span>
+        <span>💡 Magnitude ${w.mag.toFixed(1)} (lower is brighter) · ${dist}</span>
+        <span>☀️ ${Math.round(w.elong)}° from the Sun in the sky${id === "moon" ? ` · ${Math.round(w.phase * 100)}% lit` : ""}</span>
+        ${A.retro ? `<span>↩️ It's retrograde right now. ${esc(RETRO.sky)}</span>` : ""}
+        ${FACTS[id].map((f) => `<span>${esc(f)}</span>`).join("")}</div>
+        <h4>✨ Astrological tradition <i>a tradition of meaning, not science</i></h4><div class="sl-facts astro">
+        <span>${p.glyph} In the sign of <b>${esc(A.sign)}</b> at ${esc(A.text)}${A.retro ? " · retrograde ℞" : ""}</span>
+        ${A.sign !== w.con ? `<span>🧭 Sign vs sky: the sign is ${esc(A.sign)}, but the planet is really in front of ${esc(w.con)}. Western astrology's signs are 30° slices measured from the spring equinox; precession has slid them about one constellation away from the stars they're named after.</span>` : ""}
+        <span>🏛️ ${esc(p.name)} is ${esc(DIGNITY_TEXT[A.dignity])}.${ru.length ? ` In tradition it rules ${esc(ru.join(" and "))}${["uranus", "neptune"].includes(id) ? " (a modern rulership, from after its discovery)" : ""}.` : ""}</span>
+        <span>🗝️ Astrologers associate ${esc(p.name)} with ${esc(KEYWORD[id])}.</span>
+        ${A.retro ? `<span>℞ ${esc(RETRO.lore)}</span>` : ""}
+        ${asp.join("") || `<span>No major aspects to other planets right now.</span>`}</div></div>`;
     }
 
     function search(L, g, tn, daily) {
