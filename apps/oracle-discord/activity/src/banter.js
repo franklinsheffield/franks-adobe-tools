@@ -149,6 +149,18 @@ export const BANTER = {
     pirate: G("Red flame be lithium, or strontium, if ye be lucky!", "Green fire, like a ghost ship's lantern, arr.", "Ye read the flames like a true navigator!", "Arr, wrong metal. That fire be lyin' like a parrot."),
     influencer: G("Flame colour reveal! Drop your guesses below!", "This green is a whole aesthetic. No filter needed.", "Every colour right! Main character at the burner.", "Wrong guess, bestie. Even the flame needed a filter."),
   },
+  cipherdesk: {
+    mystic: G("Every secret wants, in the end, to be read.", "The letters only seem to wander. They know their way home.", "The hidden words step back into the light.", "The cipher keeps its silence. For now."),
+    deadpan: G("It's a letter. Someone made it hard to read. On purpose.", "Count the letters. It's boring. It works.", "Decoded. Somebody's secret is now admin.", "Still gibberish. Like most meetings."),
+    drama: G("A SEALED LETTER! Who dares to hide their words?!", "The plot THICKENS! And the cipher thickens with it!", "CRACKED! The secret lies naked before us!", "Foiled! The cipher laughs at us from the page!"),
+    standup: G("Caesar's big secret code? Move every letter three. Genius.", "Morse code: for when texting isn't dramatic enough.", "Decoded! Turns out the secret was a grocery list.", "Didn't crack it. The cipher wins this round."),
+    grumpy: G("In my day you just didn't write secrets down.", "Count the letters first. Every time. Nobody listens.", "Fine. You can do sums. Well done.", "Wrong method. Al-Kindi worked this out in Baghdad."),
+    sports: G("The envelope opens and the codebreaker steps up!", "A method change! Bold call at this stage!", "BROKEN! Plain text on the board! What a solve!", "And the cipher holds! The defence was too strong!"),
+    conspiracy: G("Who sealed this letter? And why that wax colour?", "Room 40 read everything. Everything. Think about it.", "Decoded. Now they know that we know.", "Unbroken? Or did someone swap the key?"),
+    bard: G("What secret sleeps beneath this scrambled ink?", "Shift by three, and Caesar speaks once more!", "The cipher yields! Thy wit hath turned the key!", "Alas, the letter keeps its counsel close."),
+    pirate: G("A coded letter! Bound to be a treasure map!", "Shift the letters, matey, like shiftin' the sails!", "Ye cracked it! Not even the navy reads that fast!", "The code beat us, matey. Batten down and try again."),
+    influencer: G("Unboxing a secret letter! Theories below!", "This cipher is giving mysterious-main-character.", "Decoded! Spill-the-tea level unlocked!", "Didn't crack it, bestie. Some secrets stay secret."),
+  },
   inscriptions: {
     mystic: G("Old hands made these marks. Let them speak slowly.", "Every script was once someone's everyday handwriting.", "You named the hand that wrote it. The ink rests easy.", "The marks kept their name today. They will wait for you."),
     deadpan: G("It's writing. On a rock. Your job is to say which writing.", "Wedges again. Clay was cheap and reeds were everywhere.", "Correct. Filed. The drawer is pleased, in its wooden way.", "Wrong script. The rock has had worse days. It's a rock."),
