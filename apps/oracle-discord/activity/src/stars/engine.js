@@ -11,7 +11,7 @@ export { LEVELS, DECK };
 export const TONIGHT = { n: 4, name: "Tonight's sky", what: "The real sky from where you are, tonight: only what you could step outside and see", guide: "none", mult: 1.5, tonight: true };
 export const ALL = LEVELS.flatMap((L) => DECK.map((g) => ({ L, g })));
 export const keyOf = (L, g) => L.n + ":" + g.id;
-export const TITLES = [{ at: 0, name: "Stargazer" }, { at: 6, name: "Sky Watcher" }, { at: 16, name: "Star Joiner" }, { at: 32, name: "Navigator" }, { at: ALL.length, name: "Keeper of Star Lore" }];
+export const TITLES = [{ at: 0, name: "Stargazer" }, { at: 6, name: "Sky Watcher" }, { at: 20, name: "Star Joiner" }, { at: 45, name: "Navigator" }, { at: ALL.length, name: "Keeper of Star Lore" }];
 
 const D = Math.PI / 180;
 /** Angular distance between two sky points, degrees. */

@@ -21,6 +21,8 @@ export const GUIDE = {
       "People everywhere grouped stars into figures that mattered to them: hunters, animals, canoes, sages, calendars. The same stars become Orion in Greece, Sah in Egypt and the Hand to the Lakota.",
       "Some peoples, such as the <b>Inca</b> and many <b>Aboriginal Australian</b> nations, also saw <b>dark constellations</b>: shapes made by the dust clouds of the Milky Way, like the Emu in the Sky and the llama Yacana.",
       "Star lore was practical. The sky was a <b>calendar</b> (Matariki, Sopdet, Beidou's handle), a <b>compass</b> (Polaris, the Southern Cross, Polynesian star paths) and a way to keep stories and laws alive.",
+      "Chinese astronomers divided the Moon's monthly path into <b>28 lunar mansions</b>, one for each night of its journey, grouped under four guardian animals: the Azure Dragon (east), the Vermilion Bird (south), the White Tiger (west) and the Black Tortoise (north). Corvus is the mansion Zhen, the Chariot; Aries holds Lou, the Bond; the Teapot in Sagittarius is Dou, the Southern Dipper.",
+      "For the <b>Navajo</b>, the Big Dipper and Cassiopeia are the Revolving Man and Revolving Woman, circling the central fire of the North Star. For many <b>Inuit</b>, the Dipper's stars are caribou, and their turn around the pole told the hours of the long Arctic night.",
     ] },
     { h: "Star names", p: [
       "Most bright stars have names from <b>Arabic</b>, because medieval Islamic astronomers preserved and improved Greek astronomy. Betelgeuse, Rigel, Aldebaran, Altair, Vega and Deneb are all Arabic in origin.",

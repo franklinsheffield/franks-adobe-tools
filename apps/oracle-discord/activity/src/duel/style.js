@@ -68,6 +68,17 @@ export const CSS = `
 .du-guide p,.du-guide li{margin:5px 0;font-size:.9rem;line-height:1.45}
 .du-log{font-size:.84rem;color:var(--muted);margin:4px 0}
 .du-chips{display:flex;flex-wrap:wrap;gap:5px}
+.du-pagehead{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.du-struct{width:160px;height:120px;flex:none;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25)}
+.du-turn{transform-box:view-box;transform-origin:80px 60px;animation:du-turn 9s linear infinite}
+@keyframes du-turn{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+.du-heat{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,#5fb6ff,#9fd8ff 12%,#ffcf5a 25%,#ff6a3d);margin:6px 0 2px}
+.du-heat i{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:#fff;box-shadow:0 0 6px #fff;transform:translateX(-2px)}
+.du-heat-l{display:flex;justify-content:space-between;font-size:.72rem;opacity:.75}
+.du-chips button{border:1px solid var(--line);border-radius:8px;padding:1px 7px;font-size:.8rem;background:var(--deep);color:inherit;cursor:pointer}
+.du-chips button:hover{border-color:var(--teal)}
+.du-chips button.locked{opacity:.35;cursor:default}
+.du-ms{display:flex;gap:6px;flex-wrap:wrap;font-size:.8rem;margin:4px 0}.du-ms span{border:1px solid var(--line);border-radius:8px;padding:1px 7px}.du-ms span.got{border-color:var(--gold2);color:var(--gold2)}
 .du-chips span{border:1px solid var(--line);border-radius:8px;padding:1px 7px;font-size:.8rem;background:var(--deep)}
 
 /* damage phase: cards fly in, the reaction plays its own effect, an orb flies to the target and bursts */
@@ -113,5 +124,5 @@ export const CSS = `
 .du-impact{opacity:0;animation:du-impact .7s 1.5s ease-out both;transform-box:fill-box;transform-origin:center}
 @keyframes du-impact{0%{opacity:1;transform:rotate(var(--a)) translateX(0)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
 .du-block{opacity:0;animation:du-kring .8s 1.45s ease-out both;transform-box:fill-box;transform-origin:center}
-@media (prefers-reduced-motion: reduce){.table.duel.du-quake>svg{animation:none}.du-tier{opacity:1;animation:none}.du-k-card,.du-kfx,.du-beam,.du-orb,.du-impact,.du-block{display:none}.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
+@media (prefers-reduced-motion: reduce){.du-turn{animation:none}.table.duel.du-quake>svg{animation:none}.du-tier{opacity:1;animation:none}.du-k-card,.du-kfx,.du-beam,.du-orb,.du-impact,.du-block{display:none}.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
 `;
