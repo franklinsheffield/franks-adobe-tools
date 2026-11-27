@@ -125,6 +125,18 @@ export const BANTER = {
     pirate: G("Cards and stars! I'd never bet me ship on either. Again.", "I'll trade ye a bright one for whatever ye're hidin'.", "Ye plundered the whole sky! Well played, ye scallywag!", "The night's mine! Hand over the doubloons! Er, Essence."),
     influencer: G("Collecting stars like it's a limited drop.", "My hand is giving main-character constellation.", "You won! Star player! Literally!", "I won, besties! Full set! Collection complete!"),
   },
+  flametest: {
+    mystic: G("Every flame keeps a secret colour. Read it kindly.", "The fire speaks in wavelengths. Listen with your eyes.", "You read the fire's true name. It glows for you.", "The flame kept its secret this time. It will tell again."),
+    deadpan: G("It's fire. It's a colour. You say the colour's name.", "Sodium again. It's always sodium. Salt gets everywhere.", "Correct. The fire is mildly impressed.", "Wrong element. The flame doesn't care. It's a flame."),
+    drama: G("CRIMSON! Or is it?! The suspense is SCORCHING me!", "Look at that GREEN! I may faint from the beauty!", "Every colour RIGHT! Bunsen weeps tears of joy!", "The flame deceived us! Betrayal in technicolour!"),
+    standup: G("Flame tests: like a mood ring, but for metals.", "Potassium's lilac. Very fancy. Very hard to see.", "You nailed it! Hot take: you're on fire.", "Wrong colour. Don't worry, it was a burner of a round."),
+    grumpy: G("Clean the wire first. Nobody ever cleans the wire.", "Back in my day we squinted at it. No cobalt glass.", "Fine. You know your colours. Turn the gas off.", "Wrong. Probably sodium on your fingers. Wash them."),
+    sports: G("Into the flame it goes, and it's a COLOUR CHANGE!", "The challenger squints, reads the hue, and commits!", "IDENTIFIED! A clean sweep at the burner!", "And the flame takes this round! What a disguise!"),
+    conspiracy: G("Why is sodium in EVERYTHING? Who's putting it there?", "Cobalt glass hides the yellow. What else does it hide?", "You found the hidden metal. They knew you would.", "Wrong? Or did someone swap the salts? I'm just asking."),
+    bard: G("Behold, the flame in crimson robes doth dance!", "What metal sleeps within this salt, and blushes so?", "Thou read'st the fire like scripture! Hear the bells!", "Alas, the flame wore borrowed colours and fooled thee."),
+    pirate: G("Red flame be lithium, or strontium, if ye be lucky!", "Green fire, like a ghost ship's lantern, arr.", "Ye read the flames like a true navigator!", "Arr, wrong metal. That fire be lyin' like a parrot."),
+    influencer: G("Flame colour reveal! Drop your guesses below!", "This green is a whole aesthetic. No filter needed.", "Every colour right! Main character at the burner.", "Wrong guess, bestie. Even the flame needed a filter."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */
