@@ -44,7 +44,9 @@ function hand(id, side) {
   };
   return `<g class="o-hand o-hand${side}">
   <path d="M124 350 C119 332 121 314 127 302 C134 296 148 295 155 301 C159 316 159 334 153 350Z" fill="${skin}" stroke="${edge}" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M131 318 C137 326 145 326 151 320" stroke="#6d58a0" stroke-width="1.3" fill="none" opacity=".6"/>
+  <g class="o-peye" style="transform-origin:141px 321px"><path class="o-pe-white" d="M129.5 321 Q141 310.5 152.5 321 Q141 331.5 129.5 321Z" fill="#FFF6EA" stroke="${edge}" stroke-width=".9"/>
+    <g class="o-pe-iris"><circle cx="141" cy="321" r="5" fill="url(#${id}-iris)"/><ellipse class="o-ppupil" cx="141" cy="321" rx="1.1" ry="4.2" fill="#2a0420"/><circle cx="139.2" cy="319" r="1.2" fill="#fff" opacity=".9"/></g></g>
+  <path class="o-pline" d="M131 318 C137 326 145 326 151 320" stroke="#6d58a0" stroke-width="1.3" fill="none" opacity=".6"/>
   ${FINGERS.map(finger).reverse().join("")}
   <g class="o-f o-thumb" style="transform-origin:152px 330px">
     <path d="M152 330 Q166 326 167 310" fill="none" stroke="${edge}" stroke-width="10.2" stroke-linecap="round"/>
