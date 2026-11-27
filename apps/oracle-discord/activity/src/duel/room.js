@@ -12,12 +12,13 @@ import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
 import { SFX } from "./sfx.js";
+import { RIVALS, RIVAL, RIVAL_PRIZE } from "./rivals.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 
 /** Daily Lab score: a win is worth most, then damage dealt, Stability kept and discoveries; fewer rounds is better. */
 export function dailyScore(g) {
   const won = g.over && g.over.winner === "you";
-  return Math.max(0, (won ? 500 : 0) + (START - Math.max(0, g.oracle.hp)) * 10 + Math.max(0, g.you.hp) * 10 + g.you.found.length * 25 - g.round * 5);
+  return Math.max(0, (won ? 500 : 0) + ((g.oMax || START) - Math.max(0, g.oracle.hp)) * 10 + Math.max(0, g.you.hp) * 10 + g.you.found.length * 25 - g.round * 5);
 }
 export const DAILY_LEVEL = 2; // everyone duels at Chemist, with the same seed
 
@@ -71,7 +72,7 @@ export const room = {
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     styleOnce();
-    let g = null, L = LEVELS[0], gen = 0, fx = null, hintId = null, busy = false, isDaily = false;
+    let g = null, L = LEVELS[0], gen = 0, fx = null, hintId = null, busy = false, isDaily = false, rival = null;
     const live = (my) => my === gen && state.inRoom === "duel";
     const later = (ms, fn) => { const my = gen; setTimeout(() => live(my) && fn(), ms); };
     const look = () => ({ ...lookOf(state.prog), uni: equippedBack(state.prog) });
@@ -87,17 +88,26 @@ export const room = {
         ? `Welcome to Element Duel, ${state.name}. Your cards are atoms. Put them together into real compounds, salt, water, rust, and hurl them at me. More exothermic means more power. Bring me to zero Stability, or discover five compounds before I do.`
         : pick([`Back for more chemistry, ${state.name}? Pick your level.`, "The deck is shuffled. The bench is clean. Which level?", `My atoms are ready, ${state.name}. Are yours?`]));
       ui(`${statsTop()}<div class="levels">${LEVELS.map((x) => `<button class="c level" type="button" data-l="${x.n}"><b>${"⚛️".repeat(x.n)} ${x.n} · ${esc(x.name)}</b><span>${esc(x.what)} · won ${r.wins[x.n] || 0} of ${r.played[x.n] || 0} · points ×${x.mult}</span></button>`).join("")}</div>
+        ${rivalsHtml()}
         ${dailyBtn()}
         <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button><button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
         <div class="note">Every compound is real, and its power comes from its real enthalpy of formation. Cards show each element's usual charges.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => start(LEVELS[+b.dataset.l - 1])));
+      $("ui").querySelectorAll("[data-rv]").forEach((b) => (b.onclick = () => start(LEVELS[2], false, b.dataset.rv)));
       $("du-daily").onclick = () => start(LEVELS[DAILY_LEVEL - 1], true);
       $("du-board").onclick = () => showBoard();
       $("du-how").onclick = () => toggle(guideHtml);
       $("du-codex").onclick = () => toggle(codexPage);
       $("du-shop").onclick = () => shop();
       $("back").onclick = leave;
+    }
+    /** The rivals ladder (Master level): beat each chemist to unlock the next. */
+    function rivalsHtml() {
+      const won = duelRoom(state.prog).rivals || {};
+      return `<div class="group">🧑‍🔬 Rivals · Master level · beat each to unlock the next (+${RIVAL_PRIZE} 💎 the first time)</div><div class="levels">${RIVALS.map((rv, i) => {
+        const open = i === 0 || won[RIVALS[i - 1].id], n = won[rv.id] || 0;
+        return `<button class="c level" type="button" ${open ? `data-rv="${rv.id}"` : "disabled"}><b>${open ? rv.emoji : "🔒"} ${esc(rv.name)}${n ? ` · ✓ beaten${n > 1 ? ` ×${n}` : ""}` : ""}</b><span>${open ? `${esc(rv.years)} · ${esc(rv.style)}${rv.hp ? ` · starts with ${START + rv.hp} Stability` : ""}` : `Beat ${esc(RIVALS[i - 1].short)} to unlock`}</span></button>`; }).join("")}</div>`;
     }
     function dailyBtn() {
       const d = dailyState(state.prog, "duel");
@@ -111,6 +121,8 @@ export const room = {
       const d = dailyState(state.prog, "duel");
       rb.innerHTML = `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">🏆 Daily Lab #${dayNumber()}</h3>${boardHtml(b, esc, { unit: "pts", local: d.today })}<div class="note">Score: +500 for a win, +10 per Stability you knock off the Oracle, +10 per Stability you keep, +25 per discovery, −5 per round. A new deal every day at midnight UTC.</div></div>`;
     }
+    const oName = () => (rival ? `${rival.emoji} ${esc(rival.short)}` : "🔮 Oracle");
+    const capText = () => (isDaily ? `📅 Daily Lab #${dayNumber()}` : rival ? `${rival.emoji} Master duel vs ${rival.short}` : `⚛️ ${L.name} duel`);
     const toggle = (fn) => { const rb = $("reading-body"), html = fn(); const on = rb.dataset.v !== fn.name; rb.innerHTML = on ? html : ""; rb.dataset.v = on ? fn.name : ""; if (on) rb.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" }); };
     function codexPage() {
       const r = duelRoom(state.prog);
@@ -133,10 +145,11 @@ export const room = {
       $("du-lobby").onclick = () => lobby(false);
     }
 
-    function start(level, daily = false) {
-      L = level; isDaily = daily; gen++; g = newGame(L.n, daily ? dailySeed("duel") : Date.now()); fx = null; hintId = null; busy = false; clearReading();
-      cap(isDaily ? `📅 Daily Lab #${dayNumber()}` : `⚛️ ${L.name} duel`); SFX.deal(7); draw();
+    function start(level, daily = false, rv = null) {
+      L = level; isDaily = daily; rival = rv && RIVAL[rv] ? RIVAL[rv] : null; gen++; g = newGame(L.n, daily ? dailySeed("duel") : Date.now(), rival && rival.id); fx = null; hintId = null; busy = false; clearReading();
+      cap(capText()); SFX.deal(7); draw();
       const c = COND[g.cond];
+      if (rival) { $("reading-body").innerHTML = `<div class="du-page"><h3>${rival.emoji} ${esc(rival.name)} · ${esc(rival.years)}</h3><div class="du-tags"><span class="du-tag">favourite elements: ${rival.fav.length ? rival.fav.map((s) => esc(EL[s].name)).join(", ") : "anything new"}</span></div><div class="du-sec"><b class="h">🔬 Who</b>${esc(rival.fact)}</div></div>`; say(`${rival.hello} Round 1: ${c.emoji} ${c.name}. ${c.rule}`); return turn(); }
       say(`${pick(["I shuffle my deck. You shuffle yours.", "Seven atoms each. Let's see what you can make.", "The bench is set. Your move, chemist."])} Round 1: ${c.emoji} ${c.name}. ${c.rule}`);
       turn();
     }
@@ -151,7 +164,7 @@ export const room = {
       const c = COND[g.cond], lone = g.bench.length === 1 && isNoble(g.bench[0].s), made = g.bench.length ? compoundOf(g.bench, L) : null;
       const benchF = made && L.hints ? made.f : g.bench.length ? Object.entries(g.bench.reduce((o, x) => ((o[x.s] = (o[x.s] || 0) + 1), o), {})).sort(([a], [b]) => rank(a) - rank(b)).map(([s, n]) => s + (n > 1 ? n : "")).join("") : "";
       const n = Math.min(g.bench.length, L.recycle);
-      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b>${g.you.shield ? ` (+${g.you.shield} shield)` : ""}</span><span>🔮 Oracle <b>${g.oracle.hp}</b>${g.oracle.shield ? ` (+${g.oracle.shield} shield)` : ""}</span><span>◆ Discoveries <b>${g.you.found.length}</b> vs ${g.oracle.found.length} of ${GOAL}</span></div>
+      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b>${g.you.shield ? ` (+${g.you.shield} shield)` : ""}</span><span>${oName()} <b>${g.oracle.hp}</b>${g.oracle.shield ? ` (+${g.oracle.shield} shield)` : ""}</span><span>◆ Discoveries <b>${g.you.found.length}</b> vs ${g.oracle.found.length} of ${GOAL}</span></div>
         <div class="du-cond-line">${c.emoji} <b>${esc(c.name)}</b>: ${esc(c.rule)} <i>${esc(c.why)}</i></div>
         <div class="du-bench" id="du-bench">${g.bench.length ? g.bench.map((x) => cardHtml(x, "b", "small" + (hintCards.has(x.id) ? " hint" : ""))).join("") + `<span class="formula${made && L.hints ? " ok" : ""}">${esc(pretty(benchF))}${made && L.hints ? " ✓" : ""}</span>` : `<span class="empty">The bench is empty. Tap cards below to put atoms on it.</span>`}</div>
         <div class="du-hand">${g.you.hand.map((x) => cardHtml(x, "h", (glow.has(x.id) ? "glow" : "") + (hintCards.has(x.id) ? " hint" : ""))).join("")}</div>
@@ -183,7 +196,7 @@ export const room = {
         else later(300, () => turn(msg));
         return;
       }
-      busy = true; show(out); ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>🔮 Oracle <b>${g.oracle.hp}</b></span><span>◆ Discoveries <b>${g.you.found.length}</b> of ${GOAL}</span></div><div class="note">⚗️ Reacting… its Codex page is open below.</div>`);
+      busy = true; show(out); ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span><span>◆ Discoveries <b>${g.you.found.length}</b> of ${GOAL}</span></div><div class="note">⚗️ Reacting… its Codex page is open below.</div>`);
       const c = out.c, bits = [];
       bits.push(`${pretty(c.f)}, ${c.name}! Power ${out.power}${out.notes.length ? ` (${out.notes.join(", ")})` : ""}.`);
       if (out.blocked) bits.push(`My shield blocks ${out.blocked}.`);
@@ -203,7 +216,7 @@ export const room = {
     /** The Oracle's turn, then the next round. */
     function oracleGo() {
       busy = true; fx = null; cap("🔮 The Oracle's turn"); draw();
-      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>🔮 Oracle <b>${g.oracle.hp}</b></span></div><div class="note">The Oracle studies its hand…</div>`);
+      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span></div><div class="note">The Oracle studies its hand…</div>`);
       later(900, () => {
         const prev = g.round, out = oracleTurn(g); if (!out) return turn();
         const lines = [];
@@ -213,7 +226,7 @@ export const room = {
         else { fx = null; draw(); SFX.deal(Math.max(1, out.recycled)); lines.push(fill(pick(TAUNT.orecycle), { k: out.recycled })); }
         say(lines.join(" "), () => later(out.ok ? 900 : 400, () => {
           if (g.over) return end();
-          busy = false; fx = null; cap(isDaily ? `📅 Daily Lab #${dayNumber()}` : `⚛️ ${L.name} duel`);
+          busy = false; fx = null; cap(capText());
           if (g.round !== prev) { const c = COND[g.cond], b = BY_ID[g.bonus]; SFX.flip(); turn(`Round ${g.round}: ${c.emoji} ${c.name}. ${c.rule} Bonus: ${pretty(b.f)}.`); }
           else turn();
         }));
@@ -230,15 +243,17 @@ export const room = {
         if (dl.first) postDaily(state, "duel", { score, won, detail }).then(() => showBoard(true)); else showBoard(true); }
       const t = titleOf(codexCount(state.prog)), titled = titleOf(before).name !== t.name;
       const how = { stability: won ? "The Oracle's Stability hits zero." : "Your Stability hits zero.", discovery: won ? `You discovered ${GOAL} compounds first.` : `The Oracle discovered ${GOAL} compounds first.`, time: "Thirty rounds: the higher Stability takes it." }[g.over.how];
+      if (rival && !draw_) say(`${how} ${won ? rival.lose : rival.win}`); else
       say(won ? `${how} ${pick(["Well reacted, chemist.", "I am… destabilised. You win.", "Mendeleev would be proud."])}` : draw_ ? "A perfect stalemate. Even the atoms are confused." : `${how} ${pick(["Better luck next reaction.", "The Oracle's chemistry prevails. This time.", "Back to the textbooks, then come back."])}`);
       if (titled || aw.rankUp) chime(2);
       ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${g.you.found.length} discover${g.you.found.length === 1 ? "y" : "ies"} this duel${g.you.bonusHits ? ` · ${g.you.bonusHits} bonus compound${g.you.bonusHits > 1 ? "s" : ""}` : ""}</div>
         ${r.newCodex.length ? `<div class="up">📒 New in your Codex: ${r.newCodex.map((id) => esc(pretty(id))).join(", ")}</div>` : ""}
         ${r.newChains.length ? `<div class="up">🏭 Chain completed: ${r.newChains.map((id) => esc(CHAINS.find((c) => c.id === id).name)).join(", ")}</div>` : ""}
+        ${r.newRival ? `<div class="up">🧑‍🔬 First win over ${esc(RIVAL[r.newRival].name)}: +${RIVAL_PRIZE} 💎${RIVALS[RIVALS.findIndex((x) => x.id === r.newRival) + 1] ? ` · ${esc(RIVALS[RIVALS.findIndex((x) => x.id === r.newRival) + 1].name)} is unlocked` : " · you have beaten every rival!"}</div>` : ""}
         ${dl ? `<div class="up">📅 Daily Lab #${dayNumber()}: <b>${dl.score} pts</b>${dl.first ? ` · 🔥 ${dl.streak}-day streak` : " · practice run (your first run today counts)"}</div>` : ""}
         ${titled ? `<div class="up">⚛️ Duel title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
-        <div class="choices">${isDaily ? "" : `<button class="c main" type="button" id="du-again">⚛️ Rematch (${esc(L.name)})</button>`}<button class="c" type="button" id="du-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-      if ($("du-again")) $("du-again").onclick = () => start(L); $("du-lobby").onclick = () => lobby(false); $("back").onclick = leave;
+        <div class="choices">${isDaily ? "" : `<button class="c main" type="button" id="du-again">⚛️ Rematch (${esc(rival ? rival.short : L.name)})</button>`}<button class="c" type="button" id="du-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      if ($("du-again")) $("du-again").onclick = () => start(L, false, rival && rival.id); $("du-lobby").onclick = () => lobby(false); $("back").onclick = leave;
     }
 
     lobby(true);

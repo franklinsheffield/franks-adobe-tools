@@ -182,3 +182,21 @@ test("Daily Lab: everyone gets the same deal today, and a win outscores a loss",
   b.over = { winner: "oracle", how: "stability" }; b.you.hp = 0; b.oracle.hp = 3; b.round = 8;
   assert.ok(dailyScore(a) > dailyScore(b)); assert.ok(dailyScore(b) >= 0);
 });
+
+test("Rivals: a ladder of real chemists at Master, each with their own deck, hand and taste", async () => {
+  const { RIVALS, RIVAL, rivalTaste } = await import("../activity/src/duel/rivals.js");
+  assert.deepEqual(RIVALS.map((r) => r.id), ["davy", "lavoisier", "faraday", "mendeleev", "curie"]);
+  for (const rv of RIVALS) {
+    for (const s of rv.fav) { assert.ok(EL[s], s); assert.ok(COMPOUNDS.some((c) => c.atoms[s] && c.tier <= 3), `${rv.id} can use ${s}`); }
+    const g = newGame(3, 42, rv.id);
+    assert.equal(g.rival, rv.id); assert.equal(g.oracle.hp, START + (rv.hp || 0)); assert.equal(g.oracle.hand.length, LEVELS[2].oHand + (rv.hand || 0));
+    const base = newGame(3, 42); const n = (gg, s) => [...gg.oracle.deck, ...gg.oracle.hand].filter((x) => x.s === s).length;
+    for (const s of rv.fav) assert.equal(n(g, s), n(base, s) + (rv.copies ?? 2));
+  }
+  assert.equal(newGame(2, 42, "curie").rival, null); // Master only
+  assert.ok(rivalTaste(RIVAL.lavoisier, BY_ID.H2O, []) > rivalTaste(RIVAL.lavoisier, BY_ID.NaCl, []));
+  assert.ok(rivalTaste(RIVAL.mendeleev, BY_ID.NaCl, []) > rivalTaste(RIVAL.mendeleev, BY_ID.NaCl, ["NaCl"]));
+  const p = {}, g = newGame(3, 5, "davy"); g.over = { winner: "you", how: "stability" };
+  const a = settle(p, g), b = settle(p, g);
+  assert.equal(a.newRival, "davy"); assert.equal(b.newRival, null); assert.equal(a.essence - b.essence, 25); assert.equal(room(p).rivals.davy, 2);
+});
