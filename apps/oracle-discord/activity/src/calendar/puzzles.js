@@ -4,6 +4,7 @@
 // A generated puzzle: { q, kind, answer, choices?, hints: [two], explain, desk (JDN the wheels show), after? (JDN to turn
 // the wheels to on reveal) }. kind: choice | num | tz (tone + sign) | haab (day + month) | egy (month + day).
 import * as E from "./engine.js";
+import { L4 } from "./archive.js";
 
 const pickOf = (rng) => (a) => a[Math.floor(rng() * a.length)];
 const int = (rng, a, b) => a + Math.floor(rng() * (b - a + 1));
@@ -185,6 +186,7 @@ export const LEVELS = [
   { n: 1, name: "Apprentice", what: "How the cycles turn", deck: L1, mult: 1 },
   { n: 2, name: "Daykeeper", what: "Predict the festivals", deck: L2, mult: 1.5 },
   { n: 3, name: "Sky Watcher", what: "Predict the eclipses", deck: L3, mult: 2 },
+  { n: 4, name: "Sky Archive", what: "Eclipses that changed history", deck: L4, mult: 2.5 },
 ];
 export const ALL = LEVELS.flatMap((L) => L.deck.map((p) => ({ L, p })));
 export const keyOf = (L, p) => `${L.n}:${p.id}`;

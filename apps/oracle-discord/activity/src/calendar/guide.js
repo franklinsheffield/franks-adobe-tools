@@ -97,6 +97,11 @@ export const GUIDES = {
       "The Greek <b>Antikythera mechanism</b> (2nd or 1st century BCE, found in a shipwreck in 1901) is a geared computer with a <b>Saros dial</b> and an <b>exeligmos dial</b>.",
       "The Maya <b>Dresden Codex</b> has an eclipse table of <b>405 lunar months</b> (about 33 years) in <b>69 steps</b>, mostly <b>177 days</b> with some <b>148</b>, marking times when an eclipse was possible.",
     ] },
+    { h: "Eclipses in history (Level 4)", p: [
+      "Because eclipse maths runs backwards as well as forwards, an eclipse in an old text can date it to the day. Herodotus's battle that stopped when ‘day turned to night’ is dated to <b>28 May 585 BCE</b>; an Assyrian eclipse of <b>15 June 763 BCE</b> anchors the dates of the ancient Near East.",
+      "Historians write dates before 1582 in the <b>Julian calendar</b>, which drifted about 3 days every 400 years. By 1504 it was <b>10 days</b> behind, so Columbus's eclipse of 29 February 1504 is 10 March in our calendar. There is also <b>no year 0</b>: 1 BCE is followed by 1 CE, so astronomers write 1 BCE as year 0 and 585 BCE as year −584.",
+      "Eclipses changed science too: <b>helium</b> was first seen in the Sun's light during the eclipse of 1868, and the eclipse of <b>29 May 1919</b> showed starlight bending around the Sun, as Einstein's general relativity predicted.",
+    ] },
     { h: "Where the dates here come from", p: [
       "Every eclipse and Sun position in Calendar Keeper is worked out live from the orbits of the Earth and Moon (the open-source Astronomy Engine), so the answers are real eclipses, not lookups. Times are in Universal Time, so a date can differ by one day where you live.",
     ] },

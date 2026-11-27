@@ -52,7 +52,7 @@ test("every puzzle generates a fair question with its answer among the options",
     if (g.kind === "egy") { assert.deepEqual({ month: E.egyptCivil(g.after).month, day: E.egyptCivil(g.after).day }, g.answer, id); }
     if (g.kind === "num") assert.ok(Number.isInteger(g.answer), id);
   }
-  assert.equal(ALL.length, 26);
+  assert.equal(ALL.length, 34);
 });
 
 test("scoring: hints and mistakes cost stars, replays pay only improvement, levels unlock", () => {
@@ -133,4 +133,33 @@ test("birthday in every calendar", async () => {
   assert.ok(B.celticSeason(E.jdnOf({ year: 2000, month: 5, day: 1 })).onDay);
   // an epagomenal birthday names its god
   const ep = E.NABONASSAR + 365 * 3000 + 363; assert.equal(B.birthdayOf(ep, ep + 10).egypt.god, "Isis");
+});
+
+test("Level 4 Sky Archive: every historical eclipse lands on the recorded day", async () => {
+  const { EVENTS, L4 } = await import("../activity/src/calendar/archive.js");
+  const { deskSvg } = await import("../activity/src/calendar/room.js").catch(() => ({}));
+  const want = { thales: [-584, 5, 28, "solar"], bursagale: [-762, 6, 15, "solar"], nicias: [-412, 8, 27, "lunar"], pydna: [-167, 6, 21, "lunar"] };
+  for (const [k, [y, m, d, type]] of Object.entries(want)) { const e = EVENTS[k](); assert.equal(e.type, type, k); assert.deepEqual(E.julianOf(e.jdn), { year: y, month: m, day: d }, k); }
+  // Columbus: the night of 29 Feb 1504 (Julian); mid-eclipse just after midnight UT
+  const c = EVENTS.columbus(); assert.ok(c.jdn - E.julianJdn({ year: 1504, month: 2, day: 29 }) <= 1);
+  assert.equal(E.fmt(E.julianJdn({ year: 1504, month: 2, day: 29 })), "10 Mar 1504");
+  for (const [k, ymd] of [["halley", "1715-05-03"], ["helium", "1868-08-18"], ["eddington", "1919-05-29"]]) { const e = EVENTS[k](); assert.equal(e.jdn, E.parseYmd(ymd), k); assert.equal(e.kind, "total", k); }
+  assert.equal(E.sarosAfter(EVENTS.eddington()).jdn, E.parseYmd("1937-06-08"));
+  // Julian <-> JDN round trip and the 10-day gap at the 1582 reform
+  assert.equal(E.julianJdn({ year: 1582, month: 10, day: 4 }) + 1, E.parseYmd("1582-10-15"));
+  for (const j of [1000000, 1507900, 2270454, 2460000]) assert.equal(E.julianJdn(E.julianOf(j)), j);
+  assert.equal(L4.length, 8);
+  if (deskSvg) for (const p of L4) { const g = p.gen(Math.random); assert.ok(deskSvg(g.desk ?? g.after, { bg: ["#000", "#000"], gear: "#fff", gear2: "#888", ink: "#000", ring: "#ff0", text: "#fff" }).includes("<svg")); }
+});
+
+test("/calendar card: today in three calendars, next festival and eclipse", async () => {
+  const C = await import("../src/modules/calendar/index.js");
+  assert.equal(C.command.name, "calendar");
+  const d = C.calendarDay(E.parseYmd("2026-11-27"));
+  assert.equal(d.m.tz, "10 Muluk"); assert.equal(d.nf.f.id, "imbolc"); assert.equal(E.fmt(d.ecl.jdn), "6 Feb 2027"); assert.equal(E.fmt(d.saros.jdn), "16 Feb 2045");
+  const emb = C.readingEmbeds(d); assert.match(emb[0].description, /10 Muluk/); assert.match(emb[0].fields[0].name, /annular solar eclipse/);
+  const { deskSvg } = await import("../activity/src/calendar/desk.js");
+  const s = C.staticDesk(deskSvg(d.j, { bg: ["#000", "#111"], gear: "#fff", gear2: "#888", ink: "#000", ring: "#ff0", text: "#fff" }));
+  assert.ok(!s.includes("data-to=")); assert.ok(!/style="transform:rotate/.test(s));
+  await assert.rejects(C.run({ date: "2026-02-30" }), /year-month-day/);
 });
