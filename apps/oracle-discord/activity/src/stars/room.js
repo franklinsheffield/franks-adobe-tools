@@ -8,9 +8,10 @@
 import { STARS, FAINT, MILKY_WAY, LINES } from "./sky.gen.js";
 import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { HOPS, hopById, startHop, hop, hopStars, hopTime, settleHop, hopsDone, hopBest } from "./hops.js";
 import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock } from "./tonight.js";
-import { LEVELS, TONIGHT, DECK, ALL, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
+import { LEVELS, TONIGHT, DECK, ALL, dailyPick, dailyScore, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
   pickFable, quizChoices, answer, settle, drawPts, quizPts, startView, figureEdges, figureStars, figureCentre, toScreen, toSky, pan, zoom, onScreen,
   nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, centroid, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
 
@@ -80,7 +81,7 @@ class Sky {
       for (let d = -60; d <= 60; d += 30) this.path(Array.from({ length: 73 }, (_, i) => [i * 5, d]));
       for (let r = 0; r < 360; r += 30) this.path(Array.from({ length: 35 }, (_, i) => [r, -85 + i * 5]));
       c.strokeStyle = P.grid; c.lineWidth = 0.8; c.stroke(); }
-    if (o.figures) { c.beginPath(); for (const ls of Object.values(this.L)) for (const l of ls) this.path(l); c.strokeStyle = P.line; c.lineWidth = 1; c.stroke(); }
+    if (o.figures) { c.beginPath(); for (const ls of Object.values(this.L)) for (const l of ls) this.path(l); c.strokeStyle = P.line; c.lineWidth = o.big ? 1.8 : 1; c.stroke(); }
     // stars
     const tw = o.photo || o.theme === "st-twinkle";
     if (o.photo) for (const s of this.F) { const p = toScreen(v, this.w, this.h, s[0], s[1]); if (!p.front || p.X < -5 || p.Y < -5 || p.X > this.w + 5 || p.Y > this.h + 5) continue;
@@ -89,7 +90,7 @@ class Sky {
     this.vis = onScreen(v, this.w, this.h, this.S); if (this.hz) this.vis = this.vis.filter((p) => p.s[1] > 0);
     const zf = Math.max(0.8, Math.min(1.5, 45 / (v.fov || 45)));
     for (const { s, X, Y } of this.vis) {
-      let r = Math.max(0.7, 3.4 - 0.6 * s[2]) * zf, a = 1;
+      let r = Math.max(0.7, 3.4 - 0.6 * s[2]) * zf * (o.big ? 1.6 : 1), a = 1;
       if (tw && s[2] < 3.5) a = 0.75 + 0.25 * Math.sin(t * 3 + s[4]);
       const col = P.ink || bvColour(s[3]);
       if (o.photo && s[2] < 2.2) { const hr = r * 5; const hg = c.createRadialGradient(X, Y, 0, X, Y, hr); hg.addColorStop(0, col); hg.addColorStop(1, "rgba(0,0,0,0)");
@@ -130,7 +131,7 @@ class Sky {
   }
   drawRun(c, P, t) {
     const o = this.o, run = o.run, g = o.g, v = this.view, scr = (h) => { const s = this.star(h); return toScreen(v, this.w, this.h, s[0], s[1]); };
-    c.save(); c.shadowColor = P.gold; c.shadowBlur = 8; c.strokeStyle = P.gold; c.lineWidth = run.done ? 2.6 + 0.6 * Math.sin(t * 3) : 2.2; c.beginPath();
+    c.save(); c.shadowColor = P.gold; c.shadowBlur = 8; c.strokeStyle = P.gold; c.lineWidth = (run.done ? 2.6 + 0.6 * Math.sin(t * 3) : 2.2) * (o.big ? 1.6 : 1); c.beginPath();
     for (const k of run.drawn) { const [a, b] = k.split("-").map(Number), A = scr(a), B = scr(b); if (!A.front || !B.front) continue; c.moveTo(A.X, A.Y); c.lineTo(B.X, B.Y); }
     c.stroke(); c.restore();
     if (o.sel) { const A = scr(o.sel); if (A.front) { c.strokeStyle = P.gold; c.lineWidth = 1.5; c.beginPath(); c.arc(A.X, A.Y, 9 + 2 * Math.sin(t * 6), 0, 7); c.stroke();
@@ -210,7 +211,7 @@ class Sky {
     const at = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); const p = at(e); pts.set(e.pointerId, p);
       if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), fov: this.view.fov }; mode = "pinch"; this.o.rubber = null; return; }
-      const st = nearestStar(this.vis || [], p[0], p[1], 16); startStar = st; mode = st ? "draw" : this.ball ? "idle" : "pan"; last = p; moved = 0; });
+      const st = nearestStar(this.vis || [], p[0], p[1], this.o.big ? 24 : 16); startStar = st; mode = st ? "draw" : this.ball ? "idle" : "pan"; last = p; moved = 0; });
     cv.addEventListener("pointermove", (e) => { if (!pts.has(e.pointerId)) return; const p = at(e); pts.set(e.pointerId, p);
       if (mode === "pinch" && pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); this.view = zoom({ ...this.view, fov: pinch.fov }, pinch.d / Math.max(10, d)); return; }
       moved += Math.hypot(p[0] - last[0], p[1] - last[1]);
@@ -218,7 +219,7 @@ class Sky {
       else if (mode === "draw" && moved > 8) { if (this.o.sel !== startStar.s[4]) this.o.sel = startStar.s[4]; this.o.rubber = p; last = p; } });
     const up = (e) => { if (!pts.has(e.pointerId)) return; const p = at(e); pts.delete(e.pointerId);
       if (mode === "pinch") { if (!pts.size) mode = null; return; }
-      if (mode === "draw") { const end = nearestStar(this.vis || [], p[0], p[1], 22); this.o.rubber = null;
+      if (mode === "draw") { const end = nearestStar(this.vis || [], p[0], p[1], this.o.big ? 30 : 22); this.o.rubber = null;
         if (moved > 8 && end && end.s[4] !== startStar.s[4]) onDragLine(startStar.s, end.s); else if (moved <= 8) onTapStar(startStar.s); }
       else if ((mode === "pan" || mode === "idle") && moved <= 6) onTapStar(null);
       mode = null; };
@@ -243,6 +244,8 @@ const CSS = `
 .sl-time.low{border-color:#ff5a7a;animation:sl-pulse .6s ease-in-out infinite}.sl-time.low i{background:#ff5a7a}
 .sl-arrow{position:absolute;z-index:2;width:24px;height:24px;color:#FADE8C;font-size:22px;line-height:24px;text-align:center;text-shadow:0 0 8px #FADE8C;animation:sl-pulse 1s ease-in-out infinite;pointer-events:none}
 @keyframes sl-pulse{50%{opacity:.45}}
+.table.stars.sl-night{filter:grayscale(1) sepia(1) saturate(8) hue-rotate(-45deg) brightness(.62) contrast(1.1)}
+.sl-opts{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.sl-opts button.on{border-color:#FADE8C;box-shadow:0 0 10px rgba(120,200,255,.6)}
 .sl-shape{display:flex;align-items:center;gap:10px;margin:6px 0}.sl-shape svg{width:96px;height:72px;border:1px solid var(--line,#3a2f6a);border-radius:8px;background:rgba(7,11,36,.8)}
 .sl-lant{display:inline-block;animation:sl-flick 1.3s ease-in-out infinite}@keyframes sl-flick{0%,100%{transform:scale(1)}40%{transform:scale(1.15)}}
 .sl-shake{animation:sl-shake .45s ease-in-out}@keyframes sl-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
@@ -292,7 +295,13 @@ export const stars = {
       if (btn) btn.textContent = on ? "📖 Close study guide" : "📖 Study guide"; if (on) rb.querySelector(".sl-guide").scrollIntoView({ behavior: "smooth", block: "start" }); };
     const guideBtn = `<button class="c" type="button" id="sl-guide">📖 Study guide</button>`;
     const wireGuide = () => { const b = $("sl-guide"); if (b) b.onclick = () => toggleGuide(b); };
-    const mount = (o) => { tableEl.className = "table stars"; return new Sky(tableEl, { theme: theme(), ...o }); };
+    const opts = () => (prog().opts ||= { night: false, big: false, relax: false });
+    const mount = (o) => { tableEl.className = "table stars" + (opts().night ? " sl-night" : ""); return new Sky(tableEl, { theme: theme(), big: opts().big, ...o }); };
+    /** Comfort settings: night vision (keeps your eyes dark-adapted outdoors), large stars, and clock off for practice. */
+    const optsHtml = () => { const o = opts(), b = (k, on, off) => `<button class="c small${o[k] ? " on" : ""}" type="button" data-opt="${k}" aria-pressed="${o[k]}">${o[k] ? on : off}</button>`;
+      return `<div class="sl-opts">${b("night", "🔴 Night vision: on", "🔴 Night vision: off")}${b("big", "🔍 Large stars: on", "🔍 Large stars: off")}${b("relax", "⏳ Clock: off (practice, half rewards)", "⏳ Clock: on")}</div>`; };
+    const wireOpts = (redraw) => $("ui").querySelectorAll("[data-opt]").forEach((x) => (x.onclick = () => { const o = opts(); o[x.dataset.opt] = !o[x.dataset.opt]; saveProgress(); redraw(); }));
+    const half = (n) => Math.ceil(n / 2);
 
     function lobby(first) {
       clearReading(); cap("🔭 Star Lore Navigator");
@@ -302,12 +311,26 @@ export const stars = {
         : foundCount(state.prog) >= ALL.length ? `You've drawn the whole sky, ${state.name}. Draw again any time: there are more fables to hear.` : `Clear skies tonight, ${state.name}. Which sky shall we open?`);
       const lvl = (L) => { const n = foundCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
-      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
-        <div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
+      ui(`${stats()}${dailyHtml()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
+        ${optsHtml()}<div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
         <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; search(L, nextTarget(state.prog, L, prog().last)); }));
-      $("sl-tonight").onclick = () => tonight(); $("sl-hops").onclick = () => hops(); $("back").onclick = greet; wireGuide();
+      $("sl-tonight").onclick = () => tonight(); $("sl-hops").onclick = () => hops(); wireOpts(() => lobby(false));
+      $("sl-daily").onclick = () => { const seed = dailySeed("stars"); search(LEVELS[1], dailyPick(seed), null, seed); }; $("sl-board").onclick = () => showBoard(); $("back").onclick = greet; wireGuide();
     }
+
+    // ---- the Daily Constellation (shared seed, streak and board from daily.js) ----
+    function dailyHtml() { const d = dailyState(state.prog, "stars");
+      return `<div class="group">📅 Daily Constellation #${dayNumber()}</div><div class="levels"><button class="c level" type="button" id="sl-daily"><b>${d.played ? "🔁 Replay today's constellation" : "📅 Draw today's constellation"}</b><span>Everyone on the server gets the same constellation and the same starting sky: fastest draw wins${d.streak ? ` · 🔥 ${d.streak}-day streak` : ""}${d.played ? ` · your score today ${d.today.score} (only the first run counts)` : ""}</span></button></div>
+        <div class="choices"><button class="c small" type="button" id="sl-board">🏆 Today's board</button></div>`; }
+    async function showBoard(local) {
+      const rb = $("reading-body"); let box = rb.querySelector("#sl-boardbox");
+      if (!box) { rb.insertAdjacentHTML("beforeend", `<div class="sl-guide" id="sl-boardbox"></div>`); box = rb.querySelector("#sl-boardbox"); }
+      const head = `<h3 style="font-family:var(--display);color:var(--gold2);margin:8px 0 6px">🏆 Daily Constellation #${dayNumber()}</h3>`;
+      box.innerHTML = head + `<div class="note">Loading the board…</div>`;
+      const b = await boardOf(state, "stars"), d = dailyState(state.prog, "stars"); if (!box.isConnected) return;
+      box.innerHTML = head + boardHtml(b, esc, { unit: "pts", local: d.today }) + `<div class="note">Score: 500 for drawing it, +10 per second left on the clock, −50 per mistake. A new constellation every day at midnight UTC.</div>`;
+      if (!local) box.scrollIntoView({ behavior: "smooth", block: "start" }); }
 
     // ---- star-hops ----
     function hops() {
@@ -320,9 +343,9 @@ export const stars = {
       $("sl-leave").onclick = () => lobby(false); wireGuide();
     }
     function hopRun(route) {
-      const run = startHop(route), total = hopTime(route), timer = { total, end: performance.now() + total * 1000 + 1300, paused: null };
+      const run = startHop(route), total = hopTime(route), relax = opts().relax, timer = { total, end: relax ? Infinity : performance.now() + total * 1000 + 1300, paused: null };
       const [ra0, de0] = centroid(route.start.map((h) => { const x = starByHip(h); return [x[0], x[1]]; }));
-      const sky = mount({ view: { ra: ra0, dec: Math.max(-85, Math.min(85, de0)), fov: 55 }, figures: true, run, g: null, dome: true, controls: true, timer });
+      const sky = mount({ view: { ra: ra0, dec: Math.max(-85, Math.min(85, de0)), fov: 55 }, figures: true, run, g: null, dome: true, controls: true, timer: relax ? null : timer });
       const stopClock = () => { if (timer.paused == null) timer.paused = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(tick); };
       let warned = false;
       const tick = setInterval(() => { if (!sky.alive) return clearInterval(tick); if (timer.paused != null) return; const left = (timer.end - performance.now()) / 1000;
@@ -355,7 +378,7 @@ export const stars = {
         sky.o.label = nameOf(last) || route.name; sky.o.labelAt = [last[0], last[1]];
         { const all = route.steps.map((st) => starByHip(st.to[0])), [cr, cd] = centroid(all.map((x) => [x[0], x[1]])), span = Math.max(...all.map((x) => sep(x[0], x[1], cr, cd)));
           sky.glide({ ra: cr, dec: cd, fov: Math.max(20, Math.min(80, span * 1.3)) }, 1200); }
-        const r = settleHop(state.prog, { ...run, done: won }), aw = award(r.xp, r.essence); state.prog.rooms.stars.plays++; saveProgress(); showStats();
+        const r = settleHop(state.prog, { ...run, done: won }); if (relax) { r.xp = half(r.xp); r.essence = half(r.essence); } const aw = award(r.xp, r.essence); state.prog.rooms.stars.plays++; saveProgress(); showStats();
         ctx.trophy?.("stars", 1, { won, perfect: won && r.stars === 3 });
         talkThrough([won ? `${pick(["You found your way.", "Every hop true.", "That's how sailors crossed oceans."])} ${route.fact}` : `The sky fades. Here is the way, so you'll know it next time. ${route.fact}`], () => {
           const next = HOPS[(HOPS.indexOf(route) + 1) % HOPS.length];
@@ -395,24 +418,26 @@ export const stars = {
       $("sl-leave").onclick = () => lobby(false); wireGuide();
     }
 
-    function search(L, g, tn) {
-      const run = start(g, L), fi = pickFable(state.prog, g), fable = g.fables[fi];
-      const total = timeFor(g, L), timer = { total, end: performance.now() + total * 1000 + 1300, paused: null };
+    function search(L, g, tn, daily) {
+      const run = start(g, L, daily || undefined), fi = pickFable(state.prog, g), fable = g.fables[fi];
+      const relax = opts().relax && !daily, total = timeFor(g, L), timer = { total, end: relax ? Infinity : performance.now() + total * 1000 + 1300, paused: null };
       const where = tn && upNow(tn).find((u) => u.g.id === g.id);
+      if (daily) run.daily = daily;
       const view0 = tn ? { ra: (360 - (where ? where.az : 0) + 140 + (run.seed % 80)) % 360, dec: 22, fov: 60 } : startView(g, run.seed);
-      const sky = mount({ view: view0, figures: L.guide === "lines", photo: L.n === 3 || !!tn, run, g, dome: true, controls: true, timer, horizon: tn });
+      const sky = mount({ view: view0, figures: L.guide === "lines", photo: L.n === 3 || !!tn, run, g, dome: true, controls: true, timer: relax ? null : timer, horizon: tn });
+      if (relax) run.relax = true;
       const stopClock = () => { if (timer.paused == null) timer.paused = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(tick); };
       let warned = false;
       const tick = setInterval(() => { if (!sky.alive) return clearInterval(tick); if (timer.paused != null) return;
         const left = (timer.end - performance.now()) / 1000;
         if (left <= 15 && !warned) { warned = true; say(pick(["The stars are fading. Hurry.", "Fifteen breaths left before dawn.", "Quickly now, the night is ending."])); }
         if (left <= 0) timeUp(); }, 250);
-      domeOpen(); clearReading(); cap(`${g.emoji} Find and draw ${g.name}`);
+      domeOpen(); clearReading(); cap(daily ? `📅 Daily Constellation #${dayNumber()}: ${g.name}` : `${g.emoji} Find and draw ${g.name}`);
       let told = 0;
       const status = (extra) => {
         const st = starsFor(run.mistakes);
         ui(`<div class="cx-top">${L.tonight ? "🌙 Tonight" : `Level ${L.n}`} · lines ${run.drawn.length} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
-          <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Turn the sky with the ball (bottom left). Tap a star, then the next star of the figure, or drag from star to star. Beat the clock.</div></div>
+          <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Turn the sky with the ball (bottom left). Tap a star, then the next star of the figure, or drag from star to star. ${relax ? "Take your time: the clock is off." : "Beat the clock."}</div></div>
           <div class="sl-fable">📜 Your reward: a sealed story from ${esc(fable.c)}. Finish the figure to unseal it.</div>${extra || ""}
           <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a mistake)</button>${guideBtn}<button class="c small" type="button" id="sl-reveal">Show me</button><button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
         $("sl-hint").onclick = () => { const [ra, de] = sky.centre(g), p = toScreen(sky.view, sky.w, sky.h, ra, de), inView = p.front && p.X > 0 && p.Y > 0 && p.X < sky.w && p.Y < sky.h;
@@ -434,7 +459,7 @@ export const stars = {
           status(); if (!told) say(pick([`Hmm. ${nameOf(b) ? nameOf(b) + " is" : "That star is"} in ${conName(b[5])}. Keep looking.`, "Not that line. The stars shake their heads.", "That isn't part of it. Look again."])); return; }
         ping(b[2]); sky.o.sel = b[4]; sky.o.chain = true;
         if (r === "again") return;
-        if (r === "done") { stopClock(); return complete(); }
+        if (r === "done") { stopClock(); run.left = timer.paused; return complete(); }
         tell(); status();
       };
       sky.input((s) => {
@@ -447,7 +472,7 @@ export const stars = {
         if (sky.o.sel === s[4]) { if (sky.o.chain) sky.o.chain = false; else sky.o.sel = null; return; }
         sky.o.sel = s[4]; sky.o.chain = false; ping(s[2]);
       }, (a, b) => line(a, b));
-      say(tn && where ? `${pick(["Step outside with me.", "Let your eyes adjust to the dark…", "Here is tonight's sky."])} At ${clock(tn.at, tn.place)} over ${tn.place.name}, ${g.name} is ${Math.round(where.alt)}° up in the ${compass(where.az)}. Find it and draw it for me. ${g.find}`
+      say(daily ? `Today's constellation, the same for everyone on the server: ${g.name}. The fastest drawing tops the board. ${g.find}` : tn && where ? `${pick(["Step outside with me.", "Let your eyes adjust to the dark…", "Here is tonight's sky."])} At ${clock(tn.at, tn.place)} over ${tn.place.name}, ${g.name} is ${Math.round(where.alt)}° up in the ${compass(where.az)}. Find it and draw it for me. ${g.find}`
         : `${pick(["The dome opens. Look up.", "Let your eyes adjust to the dark…", "Clear skies. Here is your task."])} Find ${g.name} somewhere in this sky, and draw it for me. ${g.find}`);
       status();
 
@@ -491,13 +516,18 @@ export const stars = {
     function finish(L, g, run, fi, tn, line) {
       if (run.revealed) run.done = false;
       const before = foundCount(state.prog), r = settle(state.prog, run, fi);
+      if (run.relax) { r.xp = half(r.xp); r.essence = half(r.essence); }
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
+      if (run.daily) { const score = dailyScore(run, run.left || 0), won = score > 0, detail = won ? `${g.name} · ${Math.round(run.left || 0)} s left · ${"★".repeat(starsFor(run.mistakes))}` : `${g.name} · not drawn`;
+        const dl = finishDaily(state.prog, "stars", { score, won, detail }); saveProgress(); run.dailyRes = { score, ...dl };
+        if (dl.first) postDaily(state, "stars", { score, won, detail }).then(() => showBoard(true)); else showBoard(true); }
       ctx.trophy?.("stars", L.tonight ? 2 : L.n, { won: !!run.done, perfect: !!run.done && starsFor(run.mistakes) === 3 }); // Trophy Case (trophies.js)
       const t = titleOf(foundCount(state.prog)), titled = titleOf(before).name !== t.name;
       say(line);
-      const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
+      const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>${run.relax ? " (practice, clock off)" : ""}`];
       if (run.done) bits.push(`${"★".repeat(starsFor(run.mistakes))}${"☆".repeat(3 - starsFor(run.mistakes))} drawing ${drawPts(run)} + quiz ${quizPts(run)} = ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${prog().found[keyOf(L, g)]}`}`);
       else bits.push(run.lost ? "⏳ time ran out" : "revealed, not drawn");
+      if (run.dailyRes) bits.push(`📅 Daily score <b>${run.dailyRes.score}</b>${run.dailyRes.first ? ` · 🔥 ${run.dailyRes.streak}-day streak` : " · practice run (today's first run counts)"}`);
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🔭 Star title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
         <div class="choices">${run.done ? "" : `<button class="c main" type="button" id="sl-study">📖 Study Star Lore</button>`}<button class="c${run.done ? " main" : ""}" type="button" id="sl-go">🔭 Next constellation</button><button class="c" type="button" id="sl-again">↻ ${run.done ? "Draw it again (another fable)" : "Try this one again"}</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp) chime(2);
