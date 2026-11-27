@@ -7,6 +7,8 @@ import { shop, candleLook } from "./shop.js";
 import { ghostShop, ghostBody } from "./ghostlooks.js";
 import * as sfx from "./sfx.js";
 import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST, guessMethod, hintsFor, buyHint, HINT_COST, related, dailyPick, shareLine } from "./logic.js";
+import { canJoin, joinTable } from "../net.js";
+import { GROUP_LEVELS, groupStart, groupGhost, groupAct, groupReward } from "./group.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 
 const an = (n) => (/^[aeiou]/i.test(n) ? "an " : "a ") + n.charAt(0).toLowerCase() + n.slice(1);
@@ -86,7 +88,7 @@ export const seance = {
       return `<div class="cx-top"><b>🕯️ ${esc(t.name)}</b> · ${n} / ${ALL.length} ghosts named${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
 
     function lobby(first) {
-      clearReading(); cap("🕯️ The Séance"); draw(null, null, false);
+      leaveGroup(); clearReading(); cap("🕯️ The Séance"); draw(null, null, false);
       say(first && !prog().plays
         ? `Welcome to the séance, ${state.name}. Every ghost here practised some kind of science or magic, and each one raps out real clues: methods, tools, facts. First you tell me whether it was magic, science or a bit of both. Then you name it. Start at level one if you're new. Level three is for know-it-alls.`
         : solvedCount(state.prog) >= ALL.length ? `Every ghost named, ${state.name}. The spirits are forming a fan club. Summon any again to beat your score.` : `Which circle shall we open tonight, ${state.name}?`);
@@ -95,12 +97,13 @@ export const seance = {
       const known = ALL.filter(({ L, g }) => prog().solved[keyOf(L, g)]);
       const ds = dailyState(state.prog, "seance"), dp = dailyPick(dailySeed("seance"));
       const dailyBtn = `<button class="c level sc-daily" type="button" id="sc-daily"><b>🌙 Daily Ghost #${dayNumber()}</b><span>${ds.played ? `Done today: ${esc(ds.today.detail || "")} · tap for the board` : `Everyone gets the same ghost today · Level ${dp.L.n}`}${ds.streak ? ` · 🔥 ${ds.streak}-day streak` : ""}</span></button>`;
-      ui(`${stats()}<div class="levels">${dailyBtn}${LEVELS.map(lvl).join("")}</div>
+      ui(`${stats()}<div class="levels">${dailyBtn}${LEVELS.map(lvl).join("")}<button class="c level sc-group" type="button" id="sc-group"><b>👥 Group séance</b><span>Everyone in the call, one ghost, shared candles · first to name it wins</span></button></div>
         <div class="note">5 candles. The first clue is free; each extra clue and each wrong name snuffs one. Stuck? "Show me 4" gives you choices but blows out 3 candles.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
         ${known.length ? `<div class="group">📖 Ghost journal: tap a ghost to read its page</div><div class="choices">${known.map(({ L, g }) => `<button class="c small" type="button" data-k="${L.n}:${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, g)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; summon(L, nextGhost(state.prog, L, prog().last)); }));
       $("back").onclick = greet;
+      $("sc-group").onclick = group;
       $("sc-daily").onclick = () => (dailyState(state.prog, "seance").played ? dailyBoard() : summon(dp.L, dp.g, true));
       $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const [n, id] = b.dataset.k.split(":"), L = LEVELS[+n - 1]; journal(L, ghostById(id, L)); }));
     }
@@ -242,6 +245,82 @@ export const seance = {
       $("sc-go").onclick = () => summon(L, nextGhost(state.prog, L, g.id));
       if ($("sc-again")) $("sc-again").onclick = () => summon(L, g);
       $("sc-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+    }
+
+    /* ---------- Group séance (net.js table; the host's client runs it, see group.js) ---------- */
+    let T = null, G = null, paidRound = 0, paidText = ""; // table, shared state, last round this sitter was paid for
+    const gone = () => state.inRoom !== "seance" || !T;
+    function leaveGroup() { if (T) { const t = T; T = null; G = null; t.leave(); } }
+    async function group() {
+      if (!canJoin(state)) return say("Group séances need friends: open the Chamber inside a Discord voice call, and everyone who opens the Séance joins the same table.");
+      say("Joining the circle…");
+      try { T = await joinTable("seance", state); } catch (e) { T = null; return say(`The circle won't form: ${e.message}`); }
+      const t = T;
+      t.on("msg", ({ from, m }) => { if (T !== t) return; if (state.inRoom !== "seance") return leaveGroup();
+        if (t.isHost()) { if (m && m.k === "act") hostAct(from, m.act); } else if (m && m.k === "st") gotState(m.st, m.ev, m.by); });
+      t.on("members", () => { if (T !== t) return; if (state.inRoom !== "seance") return leaveGroup(); if (t.isHost()) broadcast(); else gpaint(); });
+      t.on("host", (snap) => { if (T !== t) return; if (snap && snap.id) G = snap; say("The host left. You hold the circle now."); broadcast(); });
+      t.on("close", () => { if (T !== t) return; T = null; G = null; say("The circle broke (connection lost)."); lobby(false); });
+      sfx.summon(); gpaint();
+      if (!t.isHost()) say(`You join ${t.nameOf(t.host)}'s circle. Wait for the next ghost.`); else say("You host this circle. Choose a level and the ghost rises for everyone.");
+    }
+    function broadcast(ev = "", by = "") { if (!T || !T.isHost()) return; T.to("*", { k: "st", st: G, ev, by }); T.snap(G); gpaint(); }
+    function hostAct(who, act) {
+      if (!G) return; const ev = groupAct(G, who, act, T.members, T.host); if (!ev) return;
+      react(ev, who); broadcast(ev, who);
+    }
+    function act(a) { if (!T) return; if (T.isHost()) hostAct(T.me.id, a); else T.up({ k: "act", act: a }); }
+    function gotState(st, ev, by) { const fresh = !G || (st && G.round !== st.round); G = st; if (fresh && G) { lastLit = CANDLES; draw(groupGhost(G).g, G, false, "summon"); sfx.summon(); } else react(ev, by); gpaint(); }
+    function react(ev, by) {
+      const { g } = groupGhost(G); if (!g) return; const who = T.nameOf(by), mine = T.me && by === T.me.id;
+      if (ev === "field") { draw(g, G, false, G.fieldRight ? "nod" : "no"); G.fieldRight ? chime(1) : sfx.wrong(); say(`The circle chose ${FIELDS[G.field].name}. ${G.fieldRight ? "Right!" : `No: it was ${FIELDS[g.field].name}.`} Now anyone may name it.`); }
+      else if (ev === "clue") { draw(g, G, false, "knock"); sfx.knock(2); sfx.snuff(1); say(`Rap, rap: “${g.clues[G.shown - 1]}”`); }
+      else if (ev === "wrong") { draw(g, G, false, "no"); sfx.wrong(); sfx.snuff(1); say(`${mine ? "You" : who} guessed ${G.log.at(-1).text}. Wrong! A candle goes out.`); }
+      else if (ev === "unknown" && mine) say(UNKNOWN_G);
+      else if (ev === "right") { draw(g, G, true, "yes"); sfx.reveal(); cap(title(g)); say(`${mine ? "You" : who} named it: ${g.name}! ${g.link}`); }
+      else if (ev === "out") { sfx.snuff(1); setTimeout(sfx.darkness, 300); draw(g, G, true, "dark"); cap(title(g)); say(`The last candle goes out… it was ${g.name}. ${g.link}`); }
+      if (G.over) payOut();
+    }
+    const UNKNOWN_G = "The spirits don't recognise that. No candle lost. Check the spelling or pick from the pool.";
+    function payOut() {
+      if (!G || paidRound === G.round || !T) return; paidRound = G.round;
+      const r = groupReward(G, T.me.id);
+      if (r.won) { const s = settle(state.prog, r.run), aw = award(s.xp + r.bonus, s.essence + r.bonus); ctx.trophy?.("seance", G.n, { won: true, perfect: G.candles === CANDLES });
+        paidText = `+${s.xp + r.bonus} ✦ · +${s.essence + r.bonus} 💎 (first to name it +${r.bonus})${aw.rankUp ? ` · 🏅 ${aw.rankUp}` : ""}`; }
+      else { award(r.xp, r.essence); seanceOf(state.prog).plays++; paidText = `+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""} for the circle${G.fieldRight ? " (kind right)" : ""}`; }
+      saveProgress(); showStats();
+    }
+    function gstart(n) { if (!T || !T.isHost()) return; const L = LEVELS[n - 1]; G = groupStart(L, nextGhost(state.prog, L, G && G.id), (G ? G.round : 0) + 1); lastLit = CANDLES;
+      const { g } = groupGhost(G); draw(g, G, false, "summon"); sfx.summon(); setTimeout(() => sfx.ghostCry(state.prog.ghost), 900); say(`A Level ${n} ghost knocks for all of you. First clue: “${g.clues[0]}”`); broadcast("start", T.me.id); }
+    function gpaint() {
+      if (gone()) return; const t = T, host = t.isHost(), who = t.members.map((m) => `<span>${m.id === t.host ? "👑 " : ""}${esc(m.name)}${m.id === t.me.id ? " (you)" : ""}</span>`).join("");
+      const head = `<div class="cx-top"><b>👥 Group séance</b> · ${t.members.length} at the table</div><div class="chips sc-circle">${who}</div>`;
+      const leave = `<div class="choices"><button class="c small" type="button" id="sc-gleave">Leave the circle</button></div>`;
+      const levels = host ? `<div class="levels">${GROUP_LEVELS.map((n) => `<button class="c level" type="button" data-gl="${n}"><b>${"🕯️".repeat(n)} ${G ? "Next ghost · " : ""}Level ${n} · ${esc(LEVELS[n - 1].name)}</b><span>${esc(LEVELS[n - 1].what)}</span></button>`).join("")}</div>` : "";
+      const { L, g } = G ? groupGhost(G) : {};
+      if (!G || !g) { ui(`${head}${host ? levels : `<div class="note">Waiting for ${esc(t.nameOf(t.host))} to summon a ghost…</div>`}<div class="note">One ghost for everyone. Vote on the kind, ask for clues together (half the circle must ask), and race to name it. Each wrong name snuffs a shared candle.</div>${leave}`); return gwire(); }
+      const log = G.log.length ? `<div class="sc-log">${G.log.map((e) => `<div>${e.ok ? "✅" : e.ok === false ? "❌" : "❔"} <b>${esc(e.name)}</b>: ${esc(e.text)}</div>`).join("")}</div>` : "";
+      let body;
+      if (G.over) body = `<div class="reward"><div><b>${G.winner ? `${G.winner === t.me.id ? "You" : esc(G.winnerName)} named ${esc(g.name)}` : `Nobody named ${esc(g.name)}`}</b></div>${paidText && paidRound === G.round ? `<div>${esc(paidText)}</div>` : ""}</div><div class="kit"><div class="kit-row"><b>The real story</b><span>${esc(g.bio)}</span></div></div>${host ? levels : `<div class="note">Waiting for ${esc(t.nameOf(t.host))} to summon the next ghost…</div>`}`;
+      else if (!G.field) { const K = KIND(L), mine = G.votes[t.me.id], n = Object.keys(G.votes).filter((id) => t.members.some((m) => m.id === id)).length;
+        body = `${clueList(g, G)}<div class="group">Vote: magic, science, or a bit of both? (${n} / ${t.members.length} voted)</div><div class="choices">${Object.entries(FIELDS).map(([k, f]) => `<button class="c${mine === k ? " main" : ""}" type="button" data-gf="${k}">${f.emoji} ${esc(K[k])}</button>`).join("")}</div>${host && n ? `<div class="choices"><button class="c small" type="button" id="sc-gclose">Close the vote now</button></div>` : ""}<div class="note">Right kind: +${fieldPts(L)} for everyone.</div>`; }
+      else { const asks = Object.keys(G.asks).filter((id) => t.members.some((m) => m.id === id)).length, need = Math.ceil(t.members.length / 2), more = G.shown < g.clues.length && G.candles > 1, asked = !!G.asks[t.me.id];
+        const pool = L.pool ? `<div class="note sc-pool"><b>Answer pool:</b> ${L.pool.map((x) => `${x.emoji} ${esc(x.name)}`).join(" · ")}</div>` : "";
+        body = `${clueList(g, G)}${log}<div class="form one"><label for="sc-gn">Name it first to win<input id="sc-gn" type="text" maxlength="60" autocomplete="off" enterkeyhint="go" placeholder="${L.n === 3 ? "Full name or surname" : L.n === 1 ? "e.g. biology, mentalism…" : "e.g. card force, carbon dating…"}"></label></div>${pool}
+          <div class="choices"><button class="c main" type="button" id="sc-gok">✦ Name it</button>${more ? `<button class="c" type="button" id="sc-gask" ${asked ? "disabled" : ""}>👻 Another clue (🕯️ 1) · ${asks} / ${need}</button>` : ""}</div>`; }
+      const keep = $("sc-gn"), typed = keep ? keep.value : "", focused = keep && document.activeElement === keep;
+      ui(`${head}${G.over ? "" : candleBar(L, G).replace(/ · naming it now.*<\/div>$/, "</div>")}${body}${leave}`);
+      if ($("sc-gn")) { $("sc-gn").value = typed; if (focused) $("sc-gn").focus(); } gwire();
+    }
+    function gwire() {
+      if (!$("sc-gleave")) return;
+      $("sc-gleave").onclick = () => { leaveGroup(); lobby(false); };
+      $("ui").querySelectorAll("[data-gl]").forEach((b) => (b.onclick = () => gstart(+b.dataset.gl)));
+      $("ui").querySelectorAll("[data-gf]").forEach((b) => (b.onclick = () => act({ a: "vote", f: b.dataset.gf })));
+      if ($("sc-gclose")) $("sc-gclose").onclick = () => act({ a: "close" });
+      if ($("sc-gask")) $("sc-gask").onclick = () => act({ a: "ask" });
+      if ($("sc-gok")) { const box = $("sc-gn"), go = () => { const v = box.value.trim(); if (!v) return box.focus(); act({ a: "guess", text: v }); box.value = ""; };
+        $("sc-gok").onclick = go; box.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(); } }; }
     }
 
     lobby(true);

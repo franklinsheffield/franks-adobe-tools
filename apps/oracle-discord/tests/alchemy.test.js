@@ -169,6 +169,15 @@ test("level 4: modern chemistry is real, ordered by date, uses the spectroscope,
   const r2 = start(x, L); assert.equal(transmute(r2, x, ["hydrogengas", "nitrogen", "osmium"], "heat"), "right"); assert.equal(r2.stage, "name");
   assert.equal(nameIt(r2, x, "Ammonia"), true); assert.equal(scoreOf(r2), Math.round(4 * 5 * 2.5 + 10 * 2.5));
 });
+test("race: ranking puts finishers first by flames then time, explosions last; pool spans levels 2-4", async () => {
+  const { raceRank, RACE_POOL, raceLevel } = await import("../activity/src/alchemy/logic.js");
+  const rows = raceRank([
+    { id: "a", won: false, flames: 0, ms: 5000, boom: true }, { id: "b", won: true, flames: 2, ms: 9000, boom: false },
+    { id: "c", won: true, flames: 3, ms: 20000, boom: false }, { id: "d", won: true, flames: 2, ms: 7000, boom: false }, { id: "e", won: false, flames: 0, ms: 3000, boom: false }]);
+  assert.deepStrictEqual(rows.map((r) => r.id), ["c", "d", "b", "e", "a"]); assert.deepStrictEqual(rows.map((r) => r.place), [1, 2, 3, 4, 5]);
+  assert.equal(RACE_POOL.length, RECIPES.length + DISCOVERIES.length + MODERN.length);
+  for (const x of RACE_POOL) assert.ok(raceLevel(x).n >= 2, x.id);
+});
 test("apothecary: free items owned, buying spends Essence and puts it on the bench", () => {
   const p = { essence: 70, owned: [] };
   assert.ok(owns(p, "al-alembic")); assert.ok(!owns(p, "al-pelican"));
