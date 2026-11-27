@@ -118,7 +118,33 @@ function paint(svg, prog, id = "t") {
     <g transform="translate(200 92)"><circle r="12" fill="#C88A3A" stroke="#6b3f12"/><circle r="8.5" fill="#0B1530"/><g class="hk-rete"><path d="M0 -8V8M-8 0H8" stroke="#E2B04A" stroke-width="1"/><circle cx="0" cy="-2" r="4.5" fill="none" stroke="#E2B04A" stroke-width="1"/></g><circle cx="0" cy="-14" r="2.6" fill="none" stroke="#C88A3A" stroke-width="1.4"/></g>
     <g class="hk-chart" transform="translate(140 204)">${chartG(M)}</g>`;
   eye.after(g);
+  for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", altairHand(side)); } }
 }
+/** Altair's hands (left-hand coordinates; the right hand is mirrored). At rest his left hand holds up a small brass astrolabe
+ *  and his right hangs open; his gestures: snap = a star twinkles at his fingertips, point = he traces a dotted star-hop,
+ *  swat = a little comet streaks off his palm. */
+const altairHand = (side) => (side === "L"
+  ? `<g class="hg hg-astro"><circle cx="160" cy="250" r="20" fill="#0B1530" stroke="#C88A3A" stroke-width="4"/><circle cx="160" cy="250" r="13" fill="none" stroke="#E2B04A" stroke-width="1"/><g class="ha-rete"><path d="M160 236V264M146 250H174" stroke="#E2B04A" stroke-width="1.2"/><circle cx="165" cy="245" r="6" fill="none" stroke="#8FB8FF" stroke-width="1.2"/></g><circle cx="160" cy="228" r="4" fill="none" stroke="#C88A3A" stroke-width="2.4"/></g>`
+  : `<g class="hg hg-star">${[[162, 252, 7], [176, 240, 4], [148, 238, 3.4]].map(([x, y, r], i) => `<path style="--d:${i * 0.08}s" d="M${x} ${y - r * 2} L${x + r * 0.5} ${y - r * 0.5} L${x + r * 2} ${y} L${x + r * 0.5} ${y + r * 0.5} L${x} ${y + r * 2} L${x - r * 0.5} ${y + r * 0.5} L${x - r * 2} ${y} L${x - r * 0.5} ${y - r * 0.5}Z" fill="#e9f0ff"/>`).join("")}</g>
+    <g class="hg hg-hop" fill="none" stroke="#8FB8FF" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"><path d="M162 256 Q150 200 120 176 T60 150"/><circle cx="120" cy="176" r="3" fill="#e9f0ff" stroke="none"/><circle cx="60" cy="150" r="4" fill="#e9f0ff" stroke="none"/></g>`)
+  + `<g class="hg hg-comet"><path d="M150 250 L104 226" stroke="#8FB8FF" stroke-width="5" stroke-linecap="round" opacity=".5"/><circle cx="150" cy="250" r="5" fill="#e9f0ff"/></g>`;
+export const ALTAIR_HANDS_CSS = `
+body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-handL{animation:a-hold 7s ease-in-out infinite}
+body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-handR{animation:a-rest 7s ease-in-out infinite}
+body[data-house="observatory"] .teller:not([data-mood]) .o-handL .o-f{animation:none;transform:rotate(44deg)}
+body[data-house="observatory"] .teller:not([data-mood]) .o-handR .o-f{animation-duration:6.5s}
+body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .hg-astro{opacity:1}
+.ha-rete{transform-origin:160px 250px;transform-box:view-box;animation:hr-spin 30s linear infinite}
+@keyframes a-hold{0%,100%{transform:translate(18px,-58px) rotate(-6deg)}50%{transform:translate(18px,-62px) rotate(-8deg)}}
+@keyframes a-rest{0%,100%{transform:translate(0,14px) rotate(-4deg)}50%{transform:translate(1px,11px) rotate(-5deg)}}
+.hg{opacity:0;pointer-events:none}
+body[data-house="observatory"] [data-gesture="snap"] .hg-star{opacity:1}body[data-house="observatory"] [data-gesture="snap"] .hg-star path{animation:a-twinkle .5s ease-out both;animation-delay:calc(.2s + var(--d));transform-box:fill-box;transform-origin:50% 50%}
+body[data-house="observatory"] [data-gesture="point"] .hg-hop{opacity:1;animation:a-hop 1.3s ease-out both}
+body[data-house="observatory"] [data-gesture="swatL"] .o-handL .hg-comet,body[data-house="observatory"] [data-gesture="swatR"] .o-handR .hg-comet{opacity:1;animation:a-comet .43s ease-out both}
+@keyframes a-twinkle{0%{transform:scale(0) rotate(0)}60%{transform:scale(1.3) rotate(45deg)}100%{transform:scale(.8) rotate(90deg);opacity:0}}
+@keyframes a-hop{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
+@keyframes a-comet{from{transform:translate(0,0)}to{transform:translate(-40px,-20px);opacity:0}}
+@media (prefers-reduced-motion: reduce){body[data-house="observatory"] .teller .o-hand,.ha-rete{animation:none!important}}`;
 
 /** Swap the Oracle's name for Altair's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
 const RENAME = [
@@ -138,7 +164,7 @@ export const observatory = {
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
-  css: OBSERVATORY_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
   shelves: [starMapShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },

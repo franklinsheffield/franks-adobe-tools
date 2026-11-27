@@ -134,3 +134,24 @@ test("Alchemist Phase 1B: 7 lab coats (white free, Magister earned), House recor
   assert.ok(!R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 99 } } }) && R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 100 } } }));
   const p = L.grantOpus({}); assert.ok(R["magnum-opus"].test(p)); assert.ok(p.owned.includes("coat-magister"));
 });
+
+test("each House host has its own resting hands and its own 3 gestures (snap, point, swat)", async () => {
+  const { ALTAIR_HANDS_CSS } = await import("../activity/src/hosts/observatory.js");
+  const { VELL_HANDS_CSS, handPieces } = await import("../activity/src/hosts/alchemist-lab.js");
+  for (const [house, css] of [["alchemist", VELL_HANDS_CSS], ["observatory", ALTAIR_HANDS_CSS]]) {
+    assert.match(css, new RegExp(`body\\[data-house="${house}"\\] \\.teller:not\\(\\[data-mood\\]\\):not\\(\\[data-gesture\\]\\) \\.o-hands`), house + " rest pose");
+    for (const g of ["snap", "point", "swat"]) assert.ok(css.includes(`[data-gesture="${g}`) || css.includes(`[data-gesture^="${g}`), `${house} ${g}`);
+  }
+  assert.match(handPieces("R"), /hg-spark/); assert.match(handPieces("L"), /hg-steam/);
+});
+
+test("the soundtrack library: every House has a named player and 4 branded records with unique ids", async () => {
+  const { LIBRARY, toSend } = await import("../activity/src/hosts/soundtracks.js");
+  const { TRACKS } = await import("../activity/src/music.js");
+  const ids = LIBRARY.flatMap((L) => L.tracks.map((t) => t.id));
+  assert.equal(new Set(ids).size, ids.length); for (const id of ids) assert.ok(!TRACKS.some((t) => t.id === id), id + " clashes with music.js");
+  assert.equal(new Set(LIBRARY.map((L) => L.player)).size, LIBRARY.length, "each House has its own player");
+  for (const L of LIBRARY.filter((x) => x.house !== "oracle")) { assert.equal(L.tracks.length, 4, L.house); for (const t of L.tracks) assert.ok(t.title && t.mood && t.task, t.id); }
+  for (const h of HOSTS.filter((x) => x.id !== "oracle")) assert.equal(LIBRARY.find((L) => L.house === h.id).player, h.player.name, h.id + " player name matches");
+  assert.equal(toSend().reduce((a, x) => a + x.n, 0), 20);
+});

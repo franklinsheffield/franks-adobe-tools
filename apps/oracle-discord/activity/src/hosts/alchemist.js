@@ -2,7 +2,7 @@
 // She reuses the Oracle's figure rig (so moods, hands, eye tracking and emotes all work) with a copper mask, a brass
 // goggle over the eye and a lens you choose in the store. Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
-import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS, coatOf, coatOverlay, coatShop } from "./alchemist-lab.js";
+import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS, coatOf, coatOverlay, coatShop, handPieces, VELL_HANDS_CSS } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -119,6 +119,7 @@ function paint(svg, prog, id = "t") {
   const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands");
   if (ball) { ball.querySelector(".hv-flask")?.remove(); ball.insertAdjacentHTML("beforeend", flaskSvg(id)); }
   if (hands) { hands.querySelector(".hv-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
+  for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", handPieces(side)); } } // her own gestures
 }
 
 /** Swap the Oracle's name for Vell's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
@@ -139,7 +140,7 @@ export const alchemist = {
   // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass",
     sting: { type: "triangle", glide: 1.5, notes: [[392, 0, 0.09], [494, 0.08, 0.09], [587, 0.16, 0.09], [784, 0.24, 0.22, 0.35]] } }, // door sting: three bubbles pop, then a bright brass note
-  css: ALCHEMIST_CSS + LAB_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: ALCHEMIST_CSS + LAB_CSS + VELL_HANDS_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Brass Phonograph", deck: phonographSvg },
   shelves: [lensShop, coatShop],
   token: { id: "stone", emoji: "🪨", icon: STONE_ICON, name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
