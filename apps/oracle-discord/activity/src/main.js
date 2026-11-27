@@ -54,17 +54,21 @@ function choose(sys) {
     $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(); reveal(sys, optionsFor(sys, q ? { [sys.ask || "question"]: q } : {})); };
     setTimeout(() => $("q").focus(), 50);
   } else {
-    const p = state.profile;
-    ui(`<form class="form" id="f">
-        <label for="d">Birth date<input id="d" required placeholder="1990-04-09" value="${esc(p?.date)}"></label>
-        <label for="t">Time (blank if unknown)<input id="t" placeholder="14:30" value="${esc(p && p.time !== "unknown" ? p.time : "")}"></label>
-        <label for="p">Town or city, country<input id="p" required placeholder="Phoenix, USA" value="${esc(p?.place)}"></label></form>
+    const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
+    const field = (id, label, ph, val, req) => `<label for="${id}">${label}<input id="${id}" ${req ? "required" : ""} placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
+    const rows = [field("d", "Birth date", "1990-04-09", p.date, true)];
+    if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
+    if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
+    if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
+    ui(`<form class="form${rows.length === 1 ? " one" : ""}" id="f">${rows.join("")}</form>
       <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
-      <div class="note">${p ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
+      <div class="note">${state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
     $("f").onsubmit = (e) => { e.preventDefault();
-      const o = optionsFor(sys), f = fieldsFor(sys.command, o), t = $("t").value.trim();
-      o[f.date] = $("d").value.trim(); o[f.place] = $("p").value.trim();
-      if (t) o[f.time] = t; else o.time_unknown = true;
+      const o = optionsFor(sys), v = (id) => ($(id) ? $(id).value.trim() : "");
+      o[f.date] = v("d");
+      if (need.includes("place")) o[f.place] = v("p");
+      if (need.includes("name")) o[f.name] = v("n");
+      if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
       reveal(sys, o); };
   }
   $("back").onclick = greet;

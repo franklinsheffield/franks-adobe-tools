@@ -50,7 +50,7 @@ export const askLine = (sys, name, rand) => fill(pick(ASK[sys.kind], rand), { na
 /** Headline of a reading. A module may return `headline` itself; otherwise it comes from the first embed:
  *  "🪙 I Ching · 24 · 復 Fù · Return" -> "24 · 復 Fù · Return"; a natal chart -> "Sun in Aries · Moon in Leo · Libra Rising". */
 export function headline(embed, given) {
-  if (given) return String(given);
+  if (given) return String(given).trim().replace(/[.。]+$/, "");
   const big3 = ((embed && embed.fields) || []).map((f) => f.name).filter((n) => /^[☉☽↑]/.test(n)).map((n) => n.replace(/^\S+\s+/, "").replace(/,\s*house \d+$/, ""));
   if (big3.length >= 2) return big3.join(" · ");
   const t = String((embed && embed.title) || "").replace(/^\P{L}+/u, "").trim();
