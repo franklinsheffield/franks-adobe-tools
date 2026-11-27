@@ -151,8 +151,8 @@ export function sceneSvg(s) {
       ${fx.kind === "win" ? Array.from({ length: 14 }, (_, i) => `<circle class="du-conf" cx="200" cy="130" r="3" fill="${["#fade8c", "#ff4fb3", "#66e0c8", "#b07cff"][i % 4]}" style="--a:${i * 25.7}deg;--d:${(i % 5) * 0.06}s"/>`).join("") : ""}</g>`;
   }
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${fx.hit ? "du-hit-" + fx.hit : ""}">${wall}${backs}
-    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", g.rival ? RIVAL[g.rival].short.toUpperCase() : "ORACLE", g.oracle.found.length, g.oracle.shield, g.oMax || START)}</g>
+    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", g.foeName ? xml(String(g.foeName).toUpperCase().slice(0, 16)) : g.rival ? RIVAL[g.rival].short.toUpperCase() : "ORACLE", g.oracle.found.length, g.oracle.shield, g.oMax || START)}</g>
     ${condCard}${bonusCard}${centre}
     <g class="du-y">${bar(110, 270, 180, g.you.hp, "#66e0c8", "YOU", g.you.found.length, g.you.shield)}</g>
-    <text x="12" y="290" font-size="8" fill="${ink}" opacity=".6" font-family="system-ui">deck ${g.you.deck.length}</text></svg>`;
+    <text x="12" y="290" font-size="8" fill="${ink}" opacity=".6" font-family="system-ui">deck ${typeof g.you.deck === "number" ? g.you.deck : g.you.deck.length}</text></svg>`;
 }

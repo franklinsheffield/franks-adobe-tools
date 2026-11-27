@@ -229,3 +229,25 @@ test("Codex upgrade: every compound has uses and a turning structure, and milest
   const a = settle(p, g); assert.deepEqual(a.newMilestones.map((m) => m.at), [10]); assert.ok(a.essence >= MILESTONES[0].essence);
   assert.deepEqual(settle(p, g).newMilestones, []);
 });
+
+test("Duel a friend: two humans take turns through friendMove, each sees only their own hand", async () => {
+  const { friendMove, viewFor, formable } = await import("../activity/src/duel/logic.js");
+  const { packOut } = await import("../activity/src/duel/friend.js");
+  const g = newGame(1, 77, null, { friend: true });
+  assert.equal(g.oracle.hand.length, 7); assert.equal(g.you.hand.length, 7);
+  const vy = viewFor(g, "you"), vo = viewFor(g, "oracle");
+  assert.equal(vy.turn, "you"); assert.equal(vo.turn, "oracle");
+  assert.ok(vo.oracle.hand.every((c) => c.s === "?")); assert.deepEqual(vo.you.hand.map((c) => c.id), g.oracle.hand.map((c) => c.id));
+  assert.equal(typeof vo.you.deck, "number"); assert.doesNotMatch(sceneSvg({ look: DEFAULT_LOOK, g: { ...vo, foeName: "Ada" }, fx: null }), /undefined|NaN/);
+  assert.equal(friendMove(g, "oracle", { a: "recycle", ids: [] }).error, "It's not your turn.");
+  const bad = friendMove(g, "you", { a: "react", ids: [g.you.hand[0].id, g.you.hand[0].id] }); assert.ok(bad.error);
+  let turns = 0;
+  while (!g.over && turns++ < 200) {
+    const s = g.turn, me = g[s], opts = formable(me.hand, LEVELS[0]);
+    const out = opts.length ? friendMove(g, s, { a: "react", ids: cardsFor(me.hand, opts[0]).map((c) => c.id) }) : friendMove(g, s, { a: "recycle", ids: me.hand.slice(0, 3).map((c) => c.id) });
+    assert.ok(!out.error, out.error); const p = packOut(out, "oracle"); assert.equal(p.side, s === "oracle" ? "you" : "oracle");
+    assert.equal(me.hand.length, 7);
+  }
+  assert.ok(g.over); const v = viewFor(g, "oracle"); assert.ok(["you", "oracle", "draw"].includes(v.over.winner));
+  const r = settle({}, v); assert.ok(r.xp > 0);
+});

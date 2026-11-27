@@ -120,17 +120,17 @@ export function chainStep(g, side, c) {
 }
 
 // ---- the duel ----
-export function newGame(level = 1, seed = Date.now(), rival = null) {
+export function newGame(level = 1, seed = Date.now(), rival = null, { friend = false } = {}) {
   const L = LEVELS[level - 1], r = rng(seed), rv = level === 3 ? RIVAL[rival] || null : null;
   const extra = (deck) => { if (rv) for (const s of rv.fav) if (L.pool.some((e) => e.s === s)) for (let k = 0; k < (rv.copies ?? 2); k++) deck.push({ id: ++uid, s }); return rv ? shuffle(r, deck) : deck; };
   const side = (n = HAND, mine = false) => { const deck = mine ? extra(deckOf(L, r)) : deckOf(L, r); return { hp: START, deck, hand: deck.splice(0, n), discard: [], found: [], shield: 0, last: null, chainOk: false, chains: [], bonusHits: 0, recycled: 0, shieldUsed: false }; };
-  const g = { level, seed, r, round: 0, turn: "you", rival: rv ? rv.id : null, you: side(), oracle: side(L.oHand + (rv?.hand || 0), true), oMax: START + (rv?.hp || 0), bench: [], cond: null, bonus: null, log: [], over: null };
+  const g = { level, seed, r, round: 0, turn: "you", rival: rv ? rv.id : null, friend, you: side(), oracle: friend ? side() : side(L.oHand + (rv?.hand || 0), true), oMax: START + (rv?.hp || 0), bench: [], cond: null, bonus: null, log: [], over: null };
   g.oracle.hp = g.oMax; nextRound(g); return g;
 }
 const L_ = (g) => LEVELS[g.level - 1];
 function draw(g, s) {
   const p = g[s];
-  const size = s === "oracle" ? L_(g).oHand + ((g.rival && RIVAL[g.rival].hand) || 0) : HAND;
+  const size = s === "oracle" && !g.friend ? L_(g).oHand + ((g.rival && RIVAL[g.rival].hand) || 0) : HAND;
   while (p.hand.length < size) {
     if (!p.deck.length) { if (!p.discard.length) break; p.deck = shuffle(g.r, p.discard); p.discard = []; }
     p.hand.push(p.deck.shift());
@@ -212,6 +212,44 @@ export function recycle(g) {
   g.you.discard.push(...g.bench); g.bench = []; draw(g, "you"); endTurn(g); return { n };
 }
 function endTurn(g) { g.turn = "oracle"; }
+
+// ---- two players (Duel a friend): the host plays "you", the guest plays "oracle" ----
+/**
+ * Apply one player's move: { a: "react", ids } | { a: "shield", id } | { a: "recycle", ids }. Card ids must be in that
+ * side's hand. Between friends a bench that isn't a real compound is simply refused (no fizzle cost), so a typo never
+ * costs Stability. Returns the result for the UI, or { error, why? }.
+ */
+export function friendMove(g, s, mv) {
+  if (!g || g.over) return { error: "The duel is over." };
+  if (g.turn !== s) return { error: "It's not your turn." };
+  const me = g[s], L = L_(g), ids = (mv && mv.ids) || [];
+  const pick = (list) => { const cs = list.map((id) => me.hand.find((c) => c.id === id)); return cs.length && cs.every(Boolean) && new Set(list).size === list.length ? cs : null; };
+  const take = (cs) => { for (const c of cs) me.hand.splice(me.hand.indexOf(c), 1); };
+  const pass = () => { if (check(g)) return; if (s === "you") { g.turn = "oracle"; g.oracle.shieldUsed = false; } else { nextRound(g); check(g); } };
+  if (mv.a === "shield") {
+    const cs = pick([mv.id]); if (!cs || !isNoble(cs[0].s)) return { error: "Only a noble gas makes a shield." };
+    if (me.shieldUsed) return { error: "One shield a turn." };
+    take(cs); me.discard.push(cs[0]); me.shieldUsed = true; me.shield = SHIELD * (g.cond === "argon" ? 2 : 1);
+    return { side: s, shield: { s: cs[0].s, shield: me.shield } };
+  }
+  if (mv.a === "react") {
+    const cs = pick(ids); if (!cs) return { error: "Pick cards from your hand first." };
+    const c = compoundOf(cs, L); if (!c) return { error: "fizzle", why: fizzleWhy(cs, L) };
+    take(cs); const out = react(g, s, cs, c); draw(g, s); pass(); return out;
+  }
+  if (mv.a === "recycle") {
+    const cs = ids.length ? pick(ids.slice(0, L.recycle)) : []; if (!cs) return { error: "Pick cards from your hand first." };
+    take(cs); me.discard.push(...cs); draw(g, s); pass(); return { side: s, ok: false, recycled: cs.length };
+  }
+  return { error: "Unknown move." };
+}
+/** What one player may see: their side as "you", the other side as "oracle", the other hand hidden, decks as counts. */
+export function viewFor(g, s) {
+  const o = s === "you" ? "oracle" : "you", flip = (x) => (x === "you" ? (s === "you" ? "you" : "oracle") : x === "oracle" ? (s === "you" ? "oracle" : "you") : x);
+  const side = (p, mine) => ({ ...p, deck: p.deck.length, discard: p.discard.length, hand: mine ? p.hand : p.hand.map(() => ({ id: 0, s: "?" })) });
+  return { level: g.level, round: g.round, turn: flip(g.turn), cond: g.cond, bonus: g.bonus, friend: true, rival: null, oMax: START, bench: [],
+    you: side(g[s], true), oracle: side(g[o], false), over: g.over ? { ...g.over, winner: flip(g.over.winner) } : null };
+}
 
 // ---- the Oracle ----
 /** The Oracle's move: { kind: "react", c, cards } | { kind: "recycle", cards } (plus shield). Pure: doesn't change g. */
