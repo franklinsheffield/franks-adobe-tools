@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -120,3 +120,52 @@ test("Alchemist Phase 1: lab scene, flask, poses, reactions, lab emotes, stone a
   assert.match(hostScene(Date.now(), { motes: 0 }), /lab-hood/);
   setHost(null); assert.equal(hostScene(Date.now(), {}), null); assert.equal(hostEmote(EMOTES[0]).name, EMOTES[0].name);
 });
+
+test("Alchemist Phase 1B: 7 lab coats (white free, Magister earned), House record tasks, the Opus grant", async () => {
+  const L = await import("../activity/src/hosts/alchemist-lab.js");
+  assert.equal(L.COATS.length, 7); assert.equal(L.COATS[0].price, 0); assert.equal(L.COATS[0].id, "coat-white");
+  const mag = L.coatShop.items.find((i) => i.id === L.MAGISTER_COAT); assert.ok(mag.earned && mag.how && mag.price === undefined, "the Magister coat is never sold");
+  for (const c of L.COATS) { assert.equal(c.hood.length, 3); assert.match(L.coatOverlay(c), /hv-coat/); assert.ok(c.note.length > 20); }
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("coat"));
+  const R = Object.fromEntries(L.HOUSE_RECORDS.map((r) => [r.id, r]));
+  assert.equal(L.HOUSE_RECORDS.length, 4);
+  assert.ok(!R["bubble-and-brass"].test({}) && R["bubble-and-brass"].test({ houses: { alchemist: { day: "2026-11-27" } } }));
+  assert.ok(!R["slow-furnace"].test({ houses: { alchemist: { lv: ["alchemy-2"] } } }) && R["slow-furnace"].test({ houses: { alchemist: { lv: ["duel-3"] } } }));
+  assert.ok(!R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 99 } } }) && R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 100 } } }));
+  const p = L.grantOpus({}); assert.ok(R["magnum-opus"].test(p)); assert.ok(p.owned.includes("coat-magister"));
+});
+
+test("each House host has its own resting hands and its own 3 gestures (snap, point, swat)", async () => {
+  const { ALTAIR_HANDS_CSS } = await import("../activity/src/hosts/observatory.js");
+  const { VELL_HANDS_CSS, handPieces } = await import("../activity/src/hosts/alchemist-lab.js");
+  const { ROOK_HANDS_CSS } = await import("../activity/src/hosts/parlour.js"); const { WREN_HANDS_CSS } = await import("../activity/src/hosts/scriptorium.js");
+  for (const [house, css] of [["alchemist", VELL_HANDS_CSS], ["observatory", ALTAIR_HANDS_CSS], ["parlour", ROOK_HANDS_CSS], ["scriptorium", WREN_HANDS_CSS]]) {
+    assert.match(css, new RegExp(`body\\[data-house="${house}"\\] \\.teller:not\\(\\[data-mood\\]\\):not\\(\\[data-gesture\\]\\) \\.o-hands`), house + " rest pose");
+    for (const g of ["snap", "point", "swat"]) assert.ok(css.includes(`[data-gesture="${g}`) || css.includes(`[data-gesture^="${g}`), `${house} ${g}`);
+  }
+  assert.match(handPieces("R"), /hg-spark/); assert.match(handPieces("L"), /hg-steam/);
+});
+
+test("the soundtrack library: every House has a named player and 4 branded records with unique ids", async () => {
+  const { LIBRARY, toSend } = await import("../activity/src/hosts/soundtracks.js");
+  const { TRACKS } = await import("../activity/src/music.js");
+  const ids = LIBRARY.flatMap((L) => L.tracks.map((t) => t.id));
+  assert.equal(new Set(ids).size, ids.length); for (const id of ids) assert.ok(!TRACKS.some((t) => t.id === id), id + " clashes with music.js");
+  assert.equal(new Set(LIBRARY.map((L) => L.player)).size, LIBRARY.length, "each House has its own player");
+  for (const L of LIBRARY.filter((x) => x.house !== "oracle")) { assert.equal(L.tracks.length, 4, L.house); for (const t of L.tracks) assert.ok(t.title && t.mood && t.task, t.id); }
+  for (const h of HOSTS.filter((x) => x.id !== "oracle")) assert.equal(LIBRARY.find((L) => L.house === h.id).player, h.player.name, h.id + " player name matches");
+  assert.equal(toSend().reduce((a, x) => a + x.n, 0), 20);
+});
+test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the brand brief's values", () => {
+  const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
+  setHost(P); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "MADAME ROOK · Madame Rook's hand · Séance Parlour");
+  assert.equal(rename("Open the Record Player · Reach Oracle-touched, or try /oracle"), "Open the Spirit Trumpet Gramophone · Reach Oracle-touched, or try /oracle");
+  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["seance", "timeline"]);
+  setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
+  assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
+  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["decoder", "memory"]);
+  const voices = HOSTS.map((h) => `${h.voice?.type}${h.voice?.base}`).filter((v) => v !== "undefinedundefined"); assert.equal(new Set(voices).size, voices.length, "each House sounds different");
+  assert.equal(new Set(HOSTS.map((h) => h.accent)).size, HOSTS.length, "each House has its own accent");
+  setHost(null);
+});
+test("the Parlour and the Scriptorium are routed from their channels", () => { assert.equal(hostFor({ channelId: "1575977181622829158" }).id, "parlour"); assert.equal(hostFor({ channelId: "1575977195048927232" }).id, "scriptorium"); });

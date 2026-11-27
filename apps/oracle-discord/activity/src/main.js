@@ -25,6 +25,7 @@ import { room as memory, memoryCodex } from "./memory/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { flametest, flametestCodex } from "./flametest/room.js";
 import { inscriptions, inscriptionsCodex } from "./inscriptions/room.js";
+import { minerals, mineralsCodex } from "./minerals/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -330,7 +331,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -1163,6 +1164,7 @@ function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="but
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
+  if (HOST().id !== "oracle" && hasRoom(HOST(), id)) { const hs = (state.prog.houses ||= {}), h = (hs[HOST().id] ||= {}); h.rounds = (h.rounds || 0) + 1; } // rounds played in this House (House record tasks)
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
   mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); hostReact(ev, reactCtx());
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);

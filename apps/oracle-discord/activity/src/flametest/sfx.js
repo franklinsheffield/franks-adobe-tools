@@ -54,3 +54,16 @@ let roarOn = false;
 export function roar(alive) { if (roarOn || !ready()) return; roarOn = true;
   const step = () => { if (!alive() || !ready()) { roarOn = false; return; } noise(ac.currentTime, 2.1, { type: "lowpass", f: 380, q: 0.6, vol: 0.05, shape: () => 1 }); setTimeout(step, 2000); };
   step(); }
+
+// ---- also used by the Mineral Cabinet (minerals/room.js) ----
+/** A hard point dragged across stone. */
+export function scratch() { if (!ready()) return; const t = ac.currentTime; noise(t, 0.35, { f: 3800, to: 2200, q: 3, vol: 0.3, shape: (x) => (0.6 + 0.4 * Math.sin(x * 60)) * (1 - x) }); }
+/** Acid on a carbonate: a burst of tiny pops. n = how many. */
+export function fizz(n = 14) { if (!ready()) return; const t = ac.currentTime; noise(t, 0.9, { type: "highpass", f: 5000, vol: 0.08 });
+  for (let k = 0; k < n; k++) tone(rnd(1400, 3200), t + rnd(0, 0.8), 0.03, { vol: 0.08 }); }
+/** A magnet snapping onto rock. */
+export function clunk() { if (!ready()) return; const t = ac.currentTime; tone(140, t, 0.18, { type: "square", vol: 0.25, to: 70 }); noise(t, 0.08, { type: "lowpass", f: 900, vol: 0.4 }); }
+/** A rock set down, or a balance pan settling. */
+export function tap(heavy = false) { if (!ready()) return; const t = ac.currentTime; tone(heavy ? 120 : 260, t, 0.2, { type: "triangle", vol: 0.25, to: heavy ? 80 : 180 }); noise(t, 0.05, { type: "lowpass", f: 1500, vol: 0.3 }); }
+/** The UV lamp switches on: a hum. */
+export function hum() { if (!ready()) return; const t = ac.currentTime; tone(120, t, 0.9, { type: "sawtooth", vol: 0.05 }); tone(240, t, 0.9, { vol: 0.04 }); }
