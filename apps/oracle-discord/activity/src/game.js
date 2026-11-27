@@ -54,31 +54,54 @@ const andList = (a) => (a.length < 3 ? a.join(" and ") : `${a.slice(0, -1).join(
 const times = (n) => (n === 1 ? "once" : n === 2 ? "twice" : `${n} times`);
 
 /**
- * What the member's own Codex adds to a reading: how often each entry has come up before, how that compares with
- * chance, how much of the system they have seen, and (for birth charts) what their other systems hold.
- * Call BEFORE record(). Returns plain sentences: data first, then what it may mean. Never advice.
+ * What the member's own Codex adds to a reading: a comparison, not a tally. Returning entries and what they are read
+ * as, how this reading's themes sit beside the entries the member has drawn most, and beside their birth charts.
+ * themeOf(systemKey, entryName) gives an entry's keywords (see codexthemes.js). Call BEFORE record().
+ * Returns plain sentences: the comparison first, then what it may mean. Never advice, and no Codex statistics.
  */
-export function codexNotes(p, key, r) {
+export function codexNotes(p, key, r, themeOf = () => []) {
   const def = CODEX[key]; if (!def || !p) return [];
   const items = [...new Set(def.items(r).filter(Boolean))]; if (!items.length) return [];
-  const have = new Set((p.codex || {})[key] || []), seen = ((p.seen || {})[key]) || {}, n = (p.systems || {})[key] || 0;
-  const draws = Object.values(seen).reduce((a, b) => a + b, 0), out = [];
+  const kw = (k, name) => themeOf(k, name) || [], named = (k, name) => (kw(k, name).length ? `${name} (${kw(k, name).join(", ")})` : name);
+  const low = (a) => a.map((x) => String(x).toLowerCase());
+  const nowKw = [...new Set(items.flatMap((i) => kw(key, i)))], nowSet = new Set(low(nowKw));
+  const charts = Object.keys(BIRTH).filter((k) => k !== key && ((p.codex || {})[k] || []).length === 1).map((k) => ({ k, name: p.codex[k][0], kw: kw(k, p.codex[k][0]) }));
+  const chartList = andList(charts.map((c) => `${named(c.k, c.name)} in ${BIRTH[c.k] === "astrology" ? "astrology" : "the " + BIRTH[c.k] + " reading"}`));
+  const out = [];
   if (BIRTH[key]) {
-    out.push(have.has(items[0]) ? `${items[0]} is already in your Codex: this is the same result the Chamber recorded before, as it should be for the same birth details.` : n ? `${items[0]} is new to your Codex, which now holds ${have.size + 1} of ${def.total} ${def.label}. A different result means different birth details were entered.` : `${items[0]} is the first ${BIRTH[key]} entry in your Codex.`);
-    const others = Object.keys(BIRTH).filter((k) => k !== key && ((p.codex || {})[k] || []).length === 1).map((k) => `${p.codex[k][0]} (${BIRTH[k]})`);
-    if (others.length) out.push(`Your Codex also holds ${andList(others)}. Each system describes the same birthday through a different lens. Where their themes agree, that agreement may deserve more weight than any one of them; where they disagree, the systems are simply measuring different things.`);
+    if (!charts.length) return [];
+    const shared = [...new Set(charts.flatMap((c) => low(c.kw)).filter((w) => nowSet.has(w)))];
+    out.push(`Set beside your other charts: this one gives ${named(key, items[0])}, and your Codex holds ${chartList}.`);
+    out.push(shared.length
+      ? `The theme of ${andList(shared)} turns up in more than one of them. When systems built on different rules land on the same theme, that may be the part of the description that says most about you.`
+      : `No theme repeats word for word across them. They may be read as different angles on one person: each system measures something else, so a description that only one of them gives may be the narrower claim.`);
+    out.push("What the comparison leaves open: which of these descriptions would the people who know you best pick first?");
     return out;
   }
-  if (!n) return [`This is the first ${def.label.replace(/s$/, "")} reading in your Codex, so there is no history to compare it with yet. From here on every draw is counted.`];
-  const old = items.filter((i) => have.has(i)), fresh = items.filter((i) => !have.has(i)), known = have.size;
-  out.push(`You have ${n} earlier reading${n === 1 ? "" : "s"} in this system and have seen ${known} of ${def.total} ${def.label} (${Math.round((known / def.total) * 100)}%). At that level any single draw repeats an old entry about ${Math.round((known / def.total) * 100)}% of the time.`);
-  for (const i of old.slice(0, 3)) {
-    const c = seen[i] || 0, exp = draws / def.total;
-    out.push(c ? `${i} has come up ${times(c)} before in ${draws} recorded draws; chance alone predicts about ${exp.toFixed(1)}.${c + 1 >= 3 && c + 1 > 2 * exp + 1 ? " That is more often than chance suggests. It may mark a theme your questions keep circling, and it is also the kind of streak random draws produce now and then." : " That is within what chance produces."}` : `${i} was already in your Codex from an earlier reading.`);
+  const have = new Set((p.codex || {})[key] || []), seen = ((p.seen || {})[key]) || {}, n = (p.systems || {})[key] || 0;
+  const old = items.filter((i) => have.has(i)), fresh = items.filter((i) => !have.has(i));
+  if (n) {
+    old.slice(0, 3).forEach((i, j) => {
+      const c = seen[i] || 1, th = kw(key, i).join(", ");
+      out.push(`${i} is back: it came up ${times(c)} before in your readings${th ? `, and it is read as ${th}` : ""}. ${j ? "The same may hold here: a theme that keeps its place across different questions." : `A symbol that returns across separate questions may point to a theme that is still open for you${th ? `, here ${kw(key, i)[0]}` : ""}. Random draws repeat too, so the return only carries weight if the theme rings true.`}`);
+    });
+    const past = Object.entries(seen).filter(([name]) => !items.includes(name)).sort((a, b) => b[1] - a[1]).slice(0, 2), often = past.length && past[0][1] >= 2;
+    if (past.length && nowKw.length) {
+      const shared = [...new Set(past.flatMap(([x]) => low(kw(key, x))).filter((w) => nowSet.has(w)))];
+      out.push(`Your earlier readings here ${often ? "turned most often to" : "also brought up"} ${andList(past.map(([x]) => named(key, x)))}. This one speaks of ${andList(nowKw.slice(0, 6))}. ${shared.length
+        ? `The theme of ${andList(shared)} is in both, so this reading may be continuing a story the earlier ones began.`
+        : "If those feel connected to you, this reading may be continuing the same story. If they do not, it may mark a change of subject in what you bring to the table."}`);
+    }
+    if (fresh.length) out.push(old.length
+      ? `${andList(fresh.map((x) => named(key, x)))} ${fresh.length > 1 ? "have" : "has"} not appeared for you before. Next to ${old[0]}, which returns, that may be read as a familiar theme meeting something not yet considered.`
+      : `Nothing here repeats an earlier draw. ${andList(fresh.map((x) => named(key, x)))} ${fresh.length > 1 ? "are" : "is"} new ground for you, which may mean the question has moved somewhere your earlier readings have not been.`);
   }
-  if (old.length > 3) out.push(`${andList(old.slice(3))} ${old.length > 4 ? "have" : "has"} also appeared before.`);
-  if (fresh.length) out.push(`${andList(fresh)} ${fresh.length > 1 ? "are" : "is"} new to your Codex${old.length ? "" : `: nothing in this reading repeats an earlier one`}.`);
-  if (old.length && fresh.length) out.push("A reading that mixes returning and new entries may be read as a familiar theme meeting something not yet considered.");
+  if (charts.length && nowKw.length) {
+    const shared = [...new Set(charts.flatMap((c) => low(c.kw)).filter((w) => nowSet.has(w)))];
+    out.push(`Your charts describe you through ${chartList}. ${shared.length
+      ? `This reading shares the theme of ${andList(shared)} with them, which may be read as the reading speaking in character for you.`
+      : `Where this reading's themes (${andList(nowKw.slice(0, 5))}) match that picture, it may be read as in character for you; where they differ, it may be pointing at something less habitual.`}`);
+  }
   return out;
 }
 
