@@ -5,7 +5,8 @@
 // Mounted via ROOMS (main.js): room.open(ctx), codexHtml, shop.
 import { DANGER, EVIDENCE } from "./plants.js";
 import { LEVELS, ALL, LEAVES, keyOf, perLeaf, safetyPts, claimPts, room as grim, solvedCount, titleOf, nextTitle, plantById, nextPlant, start, moreClue, usePick, whichPlant, choices, guessName, guessSafety, guessClaim, settle } from "./logic.js";
-import { pageSvg } from "./sketch.js";
+import { pageSvg, twinSvg } from "./sketch.js";
+import { TWINS, twinPlants, spottedCount, nextTwin, layTwin, pickTwin, settleTwin } from "./twins.js";
 import { GUIDES, NOT_ADVICE, POISON_HELP } from "./guide.js";
 import { shop, themeOf } from "./shop.js";
 import { CSS } from "./style.js";
@@ -81,13 +82,14 @@ export const room = {
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"🌿".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${L.deck.length} identified · points ×${L.mult}</span></button>`; };
       const known = ALL.filter(({ L, p }) => prog().solved[keyOf(L, p)]);
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
+        <div class="choices"><button class="c main" type="button" id="gr-twins">⚠️ Spot the look-alike <span class="note">· safe plant or deadly double? · ${spottedCount(state.prog)} / ${TWINS.length} spotted</span></button></div>
         <div class="choices">${LEVELS.map((L) => `<button class="c small" type="button" data-g="${L.n}" data-label="📖 Study guide: ${esc(L.name)}">📖 Study guide: ${esc(L.name)}</button>`).join("")}</div>
         <div class="note">5 leaves per plant. The first clue is free; each extra clue and each wrong typed name costs a leaf; a wrong pick from four costs 3. Typing the name scores double. For learning only: never eat or use a plant because of a game.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
         ${known.length ? `<div class="group">Your grimoire</div><div class="choices">${known.map(({ L, p }) => `<button class="c small" type="button" data-k="${p.id}">${p.emoji} ${esc(p.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, p)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; identify(L, nextPlant(state.prog, L, prog().last)); }));
       $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => toggleGuide(+b.dataset.g, b)));
-      $("back").onclick = greet;
+      $("back").onclick = greet; $("gr-twins").onclick = () => twins(nextTwin(state.prog, prog().lastTwin));
       $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => study(plantById(b.dataset.k))));
     }
 
@@ -175,6 +177,39 @@ export const room = {
       $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
 
+    /** Spot the look-alike: a safe plant and its deadly double, side by side. Which one is safe? */
+    function twins(t) {
+      const { safe, deadly } = twinPlants(t), round = layTwin(t), sides = round.safeSide ? [deadly, safe] : [safe, deadly];
+      const kinds = round.safeSide ? ["deadly", "safe"] : ["safe", "deadly"];
+      prog().lastTwin = t.id;
+      const show = (fx = {}) => { tableEl.className = "table grimoire";
+        tableEl.innerHTML = twinSvg(sides[0], sides[1], { theme: themeOf(state.prog), poison: kinds.map((k) => k === "deadly"), right: round.safeSide, ...fx });
+        if (fx.shake) { void tableEl.offsetWidth; tableEl.classList.add("gr-shake"); } };
+      clearReading(); cap("⚠️ Spot the look-alike"); show({ turn: true }); SFX.page();
+      say(`Two pressed plants. One is ${safe.name.toLowerCase()}, ${safe.danger[0] === "gentle" ? "good to eat" : "the safer of the two"}. The other is ${deadly.name.toLowerCase()}, its deadly double. Read the field notes. Which one is the ${safe.name.toLowerCase()}?`);
+      ui(`<div class="gr-notes">${[0, 1].map((i) => `<div class="gr-note"><b>Specimen ${i ? "B" : "A"}</b>${esc(t.notes[kinds[i]])}</div>`).join("")}</div>
+        <div class="choices">${[0, 1].map((i) => `<button class="c main" type="button" data-t="${i}">${i ? "B" : "A"} is the ${esc(safe.name.toLowerCase())}</button>`).join("")}</div>
+        <div class="choices"><button class="c small" type="button" id="gr-leave">Close the grimoire</button></div>`);
+      $("gr-leave").onclick = () => lobby(false);
+      $("ui").querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => {
+        const ok = pickTwin(round, +b.dataset.t); if (ok === null) return;
+        const r = settleTwin(state.prog, round), aw = award(r.xp, r.essence); saveProgress(); showStats();
+        show({ revealed: true, picked: round.picked, sparkle: ok, shake: !ok });
+        if (ok) { SFX.right(); SFX.sparkle(); } else { SFX.wrong(); } setTimeout(() => SFX.stamp(), 250);
+        const letter = (k) => (kinds[0] === k ? "A" : "B");
+        say(ok ? `Right. ${letter("safe")} is the ${safe.name.toLowerCase()}; ${letter("deadly")} is ${deadly.name.toLowerCase()}. ${t.why}`
+          : `Careful: that one was ${deadly.name.toLowerCase()}. ${letter("safe")} is the ${safe.name.toLowerCase()}. ${t.why}`);
+        ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${ok ? (r.first ? "new pair spotted" : "spotted again") : "not this time"} · ${spottedCount(state.prog)} / ${TWINS.length} pairs</div>${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
+          <div class="choices"><button class="c main" type="button" id="gr-tw">⚠️ Another pair</button><button class="c" type="button" id="gr-lobby">📜 Choose a garden</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        $("reading-body").innerHTML = `<div class="gr-page"><div class="gr-head"><h3>⚠️ How to tell them apart</h3></div>
+          <div class="gr-notes">${[0, 1].map((i) => `<div class="gr-note ${kinds[i]}"><b>${i ? "B" : "A"} · ${esc(sides[i].emoji)} ${esc(sides[i].name)}</b>${esc(t.notes[kinds[i]])}</div>`).join("")}</div>
+          <div class="gr-sec"><b class="h">🔎 The tell-tale signs</b><ul class="gr-tells">${t.tells.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
+          <div class="gr-sec safety poison"><b class="h">☠️ ${esc(deadly.name)}</b>${esc(deadly.safety)}<br><br>${esc(POISON_HELP)}</div>
+          <div class="gr-warn">Never eat a wild plant unless an expert has identified it in person. ${esc(NOT_ADVICE)}</div></div>`;
+        $("gr-tw").onclick = () => twins(nextTwin(state.prog, t.id)); $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      }));
+    }
+
     lobby(true);
   },
 };
@@ -184,5 +219,6 @@ export function grimoireCodex(prog, esc) {
   const r = grim(prog);
   return LEVELS.map((L) => { const got = L.deck.filter((p) => r.solved[keyOf(L, p)]);
     return `<div class="cx"><div class="cx-h"><span>🌿 Grimoire: ${esc(L.name)}</span><span class="note">${got.length} / ${L.deck.length}</span></div>
-    <div class="bar"><i style="width:${(got.length / L.deck.length) * 100}%"></i></div>${got.length ? `<div class="chips">${got.map((p) => `<span>${p.emoji} ${esc(p.name)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
+    <div class="bar"><i style="width:${(got.length / L.deck.length) * 100}%"></i></div>${got.length ? `<div class="chips">${got.map((p) => `<span>${p.emoji} ${esc(p.name)}</span>`).join("")}</div>` : ""}</div>`; }).join("")
+    + `<div class="cx"><div class="cx-h"><span>⚠️ Grimoire: look-alikes spotted</span><span class="note">${spottedCount(prog)} / ${TWINS.length}</span></div><div class="bar"><i style="width:${(spottedCount(prog) / TWINS.length) * 100}%"></i></div></div>`;
 }
