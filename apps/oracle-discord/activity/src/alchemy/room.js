@@ -55,7 +55,8 @@ export const alchemy = {
       if (on) rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    const begin = (L, x) => { sfx.whoosh(); return L.n === 1 ? read(L, x, start(x, L)) : bench(L, x, start(x, L), [], null); };
+    const begin = (L, x) => { sfx.whoosh(); const run = start(x, L); run.guard = (shopItem(lookOf(P()).gear) || {}).guards || [];
+      return L.n === 1 ? read(L, x, run) : bench(L, x, run, [], null); };
 
     // ---- level 1: read the symbol ----
     function read(L, x, run, line, fx = {}) {
@@ -108,12 +109,32 @@ export const alchemy = {
         const r = transmute(run, x, sel, op);
         if (r === "right") return success(L, x, run);
         if (r === "boom") return explode(L, x, run, HAZARDS.find((h) => h.id === run.boom), sel);
+        if (r === "saved") return rescued(L, x, run, HAZARDS.find((h) => h.id === run.saved), sel, op);
         if (r === "out") { sfx.fizzle(); sfx.snuff(); draw({ flames: 0, shelf: x.shelf, liquid: "#3a3a3a", label: x.product, fizzle: true, snuff: true });
           return talkThrough([`The last flame dies. Here is how it was really done: ${x.make.map((i) => REAGENTS[i].name.toLowerCase()).join(" with ")}, then ${OPS[x.op].name.toLowerCase()}.`, x.story, x.science], () => finish(L, x, run)); }
         if (r === "wrong") { sfx.fizzle(); sfx.snuff(); bench(L, x, run, sel, op, pick(FIZZLE), { fizzle: true, snuff: true }); }
       };
     }
+    const ICON = { gas: "☠️", boom: "💥", splash: "💥" };
+    function rescued(L, x, run, hz, sel, op) {
+      const gear = shopItem(lookOf(P()).gear); sfx.saved(); cap("🛡 " + hz.name);
+      draw({ flames: run.flames, shelf: x.shelf, chips: sel, saved: hz.col || "#9fd8ff", fizzle: true, label: `🛡 ${gear.name} saved you` });
+      say(pick([`That was close. Your ${gear.name.toLowerCase()} just saved you.`, `${ICON[hz.kind]} ${hz.name}! Good thing you had your ${gear.name.toLowerCase()}.`]));
+      ui(`<div class="al-boomcard saved"><b>🛡 ${esc(hz.name)}: stopped by your ${esc(gear.name.toLowerCase())}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p><p class="note">It cost a flame, and your gear only saves you once per experiment.</p></div>
+        <div class="choices"><button class="c main" type="button" id="al-ok">${run.done ? "Finish" : "⚗️ Back to the bench"}</button></div>`);
+      $("al-ok").onclick = () => (run.done ? finish(L, x, run) : bench(L, x, run, [], op, "Steady now. Try a safer mix."));
+    }
+    function gassed(L, x, run, hz, sel) {
+      sfx.gas(); cap("☠️ " + hz.name);
+      draw({ flames: run.flames, shelf: x.shelf, chips: sel, gas: hz.col, label: "☠️ " + hz.name });
+      tableEl.classList.remove("choke"); void tableEl.offsetWidth; tableEl.classList.add("choke");
+      say(pick(["*cough* *cough* A poison cloud pours out of the flask. Get out! The experiment is over.", "The air turns thick and stinging. You stagger out of the Lab, eyes streaming. Experiment over.", "A deadly gas fills the room. Out, now! This experiment is finished."]));
+      ui(`<div class="al-boomcard gas"><b>☠️ ${esc(hz.name)}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>
+        <div class="choices"><button class="c main" type="button" id="al-ok">🪟 Open the windows and get out</button></div>`);
+      $("al-ok").onclick = () => finish(L, x, run, hz);
+    }
     function explode(L, x, run, hz, sel) {
+      if (hz.kind === "gas") return gassed(L, x, run, hz, sel);
       sfx.boom(); cap("💥 " + hz.name);
       draw({ flames: 0, shelf: x.shelf, chips: sel, boom: true, label: "💥 " + hz.name });
       tableEl.classList.remove("quake"); void tableEl.offsetWidth; tableEl.classList.add("quake");
@@ -143,8 +164,8 @@ export const alchemy = {
       ctx.trophy?.("alchemy", L.n, { won: run.won, perfect: run.won && !run.wrong.length && !r.boom }); // Trophy Case (trophies.js)
       const after = solvedCount(P()), t = titleOf(after), titled = titleOf(before).name !== t.name;
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
-      if (r.boom) bits.push(`💥 exploded: ${esc(hz.name)} · lesson added to your Codex`); else bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");
-      if (r.boom) say("Lesson learned the loud way. Try again with a steadier hand."); else say(run.won ? pick(["Into the notebook it goes.", "The Great Work advances.", "Another secret of matter, written down."]) : "Even Newton had bad days at the furnace.");
+      if (r.boom) bits.push(`${hz.kind === "gas" ? "☠️ poisoned by" : "💥 exploded:"} ${esc(hz.name)} · lesson added to your Codex`); else bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");
+      if (r.boom) say(hz.kind === "gas" ? "Lesson learned, with streaming eyes. Air the room and try again." : "Lesson learned the loud way. Try again with a steadier hand."); else say(run.won ? pick(["Into the notebook it goes.", "The Great Work advances.", "Another secret of matter, written down."]) : "Even Newton had bad days at the furnace.");
       const els = r.newEls.length ? `<div class="up">🧪 New on your periodic table: ${r.newEls.map((e) => `<span class="al-el on">${e}<small>${ELEMENTS[e][2]}</small></span>`).join(" ")}</div>` : "";
       const up = LEVELS[L.n] && run.won && r.first && solvedCount(P(), L) === 4 ? `<div class="up">🔓 Ready for Level ${L.n + 1}: ${esc(LEVELS[L.n].what)}</div>` : "";
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${els}${titled ? `<div class="up">⚗️ Lab title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
@@ -197,6 +218,6 @@ export function alchemyCodex(p, esc) {
   return LEVELS.map((L) => { const done = L.deck.filter((x) => r.solved[keyOf(L, x)]);
     return `<div class="cx"><div class="cx-h"><span>⚗️ Lab level ${L.n}: ${esc(L.what)}</span><span class="note">${done.length} / ${L.deck.length}</span></div>
       <div class="bar"><i style="width:${(done.length / L.deck.length) * 100}%"></i></div>${done.length ? `<div class="chips">${done.map((x) => `<span>${esc(x.name || x.product)}</span>`).join("")}</div>` : ""}</div>`; }).join("")
-    + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>💥 Lab accidents (lessons learned)</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
+    + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>⚠️ Lab accidents (lessons learned)</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
     + `<div class="cx"><div class="cx-h"><span>🧪 Elements found in the Lab</span><span class="note">${n} / ${of}</span></div><div class="bar"><i style="width:${(n / of) * 100}%"></i></div>${n ? `<div class="chips">${r.elements.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}</div>`;
 }

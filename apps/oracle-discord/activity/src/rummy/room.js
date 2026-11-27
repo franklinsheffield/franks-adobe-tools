@@ -1,12 +1,13 @@
 // Constellation Rummy: a card room of the Oracle Chamber. Collect real stars into constellation sets (and, from Level 2,
 // colour sets of one spectral class), playing against the Oracle. Laying a constellation down tells one of its myths
 // (shared with Star Lore Navigator); every card carries a real fact. Rules in engine.js, deck in deck.js.
-// Mounted via main.js ROOMS; sells card backs on the Essence store's "🃏 Star cards" shelf (store.js registerShelf).
+// Mounted via main.js ROOMS; sells card backs on the Essence store's "🌌 Star cards" shelf (store.js registerShelf). The table pane is drawn top-down on the equipped table cloth (table.js getTableDecor).
 import { CARD, CONS, CLASSES, FIGURE } from "./deck.js";
 import { GUIDE } from "./guide.js";
 import { LEVELS, newGame, levelOf, top, setType, fits, draw, layDown, layOff, discard, tally, oracleTurn, settle, pts, room as rummyOf,
   winsOf, titleOf, nextTitle, KIND, BACKS, backOf } from "./engine.js";
 import { project, centroid } from "../stars/engine.js";
+import { getTableDecor } from "../table.js";
 import { shuffleSfx, dealSfx, flickSfx, takeSfx, discardSfx, meldSfx, layoffSfx, badSfx, oracleSfx, winSfx, loseSfx, dawnSfx } from "./sfx.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -16,80 +17,120 @@ const conLabel = (con) => `${CONS[con].emoji} ${CONS[con].name}`;
 const setName = (m) => (m.type === "con" ? conLabel(m.key) : `${CLASSES[m.key].name} stars (class ${m.key})`);
 
 // ---- drawing ----
-/** One card face. o = { labels, sel, cls (extra classes), mini, i (deal order) } */
-function face(hip, o = {}) {
-  const c = CARD[hip], k = CLASSES[c.cls], size = Math.max(5, 13 - Math.max(-1.5, c.mag) * 2.6);
-  const con = o.labels !== false ? `<span class="cr-con">${CONS[c.con].emoji} ${esc(o.mini ? c.con : CONS[c.con].name)}</span>` : `<span class="cr-con hid">✧ ?</span>`;
-  const tag = o.mini ? "span" : "button";
-  return `<${tag} ${tag === "button" ? `type="button" data-h="${hip}"` : ""} class="cr-card c-${c.cls}${o.mini ? " mini" : ""}${o.sel ? " sel" : ""}${o.cls ? " " + o.cls : ""}"
-    style="--k:${k.colour};--i:${o.i || 0}" aria-label="${esc(c.name)}, class ${c.cls}, magnitude ${c.mag}"><span class="cr-dot" style="--s:${size.toFixed(1)}px"></span>
-    <b class="cr-n${c.name.length > 8 ? " long" : ""}">${esc(c.name)}</b>${con}<span class="cr-foot"><i>${c.cls}</i><em>${stars(pts(hip))}</em></span></${tag}>`;
+/** Card colours by spectral class: [top of the card, bottom]. */
+const BG = { B: ["#1d3f97", "#070b2c"], A: ["#34407a", "#080a24"], F: ["#6a5418", "#120c22"], K: ["#7a3a10", "#160a1e"], M: ["#7e1426", "#150616"] };
+const f1 = (n) => n.toFixed(1);
+/** Shared SVG defs (gradients and the card clip), put in the page once. */
+function defsOnce() {
+  if (document.getElementById("cr-defs")) return;
+  const grads = Object.entries(BG).map(([k, [a, b]]) => `<linearGradient id="cr-bg-${k}" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${a}"/><stop offset=".62" stop-color="${b}"/></linearGradient>
+    <radialGradient id="cr-gl-${k}"><stop offset="0" stop-color="#fff"/><stop offset=".22" stop-color="${CLASSES[k].colour}"/><stop offset="1" stop-color="${CLASSES[k].colour}" stop-opacity="0"/></radialGradient>`).join("");
+  document.body.insertAdjacentHTML("beforeend", `<svg id="cr-defs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${grads}
+    <linearGradient id="cr-ban" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05040f" stop-opacity="0"/><stop offset=".35" stop-color="#05040f" stop-opacity=".85"/><stop offset="1" stop-color="#05040f"/></linearGradient>
+    <clipPath id="cr-clip"><rect width="70" height="96" rx="7"/></clipPath></defs></svg>`);
 }
-const back = (cls = "") => `<span class="cr-back ${cls}"><i></i></span>`;
-/** The constellation's stick figure, with the stars in this set lit. */
-function figure(m, fresh) {
-  if (m.type !== "con") { const k = CLASSES[m.key];
-    return `<svg class="cr-fig" viewBox="0 0 90 54"><defs><radialGradient id="cg-${m.id}"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${k.colour}"/><stop offset="1" stop-color="${k.colour}" stop-opacity="0"/></radialGradient></defs>
-      ${m.cards.map((c, i) => `<circle class="${fresh ? "cr-pop" : ""}" style="animation-delay:${i * 0.12}s" cx="${12 + i * (66 / Math.max(1, m.cards.length - 1))}" cy="27" r="${7 + pts(c.hip) * 2}" fill="url(#cg-${m.id})"/>`).join("")}</svg>`; }
-  const lines = FIGURE(m.key), all = lines.flat(), [ra0, de0] = centroid(all), P = all.map(([r, d]) => project(r, d, ra0, de0));
-  const xs = P.map((p) => p.x), ys = P.map((p) => p.y), w = Math.max(...xs) - Math.min(...xs) || 1, h = Math.max(...ys) - Math.min(...ys) || 1, s = Math.min(80 / w, 44 / h);
+/** Each constellation's stick figure fitted to the card's art window (x 8..62, y 12..60). Cached. */
+const FIG = {};
+function fig(con) {
+  if (FIG[con]) return FIG[con];
+  const lines = FIGURE(con), all = lines.flat(), [ra0, de0] = centroid(all), P = all.map(([r, d]) => project(r, d, ra0, de0));
+  const xs = P.map((p) => p.x), ys = P.map((p) => p.y), w = Math.max(...xs) - Math.min(...xs) || 1, h = Math.max(...ys) - Math.min(...ys) || 1, s = Math.min(54 / w, 46 / h);
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-  const xy = (r, d) => { const p = project(r, d, ra0, de0); return [45 + (p.x - cx) * s, 27 - (p.y - cy) * s]; };
-  const path = lines.map((l) => l.map(([r, d], i) => { const [x, y] = xy(r, d); return (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); }).join("")).join("");
-  const dots = m.cards.map((c, i) => { const cc = CARD[c.hip], [x, y] = xy(cc.ra, cc.de);
-    return `<circle class="${fresh ? "cr-pop" : ""}" style="animation-delay:${0.5 + i * 0.12}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${1.4 + pts(c.hip) * 0.8}" fill="${CLASSES[cc.cls].colour}"/>`; }).join("");
-  return `<svg class="cr-fig" viewBox="0 0 90 54"><path class="${fresh ? "cr-trace" : ""}" d="${path}" fill="none" stroke="#FADE8C" stroke-width=".9" stroke-opacity=".7"/>${dots}</svg>`;
+  const xy = (r, d) => { const p = project(r, d, ra0, de0); return [35 + (p.x - cx) * s, 36 - (p.y - cy) * s]; };
+  const path = lines.map((l) => l.map(([r, d], i) => { const [x, y] = xy(r, d); return (i ? "L" : "M") + f1(x) + " " + f1(y); }).join("")).join("");
+  const nodes = [...new Set(all.map((p) => p.join(",")))].map((k) => xy(...k.split(",").map(Number)));
+  return (FIG[con] = { path, nodes, xy });
+}
+const spark = (x, y, r) => `<path d="M${f1(x)} ${f1(y - r)}L${f1(x + r * .16)} ${f1(y - r * .16)}L${f1(x + r)} ${f1(y)}L${f1(x + r * .16)} ${f1(y + r * .16)}L${f1(x)} ${f1(y + r)}L${f1(x - r * .16)} ${f1(y + r * .16)}L${f1(x - r)} ${f1(y)}L${f1(x - r * .16)} ${f1(y - r * .16)}Z" fill="#fff"/>`;
+/** The card's art: class-coloured sky, its constellation drawn with this star blazing, a name banner. hidden = Level 3 (no constellation shown). */
+function art(hip, hidden) {
+  const c = CARD[hip], p = pts(hip), k = c.cls;
+  let seed = hip; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const dust = Array.from({ length: 14 }, () => `<circle cx="${f1(4 + rnd() * 62)}" cy="${f1(4 + rnd() * 60)}" r="${f1(.25 + rnd() * .5)}" fill="#fff" opacity="${f1(.3 + rnd() * .5)}"/>`).join("");
+  let sky;
+  if (hidden) sky = `<circle cx="35" cy="36" r="24" fill="url(#cr-gl-${k})" opacity=".85"/><circle cx="35" cy="36" r="${3 + p}" fill="#fff"/>${spark(35, 36, 14 + p * 3)}
+    <circle cx="35" cy="36" r="21" fill="none" stroke="#FADE8C" stroke-width=".5" stroke-dasharray="1.5 2.5" opacity=".6"/>`;
+  else { const F = fig(c.con), [x, y] = F.xy(c.ra, c.de);
+    sky = `<path d="${F.path}" fill="none" stroke="#FADE8C" stroke-width=".8" stroke-opacity=".55" stroke-linecap="round"/>${F.nodes.map(([a, b]) => `<circle cx="${f1(a)}" cy="${f1(b)}" r=".9" fill="#e8e6ff"/>`).join("")}
+      <circle cx="${f1(x)}" cy="${f1(y)}" r="${11 + p * 2.5}" fill="url(#cr-gl-${k})"/><circle cx="${f1(x)}" cy="${f1(y)}" r="${1.6 + p * .6}" fill="#fff"/>${spark(x, y, 7 + p * 2.2)}`; }
+  const n = c.name, fs = n.length <= 6 ? 9.5 : n.length <= 8 ? 8.2 : n.length <= 9 ? 7.2 : 6.4;
+  const sub = hidden ? "✧ which sky?" : CONS[c.con].emoji + " " + CONS[c.con].name;
+  return `<svg class="cr-art" viewBox="0 0 70 96" aria-hidden="true"><g clip-path="url(#cr-clip)"><rect width="70" height="96" fill="url(#cr-bg-${k})"/>${dust}<g class="cr-sky">${sky}</g>
+    <rect y="60" width="70" height="36" fill="url(#cr-ban)"/></g>
+    <circle cx="9.5" cy="9.5" r="6" fill="${CLASSES[k].colour}"/><text x="9.5" y="12.4" text-anchor="middle" font-size="8" font-weight="700" fill="#0a0820" font-family="Cinzel, Georgia, serif">${k}</text>
+    <text x="64" y="11" text-anchor="end" font-size="7" fill="#FADE8C" letter-spacing="-.5">${"★".repeat(p)}</text>
+    <text x="35" y="80" text-anchor="middle" font-size="${fs}" fill="#fff6dc" font-family="Cinzel, Georgia, serif" font-weight="700">${esc(n)}</text>
+    <text x="35" y="89.5" text-anchor="middle" font-size="${CONS[c.con].name.length > 11 && !hidden ? 4.8 : 5.4}" fill="#cfc8ff">${esc(sub)}</text>
+    <rect x=".6" y=".6" width="68.8" height="94.8" rx="6.6" fill="none" stroke="${CLASSES[k].colour}" stroke-width="1.2"/><rect x="3" y="3" width="64" height="90" rx="5" fill="none" stroke="#FADE8C" stroke-opacity=".25" stroke-width=".5"/></svg>`;
+}
+/** One card. o = { labels, sel, cls (extra classes), mini, i (deal order) } */
+function face(hip, o = {}) {
+  const c = CARD[hip], tag = o.mini ? "span" : "button";
+  return `<${tag} ${tag === "button" ? `type="button" data-h="${hip}"` : ""} class="cr-card c-${c.cls}${o.mini ? " mini" : ""}${o.sel ? " sel" : ""}${o.cls ? " " + o.cls : ""}"
+    style="--k:${CLASSES[c.cls].colour};--i:${o.i || 0}" aria-label="${esc(c.name)}, class ${c.cls}, magnitude ${c.mag}">${art(hip, o.labels === false)}</${tag}>`;
+}
+const back = (cls = "", style = "") => `<span class="cr-back ${cls}"${style ? ` style="${style}"` : ""}><i></i></span>`;
+/** The table seen from above: the player's equipped cloth (colours from the Chamber's --cloth vars, its design and motion). */
+function clothSvg() {
+  const D = getTableDecor(), ink = D.ink || "#E2B04A";
+  return `<svg class="cr-cloth" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+    <radialGradient id="cr-clothg" cx="50%" cy="50%" r="70%"><stop offset="0" style="stop-color:var(--cloth1,#5a2a8a)"/><stop offset=".6" style="stop-color:var(--cloth2,#36185e)"/><stop offset="1" style="stop-color:var(--cloth3,#170a2e)"/></radialGradient>
+    <radialGradient id="cr-vign" cx="50%" cy="50%" r="72%"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient></defs>
+    <rect width="400" height="300" fill="url(#cr-clothg)"/>
+    ${D.design ? `<g fill="none" stroke="${ink}" stroke-width="1.4" opacity=".5" transform="translate(200 150) scale(.92) translate(-200 -200)">${D.design}</g>`
+      : `<g fill="none" stroke="${ink}" opacity=".45"><circle cx="200" cy="150" r="128" stroke-width="1.4"/><circle cx="200" cy="150" r="112" stroke-width=".8" stroke-dasharray="3 6"/><circle cx="200" cy="150" r="46" stroke-width=".8"/><path d="M60 150H340M200 14V286" stroke-width=".6"/></g>`}
+    ${D.fx ? `<g class="cr-clothfx" transform="translate(200 150) scale(.92) translate(-200 -200)">${D.fx}</g>` : ""}
+    <rect width="400" height="300" fill="url(#cr-vign)"/><rect x="6" y="6" width="388" height="288" rx="14" fill="none" stroke="${ink}" stroke-opacity=".7" stroke-width="2"/><rect x="12" y="12" width="376" height="276" rx="10" fill="none" stroke="${ink}" stroke-opacity=".35" stroke-dasharray="2 5"/></svg>`;
 }
 function tableHtml(g, o = {}) {
-  const L = levelOf(g), t = top(g), b = "cr-b-" + (o.back || "cb-midnight");
-  const opp = `<div class="cr-opp${o.thinking ? " think" : ""}">${g.hands.or.map((_, i) => back(i >= g.hands.or.length - (o.oracleGot || 0) ? "cr-new" : "")).join("")}<span class="cr-cnt">Oracle · ${g.hands.or.length}</span></div>`;
-  const piles = `<div class="cr-piles"><button type="button" class="cr-pile" data-draw="deck" ${g.deck.length ? "" : "disabled"}>${g.deck.length ? back() : `<span class="cr-empty">${g.nights < 2 ? "new night" : "dawn"}</span>`}<span class="cr-cnt">${g.deck.length} left${g.nights > 1 ? " · night 2" : ""}</span></button>
+  const L = levelOf(g), t = top(g), b = "cr-b-" + (o.back || "cb-midnight"), n = g.hands.or.length;
+  const opp = `<div class="cr-opp${o.thinking ? " think" : ""}"><div class="cr-ofan">${g.hands.or.map((_, i) => back(i >= n - (o.oracleGot || 0) ? "cr-new" : "", `--r:${f1((i - (n - 1) / 2) * 7)}deg;--y:${f1(Math.abs(i - (n - 1) / 2) * 1.6)}px`)).join("")}</div><span class="cr-cnt">Oracle · ${n}</span></div>`;
+  const piles = `<div class="cr-piles"><button type="button" class="cr-pile" data-draw="deck" ${g.deck.length ? "" : "disabled"}>${g.deck.length ? `<span class="cr-stack">${back("", "--o:2")}${back("", "--o:1")}${back()}</span>` : `<span class="cr-empty">${g.nights < 2 ? "new night" : "dawn"}</span>`}<span class="cr-cnt">${g.deck.length} left${g.nights > 1 ? " · night 2" : ""}</span></button>
     <button type="button" class="cr-pile" data-draw="discard" ${t != null ? "" : "disabled"}>${t != null ? face(t, { mini: true, labels: L.labels, cls: o.flip ? "cr-flip" : "" }) : `<span class="cr-empty">discards</span>`}<span class="cr-cnt">discards</span></button></div>`;
   const melds = g.melds.length ? g.melds.map((m) => `<div class="cr-meld ${m.owner === "me" ? "mine" : "theirs"}${m.id === o.fresh ? " fresh" : ""}${m.id === o.grew ? " grew" : ""}">
-      <div class="cr-mh">${m.type === "con" ? CONS[m.key].emoji + " " + esc(m.type === "con" ? CONS[m.key].name : "") : "🌈 Class " + m.key}${m.type === "con" && m.cards.length === 4 ? " ✓" : ""}</div>
-      ${figure(m, m.id === o.fresh)}<div class="cr-mcards">${m.cards.map((c) => `<span class="cr-tiny c-${CARD[c.hip].cls}${c.by === "me" ? " by-me" : ""}" style="--k:${CLASSES[CARD[c.hip].cls].colour}">${esc(CARD[c.hip].name)}</span>`).join("")}</div></div>`).join("")
-    : `<div class="cr-hint">Sets you and the Oracle lay down appear here, drawn as their constellations.</div>`;
-  return `<div class="cr-wrap ${b}">${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
+      <div class="cr-fan">${m.cards.map((c, i) => face(c.hip, { mini: true, labels: true, cls: (c.by === "me" ? "by-me" : "by-or") + (m.id === o.grew && i === m.cards.length - 1 ? " cr-new" : "") })).join("")}</div>
+      <span class="cr-mh">${m.type === "con" ? CONS[m.key].emoji + " " + esc(CONS[m.key].name) : "🌈 Class " + m.key}${m.type === "con" && m.cards.length === 4 ? " ✓" : ""}</span></div>`).join("")
+    : `<div class="cr-hint">Sets you and the Oracle lay down are dealt onto the cloth here.</div>`;
+  return `<div class="cr-wrap ${b}">${clothSvg()}${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
 }
 
 const CSS = `
-.table.rummy{pointer-events:auto;background:radial-gradient(90% 70% at 50% 30%,#1a1f5a,#090a26 70%,#04040f);overflow:hidden}
-.cr-wrap{position:absolute;inset:0;display:grid;grid-template-rows:auto auto 1fr;gap:6px;padding:8px 8px 22px}
-.cr-opp{display:flex;align-items:center;gap:0;min-height:34px}.cr-opp .cr-back{width:22px;height:32px;margin-right:-9px;border-radius:4px}
-.cr-opp.think .cr-back{animation:cr-think .9s ease-in-out infinite}.cr-opp.think .cr-back:nth-child(2n){animation-delay:.2s}
-@keyframes cr-think{50%{transform:translateY(-4px) rotate(-3deg)}}
-.cr-cnt{font-size:.66rem;color:var(--gold2,#FADE8C);margin-left:14px;letter-spacing:.06em;white-space:nowrap}
-.cr-piles{display:flex;gap:10px;justify-content:center}
+.table.rummy{pointer-events:auto;background:#0b0618;overflow:hidden}
+.cr-wrap{position:absolute;inset:0;display:grid;grid-template-rows:auto auto 1fr;gap:4px;padding:12px 12px 24px}
+.cr-cloth{position:absolute;inset:0;width:100%;height:100%;z-index:0}.cr-wrap>*:not(.cr-cloth){position:relative;z-index:1}
+.cr-clothfx *{transform-box:fill-box;transform-origin:center}
+.cr-opp{display:flex;align-items:center;justify-content:center;gap:10px;min-height:40px}
+.cr-ofan{display:flex;padding-left:12px}.cr-ofan .cr-back{width:26px;height:36px;margin-left:-12px;border-radius:4px;transform:translateY(var(--y,0)) rotate(var(--r,0));box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.cr-opp.think .cr-ofan{animation:cr-think .9s ease-in-out infinite}
+@keyframes cr-think{50%{transform:translateY(-3px)}}
+.cr-cnt{font-size:.66rem;color:var(--gold2,#FADE8C);letter-spacing:.06em;white-space:nowrap;text-shadow:0 1px 3px #000}
+.cr-piles{display:flex;gap:14px;justify-content:center}
 .cr-pile{background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:inherit;font:inherit}
-.cr-pile:disabled{cursor:default;opacity:.6}.cr-pile .cr-cnt{margin:0}
-.cr-pile .cr-back{width:50px;height:68px}.cr-pile:not(:disabled):hover .cr-back,.cr-pile:not(:disabled):hover .cr-card{box-shadow:0 0 12px rgba(250,222,140,.6)}
-.cr-empty{display:grid;place-items:center;width:44px;height:60px;border:1px dashed #4a4f8a;border-radius:6px;font-size:.6rem;color:#8890c8}
-.cr-melds{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;overflow:auto;min-height:0}
-.cr-meld{border:1px solid #3a3f80;border-radius:8px;padding:3px 5px;background:rgba(8,10,40,.7);width:120px}
-.cr-meld.mine{border-color:rgba(250,222,140,.7)}.cr-meld.theirs{border-color:rgba(255,90,180,.55)}
-.cr-meld.fresh{animation:cr-glow 1.6s ease-out}.cr-meld.grew{animation:cr-glow 1s ease-out}
-@keyframes cr-glow{0%{box-shadow:0 0 0 rgba(250,222,140,0);transform:scale(.6);opacity:0}30%{box-shadow:0 0 24px rgba(250,222,140,.9);transform:scale(1.06);opacity:1}100%{box-shadow:0 0 0 rgba(250,222,140,0);transform:scale(1)}}
-.cr-mh{font-size:.66rem;color:var(--gold2,#FADE8C);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cr-fig{width:100%;height:40px;display:block}
-.cr-trace{stroke-dasharray:300;stroke-dashoffset:300;animation:cr-draw 1.4s ease-out .2s forwards}@keyframes cr-draw{to{stroke-dashoffset:0}}
-.cr-pop{transform-box:fill-box;transform-origin:center;animation:cr-pop .5s cubic-bezier(.2,1.6,.4,1) both}@keyframes cr-pop{from{transform:scale(0)}}
-.cr-mcards{display:flex;flex-wrap:wrap;gap:2px}
-.cr-tiny{font-size:.56rem;padding:0 4px;border-radius:6px;border:1px solid var(--k);color:#e9e6ff;background:rgba(0,0,0,.35)}.cr-tiny.by-me{background:rgba(250,222,140,.18)}
-.cr-hint{font-size:.72rem;color:#8890c8;text-align:center;padding:8px}
-.cr-burst{position:absolute;left:50%;top:55%;pointer-events:none}.cr-burst i{position:absolute;width:6px;height:6px;border-radius:50%;background:#FADE8C;box-shadow:0 0 8px #FADE8C;animation:cr-burst 1s ease-out var(--d) both}
+.cr-pile:disabled{cursor:default;opacity:.6}
+.cr-stack{position:relative;display:block;width:50px;height:68px}.cr-stack .cr-back{position:absolute;left:calc(var(--o,0) * -2px);top:calc(var(--o,0) * 2px);width:50px;height:68px}
+.cr-pile:not(:disabled):hover .cr-back,.cr-pile:not(:disabled):hover .cr-card{box-shadow:0 0 14px rgba(250,222,140,.7)}
+.cr-empty{display:grid;place-items:center;width:50px;height:68px;border:1px dashed rgba(250,222,140,.5);border-radius:6px;font-size:.6rem;color:#e8dcb0}
+.cr-melds{display:flex;flex-wrap:wrap;gap:8px 12px;align-content:flex-start;justify-content:center;overflow:auto;min-height:0;padding-top:4px}
+.cr-meld{display:flex;flex-direction:column;align-items:center;gap:1px}
+.cr-fan{display:flex;padding-left:24px}.cr-fan .cr-card.mini{width:38px;height:52px;margin-left:-24px;box-shadow:-2px 2px 5px rgba(0,0,0,.6)}
+.cr-fan .cr-card.mini:nth-child(2){transform:rotate(3deg)}.cr-fan .cr-card.mini:nth-child(3){transform:rotate(6deg)}.cr-fan .cr-card.mini:nth-child(4){transform:rotate(9deg)}.cr-fan .cr-card.mini:nth-child(n+5){transform:rotate(12deg)}
+.cr-meld.fresh .cr-fan{animation:cr-glow 1.6s ease-out}.cr-meld.grew .cr-fan{animation:cr-glow 1s ease-out}
+@keyframes cr-glow{0%{filter:drop-shadow(0 0 0 rgba(250,222,140,0));transform:scale(.5) translateY(-30px);opacity:0}35%{filter:drop-shadow(0 0 12px rgba(250,222,140,.95));transform:scale(1.08);opacity:1}100%{filter:drop-shadow(0 0 0 rgba(250,222,140,0));transform:none}}
+.cr-mh{font-size:.6rem;color:#fff3cf;white-space:nowrap;padding:0 6px;border-radius:8px;background:rgba(5,3,14,.7);text-shadow:0 1px 2px #000}
+.cr-meld.mine .cr-mh{box-shadow:inset 0 0 0 1px rgba(250,222,140,.7)}.cr-meld.theirs .cr-mh{box-shadow:inset 0 0 0 1px rgba(255,90,180,.6)}
+.cr-hint{font-size:.72rem;color:#fff3cf;text-align:center;padding:8px;text-shadow:0 1px 3px #000}
+.cr-burst{position:absolute;left:50%;top:60%;pointer-events:none;z-index:2}.cr-burst i{position:absolute;width:6px;height:6px;border-radius:50%;background:#FADE8C;box-shadow:0 0 8px #FADE8C;animation:cr-burst 1s ease-out var(--d) both}
 @keyframes cr-burst{from{transform:rotate(var(--a)) translateX(0);opacity:1}to{transform:rotate(var(--a)) translateX(90px);opacity:0}}
-.cr-hand{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;justify-content:center}
-.cr-card{position:relative;width:70px;height:96px;border-radius:8px;border:1.5px solid var(--k);background:linear-gradient(160deg,#1c1850,#0b0a26);color:#f2eeff;font:inherit;padding:5px 4px 4px;
-  display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;transition:transform .18s,box-shadow .18s;box-shadow:0 2px 6px rgba(0,0,0,.5)}
-.cr-card:hover{box-shadow:0 0 10px var(--k)}
-.cr-card.sel{transform:translateY(-10px);box-shadow:0 0 16px var(--k),0 0 0 2px #FADE8C}
-.cr-dot{width:var(--s);height:var(--s);border-radius:50%;background:radial-gradient(circle,#fff 0 20%,var(--k) 45%,transparent 72%);box-shadow:0 0 10px var(--k);margin:4px 0 2px;animation:cr-tw 3.2s ease-in-out infinite;animation-delay:calc(var(--i) * -.4s)}
-@keyframes cr-tw{50%{opacity:.7;transform:scale(.88)}}
-.cr-n{font-family:var(--display,Cinzel,serif);font-size:.66rem;line-height:1.05;text-align:center;overflow-wrap:anywhere}.cr-n.long{font-size:.54rem;letter-spacing:-.02em}
-.cr-con{font-size:.54rem;color:#b9b3e8;text-align:center;line-height:1.1}.cr-con.hid{color:#6d679a}
-.cr-foot{margin-top:auto;display:flex;justify-content:space-between;width:100%;font-size:.6rem}.cr-foot i{font-style:normal;color:var(--k);font-weight:700}.cr-foot em{font-style:normal;color:#FADE8C;letter-spacing:-1px}
-.cr-card.mini{width:50px;height:68px;padding:3px 2px;gap:1px;border-radius:6px;cursor:inherit}.cr-card.mini .cr-n{font-size:.5rem}.cr-card.mini .cr-n.long{font-size:.4rem}.cr-card.mini .cr-con{font-size:.44rem}.cr-card.mini .cr-foot{font-size:.48rem}.cr-card.mini .cr-dot{margin:1px 0}
-.cr-deal{animation:cr-deal .5s cubic-bezier(.2,1.2,.4,1) calc(var(--i) * .07s) both}@keyframes cr-deal{from{transform:translateY(-120px) rotate(-14deg) scale(.6);opacity:0}}
+.cr-hand{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0;justify-content:center}
+.cr-card{position:relative;display:block;width:78px;height:107px;border:0;border-radius:8px;background:none;padding:0;cursor:grab;transition:transform .18s,box-shadow .18s,filter .18s;box-shadow:0 3px 8px rgba(0,0,0,.55);touch-action:none;user-select:none;-webkit-user-select:none}
+.cr-art{display:block;width:100%;height:100%;pointer-events:none}
+.cr-card:hover{box-shadow:0 0 12px var(--k)}
+.cr-card.sel{transform:translateY(-12px);box-shadow:0 0 18px var(--k),0 0 0 2px #FADE8C}
+.cr-card .cr-sky{animation:cr-tw 3.4s ease-in-out infinite;animation-delay:calc(var(--i) * -.5s)}@keyframes cr-tw{50%{opacity:.82}}
+.cr-card.drag{z-index:5;cursor:grabbing;transition:none;box-shadow:0 12px 24px rgba(0,0,0,.6),0 0 16px var(--k)}
+.cr-card.ins-l{box-shadow:-6px 0 0 -2px #FADE8C,0 3px 8px rgba(0,0,0,.55)}.cr-card.ins-r{box-shadow:6px 0 0 -2px #FADE8C,0 3px 8px rgba(0,0,0,.55)}
+.cr-card.mini{width:50px;height:68px;border-radius:5px;cursor:inherit;box-shadow:0 2px 5px rgba(0,0,0,.6)}
+.cr-deal{animation:cr-deal .5s cubic-bezier(.2,1.2,.4,1) calc(var(--i) * .07s) both}@keyframes cr-deal{from{transform:translateY(-140px) rotate(-14deg) scale(.6);opacity:0}}
 .cr-new{animation:cr-new .6s cubic-bezier(.2,1.3,.4,1) both}@keyframes cr-new{from{transform:rotateY(90deg) translateY(-30px);opacity:0}}
 .cr-flip{animation:cr-flip .5s ease-out both}@keyframes cr-flip{from{transform:translateY(-24px) rotate(10deg);opacity:0}}
 .cr-shake{animation:cr-shake .45s ease-in-out}@keyframes cr-shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
@@ -116,10 +157,11 @@ const CSS = `
 .cr-b-cb-pulsar .cr-back::after{content:"●";color:#e6f4ff;font-size:.7em;animation:cr-pulse 1.6s ease-in-out infinite}
 @keyframes cr-spin{to{transform:rotate(360deg)}}@keyframes cr-drift{to{background-position:100% 100%}}@keyframes cr-wave{to{background-position:0 100%}}@keyframes cr-pulse{50%{opacity:.3}}
 .cr-shelf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px}.cr-shelf .cr-back{width:66px;height:92px}.cr-shelf .cr-back:nth-child(1){transform:rotate(-10deg)}.cr-shelf .cr-back:nth-child(3){transform:rotate(10deg)}
-@media (prefers-reduced-motion: reduce){.cr-deal,.cr-new,.cr-flip,.cr-shake,.cr-meld.fresh,.cr-meld.grew,.cr-pop,.cr-burst,.cr-dot,.cr-opp.think .cr-back,.cr-back,.cr-back::before,.cr-back::after,.cr-back i{animation:none}.cr-trace{stroke-dashoffset:0;animation:none}.cr-burst{display:none}}
-@media (max-width:560px){.cr-card{width:58px;height:84px}.cr-n{font-size:.58rem}.cr-meld{width:104px}}
+@media (prefers-reduced-motion: reduce){.cr-deal,.cr-new,.cr-flip,.cr-shake,.cr-meld .cr-fan,.cr-burst,.cr-card .cr-sky,.cr-opp.think .cr-ofan,.cr-back,.cr-back::before,.cr-back::after,.cr-back i,.cr-clothfx *{animation:none}.cr-burst{display:none}}
+@media (max-width:560px){.cr-card{width:62px;height:85px}.cr-hand{gap:5px}}
+@media (min-width:900px){.cr-fan{padding-left:28px}.cr-fan .cr-card.mini{width:48px;height:66px;margin-left:-28px}.cr-melds{gap:10px 18px}}
 `;
-function styleOnce() { if (document.getElementById("cr-style")) return; const st = document.createElement("style"); st.id = "cr-style"; st.textContent = CSS; document.head.append(st); }
+function styleOnce() { defsOnce(); if (document.getElementById("cr-style")) return; const st = document.createElement("style"); st.id = "cr-style"; st.textContent = CSS; document.head.append(st); }
 
 export function guideHtml() {
   return `<div class="dec-guide cr-guide"><h3>📖 ${esc(GUIDE.title)}</h3>${GUIDE.sections.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(s.h)}</summary>${s.p.map((t) => `<p>${t}</p>`).join("")}</details>`).join("")}</div>`;
@@ -183,18 +225,51 @@ export const rummy = {
         acts = `<button class="c main" type="button" id="cr-set" ${set ? "" : "disabled"}>✦ Lay down set</button><button class="c" type="button" id="cr-add" ${one && g.melds.length ? "" : "disabled"}>➕ Add to a set</button>
           <button class="c" type="button" id="cr-dis" ${one && (sel[0] !== g.took || g.hands.me.length === 1) ? "" : "disabled"}>⤵ Discard${one ? " " + esc(CARD[sel[0]].name) : ""}</button>`;
       }
-      const tip = !mine ? (g.over ? "" : "The Oracle is playing…") : g.phase === "draw" ? "Draw a card: from the deck, or take the top discard." :
-        sel.length === 0 ? "Tap cards to pick them. 3 or 4 of one constellation make a set" + (L.colour ? "; so do 3+ of one colour class from different constellations." : ".") + " Then discard one to end your turn." :
+      const tip = !mine ? (g.over ? "" : "The Oracle is playing…") : g.phase === "draw" ? "Draw a card: from the deck, or take the top discard. Drag cards to rearrange your hand." :
+        sel.length === 0 ? "Tap cards to pick them, drag to rearrange. 3 or 4 of one constellation make a set" + (L.colour ? "; so do 3+ of one colour class from different constellations." : ".") + " Then discard one to end your turn." :
         sel.length === 1 ? "One card: add it to a set on the table, or discard it." : sel.length === 2 ? "Pick at least 3 cards for a set." : (L.labels && !setType(g, sel) ? "These don't make a set yet." : "Lay them down!");
-      ui(`<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
-      $("ui").querySelectorAll("[data-h]").forEach((b) => (b.onclick = () => { if (busy || g.over) return; const h = +b.dataset.h; flickSfx();
-        sel = sel.includes(h) ? sel.filter((x) => x !== h) : [...sel, h]; info(h); hand(); }));
+      ui(`<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${g.over ? "" : `<button class="c small" type="button" id="cr-sort">⇅ Sort</button>`}${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
+      wireHand();
+      if ($("cr-sort")) $("cr-sort").onclick = () => { const order = Object.keys(CONS); flickSfx();
+        g.hands.me.sort((a, b) => L.labels ? order.indexOf(CARD[a].con) - order.indexOf(CARD[b].con) || CARD[a].mag - CARD[b].mag : "BAFKM".indexOf(CARD[a].cls) - "BAFKM".indexOf(CARD[b].cls) || CARD[a].mag - CARD[b].mag); hand(); };
       if ($("cr-deck")) $("cr-deck").onclick = () => myDraw("deck");
       if ($("cr-top")) $("cr-top").onclick = () => myDraw("discard");
       if ($("cr-set")) $("cr-set").onclick = mySet;
       if ($("cr-add")) $("cr-add").onclick = myAdd;
       if ($("cr-dis")) $("cr-dis").onclick = myDiscard;
       $("cr-leave").onclick = () => lobby(false); wireGuide();
+    }
+    const toggle = (h) => { if (busy || g.over) return; flickSfx(); sel = sel.includes(h) ? sel.filter((x) => x !== h) : [...sel, h]; info(h); hand(); };
+    /** Tap a card to pick it; drag it (mouse or finger) to move it in your hand. */
+    function wireHand() {
+      const box = $("ui").querySelector(".cr-hand"); if (!box) return;
+      box.querySelectorAll("[data-h]").forEach((b) => {
+        const h = +b.dataset.h;
+        b.onclick = (e) => { if (e.detail === 0) toggle(h); }; // keyboard (Enter/Space); pointer taps are handled below
+        b.onpointerdown = (e) => {
+          if (e.button > 0 || g.over) return;
+          const sx = e.clientX, sy = e.clientY; let drag = false, target = null, after = false;
+          try { b.setPointerCapture(e.pointerId); } catch {}
+          const others = [...box.querySelectorAll("[data-h]")].filter((x) => x !== b);
+          b.onpointermove = (ev) => {
+            const dx = ev.clientX - sx, dy = ev.clientY - sy;
+            if (!drag && Math.hypot(dx, dy) > 8) { drag = true; b.classList.add("drag"); }
+            if (!drag) return;
+            b.style.transform = `translate(${dx}px,${dy}px) rotate(${Math.max(-12, Math.min(12, dx / 18))}deg) scale(1.06)`;
+            let best = null, bd = Infinity;
+            for (const o of others) { const r = o.getBoundingClientRect(), d = Math.hypot(ev.clientX - (r.left + r.width / 2), (ev.clientY - (r.top + r.height / 2)) * 1.5); if (d < bd) { bd = d; best = o; } }
+            others.forEach((o) => o.classList.remove("ins-l", "ins-r"));
+            if (best) { const r = best.getBoundingClientRect(); after = ev.clientX > r.left + r.width / 2; target = best; best.classList.add(after ? "ins-r" : "ins-l"); }
+          };
+          const done = (ev, cancel) => {
+            b.onpointermove = b.onpointerup = b.onpointercancel = null;
+            if (!drag) { if (!cancel) toggle(h); return; }
+            if (!cancel && target) { const arr = g.hands.me, t = +target.dataset.h; arr.splice(arr.indexOf(h), 1); arr.splice(arr.indexOf(t) + (after ? 1 : 0), 0, h); takeSfx(); }
+            hand();
+          };
+          b.onpointerup = (ev) => done(ev, false); b.onpointercancel = (ev) => done(ev, true);
+        };
+      });
     }
     /** The card's real facts, under the hand. On Level 3 the fact would give away the constellation, so only once it's on the table. */
     function info(h) {

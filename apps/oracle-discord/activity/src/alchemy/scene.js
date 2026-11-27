@@ -73,6 +73,23 @@ const boomFx = (c = "#ff9a3c") => `<g class="al-boom">
   <path class="al-crack" d="M150 210 l14 -6 l6 10 l12 -8 M250 214 l-10 -4 l-4 9" stroke="#140804" stroke-width="2" fill="none"/>
   <rect class="al-flash" x="-600" y="-400" width="1600" height="1100" fill="#fff"/></g>`;
 
+/** Safety gear on the bench: goggles on a wall hook, a blast shield in front of the flask, a fume hood above it. */
+const GEAR = { "al-goggles": ["goggles"], "al-shield": ["shield"], "al-hood": ["hood"], "al-kit": ["goggles", "shield", "hood"] };
+const gearSvg = (id, lit) => (GEAR[id] || []).map((k) => k === "goggles"
+  ? `<g class="al-gear${lit ? " lit" : ""}"><path d="M318 96 q22 -14 44 0" stroke="#3a2a1a" stroke-width="3" fill="none"/><circle cx="328" cy="104" r="10" fill="#9fd8ff" fill-opacity=".35" stroke="#e6f2ff" stroke-width="3"/><circle cx="352" cy="104" r="10" fill="#9fd8ff" fill-opacity=".35" stroke="#e6f2ff" stroke-width="3"/><path d="M338 104 h4" stroke="#e6f2ff" stroke-width="3"/></g>`
+  : k === "shield"
+  ? `<g class="al-gear${lit ? " lit" : ""}"><rect x="128" y="118" width="144" height="128" rx="10" fill="#bfe3ff" fill-opacity=".1" stroke="#cfeaff" stroke-opacity=".6" stroke-width="2"/><path d="M140 130 l22 0 M140 136 l12 0" stroke="#fff" stroke-opacity=".5" stroke-width="2"/></g>`
+  : `<g class="al-gear${lit ? " lit" : ""}"><rect x="188" y="0" width="24" height="54" fill="#4a4f5a"/><path d="M150 82 L176 52 H224 L250 82 Z" fill="#5a606c" stroke="#2a2d33" stroke-width="2"/><path d="M160 80 H240" stroke="#9fd8ff" stroke-opacity=".4" stroke-width="2"/></g>`).join("");
+
+/** A poison gas release: a spreading coloured cloud, a skull and the room tinted the colour of the gas. */
+const gasFx = (c = "#c9ec5a") => `<g class="al-gas">
+  ${Array.from({ length: 10 }, (_, i) => `<circle class="al-cloud" cx="${200 + ((i % 5) - 2) * 14}" cy="${150 - (i % 3) * 10}" r="${20 + (i % 3) * 8}" fill="${c}" style="--dx:${((i % 5) - 2) * 60 + (i > 4 ? 20 : -20)}px;--dy:${-30 - (i % 4) * 22 + (i > 4 ? 60 : 0)}px;animation-delay:${(i * 0.13).toFixed(2)}s"/>`).join("")}
+  <rect class="al-tint" x="-600" y="-400" width="1600" height="1100" fill="${c}"/>
+  <text class="al-skull" x="200" y="160" font-size="54" text-anchor="middle" fill="#f4f1ea" stroke="#1a1020" stroke-width="2">☠</text></g>`;
+
+/** Gear doing its job: a pulse of light where the accident was stopped. */
+const savedFx = (c = "#9fd8ff") => `<g class="al-saved"><circle class="al-ring" cx="200" cy="165" r="30" fill="none" stroke="${c}" stroke-width="5"/><circle class="al-cloud small" cx="200" cy="140" r="18" fill="${c}" style="--dx:0px;--dy:-90px"/></g>`;
+
 export function sceneSvg(s) {
   const rx = s.react ? reactionFx(s.react) : null;
   const fire = (shopItem(s.look.fire) || shopItem("al-coal")).flame;
@@ -86,7 +103,7 @@ export function sceneSvg(s) {
     return `<g transform="translate(${90 + i * 34} 196)"><g class="al-chip"><circle r="13" fill="#160b2c" stroke="${r.c || "#E2B04A"}" stroke-width="2"/>${r.glyph ? g(r.glyph, -9, -9, 18, "#FADE8C") : `<text y="4" font-size="9" fill="#FADE8C" text-anchor="middle" font-family="system-ui">${xml(r.f.length <= 5 ? r.f : r.name.slice(0, 4))}</text>`}</g></g>`; }).join("");
   const scroll = s.glyph ? `<g class="al-scroll${s.fizzle ? " shake" : ""}"><rect x="22" y="84" width="96" height="100" rx="8" fill="#efe1bf" stroke="#8a6a3a" stroke-width="2"/><rect x="16" y="80" width="108" height="10" rx="5" fill="#c9a46b"/><rect x="16" y="180" width="108" height="10" rx="5" fill="#c9a46b"/><g class="al-ink${s.glow ? " lit" : ""}">${g(s.glyph, 34, 98, 72, "#3a1f0e")}</g></g>` : "";
   const label = s.label ? `<g class="al-label"><rect x="${200 - Math.min(180, s.label.length * 4.4 + 20)}" y="10" width="${Math.min(360, s.label.length * 8.8 + 40)}" height="28" rx="6" fill="#160b2c" stroke="#E2B04A" stroke-width="2"/><text x="200" y="29" text-anchor="middle" font-family="Cinzel,Georgia,serif" font-weight="700" font-size="${s.label.length > 34 ? 10 : 13}" fill="#FADE8C">${xml(s.label)}</text></g>` : "";
-  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${s.glow ? "al-won" : ""}${s.boom ? " al-exploded" : ""}">
+  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${s.glow ? "al-won" : ""}${s.boom ? " al-exploded" : ""}${s.gas ? " al-gassed" : ""}">
 <defs><radialGradient id="al-wall" cx="50%" cy="60%" r="75%"><stop offset="0" stop-color="#3b2a52"/><stop offset="1" stop-color="#0a0612"/></radialGradient>
 <radialGradient id="al-fire" cx="50%" cy="80%" r="70%"><stop offset="0" stop-color="${fire[0]}"/><stop offset=".5" stop-color="${fire[1]}"/><stop offset="1" stop-color="${fire[2]}"/></radialGradient>
 <radialGradient id="al-halo"><stop offset="0" stop-color="${s.liquid || fire[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${s.liquid || fire[1]}" stop-opacity="0"/></radialGradient>
@@ -100,7 +117,7 @@ ${charm(s.look.charm)}${scroll}
 <circle class="al-halo" cx="200" cy="168" r="${s.glow ? 70 : 40}" fill="url(#al-halo)" opacity="${s.glow ? 1 : 0.35}"/>
 <rect x="150" y="198" width="100" height="52" rx="4" fill="url(#al-brick)" stroke="#2a120a" stroke-width="2"/><rect x="160" y="206" width="80" height="34" rx="14" fill="#140804"/>
 ${flames}${s.snuff ? `<g class="al-dying"><path d="M${xs[lit]} 236 C${xs[lit] + 9} 224 ${xs[lit] + 6} 214 ${xs[lit]} 204 C${xs[lit] - 6} 214 ${xs[lit] - 9} 224 ${xs[lit]} 236Z" fill="url(#al-fire)"/></g>` : ""}${lit ? embers() : ""}
-${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}${s.boom ? " gone" : ""}">${vessel(s.look.vessel, s.react ? s.react.from[0] || s.liquid : s.liquid, !!s.pour, s.react ? rx.anim : "")}${s.react ? rx.over + rx.after : ""}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}${s.boom ? boomFx(s.boomColor) : ""}
+${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}${s.boom ? " gone" : ""}">${vessel(s.look.vessel, s.react ? s.react.from[0] || s.liquid : s.liquid, !!s.pour, s.react ? rx.anim : "")}${s.react ? rx.over + rx.after : ""}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}${s.boom ? boomFx(s.boomColor) : ""}${gearSvg(s.look.gear, !!s.saved)}${s.saved ? savedFx(s.saved) : ""}${s.gas ? gasFx(s.gas) : ""}
 ${chips}${label}
 </svg>`;
 }

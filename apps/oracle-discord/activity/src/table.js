@@ -227,3 +227,5 @@ export function fitSvg(svg) {
     return `<svg${a} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">`;
   });
 }
+/** The current table decor (cloth colours come from CSS vars on #table): for rooms that draw their own table view. */
+export const getTableDecor = () => DECOR;

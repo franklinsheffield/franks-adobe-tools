@@ -96,6 +96,35 @@ test("settle: first success pays, replays only improvements, elements light up, 
   assert.equal(solvedCount(p), 1); assert.equal(room(p).plays, 3); assert.equal(activity(p), 3);
 });
 
+test("deadly gases and real-life hazards: kinds, gas scene, and safety gear that saves you once", async () => {
+  const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
+  const { hazardOf } = await import("../activity/src/alchemy/logic.js");
+  const kinds = new Set(HAZARDS.map((h) => h.kind)); for (const k of ["boom", "splash", "gas"]) assert.ok(kinds.has(k), k);
+  for (const h of HAZARDS) { assert.ok(["boom", "splash", "gas"].includes(h.kind), h.id); if (h.kind === "gas") assert.match(h.col, /^#[0-9a-f]{6}$/i, h.id); }
+  assert.ok(HAZARDS.filter((h) => h.kind === "gas").length >= 5);
+  assert.equal(hazardOf(["spiritofsalt", "pyrolusite"], "dissolve"), null, "Scheele's own chlorine recipe stays safe");
+  assert.equal(hazardOf(["spiritofsalt", "pyrolusite"], "heat").id, "chlorinegas");
+  assert.equal(hazardOf(["iron", "sulfur", "spiritofsalt"], "dissolve").id, "rotteneggs");
+  assert.equal(hazardOf(["mercury"], "distil").id, "mercuryvapour"); assert.equal(hazardOf(["mercury"], "heat"), null);
+  assert.equal(hazardOf(["copper", "aquafortis"], "dissolve").id, "nitrousfumes");
+  assert.equal(hazardOf(["salammoniac", "saltpetre"], "heat").id, "ammoniumnitrate");
+  assert.equal(hazardOf(["salammoniac", "chalk"], "heat").id, "ammoniagas");
+  const gasSvg = sceneSvg({ look: DEFAULT_LOOK, flames: 4, shelf: RECIPES[0].shelf, gas: "#c9ec5a", label: "Gas" });
+  assert.ok(gasSvg.includes("al-cloud") && gasSvg.includes("al-gassed") && gasSvg.endsWith("</svg>"));
+  // gear: a matching guard stops the first accident for one flame; the second one still ends the experiment
+  const L = LEVELS[2], x = DISCOVERIES.find((d) => d.id === "chlorine"), p = { xp: 0, essence: 0 };
+  let run = start(x, L); run.guard = SHOP.find((s) => s.id === "al-hood").guards;
+  assert.equal(transmute(run, x, ["spiritofsalt", "pyrolusite"], "heat"), "saved"); assert.equal(run.flames, 3); assert.ok(!run.done);
+  assert.equal(transmute(run, x, ["spiritofsalt", "pyrolusite"], "heat"), "boom"); assert.ok(run.done);
+  run = start(x, L); run.guard = SHOP.find((s) => s.id === "al-goggles").guards;
+  assert.equal(transmute(run, x, ["spiritofsalt", "pyrolusite"], "heat"), "boom", "goggles don't stop gas");
+  run = start(x, L); run.guard = SHOP.find((s) => s.id === "al-kit").guards;
+  assert.equal(transmute(run, x, ["iron", "sulfur", "spiritofsalt"], "dissolve"), "saved");
+  assert.equal(transmute(run, x, ["spiritofsalt", "pyrolusite"], "dissolve"), "right");
+  const s = settle(p, run, x); assert.ok(s.xp > 0); assert.deepStrictEqual(room(p).accidents, ["rotteneggs"]);
+  for (const id of ["al-goggles", "al-shield", "al-hood", "al-kit"]) { const it = SHOP.find((t) => t.id === id); assert.equal(it.slot, "gear"); assert.ok(it.price > 0 && it.guards.length);
+    assert.ok(sceneSvg({ look: { ...DEFAULT_LOOK, gear: id }, flames: 3, saved: "#9fd8ff" }).includes("al-gear lit"), id); }
+});
 test("apothecary: free items owned, buying spends Essence and puts it on the bench", () => {
   const p = { essence: 70, owned: [] };
   assert.ok(owns(p, "al-alembic")); assert.ok(!owns(p, "al-pelican"));
