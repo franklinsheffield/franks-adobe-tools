@@ -161,7 +161,8 @@ function say(text, done, { keep = false } = {}) {
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
   const pros = prosody(plain);
   say.finish = null;
-  if (reduced) { el.textContent = plain; stop(); follow(); done && done(); return; }
+  const sm = speechMode(), pace = sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1;
+  if (reduced || sm === "off") { el.textContent = plain; stop(); follow(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
   say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); follow(); done && done(); };
   let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking"); refreshEnergy();
@@ -170,7 +171,7 @@ function say(text, done, { keep = false } = {}) {
     mood.flick(flickFor(ch));
     if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch, { ...pros[i - 1], wordEnd: !/[\p{L}\p{N}]/u.test(plain[i + 1] || " ") }); teller.classList.toggle("syl"); document.body.classList.toggle("syl"); } }
     if (i >= plain.length) { say.finish = null; blip("o", { final: true }); stop(); done && done(); return; }
-    typing = setTimeout(step, PAUSE[ch] || (ch === " " ? 34 : 26));
+    typing = setTimeout(step, (PAUSE[ch] || (ch === " " ? 34 : 26)) * pace);
   };
   step();
 }
@@ -867,10 +868,12 @@ function openSaved(at) {
 // ---- voice: unlock on the first click; mute toggle ----
 addEventListener("pointerdown", unlockVoice, { capture: true });
 addEventListener("keydown", unlockVoice, { capture: true });
-const vb = $("voice-btn");
-const showVoice = () => { vb.textContent = isMuted() ? "🔇 Voice off" : "🔊 Voice on"; vb.setAttribute("aria-pressed", String(!isMuted())); };
-vb.onclick = () => { setMuted(!isMuted()); showVoice(); };
-showVoice();
+// ---- speech: three speeds, or off (the words appear at once, no voice) ----
+const SPEECH = [["slow", "🐢", "Slow speech"], ["normal", "🗣️", "Normal speech"], ["fast", "🐇", "Fast speech"], ["off", "🔇", "Speech off: words appear at once, no voice"]];
+function speechMode() { try { const v = localStorage.getItem("oracle-speech"); if (SPEECH.some(([k]) => k === v)) return v; } catch { /* blocked */ } return isMuted() ? "off" : "normal"; }
+function showSpeech() { const m = speechMode(); $("speech-ctl").innerHTML = SPEECH.map(([k, e, l]) => `<button type="button" class="${k === m ? "on" : ""}" data-sp="${k}" aria-pressed="${k === m}" title="${l}" aria-label="${l}">${e}</button>`).join("");
+  $("speech-ctl").querySelectorAll("[data-sp]").forEach((b) => (b.onclick = () => { try { localStorage.setItem("oracle-speech", b.dataset.sp); } catch { /* blocked */ } setMuted(b.dataset.sp === "off"); showSpeech(); if (say.finish && b.dataset.sp === "off") say.finish(); })); }
+showSpeech();
 
 // ---- start ----
 (async () => {
@@ -1006,25 +1009,18 @@ function openRecords() {
   const wasHidden = el.hidden; el.hidden = false; if (wasHidden) el.scrollTop = 0; wireCaseTabs(); wireMusic(el, player, musicDeps());
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
 }
-/** Redraw whatever music UI is open, and the header button. */
+/** Redraw whatever music UI is open, and the header music bar (on/off, skip, volume). */
 function musicUi() {
-  const s = musicOf(state.prog), mb = $("music-btn");
-  mb.textContent = s.on ? (player.playing ? "🎵 Music ♪" : "🎵 Music") : "🔇 Music"; mb.classList.toggle("on", player.playing);
+  const s = musicOf(state.prog), t = player.current, bar = $("music-bar"), playing = player.playing;
+  const label = s.on ? `Music on${t ? `: ${t.title}` : ""}. Turn it off` : "Music off. Turn it on";
+  const want = `${s.on}|${playing}|${t ? t.id : ""}`;
+  if (bar.dataset.k !== want) { bar.dataset.k = want; const vol = bar.querySelector("input") ? bar.querySelector("input").value : Math.round(s.vol * 100);
+    bar.innerHTML = `<button type="button" class="${s.on ? "on" : ""}${playing ? " playing" : ""}" data-mb="power" aria-pressed="${s.on}" title="${esc(label)}" aria-label="${esc(label)}">${s.on ? "🎵" : "🔇"}</button><button type="button" data-mb="skip" title="Skip to the next record" aria-label="Skip to the next record" ${s.on ? "" : "disabled"}>⏭</button><input type="range" min="0" max="100" step="1" value="${vol}" aria-label="Music volume" title="Volume">`;
+    bar.querySelector('[data-mb="power"]').onclick = () => { player.setOn(!musicOf(state.prog).on); musicUi(); };
+    bar.querySelector('[data-mb="skip"]').onclick = () => { player.next(1); musicUi(); };
+    bar.querySelector("input").oninput = (e) => { player.setVolume(e.target.value / 100); if (!musicOf(state.prog).on && +e.target.value > 0) { player.setOn(true); musicUi(); } }; }
   if (!$("tcase").hidden && caseView === "music" && $("tcase").querySelector(".rp")) { const y = $("tcase").scrollTop; openRecords(); $("tcase").scrollTop = y; }
-  if (!$("music-pop").hidden) drawMusicPop();
 }
-function drawMusicPop() {
-  const pop = $("music-pop"), s = musicOf(state.prog), t = player.current;
-  pop.innerHTML = `<div class="mp-now">${vinylSvg(t, 44, player.playing ? "spin" : "")}<div><small>${player.inBattle ? "⚔ Battle music" : s.on ? (player.playing ? "Now playing" : "Paused") : "Music is off"}</small><b>${t ? esc(t.title) : "No record on"}</b></div></div>
-    <div class="rp-btns"><button class="c small" type="button" data-mu="prev" aria-label="Previous record">⏮</button><button class="c small main" type="button" data-mu="toggle" aria-label="${player.playing ? "Pause" : "Play"}">${player.playing ? "⏸" : "▶"}</button><button class="c small" type="button" data-mu="next" aria-label="Next record">⏭</button></div>
-    ${musicSwitchHtml(s)}<button class="c small" type="button" id="mp-open">🎛️ Open the record player</button>`;
-  wireMusic(pop, player, musicDeps());
-  $("mp-open").onclick = () => { pop.hidden = true; $("music-btn").setAttribute("aria-expanded", "false"); openCase(null, "music"); };
-}
-$("music-btn").onclick = (e) => { e.stopPropagation(); const pop = $("music-pop"), open = pop.hidden; pop.hidden = !open; $("music-btn").setAttribute("aria-expanded", String(open));
-  if (open) { const r = $("music-btn").getBoundingClientRect(); pop.style.top = Math.min(innerHeight - 250, r.bottom + 6) + "px"; pop.style.right = Math.max(8, innerWidth - r.right) + "px"; drawMusicPop(); } };
-document.addEventListener("click", (e) => { const pop = $("music-pop"); if (!pop.hidden && !pop.contains(e.target) && e.target !== $("music-btn")) { pop.hidden = true; $("music-btn").setAttribute("aria-expanded", "false"); } });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("music-pop").hidden) { $("music-pop").hidden = true; $("music-btn").focus(); } });
 setInterval(() => { const tm = document.querySelector(".rp-time"); if (tm && player.current) { const { t, d } = player.position, f = (x) => (isFinite(x) && x > 0 ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}` : "0:00"); tm.textContent = `${f(t)} / ${f(d)}`; } }, 1000);
 /** Check the record tasks; announce any record unlocked just now. */
 function musicNews(silent = false) {

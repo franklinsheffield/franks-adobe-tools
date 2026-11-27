@@ -1388,3 +1388,16 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .sa-band{position:absolute;left:-20%;right:-20%;top:4%;height:38%;background:linear-gradient(180deg,transparent,hsl(var(--h) 90% 65% / .38),transparent);filter:blur(14px);transform-origin:50% 0;animation:sa-wave 9s var(--d) ease-in-out infinite alternate}
 @keyframes sa-wave{0%{transform:skewX(-14deg) translateX(-6%) scaleY(.8)}100%{transform:skewX(12deg) translateX(6%) scaleY(1.15)}}
 @media (prefers-reduced-motion: reduce){.oracle-pane.showroom #teller,.sa-bub,.sa-jelly,.sa-gear,.sa-band,.box-lid,.box-rays{animation:none}.box-prize{animation:none;opacity:1;transform:none}}
+/* header: speech speed and the music bar, as small segmented controls in the vibe's button style */
+.seg{display:inline-flex;align-items:center;gap:0;border:var(--btn-bw,1px) var(--btn-bs,solid) var(--btn-bd,rgba(226,176,74,.55));border-radius:var(--btn-r,999px);background:var(--btn-bg,rgba(46,30,104,.35));overflow:hidden;vertical-align:middle}
+.seg button{font:inherit;font-size:14px;line-height:1;min-width:32px;height:30px;padding:0 7px;border:0;background:transparent;color:inherit;cursor:pointer;opacity:.6;transition:opacity .15s,background .15s}
+.seg button+button{border-left:1px solid rgba(255,255,255,.08)}
+.seg button:hover{opacity:1}
+.seg button.on{opacity:1;background:var(--btn-hover,rgba(127,200,255,.18));box-shadow:inset 0 -2px 0 var(--btn-bd,#7fc8ff)}
+.seg button:disabled{opacity:.25;cursor:default}
+.music-bar input[type=range]{width:78px;margin:0 8px 0 4px;accent-color:var(--gold,#E2B04A)}
+.music-bar button.playing{animation:mb-beat 1.2s ease-in-out infinite}
+@keyframes mb-beat{50%{transform:scale(1.12)}}
+@media (max-width:700px){.music-bar input[type=range]{width:56px}.seg button{min-width:28px;padding:0 5px}}
+@media (prefers-reduced-motion: reduce){.music-bar button.playing{animation:none}}
+@media (max-width:700px){.head-btns{flex-wrap:wrap;row-gap:6px;width:100%}.head-btns .seg{flex:0 0 auto}.head-btns .music-bar{margin-left:auto}}
