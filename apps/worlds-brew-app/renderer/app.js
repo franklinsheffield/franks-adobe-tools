@@ -7,6 +7,8 @@ import { renderGPU, passPictures } from "./gpurender.js";
 import * as BR from "./bridge-app.js";
 import * as LIB from "./library-app.js";
 import { createTerrainLab } from "./terrainlab.js";
+import * as KIT from "./kitlib-app.js";
+import { MeshoptDecoder } from "./vendor/meshopt_decoder.module.js";
 
 const req = window.require;
 const { ipcRenderer } = req("electron");
@@ -25,7 +27,7 @@ const MODELS = req("../engine/models.js");
 const GB = req("../geo/build.js"), GB2 = req("../geo/buildings.js");
 
 const WEB = !!window.__psWeb;   // the browser / Discord build (web/): no Photoshop bridge there
-const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.14.0";
+const APP = "Pixel Scape", CODE = "PX-10", GLOW = "#5effc8", VERSION = "0.15.0";
 const BLANK = () => S.withDefaults({ sky: "Noon", sunAz: 200, sunAlt: 32, haze: 12, fog: 0, fogH: 1, clouds: 30, water: false, ground: true, waterLvl: 0,
   cam: { yaw: 30, pitch: 16, dist: 16, fov: 45, tx: 0, ty: 1, tz: 0 }, objs: [], name: "Untitled" });
 
@@ -232,7 +234,7 @@ function addThing(key, at) {
   else if (o.type !== "terrain" && o.type !== "light") CT.rest(sc, o);
   select(o); commit(); setStatus("Added " + ED.label(o).toLowerCase().replace(/#\d+/, "").trim()); return o;
 }
-let dragKey = null, dragLib = null;
+let dragKey = null, dragLib = null, dragKit = null;
 vpwrap.addEventListener("dragover", (e) => {
   e.preventDefault(); vpwrap.classList.add("drop");
   const m = document.getElementById("dropmark"), r = vpwrap.getBoundingClientRect(); m.style.display = "block"; m.style.left = (e.clientX - r.left) + "px"; m.style.top = (e.clientY - r.top) + "px";
@@ -243,6 +245,7 @@ vpwrap.addEventListener("drop", async (e) => {
   const at = CT.groundHit(st.scene, vp.rayAt(e.clientX, e.clientY), null);
   const key = e.dataTransfer.getData("text/wb-asset") || dragKey; dragKey = null;
   if (key) { addThing(key, at); return; }
+  if (dragKit) { const m = dragKit; dragKit = null; addKitModel(m, at); return; }
   if (dragLib) { const it = dragLib, h = vp.pick(e.clientX, e.clientY); dragLib = null; applyLibItem(it, h ? h.obj : null, it.kind === "Terrains" && !(h && h.obj.type === "terrain") ? at : null); return; }
   const shaderFiles = Array.from(e.dataTransfer.files || []).filter((f) => /\.(glsl|frag|fs|shader)$/i.test(f.name) && f.path);
   if (shaderFiles.length) {   // shader files dropped from Finder / Explorer: into the library, and onto the object under the pointer
@@ -305,17 +308,32 @@ function rebakeShader() {
 // ---- files
 async function importModelData(name, buf, at) {
   try {
+    await MeshoptDecoder.ready;   // the 3D library's files are meshopt-compressed (gltf-transform)
     // JPEG / WebP textures inside .glb / .gltf: decode them here (the model reader only reads PNG by itself)
     const decoded = {};
     for (const im of MODELS.gltfImages(name, buf)) if (im.mime !== "image/png") {
       try { const p = await decodeImage("tex", im.bytes.buffer.slice(im.bytes.byteOffset, im.bytes.byteOffset + im.bytes.byteLength), 2048); decoded[im.index] = { w: p.w, h: p.h, rgba: p.d }; } catch (e) { /* unreadable: material colour */ }
     }
-    const m = ED.parseModel(name, buf, { decoded }), o = ED.addMesh(st.scene, m, "Matte");
+    const m = ED.parseModel(name, buf, { decoded, meshopt: MeshoptDecoder }), o = ED.addMesh(st.scene, m, "Matte");
     // one colour texture: also show it at full detail as a UV surface layer (the per-triangle colours stay underneath)
     if (m.texture) { o.layers = [SF.layer({ name: "Model texture", img: { w: m.texture.w, h: m.texture.h, d: m.texture.d, name }, wrap: "UV" })]; delete m.texture; }
     if (at) CT.placeAt(st.scene, o, at.x, at.z, true); select(o); commit(); changed("val"); setStatus("Imported " + name + " (" + m.tris.toLocaleString() + " triangles)");
+    return o;
   }
-  catch (err) { setStatus(String(err.message || err), true); }
+  catch (err) { setStatus(String(err.message || err), true); return null; }
+}
+// a model from Frank's 3D library (kitlib-app.js): download, then the same import as a dropped .glb
+let kitBusy = false;
+async function addKitModel(m, at) {
+  if (kitBusy) { setStatus("Still downloading the last model...", true); return; }
+  kitBusy = true;
+  try {
+    setStatus("Downloading " + m.name + " (" + KIT.size(m.bytes) + ")...");
+    const buf = await KIT.download(m, (got, total) => setStatus("Downloading " + m.name + ": " + Math.round((100 * got) / total) + "%"));
+    const o = await importModelData(m.name.replace(/[^\w\- ()]+/g, "").trim().slice(0, 60) + ".glb", buf, at);
+    if (o) setStatus("Added " + m.name + " from the 3D library" + (m.attribution ? ". Credit: " + KIT.credit(m) : " (" + m.license + ")"));
+  } catch (err) { setStatus("3D library: " + String(err.message || err), true); }
+  finally { kitBusy = false; }
 }
 async function importModel() {
   const p = await ipcRenderer.invoke("dlg:open", { title: "Import model", filters: [{ name: "3D models", extensions: ["glb", "gltf", "obj", "stl"] }] }); if (!p) return;
@@ -486,6 +504,33 @@ function buildLibrary(ui) {
   refs.tiles = tiles;
   const count = el("div", { class: "hint" }); bind(() => { count.textContent = tiles.filter((t) => t.__pack === st.view.addPack).length + " items. Drag one into the view, or click it."; });
   lib.appendChild(card("Add", [row("", segGroup("view.addPack", [{ v: "Shapes", l: "Shapes" }].concat(PK.PACKS.map((p) => ({ v: p, l: p }))))), count, grid]));
+  // Frank's 3D library: ~6,800 free models from the web-pipeline-kit site (kitlib-app.js)
+  const kitGrid = el("div", { class: "wbtiles wbkit" }), kitCount = el("div", { class: "hint", text: "Search ~6,800 free models (CC0 / CC BY)." });
+  const kitQ = el("input", { type: "search", class: "num wide", placeholder: "Search: tree, ship, chair...", title: "Words to look for in the model names, tags and vibes", "data-key": "view.kitQ" });
+  const kitCat = el("select", { "data-key": "view.kitCat", title: "Kind of model" }); kitCat.appendChild(el("option", { value: "", text: "All kinds" }));
+  const kitMore = btn("More", () => drawKit(true), "Show more matches"); kitMore.style.display = "none";
+  let kitHits = [], kitShown = 0, kitTimer = null;
+  const drawKit = async (more) => {
+    let idx; try { idx = await KIT.load(); } catch (err) { kitCount.textContent = "The 3D library can't be reached right now (" + String(err.message || err) + ")."; return; }
+    if (kitCat.options.length === 1) idx.categories.forEach(([c, n]) => kitCat.appendChild(el("option", { value: c, text: c + " (" + n + ")" })));
+    if (!more) { kitHits = KIT.search(kitQ.value, kitCat.value); kitShown = 0; clear(kitGrid); }
+    const next = kitHits.slice(kitShown, kitShown + 24); kitShown += next.length;
+    next.forEach((m) => {
+      const img = el("img", { alt: "", loading: "lazy" }), t = el("div", { class: "wbtile wbkititem", draggable: "true", title: m.name + " (" + m.category + ", " + KIT.size(m.bytes) + ", " + m.license + (m.author ? ", " + m.author : "") + "): click to add in front of the camera, or drag into the view" }, [img, el("div", { text: m.name.slice(0, 18) })]);
+      img.src = KIT.thumbURL(m);
+      t.addEventListener("dragstart", (e) => { dragKit = m; e.dataTransfer.setData("text/wb-kit", m.id); e.dataTransfer.effectAllowed = "copy"; try { e.dataTransfer.setDragImage(img, 28, 28); } catch (err) { /* ok */ } });
+      t.addEventListener("click", () => addKitModel(m, null));
+      kitGrid.appendChild(t);
+    });
+    kitCount.textContent = kitHits.length ? kitHits.length.toLocaleString() + " models. Click one to add it, or drag it into the view." : "No models match. Try fewer words.";
+    kitMore.style.display = kitShown < kitHits.length ? "" : "none";
+  };
+  kitQ.addEventListener("input", () => { clearTimeout(kitTimer); kitTimer = setTimeout(() => drawKit(false), 250); });
+  kitCat.addEventListener("change", () => drawKit(false));
+  refs.drawKit = drawKit;
+  kitQ.style.width = "100%"; kitQ.style.boxSizing = "border-box"; kitCat.style.width = "100%";
+  lib.appendChild(card("3D library", [kitQ, kitCat, kitCount, kitGrid, kitMore]));
+  setTimeout(() => drawKit(false), 0);
   // your own library: Textures / Terrains / Shaders (Documents/Pixel Scape/Library)
   const myGrid = el("div", { class: "wbtiles wbmylib" }), myCount = el("div", { class: "hint" });
   let myItems = [];

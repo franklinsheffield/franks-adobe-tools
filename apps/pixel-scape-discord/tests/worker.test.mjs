@@ -47,4 +47,4 @@ test("/pixelscape launches the Activity, behind the same role gate", async () =>
   const odd = JSON.stringify({ type: 2, data: { name: "nope" } });
   assert.match((await (await worker.fetch(await signed(odd), env, { waitUntil() {} })).json()).data.content, /Unknown/);
 });
-test("command schema", () => { assert.strictEqual(COMMANDS[0].name, "terrain"); assert.deepStrictEqual(COMMANDS.map((c) => c.name), ["terrain", "pixelscape"]); assert.ok(COMMANDS.every((c) => c.description.length <= 100)); assert.ok(COMMANDS[0].options.every((o) => o.description.length <= 100)); });
+test("command schema", () => { assert.strictEqual(COMMANDS[0].name, "terrain"); assert.deepStrictEqual(COMMANDS.map((c) => c.name), ["terrain", "pixelscape", "model"]); assert.ok(COMMANDS.every((c) => c.description.length <= 100)); assert.ok(COMMANDS[0].options.every((o) => o.description.length <= 100)); });

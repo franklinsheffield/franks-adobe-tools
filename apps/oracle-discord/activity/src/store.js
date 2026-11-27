@@ -149,9 +149,21 @@ export const SHOP_TALK = {
   },
 };
 export const FREE = STORE.filter((s) => s.price === 0).map((s) => s.id);
-export function ensureFree(p) { p.owned = p.owned || []; for (const id of FREE) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+export function ensureFree(p) { p.owned = p.owned || []; for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;
   p.essence -= it.price; p.owned.push(id); return true;
 }
+
+/** Room shelves: a game room can sell its own cosmetics in the Essence store.
+ *  shop = { kind, label, items, talk?, preview?(id, ctx) }: items are STORE-shaped ({ id, name, note, price }) and get that kind,
+ *  ids carry the room's prefix (e.g. "tab-"), the kind is also the progress key (prog[kind] = the equipped id, read only by the room),
+ *  talk = { open, tryon, buy } line pools ({item} = item name), preview draws a try-on on the table. Price 0 items are owned free. */
+export const SHELVES = [];
+export function registerShelf(shop) {
+  if (!shop || !shop.kind || SHELVES.some((x) => x.kind === shop.kind)) return;
+  SHELVES.push(shop); for (const it of shop.items || []) STORE.push({ ...it, kind: shop.kind });
+  KINDS.push([shop.kind, shop.label || shop.kind]); if (shop.talk) SHOP_TALK[shop.kind] = shop.talk;
+}
+export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;

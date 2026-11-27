@@ -2,7 +2,9 @@
 
 `/terrain place:<name or lat,lon> [size:km] [view] [format] [relief]` posts a rendered image and a `.glb` of real terrain to the channel.
 
-`/pixelscape` opens the Pixel Scape Activity in the channel (same role gate). Release notes: `release/pixel-scape-discord-1.0.md`.
+`/pixelscape` opens the Pixel Scape Activity in the channel (same role gate).
+
+`/model find|random|show` brings up models from Frank's 3D library (see "3D library" below). Release notes: `release/pixel-scape-discord-1.0.md`.
 
 Runs for $0:
 
@@ -19,6 +21,19 @@ Local: `npm test`; `node scripts/try.js "36.10,-112.11" 10 out` (build + render)
 Next: switch `src/` to Terrain Lab's shared `apps/worlds-brew-app/geo/` modules once Terrain Lab 0.11 is on main (same data sources), so the bot and the desktop app build identical terrain.
 
 Imagery: Copernicus Sentinel-2 (ESA) via AWS Open Data. Elevation: AWS Terrain Tiles (Mapzen terrarium).
+
+## 3D library (/model and the Activity's 3D library card)
+Frank's model library (web-pipeline-kit `/models`, about 6,800 free CC0 / CC BY / public-domain models) is listed in
+`data/models-index.json`, a compact copy of the kit's `/library/models.json` (`npm run models-index`; the deploy
+workflow refreshes it before deploying and keeps the committed copy if the site can't be reached). Files stay in the
+public assets repo (`franklinsheffield/web-pipeline-assets`) and are linked, never re-uploaded.
+
+- `/model find query:<words> [category] [style] [vibe]`: the best 5 matches with previews, licence, credit and a .glb link.
+- `/model random [category] [style] [vibe]`: one model with a big preview and a 🎲 Another button.
+- `/model show model:<name>`: one model (autocomplete by name).
+- Same role gate as `/terrain`. Answered straight from the Worker (no job, no cooldown).
+- Activity: `/api/lib/index.json` (the list, from the web build's `kit-models.json`), `/api/lib/file/<group>/<id>.glb` and
+  `/api/lib/thumb/<path>.webp` proxy only library paths, so the app's 3D library card works inside Discord.
 
 ## Role gate (Science is Magic)
 Both pieces only open for members of the Science is Magic server who hold one of the roles in `GATE_ROLE_IDS`

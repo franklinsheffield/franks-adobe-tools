@@ -201,3 +201,7 @@ input.num.wide { width: 70px; }
 .tlpinpanes .tlcanvas canvas { cursor: crosshair; }
 .tlpininfo { font-size: 11px; opacity: 0.92; min-height: 16px; }
 .tlmy { display: grid; gap: 4px; margin: 2px 0 4px; }
+/* 3D library card (kitlib-app.js): long model names must not widen the grid */
+.wbkit { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wbkit .wbtile { cursor: pointer; min-width: 0; }
+.wbkit .wbtile img { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }

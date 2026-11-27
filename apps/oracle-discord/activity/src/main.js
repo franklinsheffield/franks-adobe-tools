@@ -12,13 +12,14 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
-import { STORE, KINDS, SHOP_TALK, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
+import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout, rimshot } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
+import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
 
 const $ = (id) => document.getElementById(id);
@@ -113,7 +114,18 @@ function bindGo(id) {
   $("go").onclick = run;
   box.querySelectorAll("input").forEach((i) => (i.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); run(); } }));
 }
+// ---- idle chatter: after 30 s with no click or key, the chosen personality pipes up (first 3 lines chained, then shuffled) ----
+const idle = { t: null, step: 0, used: [], on: false };
+function idleReset() { clearTimeout(idle.t); idle.step = 0; if (idle.on) idle.t = setTimeout(idleTick, IDLE_AFTER); }
+function idleTick() {
+  const b = document.body.classList, busy = state.inRoom || b.contains("talking") || b.contains("trance") || $("more") || document.hidden;
+  if (!busy) say(idleLine(pid(), idle.step++, idle.used, state.name));
+  idle.t = setTimeout(idleTick, IDLE_AFTER);
+}
+["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
+
 function greet() {
+  state.inRoom = null; idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
@@ -130,6 +142,7 @@ function greet() {
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }];
+for (const r of ROOMS) registerShelf(r.shop); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -140,6 +153,7 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
+  state.inRoom = id;
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award });
 }
 
@@ -366,9 +380,10 @@ function showStore(tab = "outfit", opener = null) {
       ${left === Infinity ? "" : `<button class="c small" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading today (💎 ${DAY_PASS})</button>`}</div>
     <div class="note">Daily readings by rank: ${DAILY.filter((d, i) => i < 4).map((d) => `${d.rank} ${d.n === Infinity ? "unlimited" : d.n}`).join(" · ")}. The /oracle commands in chat are always unlimited.</div>
     <div class="choices tabs">${tabs}</div><div class="shop">${rows}</div>`);
-  const talk = (kind, act, it) => pickLine(SHOP_TALK[kind][act], { item: it ? it.name : "" });
+  const talk = (kind, act, it) => pickLine((SHOP_TALK[kind] || SHOP_TALK.outfit)[act], { item: it ? it.name : "" });
   $("back").onclick = () => { trying = null; applyLook(); greet(); };
   applyLook(trying ? { [trying.kind]: trying.id } : {});
+  const sh = shelf(tab); if (sh && sh.preview && trying && trying.kind === tab) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
     const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(tab, "tryon", it)); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
