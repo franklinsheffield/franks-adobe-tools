@@ -77,3 +77,8 @@ test("chinese pillars: the hour follows true solar time and says when the clock 
   const noPlace = compute({ birth: b(1990, 4, 9, 13, 10), utc: new Date(Date.UTC(1990, 3, 9, 5, 10)), timeKnown: true });
   assert.equal(noPlace.pClock, null, "without a place there is no solar correction");
 });
+
+test("the birth moment row shows dates as DD/MM/YYYY", () => {
+  const row = momentRows(birthMoment(b(1990, 4, 9, 21, 30), PHX), { detail: true })[0][1];
+  assert.match(row, /^09\/04\/1990 21:30 clock time/); assert.match(row, /10\/04\/1990 04:30 UTC/); assert.doesNotMatch(row, /\d{4}-\d{2}-\d{2}/);
+});
