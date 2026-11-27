@@ -17,6 +17,7 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, codexNotes, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
+import { themeOf } from "./codexthemes.js";
 import { CARD_BACK, cardBackSvg } from "./cardbacks.js";
 import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, departments, deptOf, kindLabel, goodsOf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal, sting } from "./voice-sfx.js";
@@ -486,7 +487,7 @@ async function reveal(sys, options, question = "") {
     rc.onclick = () => { const d = document.querySelector("details.written"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); } else rc.classList.toggle("flip"); }; }
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
-  const lore = codexNotes(state.prog, sys.key, r);
+  const lore = codexNotes(state.prog, sys.key, r, themeOf);
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
   logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`, null,
     [["System", sys.label], ["Your question", question || ""], ["Headline", headline(r.embeds[0], r.headline)], ["The Oracle said", words], ...r.embeds.flatMap((e) => [[e.title || "Reading", e.description || ""], ...(e.fields || []).map((f) => [f.name, f.value])])]);
