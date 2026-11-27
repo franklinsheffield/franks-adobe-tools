@@ -36,7 +36,7 @@ export const DECK = [
     science: [
       "Betelgeuse, the red shoulder, is a red supergiant roughly 550 light-years away (estimates range from about 500 to 650). In 2019 and 2020 it dimmed sharply, the Great Dimming, because it puffed out a cloud of dust.",
       "Rigel, the blue-white foot, is a blue supergiant about 860 light-years away, tens of thousands of times as luminous as the Sun.",
-      "The belt stars only look like a neat row from Earth: they lie between about 700 and 2,000 light-years away. The fuzzy patch below them is the Orion Nebula, where new stars are forming.",
+      "The belt stars only look like a neat row from Earth: they lie roughly 1,000 to 2,000 light-years away. The fuzzy patch below them is the Orion Nebula, where new stars are forming.",
     ],
     quiz: { q: "Why did Betelgeuse dim so much in 2019 and 2020?", a: "It puffed out a cloud of dust that blocked some of its light", wrong: ["It exploded as a supernova", "The Moon passed in front of it", "Earth's orbit moved away from it"] } },
 
