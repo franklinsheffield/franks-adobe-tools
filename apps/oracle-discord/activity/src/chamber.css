@@ -1324,3 +1324,22 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .bk-creed li{animation:bk-inkin .8s calc(var(--n,0) * 1s) both;padding:4px 0}
 @media (max-width:700px){.bk-tabs{overflow-x:auto}.bk-ribbons{right:-6px}.bk-sigil{width:32px;height:32px}.bk-pressed{width:84px}}
 @media (prefers-reduced-motion: reduce){.bk-gild,.bk-wax.crown,.bk-ribbons button,.bk-toast,.bk-diary li,.bk-creed li{animation:none}}
+/* palm eyes: closed they are the palm line; they open now and then (.peek) and with big moods */
+.o-peye{transform:scaleY(.06);opacity:0;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .2s}
+.o-pline{transition:opacity .2s}
+.o-pe-iris{transition:transform .3s}
+.o-hand.peek .o-peye,.teller[data-mood="wow"] .o-peye,.teller[data-mood="joy"] .o-peye,.teller[data-mood="cheer"] .o-peye,.teller[data-mood="curious"] .o-peye,.teller[data-mood="love"] .o-peye,.teller[data-mood="flinch"] .o-peye,.teller[data-mood="nervous"] .o-peye{transform:scaleY(1);opacity:1}
+.o-hand.peek .o-pline,.teller[data-mood="wow"] .o-pline,.teller[data-mood="joy"] .o-pline,.teller[data-mood="cheer"] .o-pline,.teller[data-mood="curious"] .o-pline,.teller[data-mood="love"] .o-pline,.teller[data-mood="flinch"] .o-pline,.teller[data-mood="nervous"] .o-pline{opacity:0}
+.teller[data-mood="angry"] .o-peye,.teller[data-mood="smug"] .o-peye,.teller[data-mood="think"] .o-peye{transform:scaleY(.5);opacity:1}
+.teller[data-mood="angry"] .o-pline,.teller[data-mood="smug"] .o-pline,.teller[data-mood="think"] .o-pline{opacity:0}
+.teller[data-mood="wow"] .o-peye{transform:scaleY(1.2)}
+.teller[data-mood="curious"] .o-pe-iris{transform:translate(2px,-1px)}
+.teller[data-mood="think"] .o-pe-iris{transform:translate(-2px,-2px)}
+.teller[data-mood="dizzy"] .o-pe-iris{animation:pe-dizzy .8s linear infinite;transform-origin:141px 321px}
+.teller[data-mood="dizzy"] .o-peye{transform:scaleY(1);opacity:1}
+.teller[data-mood="sleepy"] .o-peye,.teller[data-mood="sad"] .o-peye{transform:scaleY(.06);opacity:0}
+.teller[data-mood="sleepy"] .o-pline,.teller[data-mood="sad"] .o-pline{opacity:.6}
+.o-hand.peek .o-pe-iris{animation:pe-look 1.6s ease-in-out}
+@keyframes pe-look{30%{transform:translateX(-2.2px)}70%{transform:translateX(2.2px)}}
+@keyframes pe-dizzy{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.o-hand.peek .o-pe-iris,.teller[data-mood="dizzy"] .o-pe-iris{animation:none}}
