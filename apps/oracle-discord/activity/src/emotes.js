@@ -83,14 +83,14 @@ export function toggleSlot(p, id) {
 export const equipped = (p, id) => slots(p).includes(id);
 
 /** The emote book: every emote, owned ones playable, locked ones with how to get them. */
-export function emoteBookHtml(p, esc, robeName = (id) => id, { modal = true } = {}) {
+export function emoteBookHtml(p, esc, robeName = (id) => id, { modal = true, skin = (e) => e } = {}) {
   const mine = owned(p), day = emoteOfDay(), eq = slots(p);
-  const card = (e) => { const ok = mine.includes(e), on = eq.includes(e.id), n = (p.emo || {})[e.id] || 0, lv = levelOf(n), nx = LEVELS[lv];
+  const card = (e0) => { const e = skin(e0); const ok = mine.includes(e0), on = eq.includes(e.id), n = (p.emo || {})[e.id] || 0, lv = levelOf(n), nx = LEVELS[lv];
     return `<button type="button" class="eb-card${ok ? "" : " locked"}${on ? " on" : ""}${e.id === day.id ? " today" : ""}" ${ok ? `data-slot="${e.id}" aria-pressed="${on}"` : "disabled"} title="${esc(ok ? (on ? "Equipped. Tap to take it off." : "Tap to equip") : e.how)}">
       <span class="eb-e" aria-hidden="true">${ok ? e.e : "🔒"}</span><b>${esc(e.name)}</b>${lv ? `<i class="eb-lv lv${lv}">${LEVELS[lv - 1].name}</i>` : ""}${on ? `<i class="eb-on">✓ ${eq.indexOf(e.id) + 1}</i>` : ""}
       <small>${ok ? (nx ? `${n}/${nx.at} to ${nx.name}` : `${n} uses · mastered`) : esc(e.robe ? `Own the ${robeName(e.robe)}` : e.how)}</small></button>`; };
   const sec = (t, xs) => `<h4>${t}</h4><div class="eb-grid">${xs.map(card).join("")}</div>`;
-  const bar = `<div class="eb-slots" aria-label="Equipped emotes">${Array.from({ length: SLOTS }, (_, i) => { const e = emoteAny(eq[i]); return `<span class="eb-slot${e ? "" : " empty"}" title="${e ? esc(e.name) : "Empty slot"}">${e ? e.e : i + 1}</span>`; }).join("")}<small>${eq.length} of ${SLOTS} equipped. Tap an emote to equip it or take it off.</small></div>`;
+  const bar = `<div class="eb-slots" aria-label="Equipped emotes">${Array.from({ length: SLOTS }, (_, i) => { const e = skin(emoteAny(eq[i])); return `<span class="eb-slot${e ? "" : " empty"}" title="${e ? esc(e.name) : "Empty slot"}">${e ? e.e : i + 1}</span>`; }).join("")}<small>${eq.length} of ${SLOTS} equipped. Tap an emote to equip it or take it off.</small></div>`;
   return `<div class="eb${modal ? "" : " inline"}"${modal ? ` role="dialog" aria-label="Your emotes"` : ""}><div class="eb-top"><h3>😀 Your emotes <small>${mine.length} of ${ALL_EMOTES.length} collected</small></h3>${modal ? `<button type="button" class="c small" id="eb-close">✕</button>` : ""}</div>${bar}
     <p class="eb-day">⭐ Emote of the day: <b>${day.e} ${esc(day.name)}</b>. Use it today for 💎 ${DAY_PAY}${p.emoDay === dk(Date.now()) ? " (done ✓)" : ""}. Emotes level up with use: Bronze 10, Silver 50, Gold 150.</p>
     ${sec("Starting set", START)}${sec("Earned", EARNED)}${sec("Robe signatures", ROBE)}</div>`;

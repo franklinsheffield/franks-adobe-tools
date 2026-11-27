@@ -135,7 +135,8 @@ export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
   readings: false, rooms: ["stars", "calendar", "rummy"], daily: "stars",
-  voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.05, lp: 2600 },
+  // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
+  voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell" },
   css: OBSERVATORY_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
   shelves: [starMapShop],

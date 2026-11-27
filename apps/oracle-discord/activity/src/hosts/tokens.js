@@ -39,6 +39,8 @@ export function buyHouseRelic(p, host, id) {
   const r = (host.relics || []).find((x) => x.id === id); if (!r || ownsHouseRelic(p, host, id) || tokensLeft(p, host) < r.price) return null;
   const h = purse(p, host.id); h.spent += r.price; h.relics.push(id); return r;
 }
+/** The token as HTML: its drawn icon when it has one (the stone is a rock), else its emoji. */
+export const tokenIcon = (t) => (t && t.icon) || (t && t.emoji) || "";
 /** Every owned relic of this House, drawn into the host's pane. */
 export const houseRelicsHtml = (p, host) => (host.relics || []).filter((r) => ownsHouseRelic(p, host, r.id))
   .map((r) => `<svg class="mr hr-${r.id}" style="left:${r.x}%;top:${r.y}%;width:${r.w}%" viewBox="${r.vb}" aria-hidden="true">${r.art()}</svg>`).join("");
@@ -51,10 +53,10 @@ export function strayLine(host, home) {
 /** The House relic shop panel (opened from the House's home menu). */
 export function relicPanelHtml(p, host, esc) {
   const left = tokensLeft(p, host), t = host.token;
-  return `<div class="note box-note">${t.emoji} ${left} ${esc(t.plural)} to spend. ${esc(host.relicBlurb || "")}</div>
+  return `<div class="note box-note">${tokenIcon(t)} ${left} ${esc(t.plural)} to spend. ${esc(host.relicBlurb || "")}</div>
   <div class="hr-grid">${host.relics.map((r) => { const own = ownsHouseRelic(p, host, r.id);
     return `<div class="hr-card${own ? " own" : ""}"><svg class="hr-thumb" viewBox="${r.vb}" aria-hidden="true">${r.art()}</svg><b>${r.e} ${esc(r.name)}</b><small>${esc(r.note)}</small>
-      ${own ? `<span class="note">✓ In the House</span>` : `<button class="c small main" type="button" data-hrelic="${r.id}" ${left >= r.price ? "" : "disabled"}>Place it · ${t.emoji} ${r.price}</button>`}</div>`; }).join("")}</div>
+      ${own ? `<span class="note">✓ In the House</span>` : `<button class="c small main" type="button" data-hrelic="${r.id}" ${left >= r.price ? "" : "disabled"}>Place it · ${tokenIcon(t)} ${r.price}</button>`}</div>`; }).join("")}</div>
   <div class="choices"><button class="c" type="button" id="hr-back">✦ Back</button></div>`;
 }
 export const TOKEN_CSS = `.hr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:8px 0}

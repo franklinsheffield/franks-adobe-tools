@@ -2,6 +2,7 @@
 // She reuses the Oracle's figure rig (so moods, hands, eye tracking and emotes all work) with a copper mask, a brass
 // goggle over the eye and a lens you choose in the store. Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
+import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -38,7 +39,7 @@ export const lensShop = {
 };
 
 
-/** Lab relics: permanent fixtures in Vell's House, bought only with 🔴 philosopher's stones. Notes are real history. */
+/** Lab relics: permanent fixtures in Vell's House, bought only with 🪨 philosopher's stones. Notes are real history. */
 const CU = `<linearGradient id="hrc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FADE8C"/><stop offset=".5" stop-color="#C87533"/><stop offset="1" stop-color="#5E2D10"/></linearGradient>`;
 export const LAB_RELICS = [
   { id: "st-alembic", e: "⚗️", name: "Copper alembic", price: 4, note: "A still for distilling. The word reached English through Arabic al-anbiq.", x: 80, y: 58, w: 17, vb: "0 0 120 110",
@@ -55,8 +56,10 @@ export const LAB_RELICS = [
     art: () => `<ellipse cx="35" cy="116" rx="26" ry="3" fill="#000" opacity=".35"/><rect x="10" y="108" width="50" height="6" fill="#5a3a1a"/>${Array.from({ length: 12 }, (_, i) => `<rect x="18" y="${100 - i * 7}" width="34" height="3.6" rx="1" fill="${["#C87533", "#b8c2d0", "#e8d8b0"][i % 3]}"/>`).join("")}<path d="M14 18V108M56 18V108" stroke="#7a5a3a" stroke-width="2"/><path class="hr-spark" d="M30 10l6 -8l-2 7l6 -1l-8 10l2 -7z" fill="#bfe6ff"/>` },
   { id: "st-table", e: "📜", name: "Mendeleev's chart", price: 20, note: "Mendeleev's 1869 table left gaps for elements nobody had found yet, and predicted their properties.", x: 62, y: 3, w: 13, vb: "0 0 120 100",
     art: () => `<rect x="2" y="2" width="116" height="96" rx="4" fill="#efe0bd" stroke="#7a4f12" stroke-width="2"/>${Array.from({ length: 6 }, (_, r) => Array.from({ length: 9 }, (_, c) => (r === 0 && c > 0 && c < 8) || (r === 1 && c > 1 && c < 7) ? "" : `<rect x="${8 + c * 12}" y="${10 + r * 14}" width="10" height="12" fill="${(r * 9 + c) % 7 === 3 ? "none" : ["#C87533", "#1fae5a", "#5fa8ff", "#E2B04A"][(r + c) % 4]}" stroke="#5a3a1a" stroke-width=".6" ${(r * 9 + c) % 7 === 3 ? 'stroke-dasharray="2 1.5" class="hr-gap"' : 'opacity=".75"'}/>`).join("")).join("")}` },
-  { id: "st-stone", e: "🔴", name: "The Philosopher's Stone", price: 30, note: "The legendary stone said to turn base metal into gold. Nobody made one, but the search built chemistry's tools.", x: 83, y: 84, w: 14, vb: "0 0 140 70",
-    art: () => `<defs><radialGradient id="hrs" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="#ffd0d0"/><stop offset=".45" stop-color="#e3173e"/><stop offset="1" stop-color="#5a0414"/></radialGradient><radialGradient id="hrh"><stop offset="0" stop-color="#ff4f4f" stop-opacity=".55"/><stop offset="1" stop-color="#ff4f4f" stop-opacity="0"/></radialGradient></defs><ellipse cx="70" cy="36" rx="60" ry="30" fill="url(#hrh)" class="hr-glow"/><path d="M40 68h60l-8 -16h-44z" fill="#C88A3A" stroke="#5E2D10"/><path class="hr-pulse" style="transform-origin:70px 34px" d="M70 12l18 14l-6 22h-24l-6 -22z" fill="url(#hrs)" stroke="#ffb3b3" stroke-width="1"/>` },
+  { id: "st-stone", e: "🪨", name: "The Philosopher's Stone", price: 30, note: "The legendary stone said to turn base metal into gold. Nobody made one, but the search built chemistry's tools.", x: 83, y: 84, w: 14, vb: "0 0 140 70",
+    art: () => `<defs><radialGradient id="hrh"><stop offset="0" stop-color="#ff4f4f" stop-opacity=".5"/><stop offset="1" stop-color="#ff4f4f" stop-opacity="0"/></radialGradient></defs><ellipse cx="70" cy="38" rx="62" ry="30" fill="url(#hrh)" class="hr-glow"/><path d="M36 68h68l-8 -12h-52z" fill="#C88A3A" stroke="#5E2D10"/>
+      <g class="hr-pulse" style="transform-origin:70px 38px"><path d="M40 56 L46 30 L64 16 L88 20 L102 36 L96 54 L66 60Z" fill="#6e5f57" stroke="#2a201c" stroke-width="2" stroke-linejoin="round"/><path d="M46 30 L64 16 L58 34Z" fill="#8f8178"/><path d="M88 20 L102 36 L84 34Z" fill="#54463f"/>
+      <path d="M58 34 L72 26 L84 34 L74 48 L58 44Z" fill="#e3173e"/><path d="M72 26 L84 34 L74 34Z" fill="#ff8a96"/><path d="M58 44 L74 48 L64 54Z" fill="#8a0a22"/><circle cx="66" cy="33" r="2.4" fill="#fff" opacity=".8"/></g>` },
 ];
 
 /** The brass phonograph: the Alchemist's own player for the shared music pool. Same classes as the turntable (tt, tt-disc). */
@@ -104,13 +107,17 @@ function paint(svg, prog, id = "t") {
   svg.querySelector(".h-vell")?.remove();
   const g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-vell");
   const rivets = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return `<circle cx="${(200 + 47 * Math.cos(a)).toFixed(1)}" cy="${(152 + 34 * Math.sin(a)).toFixed(1)}" r="2.6" fill="#FADE8C" stroke="#7a4f12" stroke-width=".6"/>`; }).join("");
-  g.innerHTML = `<path d="M118 150 L153 150 M247 150 L282 150" stroke="#3b2414" stroke-width="9" stroke-linecap="round"/>
-    <ellipse cx="200" cy="152" rx="47" ry="34" fill="none" stroke="#C88A3A" stroke-width="8"/>
+  g.innerHTML = `${sootSvg()}<path d="M118 150 L153 150 M247 150 L282 150" stroke="#3b2414" stroke-width="9" stroke-linecap="round"/>
+    <g class="hv-goggle"><ellipse cx="200" cy="152" rx="47" ry="34" fill="none" stroke="#C88A3A" stroke-width="8"/>
     <ellipse cx="200" cy="152" rx="52" ry="39" fill="none" stroke="#7a4f12" stroke-width="1.6"/>${rivets}
     <ellipse class="hv-glint" cx="200" cy="152" rx="42" ry="29" fill="${L.iris[1]}" opacity=".15"/>
-    <path d="M168 136 A38 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M168 136 A38 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <g transform="translate(200 92)"><circle r="11" fill="#C88A3A" stroke="#7a4f12"/>${Array.from({ length: 8 }, (_, i) => `<rect x="-2.4" y="-15" width="4.8" height="6" fill="#C88A3A" transform="rotate(${i * 45})"/>`).join("")}<circle r="4" fill="#3b2414"/></g>`;
   eye.after(g);
+  // the flask stands where the crystal ball was (the ball's own parts are hidden by LAB_CSS); pose props ride in her hands
+  const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands");
+  if (ball) { ball.querySelector(".hv-flask")?.remove(); ball.insertAdjacentHTML("beforeend", flaskSvg(id)); }
+  if (hands) { hands.querySelector(".hv-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
 }
 
 /** Swap the Oracle's name for Vell's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
@@ -128,12 +135,13 @@ export const alchemist = {
   id: "alchemist", name: "Magister Vell", house: "The Alchemist's House", emoji: "⚗️", accent: "#E89A55",
   channelIds: ["1575967994633396544"], // #⚗️-laboratory
   readings: false, rooms: ["alchemy", "duel", "grimoire"], daily: "alchemy",
-  voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200 },
-  css: ALCHEMIST_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
+  voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass" },
+  css: ALCHEMIST_CSS + LAB_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Brass Phonograph", deck: phonographSvg },
   shelves: [lensShop],
-  token: { id: "stone", emoji: "🔴", name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
-  relics: LAB_RELICS, relicLabel: "🔴 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
+  token: { id: "stone", emoji: "🪨", icon: STONE_ICON, name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
+  relics: LAB_RELICS, relicLabel: "🪨 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
   strayIntro: "Something just fell out of the flask:",
   lines: {
     greet: ["{name}! Goggles on, gloves on, curiosity on. Welcome to the Alchemist's House.", "Ah, {name}. Mind the bench, it's still warm. What shall we mix today?",

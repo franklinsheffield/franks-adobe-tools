@@ -85,3 +85,36 @@ test("Keeper Altair renames the Oracle in the Observatory, with the brand brief'
   assert.equal(hostFor({ search: "?house=observatory" }).id, "observatory"); setHost(null);
 });
 test("the Observatory is routed from #🔭-observatory", () => { assert.equal(hostFor({ channelId: "1575975395692642596" }).id, "observatory"); });
+
+test("every House's starting voice is its own and branded: never the Oracle's blip", async () => {
+  const BASE = { type: "square", base: 330 };
+  const others = HOSTS.filter((h) => h.id !== "oracle");
+  for (const h of others) {
+    assert.ok(h.voice && h.voice.brand, `${h.id} names its voice brand`);
+    assert.ok(h.voice.type !== BASE.type || h.voice.base !== BASE.base, `${h.id} differs from the Oracle`);
+  }
+  const sig = (v) => JSON.stringify([v.type, v.base, v.sweep || 0, v.harm || 0, v.vib || 0, v.lp]);
+  assert.equal(new Set(others.map((h) => sig(h.voice))).size, others.length, "no two Houses sound alike");
+});
+
+test("Alchemist Phase 1: lab scene, flask, poses, reactions, lab emotes, stone as a rock", async () => {
+  const L = await import("../activity/src/hosts/alchemist-lab.js");
+  const { alchemist } = await import("../activity/src/hosts/alchemist.js");
+  const { EMOTES } = await import("../activity/src/character.js");
+  const html = L.labSceneHtml(new Date(2026, 10, 27, 15).getTime(), { motes: 0 });
+  assert.match(html, /FUME HOOD/); assert.match(html, /lab-athanor/);
+  for (const [name, f] of L.REAGENTS) assert.ok(html.includes(name) && html.includes(f), name);
+  assert.ok(!L.labSceneHtml(Date.now(), { motes: 0, prog: { houses: { alchemist: { relics: ["st-athanor"] } } } }).includes("lab-athanor"), "the relic athanor replaces the scene's");
+  assert.ok(L.athanorHeat(15) > 0.99 && L.athanorHeat(3) < 0.01);
+  assert.equal(Object.keys(L.POSES).length, 8); assert.equal(new Set(Object.values(L.POSES)).size, 8);
+  assert.match(L.flaskSvg("t"), /t-flaskclip/);
+  assert.deepEqual(Object.keys(L.LAB_EMOTES).sort(), EMOTES.map((e) => e.id).sort(), "re-dresses exactly the 8 starting emotes");
+  assert.deepEqual(Object.values(L.LAB_EMOTES).map((e) => e.name).sort(), ["Bang", "Bubble", "Eureka", "Fizz", "Goggle flip", "Measure", "Pour", "Toast"]);
+  for (const k of ["poke-eye", "poke-orb", "perfect", "lose"]) assert.ok(L.REACT[k], k);
+  assert.equal(alchemist.token.emoji, "🪨"); assert.match(alchemist.token.icon, /<svg/); assert.ok(!alchemist.relicLabel.includes("🔴"));
+  setHost(alchemist);
+  const { hostEmote, hostScene } = await import("../activity/src/hosts/index.js");
+  assert.equal(hostEmote(EMOTES[0]).id, EMOTES[0].id); assert.notEqual(hostEmote(EMOTES[0]).name, EMOTES[0].name);
+  assert.match(hostScene(Date.now(), { motes: 0 }), /lab-hood/);
+  setHost(null); assert.equal(hostScene(Date.now(), {}), null); assert.equal(hostEmote(EMOTES[0]).name, EMOTES[0].name);
+});
