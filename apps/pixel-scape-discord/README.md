@@ -2,6 +2,8 @@
 
 `/terrain place:<name or lat,lon> [size:km] [view] [format] [relief]` posts a rendered image and a `.glb` of real terrain to the channel.
 
+`/pixelscape` opens the Pixel Scape Activity in the channel (same role gate). Release notes: `release/pixel-scape-discord-1.0.md`.
+
 Runs for $0:
 
 - **Cloudflare Worker** (`worker/index.mjs`): Discord interactions endpoint. Checks the Ed25519 signature, replies "thinking..." at once, starts the render job, 1 request per member per minute.

@@ -11,6 +11,8 @@ export const COMMANDS = [
       { type: 10, name: "relief", description: "Height exaggeration (1 to 4, default auto)", min_value: 1, max_value: 4 },
     ],
   },
+  // opens the Pixel Scape Activity right where the command is used (guild channels, voice call if you're in one)
+  { name: "pixelscape", description: "Open Pixel Scape and build 3D worlds together in this channel", contexts: [0] },
 ];
 
 const hex = (s) => new Uint8Array(s.match(/../g).map((h) => parseInt(h, 16)));
@@ -52,11 +54,12 @@ export default {
     if (!(await verify(req, body, env.DISCORD_PUBLIC_KEY))) return new Response("Bad signature", { status: 401 });
     const it = JSON.parse(body);
     if (it.type === 1) return json({ type: 1 });
-    if (it.type !== 2 || it.data.name !== "terrain") return json({ type: 4, data: { content: "Unknown command.", flags: 64 } });
+    if (it.type !== 2 || !COMMANDS.some((c) => c.name === it.data.name)) return json({ type: 4, data: { content: "Unknown command.", flags: 64 } });
 
     const need = String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
     if (need.length && !((it.member && it.member.roles) || []).some((r) => need.includes(r)))
       return json({ type: 4, data: { content: env.GATE_MESSAGE || "Pixel Scape is locked for you.", flags: 64 } });
+    if (it.data.name === "pixelscape") return json({ type: 12 }); // LAUNCH_ACTIVITY
     const user = (it.member && it.member.user) || it.user || {}, now = Date.now(), cd = +(env.COOLDOWN_S || 60) * 1000;
     if (lastUse.has(user.id) && now - lastUse.get(user.id) < cd) {
       const wait = Math.ceil((cd - (now - lastUse.get(user.id))) / 1000);

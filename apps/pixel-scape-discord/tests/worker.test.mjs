@@ -39,4 +39,12 @@ test("/terrain is refused without an access role", async () => {
   try { assert.strictEqual((await (await worker.fetch(await signed(body(["B"])), g, { waitUntil() {} })).json()).type, 5); }
   finally { globalThis.fetch = realFetch; }
 });
-test("command schema", () => { assert.strictEqual(COMMANDS[0].name, "terrain"); assert.ok(COMMANDS[0].options.every((o) => o.description.length <= 100)); });
+test("/pixelscape launches the Activity, behind the same role gate", async () => {
+  const g = Object.assign({}, env, { GATE_ROLE_IDS: "A", GATE_MESSAGE: "sealed" });
+  const body = (roles) => JSON.stringify({ type: 2, token: "t", member: { roles, user: { id: "5" } }, data: { name: "pixelscape" } });
+  assert.deepStrictEqual(await (await worker.fetch(await signed(body(["A"])), g, { waitUntil() {} })).json(), { type: 12 });
+  assert.strictEqual((await (await worker.fetch(await signed(body([])), g, { waitUntil() {} })).json()).data.content, "sealed");
+  const odd = JSON.stringify({ type: 2, data: { name: "nope" } });
+  assert.match((await (await worker.fetch(await signed(odd), env, { waitUntil() {} })).json()).data.content, /Unknown/);
+});
+test("command schema", () => { assert.strictEqual(COMMANDS[0].name, "terrain"); assert.deepStrictEqual(COMMANDS.map((c) => c.name), ["terrain", "pixelscape"]); assert.ok(COMMANDS.every((c) => c.description.length <= 100)); assert.ok(COMMANDS[0].options.every((o) => o.description.length <= 100)); });
