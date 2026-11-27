@@ -10,9 +10,12 @@ export function ensureStyle() {
   document.head.append(st);
 }
 export const CSS = `
-.gm-top{font-size:.84rem;color:var(--muted);margin:2px 0 6px;text-align:center}
+.gm-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;margin:0 0 6px}
+.gm-top{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:.86rem;color:var(--muted)}.gm-top b{color:var(--gold2)}
+.gm-tools{display:flex;gap:6px;flex-wrap:wrap}.gm-tools .c{padding:4px 10px;font-size:.8rem}
 .gm-top b{color:var(--gold2)}.gm-combo{color:var(--pink);font-weight:700;animation:gm-pop .4s ease-out}
-.gm-board{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,80px));gap:7px;justify-content:center;margin:6px auto 10px;perspective:900px}
+.gm-board{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:clamp(4px,.8vw,8px);width:100%;max-width:calc(var(--cols) * 112px);margin:4px auto 8px;perspective:900px}
+@media (max-width:640px){.gm-board{grid-template-columns:repeat(var(--cols-sm),minmax(0,1fr));max-width:100%;gap:4px}.gm-card{aspect-ratio:4/5}.gm-face{padding:2px;border-radius:7px}.gm-back{border-radius:7px}.gm-face.m small{font-size:.5rem}}
 .gm-card{position:relative;aspect-ratio:3/4;border:0;padding:0;background:none;cursor:pointer;font:inherit;color:var(--fg);
   animation:gm-deal .5s cubic-bezier(.2,.9,.3,1.2) calc(var(--i) * 45ms) both;-webkit-tap-highlight-color:transparent}
 @keyframes gm-deal{from{opacity:0;transform:translateY(-60px) rotate(calc(var(--i) * 7deg - 20deg)) scale(.6)}}
@@ -65,6 +68,30 @@ export const CSS = `
 .gm-gtable>span{display:flex;gap:8px;align-items:center;font-size:.76rem;border-bottom:1px dotted var(--line);padding:3px 0}.gm-gtable em{font-style:normal;color:var(--muted);line-height:1.25}.gm-gtable em b{color:var(--fg)}.gm-gtable u{text-decoration:none;color:var(--teal);font-weight:700}
 .gm-gtable i{font-style:normal;font-size:1.6rem;color:var(--gold2);min-width:30px;text-align:center;display:flex;justify-content:center}
 .gm-gtable i svg{width:26px;height:auto;color:var(--gold2)}.gm-gtable .m-fill{fill:var(--gold2)}.gm-gtable .m-ink{stroke:var(--gold2)}
+/* the reading table during a game: found-pair slots and candles */
+.table.gm-table.play{align-items:stretch}
+.gm-tbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 12px 34px;gap:8px}
+.gm-tbl-h{font-family:var(--display);color:var(--gold);font-size:.82rem;letter-spacing:.12em}
+.gm-slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;width:100%;max-width:440px}
+.gm-slot{aspect-ratio:1;border:1.5px dashed rgba(226,176,74,.3);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;overflow:hidden;padding:2px}
+.gm-slot.got{border:1.5px solid var(--teal);background:rgba(20,40,60,.55);box-shadow:0 0 10px rgba(102,224,200,.25)}
+.gm-slot.new{animation:gm-slotin .7s cubic-bezier(.2,1.5,.4,1) both;box-shadow:0 0 18px rgba(102,224,200,.7)}
+@keyframes gm-slotin{from{opacity:0;transform:scale(.3) translateY(40px) rotate(-12deg)}}
+.gm-slot .gm-sym{font-size:clamp(1.1rem,3.4vw,1.8rem);line-height:1;color:var(--gold2);display:flex;text-shadow:0 0 8px rgba(226,176,74,.5)}
+.gm-slot .gm-sym svg{width:clamp(22px,5vw,34px);height:auto;color:var(--gold2)}.gm-slot .m-fill{fill:var(--gold2)}.gm-slot .m-ink{stroke:var(--gold2)}
+.gm-slot b{font-size:clamp(.5rem,1.6vw,.66rem);color:var(--teal);text-align:center;line-height:1.05;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-candles{display:flex;gap:clamp(4px,1.4vw,12px);align-items:flex-end;justify-content:center;flex-wrap:wrap}
+.gm-candle{position:relative;width:clamp(10px,2.2vw,16px);height:clamp(28px,6vw,44px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.gm-candle b{display:block;width:100%;height:70%;border-radius:3px 3px 2px 2px;background:linear-gradient(90deg,#d9c9a3,#fff4d8 45%,#c9b68a);box-shadow:0 0 10px rgba(255,190,90,.35)}
+.gm-flame{position:absolute;top:0;width:70%;height:34%;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%,#fff 0 18%,#ffd36b 40%,#ff8a1f 75%,transparent 80%);
+  filter:drop-shadow(0 0 6px #ffb347);transform-origin:50% 100%;animation:gm-flick 1.4s ease-in-out calc(var(--i) * -170ms) infinite}
+@keyframes gm-flick{0%,100%{transform:scale(1) rotate(-2deg)}33%{transform:scale(.92,1.08) rotate(2deg)}66%{transform:scale(1.05,.95) rotate(-1deg)}}
+.gm-candle.out .gm-flame{display:none}.gm-candle.out b,.gm-candle.snuff b{box-shadow:none;filter:brightness(.6)}
+.gm-candle.snuff .gm-flame{animation:gm-snuff .6s ease-in forwards}
+@keyframes gm-snuff{to{transform:scale(.1,.4);opacity:0}}
+.gm-candle.snuff::after,.gm-candle.out::after{content:"";position:absolute;top:-4px;left:50%;width:3px;height:3px;border-radius:50%;background:rgba(200,200,220,.6);box-shadow:0 0 6px 3px rgba(180,180,200,.35);animation:gm-smoke 1.6s ease-out forwards}
+.gm-candle.out::after{animation:none;opacity:0}
+@keyframes gm-smoke{from{opacity:.9;transform:translate(-50%,0) scale(1)}to{opacity:0;transform:translate(-30%,-40px) scale(4)}}
 /* the reading table */
 .table.gm-table{display:flex;align-items:center;justify-content:center;overflow:hidden}
 .gm-fan{position:relative;width:60%;max-width:260px;aspect-ratio:1.4}
@@ -84,5 +111,5 @@ export const CSS = `
 .gm-spark i{position:absolute;left:var(--x);top:60%;width:6px;height:6px;border-radius:50%;background:var(--gold2);box-shadow:0 0 8px var(--gold2);opacity:0;animation:gm-spark 1.3s ease-out var(--d) both}
 @keyframes gm-spark{0%{opacity:0;transform:translateY(10px) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translateY(-120px) scale(1.2)}}
 .gm-trophy{font-size:clamp(3rem,10vw,4.5rem);animation:gm-rise .8s cubic-bezier(.2,1.6,.4,1) both}
-@media (prefers-reduced-motion: reduce){.gm-card,.gm-card.done .gm-face,.gm-card.miss .gm-in,.gm-board.won .gm-card,.gm-fcard,.gm-show,.gm-show .gm-sym,.gm-spark i,.gm-big span{animation:none}.gm-in{transition:none}}
+@media (prefers-reduced-motion: reduce){.gm-flame,.gm-slot.new,.gm-candle.snuff .gm-flame,.gm-card,.gm-card.done .gm-face,.gm-card.miss .gm-in,.gm-board.won .gm-card,.gm-fcard,.gm-show,.gm-show .gm-sym,.gm-spark i,.gm-big span{animation:none}.gm-in{transition:none}}
 `;
