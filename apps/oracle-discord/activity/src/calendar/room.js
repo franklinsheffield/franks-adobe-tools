@@ -9,6 +9,8 @@ import { GUIDES, GUIDE_ORDER } from "./guide.js";
 import { CSS } from "./style.js";
 import * as S from "./sfx.js";
 import { attachDrag, daysToTz, daysToEgy } from "./drag.js";
+import { dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
+import { GAME, dailySet, dailyScore, dailyReward } from "./daily-sky.js";
 
 const escH = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -135,6 +137,7 @@ let C = null;
 const $ = (id) => document.getElementById(id);
 const look = () => lookOf(C.state.prog);
 let shown = null; // JDN on the desk
+let D = null; // the Daily Sky run in progress
 let hand = null; // the draggable desk during a tz / egy puzzle
 const desk = (j, from = shown ?? j, scene = null) => { hand = null; drawDesk(C.tableEl || $("table"), j, look(), from, scene); shown = j; };
 const starRow = (n, of = STARS) => `<span class="cal-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}<i>${"★".repeat(of - n)}</i></span>`;
@@ -155,7 +158,7 @@ function wireGuides() {
 }
 
 function lobby(first) {
-  const p = C.state.prog; C.clearReading(); C.cap("🗓️ Calendar Keeper"); desk(E.todayJdn(), shown ?? E.todayJdn() - 8);
+  D = null; const p = C.state.prog; C.clearReading(); C.cap("🗓️ Calendar Keeper"); desk(E.todayJdn(), shown ?? E.todayJdn() - 8);
   C.say(first && !cal(p).plays
     ? `Welcome to the Keeper's desk, ${C.state.name}. Three real calendars turn here together: the Maya sacred count, Egypt's 365-day civil year and the Celtic wheel of the year. Learn how each one turns, then predict their festivals, and finally the eclipses. Every answer is worked out from the real calendars and the real sky.`
     : pick([`The wheels are oiled, ${C.state.name}. What shall we count today?`, `Back at the desk, ${C.state.name}. Time waits for no one, but it does wait for you.`, `Which calendar shall we turn, ${C.state.name}?`]));
@@ -163,9 +166,44 @@ function lobby(first) {
     return `<button class="c level" type="button" data-l="${L.n}" ${on ? "" : "disabled"}><b>${"🗓️".repeat(L.n)} Level ${L.n} · ${C.esc(L.name)}</b><span>${C.esc(L.what)} · ${n} / ${L.deck.length} solved · ${starsOf(p, L)} ★ · rewards ×${L.mult}${on ? "" : ` · solve 4 in Level ${L.n - 1} to open`}</span></button>`; };
   C.ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
     <div class="note">3 stars a puzzle. Each hint or wrong answer costs one. Answers come from the real calendars and the real sky, and change every time you play.</div>
-    <div class="choices"><button class="c" type="button" id="cal-desk">🗓️ Keeper's desk: turn to any date</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>${guideRow()}`);
+    ${dailyBtn(p)}<div class="choices"><button class="c" type="button" id="cal-desk">🗓️ Keeper's desk: turn to any date</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>${guideRow()}`);
   $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; play(L, nextPuzzle(p, L, cal(p).last)); }));
-  $("cal-desk").onclick = () => freeDesk(shown ?? E.todayJdn()); $("back").onclick = C.greet; wireGuides();
+  $("cal-desk").onclick = () => freeDesk(shown ?? E.todayJdn()); $("cal-daily").onclick = dailyStart; $("back").onclick = C.greet; wireGuides();
+}
+
+// ---- Daily Sky: the same three puzzles for everyone today (a cycle, a festival, an eclipse), a streak and a shared board ----
+function dailyBtn(p) {
+  const st = dailyState(p, GAME), t = st.today;
+  return `<div class="levels"><button class="c level cal-daily" type="button" id="cal-daily"><b>☀️ Daily Sky #${dayNumber()}</b><span>${t ? `Done today: ${t.score} / 9 ★ · play again for practice` : "Three puzzles from today's real sky, the same for everyone"} · streak ${st.streak} day${st.streak === 1 ? "" : "s"}${st.best > 1 ? ` · best ${st.best}` : ""}</span></button></div>`;
+}
+function dailyStart() { D = { set: dailySet(), i: 0, stars: [], practice: dailyState(C.state.prog, GAME).played }; S.page(); dailyPlay(); }
+function dailyPlay() {
+  const { L, p, g } = D.set[D.i], run = start(L, p, g);
+  C.clearReading(); C.cap(`☀️ Daily Sky #${dayNumber()} · ${D.i + 1} of 3 · ${p.title}`); desk(g.desk ?? E.todayJdn());
+  const byHand = (g.kind === "tz" || g.kind === "egy") && g.desk != null; if (byHand) handDesk(g);
+  ask(L, p, run, `${["First, a cycle", "Next, a festival", "Last, the sky itself"][D.i]}: ${p.title}.${byHand ? " Drag the gears to count, or pick below." : ""}`);
+}
+function dailyNext(run) { D.stars.push(run.won ? run.stars : 0); D.i++; if (D.i < D.set.length) dailyPlay(); else dailyEnd(); }
+function dailyEnd() {
+  const prog = C.state.prog, score = dailyScore(D.stars), won = D.stars.every((n) => n > 0), detail = D.stars.map((n) => n + "★").join(" ");
+  let line = "Practice round done. Only your first run of the day counts.", gain = "";
+  if (!D.practice) {
+    const res = finishDaily(prog, GAME, { score, won, detail });
+    if (res.first) {
+      const r = dailyReward(score, res.streak), aw = C.award(r.xp, r.essence); save(); C.showStats(); postDaily(C.state, GAME, { score, won, detail });
+      gain = `<b>+${r.xp} ✦ · +${r.essence} 💎</b>${res.streak > 1 ? ` · streak bonus` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${C.esc(aw.rankUp)}</b></div>` : ""}`;
+      line = res.streak > 1 ? `${res.streak} days in a row at the desk. The sky-watchers would approve.` : "Today's sky is logged. Come back tomorrow to start a streak.";
+    }
+  }
+  const st = dailyState(prog, GAME); C.say(line);
+  C.ui(`<div class="reward"><div>☀️ Daily Sky #${dayNumber()}: <span class="cal-pop">${D.stars.map((n) => starRow(n)).join(" ")}</span> <b>${score} / 9</b></div><div>${gain}</div><div class="note">Streak ${st.streak} · best ${st.best}</div></div>
+    <div class="group">Today's board</div><div id="cal-board"><div class="note">Loading the board…</div></div>
+    <div class="choices"><button class="c" type="button" id="cal-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+  if (score) setTimeout(() => S.stars(Math.min(3, Math.ceil(score / 3))), 150);
+  if (!D.practice && won) setTimeout(S.fanfare, 700);
+  const mine = { score }; D = null;
+  boardOf(C.state, GAME).then((b) => { const el = $("cal-board"); if (el) el.innerHTML = boardHtml(b, C.esc, { unit: "★", local: mine }); });
+  $("cal-lobby").onclick = () => lobby(false); $("back").onclick = C.greet;
 }
 
 // ---- free desk: any date, step the gears, jump to the next festival or eclipse ----
@@ -239,7 +277,7 @@ function ask(L, p, run, line) {
   const g = run.g; if (line) C.say(line);
   const more = run.hints < g.hints.length && run.stars > 1;
   const hints = g.hints.slice(0, run.hints).map((h, i) => `<div class="clue"><b>💡 Hint ${i + 1}</b><span>${C.esc(h)}</span></div>`).join("");
-  C.ui(`<div class="cx-top">Level ${L.n} · ${starRow(run.stars)} · ${run.stars} star${run.stars === 1 ? "" : "s"} to win</div>${hints ? `<div class="clues">${hints}</div>` : ""}${widget(g, run)}
+  C.ui(`<div class="cx-top">${D ? `☀️ Daily ${D.i + 1} / 3` : `Level ${L.n}`} · ${starRow(run.stars)} · ${run.stars} star${run.stars === 1 ? "" : "s"} to win</div>${hints ? `<div class="clues">${hints}</div>` : ""}${widget(g, run)}
     <div class="choices">${more ? `<button class="c" type="button" id="cal-hint">💡 Hint (costs ★)</button>` : ""}<button class="c small" type="button" id="cal-leave">Leave the puzzle</button></div>${guideRow()}`);
   const answer = (a, label) => {
     const r = check(run, a);
@@ -263,11 +301,11 @@ function ask(L, p, run, line) {
 function solved(L, p, run) {
   S.right();
   if (run.g.after != null && run.g.after !== shown) desk(run.g.after, shown, run.g.scene || "right"); else desk(shown, shown, run.g.scene || "right");
-  C.talkThrough([`${pick(RIGHT)} ${ansText(run.g)}.`, run.g.explain], () => finish(L, p, run));
+  C.talkThrough([`${pick(RIGHT)} ${ansText(run.g)}.`, run.g.explain], () => (D ? dailyNext(run) : finish(L, p, run)));
 }
 function outOf(L, p, run) {
   S.wrong(); if (run.g.after != null) desk(run.g.after, shown, run.g.scene || null);
-  C.talkThrough([`Out of stars. The Keeper turns the wheels for you: the answer is ${ansText(run.g)}.`, run.g.explain], () => finish(L, p, run));
+  C.talkThrough([`Out of stars. The Keeper turns the wheels for you: the answer is ${ansText(run.g)}.`, run.g.explain], () => (D ? dailyNext(run) : finish(L, p, run)));
 }
 function finish(L, p, run) {
   const prog = C.state.prog, before = titleOf(starsOf(prog)).name, r = settle(prog, run), aw = C.award(r.xp, r.essence);

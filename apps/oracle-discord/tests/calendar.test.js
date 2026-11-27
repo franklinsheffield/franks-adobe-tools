@@ -103,3 +103,16 @@ test("turning the desk by hand", async () => {
   for (const n of [0, 5, 30, 200, 364]) { const e = E.egyptCivil(j0 + n); assert.equal(D.daysToEgy(j0, { month: e.month, day: e.day }), n); }
   assert.equal(D.hubAt(238 + 50, 128), "small"); assert.equal(D.hubAt(130 + 60, 292), "egypt"); assert.equal(D.hubAt(5, 5), null);
 });
+
+test("Daily Sky: the same three puzzles for everyone, a new set each day", async () => {
+  const DS = await import("../activity/src/calendar/daily-sky.js");
+  const a = DS.dailySet("2026-11-27"), b = DS.dailySet("2026-11-27"), c = DS.dailySet("2026-11-28");
+  assert.equal(a.length, 3);
+  assert.deepEqual(a.map((x) => [x.L.n, x.p.id, JSON.stringify(x.g.answer), x.g.q]), b.map((x) => [x.L.n, x.p.id, JSON.stringify(x.g.answer), x.g.q]));
+  assert.deepEqual(a.map((x) => x.L.n), [1, 2, 3]);
+  assert.notDeepEqual(a.map((x) => x.g.q), c.map((x) => x.g.q));
+  for (let d = 1; d <= 30; d++) for (const x of DS.dailySet(`2026-12-${String(d).padStart(2, "0")}`)) { assert.ok(x.g.q && x.g.answer != null); if (x.g.choices) assert.ok(x.g.choices.includes(x.g.answer)); }
+  assert.equal(DS.dailyScore([3, 2, 0]), 5);
+  assert.deepEqual(DS.dailyReward(9, 1), { xp: 37, essence: 18 });
+  assert.equal(DS.dailyReward(9, 50).essence, 30);
+});
