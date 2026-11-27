@@ -6,3 +6,22 @@
 .ps-web-ask-row { display: flex; gap: 8px; justify-content: flex-end; }
 .ps-web-ask-row button { flex: 1; padding: 7px 10px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 4px; cursor: pointer; }
 .ps-web-ask-row button:hover { box-shadow: 0 0 8px #5effc8; }
+
+/* building together (Discord D4): the room bar over the viewport, the others' name tags */
+.ps-room { position: absolute; left: 8px; top: 8px; z-index: 5; display: flex; flex-direction: column; gap: 6px; max-width: min(420px, calc(100% - 16px)); font: 11px/1.3 system-ui, sans-serif; color: #fff; pointer-events: none; }
+.ps-room > * { pointer-events: auto; }
+.ps-room-people { display: flex; flex-wrap: wrap; gap: 4px; }
+.ps-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; background: rgba(0, 0, 0, 0.72); border: 1px solid var(--c, rgba(255, 255, 255, 0.4)); border-radius: 3px; white-space: nowrap; }
+.ps-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, #888); }
+.ps-chip.off { opacity: 0.7; }
+.ps-room-row { display: flex; gap: 4px; }
+.ps-room-row button, .ps-room-item button { flex: 0 0 auto; padding: 4px 8px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 3px; cursor: pointer; font: inherit; }
+.ps-room-row button:hover, .ps-room-item button:hover { box-shadow: 0 0 8px #5effc8; }
+.ps-room-row button:disabled { opacity: 0.5; cursor: default; }
+.ps-room-lib { max-height: 240px; overflow-y: auto; background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 3px; padding: 6px; }
+.ps-room-item { display: grid; grid-template-columns: 1fr 64px 64px; gap: 4px; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+.ps-room-item span { grid-column: 1; opacity: 0.6; font-size: 10px; }
+.ps-room-item b { grid-column: 1; font-weight: 600; }
+.ps-room-item button { grid-row: 1 / span 2; }
+.ps-room-empty { opacity: 0.7; }
+.ps-peer-tag { position: absolute; left: 0; top: 0; z-index: 4; padding: 1px 5px; background: rgba(0, 0, 0, 0.75); border: 1px solid; border-radius: 3px; font: 600 10px/1.3 system-ui, sans-serif; white-space: nowrap; pointer-events: none; }

@@ -306,6 +306,7 @@ export class Viewport {
     if (!this.data) return;
     const w = this.canvas.width, h = this.canvas.height; placeCamera(this.camera, this.data.cam, w / h);
     if (this.selBox.visible && this.sel) { const rec = this.world.nodes.get(this.sel); if (rec) this.selBox.setFromObject(rec.node); }
+    if (this.peers) this.drawPeers();
     this.renderer.render(this.world.scene, this.camera); this.dirty = false;
     if (this.hooks.onDraw) this.hooks.onDraw();
   }
@@ -324,6 +325,28 @@ export class Viewport {
   setRing(p, radius) { if (!p) { if (this.ring.visible) { this.ring.visible = false; this.dirty = true; } return; } this.ring.visible = true; this.ring.position.set(p.x, p.y + 0.03, p.z); this.ring.scale.setScalar(radius); this.dirty = true; }
   // screen position (client px) of a world point, for drop previews and tests
   project(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.camera), r = this.canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }
+  // building together (D4): what the others have selected, as an outline in their colour with their name over it
+  setPeers(list) {
+    this.peers = this.peers || [];
+    while (this.peers.length > list.length) { const p = this.peers.pop(); this.world.scene.remove(p.box); p.box.geometry.dispose(); p.box.material.dispose(); p.tag.remove(); }
+    while (this.peers.length < list.length) {
+      const box = new THREE.BoxHelper(undefined, 0xffffff); box.material.depthTest = false; box.material.transparent = true; box.renderOrder = 9; this.world.scene.add(box);
+      const tag = document.createElement("div"); tag.className = "ps-peer-tag"; (this.canvas.parentElement || document.body).appendChild(tag);
+      this.peers.push({ box, tag });
+    }
+    list.forEach((it, i) => { const p = this.peers[i]; p.obj = it.obj; p.box.material.color.set(it.color); p.tag.textContent = it.name; p.tag.style.borderColor = it.color; p.tag.style.color = it.color; });
+    this.dirty = true;
+  }
+  drawPeers() {
+    const W = this.canvas.clientWidth, H = this.canvas.clientHeight, b3 = new THREE.Box3(), v = new THREE.Vector3();
+    for (const p of this.peers) {
+      const rec = p.obj && this.world.nodes.get(p.obj);
+      p.box.visible = !!rec; if (!rec) { p.tag.style.display = "none"; continue; }
+      p.box.setFromObject(rec.node); b3.setFromObject(rec.node); b3.getCenter(v); v.y = b3.max.y; v.project(this.camera);
+      const on = v.z < 1 && Math.abs(v.x) <= 1.1 && Math.abs(v.y) <= 1.1; p.tag.style.display = on ? "" : "none";
+      if (on) p.tag.style.transform = "translate(" + ((v.x + 1) / 2 * W).toFixed(0) + "px," + ((1 - v.y) / 2 * H).toFixed(0) + "px) translate(-50%, -130%)";
+    }
+  }
   // a still of the viewport as a PNG data URL
   grab() { this.draw(); return this.canvas.toDataURL("image/png"); }
 }
