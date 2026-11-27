@@ -34,7 +34,7 @@ const T = [
   [15, "P", "Phosphorus", "nonmetal", [-3, 3, 5], 2, 1, "Found in 1669 by Hennig Brand, who boiled down urine hunting for the philosopher's stone."],
   [16, "S", "Sulfur", "nonmetal", [-2, 4, 6], 1, 2, "The 'brimstone' of old texts. It burns with a blue flame."],
   [17, "Cl", "Chlorine", "halogen", [-1, 1, 3, 5, 7], 1, 3, "A choking yellow-green gas. In salt it is tamed into harmless chloride ions."],
-  [18, "Ar", "Argon", "noble", [0], 1, 1, "Almost 1% of air is argon: about 23 times more than carbon dioxide."],
+  [18, "Ar", "Argon", "noble", [0], 1, 1, "Almost 1% of air is argon: over 20 times more than carbon dioxide."],
   [19, "K", "Potassium", "alkali", [1], 1, 2, "Its symbol K comes from kalium, from the Arabic for plant ash (potash)."],
   [20, "Ca", "Calcium", "alkaline", [2], 1, 2, "The most abundant metal in your body, mostly in bones and teeth."],
   [22, "Ti", "Titanium", "transition", [4, 3, 2], 2, 1, "As strong as many steels but about 45% lighter."],

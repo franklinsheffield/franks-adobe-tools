@@ -1,5 +1,5 @@
 // Rivals: at Master level (a ladder, easiest first: beat one to unlock the next) the Oracle can channel a famous chemist. Each one stacks its deck with the elements they
-// worked on and prefers compounds made of them. Every fact here is true; quotes are only ones with a solid source.
+// worked on and prefers compounds made of them. Every fact here is true; quotes are only ones with a solid source, or are marked as 'often credited'.
 export const RIVALS = [
   { id: "davy", hp: 0, name: "Humphry Davy", short: "Davy", years: "1778–1829", emoji: "🔋", fav: ["K", "Na", "Ca", "Mg", "Sr", "Ba"],
     style: "Plays the reactive metals he split out with electricity.",
@@ -20,7 +20,7 @@ export const RIVALS = [
   { id: "curie", hp: 6, name: "Marie Curie", short: "Curie", years: "1867–1934", emoji: "☢️", fav: ["U", "Ba", "Bi"], hand: 2, copies: 1,
     style: "Plays the heavy elements of pitchblende, and holds the biggest hand of any rival.",
     fact: "Curie studied uranium's rays, coined the word 'radioactivity' and, with Pierre, found polonium (it came out with the bismuth in pitchblende) and radium (it came out with the barium). She is the only person with Nobel Prizes in two sciences.",
-    hello: "Marie Curie sets down a faintly glowing vial. 'Nothing in life is to be feared, it is only to be understood.'", win: "Curie nods and returns to her measurements. Understood.", lose: "Curie smiles. A rare result, and she will want to measure it twice." },
+    hello: "Marie Curie sets down a faintly glowing vial. Words often credited to her: 'Nothing in life is to be feared, it is only to be understood.'", win: "Curie nods and returns to her measurements. Understood.", lose: "Curie smiles. A rare result, and she will want to measure it twice." },
 ];
 export const RIVAL = Object.fromEntries(RIVALS.map((r) => [r.id, r]));
 /** How much a rival likes a compound: +3 for each of their favourite elements in it (Mendeleev: new ones). */
