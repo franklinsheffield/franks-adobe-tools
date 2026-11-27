@@ -221,6 +221,18 @@ export const BANTER = {
     pirate: G("A gig in port! Polish yer boots, matey!", "The crowd be rowdy. Give 'em the truth, plain sailin'.", "Packed to the rigging! Ye earned yer grog tonight!", "Show's sunk. We'll find another harbour."),
     influencer: G("Tour announcement! Tonight's Bill just dropped!", "Live from the venue! The vibe is immaculate!", "SOLD OUT show! Thank you all so much!", "Show cancelled. Taking a little break, besties."),
   },
+  darkseance: {
+    mystic: G("The dark hides the hand, never the truth.", "Feel the circle tighten. They are watching closely.", "They saw a spirit. You saw a method. Remember the difference.", "The light found you. It always does, in the end."),
+    deadpan: G("You are the ghost. The ghost has feet. Hide them.", "Spooky voice. Same voice as yours, but spooky.", "Committee fooled. Ghosts: still zero.", "Exposed. The ghost was you. As expected."),
+    drama: G("The LIGHTS go DOWN! The trumpet RISES!", "A flashlight! Someone has a FLASHLIGHT! Don't move!", "BAFFLED! The committee is utterly BAFFLED!", "EXPOSED! In front of EVERYONE! The SCANDAL!"),
+    standup: G("Séance tip: cracking your toes counts as a spirit.", "The spirits only work in the dark. So does my plumber.", "You fooled them! Put that on your business card. Don't.", "Caught! Spirit got stage fright, apparently."),
+    grumpy: G("Keep your feet still. They're holding them.", "Don't try the knee with a red lamp on. Honestly.", "Fine. You got away with it. This time.", "Of course they caught you. Luminous bands, genius."),
+    sports: G("The medium faces a tough committee tonight!", "A flashlight in play! Watch the timing!", "WHAT A PERFORMANCE! Not a single control landed!", "CAUGHT! The committee wins the round!"),
+    conspiracy: G("Every séance needs an accomplice. Who's yours?", "That 'spirit' has the medium's shoe size.", "They believed it. Which proves my point about everything.", "Exposed. Somebody tipped off the committee."),
+    bard: G("The candles out, the trumpet in the air!", "Beware the lamp that flashes in the gloom!", "The circle swore a spirit graced the room!", "And so the lamp revealed the hand, the ruse!"),
+    pirate: G("Darker than a hold at midnight, this séance.", "Mind the lantern, matey. They be watchin'.", "Hornswoggled the lot of 'em! Fine trickery!", "Caught red-handed like a stowaway in the galley!"),
+    influencer: G("Spooky séance content! Lights off, phones on!", "Plot twist incoming! Someone brought a flashlight!", "The committee was SHOOK. Iconic medium energy.", "Exposed on main. Honestly, the lighting was great."),
+  },
   casefiles: {
     mystic: G("Every haunting leaves fingerprints. Look for them.", "The candle burns low. The truth burns longer.", "The veil lifts, and behind it, a person. Well seen.", "The file stays closed. Some secrets keep a while."),
     deadpan: G("It's a ghost story. They always have a sequel: the confession.", "Five candles. One method. Light accordingly.", "Exposed. The ghost has been demoted to a person.", "Unsolved. The ghost wins on a technicality."),
