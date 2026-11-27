@@ -1368,8 +1368,8 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @keyframes box-rays{0%{opacity:0;transform:rotate(0)}10%{opacity:1}100%{opacity:.6;transform:rotate(90deg)}}
 @keyframes box-prize{to{opacity:1;transform:none}}
 /* animated showroom: trying on a robe, avatar or set puts the Oracle on a turning pedestal under a spotlight */
-.oracle-pane.showroom::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:conic-gradient(from 180deg at 50% -10%,transparent 0 44%,rgba(255,244,210,.22) 47% 53%,transparent 56%);animation:sr-light 3s ease-in-out infinite alternate}
-.oracle-pane.showroom::after{content:"";position:absolute;left:18%;right:18%;bottom:3%;height:9%;z-index:0;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse,rgba(250,222,140,.55),rgba(250,222,140,.08) 60%,transparent 72%);box-shadow:0 0 40px rgba(250,222,140,.35)}
+.oracle-pane.showroom::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:conic-gradient(from 180deg at 50% -10%,transparent 0 44%,rgba(255,244,210,.38) 47% 53%,transparent 56%);animation:sr-light 3s ease-in-out infinite alternate}
+.oracle-pane.showroom::after{content:"";position:absolute;left:14%;right:14%;bottom:1%;height:12%;z-index:2;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse,rgba(250,222,140,.55),rgba(250,222,140,.08) 60%,transparent 72%);box-shadow:0 0 40px rgba(250,222,140,.35)}
 .oracle-pane.showroom #teller{animation:sr-turn 5s ease-in-out infinite}
 @keyframes sr-turn{0%,100%{transform:perspective(900px) rotateY(0)}25%{transform:perspective(900px) rotateY(16deg)}75%{transform:perspective(900px) rotateY(-16deg)}}
 @keyframes sr-light{to{opacity:.6}}
