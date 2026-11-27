@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { bookPoke } from "./library.js";
 import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
@@ -1237,7 +1238,7 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   if (HOST().id !== "oracle" && hasRoom(HOST(), id)) { const hs = (state.prog.houses ||= {}), h = (hs[HOST().id] ||= {}); h.rounds = (h.rounds || 0) + 1; } // rounds played in this House (House record tasks)
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
-  mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); hostReact(ev, reactCtx()); secretEvent("result", { room: id, won: !!(o && o.won), perfect: !!(o && o.perfect), level });
+  mood.emote(moodForOutcome(id, o || {}), { say: (ev === "lose" && bookPoke(HOST().id, id, state.name)) || hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); // sometimes a lost round earns a book from the server's library hostReact(ev, reactCtx()); secretEvent("result", { room: id, won: !!(o && o.won), perfect: !!(o && o.perfect), level });
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;

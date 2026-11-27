@@ -3,6 +3,8 @@
 // feathers, a red wax-seal badge and an eye the colour of the ink you choose. Brand brief: brand/houses/README.md (House 5).
 // Every fact in Wren's lines is real; they label modern uses and never invent meanings for symbols.
 import { vinylSvg } from "../player.js";
+import { deskSceneHtml, codexSvg, propsSvg, headSvg, react, DESK_EMOTES, DESK_CSS, habitOf, habitShop } from "./scriptorium-desk.js";
+import { coatOverlay } from "./alchemist-lab.js";
 import { menuBg as WREN_MENU_BG, secrets as MARGINALIA_SECRETS } from "../scriptorium/marginalia.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -90,18 +92,23 @@ function paint(svg, prog, id = "t") {
   if (!svg) return;
   const stops = (gid, cols) => svg.querySelectorAll(`#${id}-${gid} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
   const K = inkOf(prog && prog.ink);
-  stops("face", ["#F1E4C6", "#C9B58A", "#4A3A2C"]); stops("hood", ["#3a2c1c", "#1C1710", "#080604"]); stops("iris", K.iris);
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#E8483B"); });
+  const C = prog && prog.habit ? habitOf(prog.habit) : null;
+  stops("face", ["#F1E4C6", "#C9B58A", "#4A3A2C"]); stops("hood", C ? C.hood : ["#3a2c1c", "#1C1710", "#080604"]); stops("iris", K.iris);
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", C ? C.trim : "#E8483B"); });
   const body = svg.querySelector(".o-body"), eye = svg.querySelector(".o-eye"); if (!body || !eye) return;
   svg.querySelector(".h-wren")?.remove();
   const g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-wren");
   const feather = (x, y, r, s = 1) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><path class="hk-feather" d="M0 0Q-8 -24 0 -46Q8 -24 0 0Z" fill="#F1E4C6" stroke="#4A3A2C" stroke-width=".8"/><path d="M0 0V-44" stroke="#4A3A2C" stroke-width=".8"/>${[10, 18, 26, 34].map((d) => `<path d="M0 -${d}l-4 -3M0 -${d}l4 -3" stroke="#C9B58A" stroke-width=".6"/>`).join("")}</g>`;
-  g.innerHTML = `${feather(224, 66, 24)}${feather(232, 70, 40, 0.8)}${feather(176, 66, -24, 0.9)}
+  g.innerHTML = `${headSvg()}${feather(224, 66, 24)}${feather(232, 70, 40, 0.8)}${feather(176, 66, -24, 0.9)}
     <path d="M160 150q-4 10 2 16M240 150q4 10 -2 16" stroke="${K.iris[1]}" stroke-width="2" fill="none" opacity=".6"/>
     <g transform="translate(200 92)"><path d="M-12 -4q-2 -9 6 -11q4 -5 10 -1q8 -2 9 6q6 4 2 10q2 8 -6 9q-4 6 -11 2q-8 2 -9 -6q-6 -4 -1 -9z" fill="#E8483B" stroke="#8a1a10" stroke-width="1.2"/>
       <path d="M-8 6L8 -8" stroke="#F1E4C6" stroke-width="2" stroke-linecap="round"/><path d="M8 -8q4 -2 3 3z" fill="#F1E4C6"/><circle r="9" fill="none" stroke="#8a1a10" stroke-width=".8"/></g>
     <path d="M152 186h96" stroke="#E8483B" stroke-width="1" opacity=".5"/><path d="M152 192h96" stroke="#3D6BE0" stroke-width="1" opacity=".4"/>`;
   eye.after(g);
+  svg.querySelector(".hv-coat")?.remove(); if (C && body.children[4]) body.children[4].insertAdjacentHTML("afterend", coatOverlay(C)); // their habit or gown, over the robe
+  const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands"); // an open codex on a lectern stands where the crystal ball was
+  if (ball) { ball.querySelector(".wc-codex")?.remove(); ball.insertAdjacentHTML("beforeend", codexSvg(id)); }
+  if (hands) { hands.querySelector(".wc-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
   for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", wrenHand(side)); } }
 }
 /** Archivist Wren's hands: bare, ink on the fingertips. At rest they hold a goose quill (right) and a penknife for
@@ -143,13 +150,13 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
   channelIds: ["1575977195048927232"], // #🪶-scriptorium
-  readings: false, rooms: ["inscriptions", "decoder", "memory"], daily: "decoder",
+  readings: false, rooms: ["inscriptions", "cipherdesk", "decoder", "memory"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
-  css: SCRIPTORIUM_CSS + WREN_HANDS_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: SCRIPTORIUM_CSS + WREN_HANDS_CSS + DESK_CSS, paint, scene: deskSceneHtml, react, emotes: DESK_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Hurdy-Gurdy", deck: hurdySvg },
-  shelves: [inkShop],
+  shelves: [inkShop, habitShop],
   token: { id: "scroll", emoji: "📜", name: "scroll", plural: "scrolls", purse: "Scroll case" },
   relics: SCRIPT_RELICS, relicLabel: "📜 Scriptorium relics", relicBlurb: "Scriptorium relics stay on my shelves for good. Earn scrolls with your first visit each day and by beating game levels here.",
   strayIntro: "This slipped out from between two pages:",
@@ -167,6 +174,7 @@ export const scriptorium = {
   },
   banter: {
     inscriptions: G("Read the letters first. Roman carvers ran words together.", "Trajan's Column base, AD 113: the model for capital letters.", "Read and dated! The stone speaks again, {name}.", "Not quite. Weathered stone fools everyone. Look again."),
+    cipherdesk: G("Count the letters first. E is the most common in English.", "Al-Kindi wrote down frequency analysis in the 800s.", "Cracked! Al-Kindi would nod, {name}. Quietly.", "Still scrambled. Even Mary, Queen of Scots' cipher was broken."),
     decoder: G("One rune read, {name}. That's how every scholar starts.", "Look at the shape first. Then the sound. Then the meaning.", "Deciphered! I'll write that in red, it deserves a rubric.", "Not quite. Scribes made mistakes too. That's why they had erasers: knives."),
     memory: G("Remember where each sign sits. Scribes memorised whole books.", "Two matching marks somewhere. Patience.", "Every pair found! Your memory is a fine library, {name}.", "Not a match. Even the best scribes reread their pages."),
   },
