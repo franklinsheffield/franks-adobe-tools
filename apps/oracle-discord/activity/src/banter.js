@@ -137,6 +137,18 @@ export const BANTER = {
     pirate: G("Red flame be lithium, or strontium, if ye be lucky!", "Green fire, like a ghost ship's lantern, arr.", "Ye read the flames like a true navigator!", "Arr, wrong metal. That fire be lyin' like a parrot."),
     influencer: G("Flame colour reveal! Drop your guesses below!", "This green is a whole aesthetic. No filter needed.", "Every colour right! Main character at the burner.", "Wrong guess, bestie. Even the flame needed a filter."),
   },
+  minerals: {
+    mystic: G("Every stone remembers the fire that made it.", "The rock keeps its name inside. Coax it out gently.", "You named the stone. It has waited a million years for that.", "The stone keeps its silence. Stones are patient."),
+    deadpan: G("It's a rock. They're all rocks. Some are shinier.", "Scratch it. Sniff it. Don't lick it. People lick them.", "Correct rock. Riveting.", "Wrong rock. The rock is unbothered."),
+    drama: G("A MYSTERY STONE! Sealed by the EARTH itself!", "It FIZZED! A carbonate! I'm shaking like a seismograph!", "NAMED! Into the drawer of LEGENDS!", "Misnamed! The poor rock! Its identity, stolen!"),
+    standup: G("Geology jokes? I'd tell one, but you'd take it for granite.", "A streak plate: the only place rocks leave a mark on you.", "Nailed it! That's a gneiss result.", "Wrong rock. Oh well, igneous is bliss."),
+    grumpy: G("Test it properly. Not with your teeth.", "In my day we had one test: drop it on your foot.", "Fine. You know your rocks. Label it neatly.", "Wrong. Pyrite fooled better people than you."),
+    sports: G("The specimen's on the bench, and the testing BEGINS!", "Streak test! What a move! The crowd leans in!", "IDENTIFIED! A textbook performance!", "And the rock holds out! Undefeated this round!"),
+    conspiracy: G("Who mailed this rock? No return address. Suspicious.", "Fool's gold exists to test us. Who's testing? Exactly.", "You named it. Now they know you know rocks.", "Wrong name. Or the label was SWAPPED. Think about it."),
+    bard: G("O humble stone, what secrets hide beneath thy skin?", "Scratch soft, good friend, and let the streak reveal its blood.", "The stone is named! Its line shall join the ballad.", "Alas, the stone goes nameless back into the dark."),
+    pirate: G("Be it gold, or be it fool's gold? Many a pirate wept.", "Heavy for its size, like a chest o' doubloons.", "Ye named the rock! Stow it in the treasure drawer!", "Arr, that be the wrong rock. Back in the hold with it."),
+    influencer: G("Rock unboxing! It's... a rock! Stay with me!", "This streak is giving earth tones. Very on trend.", "Named it! Mineral of the day, tagged and filed.", "Wrong guess, bestie. The rock's playing hard to get."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */
