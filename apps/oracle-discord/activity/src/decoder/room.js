@@ -6,6 +6,7 @@ import { glyphsOf, target, taught, tiles, check, hint, starsFor, writeIn, mayaOf
 import { FONTS } from "./fonts.gen.js";
 import { CSS } from "./style.js";
 import { GUIDES } from "./guide.js";
+import { SHOP, tabletOf } from "./shop.js";
 
 export const room = { id: "decoder", label: "Rune & Glyph Decoder", emoji: "🗝️", blurb: "Read runes, Ogham, hieroglyphs and Maya numbers", open };
 
@@ -35,7 +36,7 @@ const guideBtn = (k) => `<button class="c" type="button" id="dec-guide">📖 Stu
 const wireGuide = (k) => { const b = $("dec-guide"); if (b) b.onclick = () => toggleGuide(k, b); };
 const P = () => C.state.prog;
 
-function styleOnce() {
+export function styleOnce() {
   if (document.getElementById("dec-style")) return;
   const f = (fam, b64) => `@font-face{font-family:"${fam}";src:url(data:font/woff2;base64,${b64}) format("woff2");font-display:block}`;
   const st = document.createElement("style"); st.id = "dec-style";
@@ -44,7 +45,7 @@ function styleOnce() {
 }
 // The board is drawn into the reading table (ctx.tableEl); the Chamber's greet() puts the table back.
 function mountBoard() {
-  const t = C.tableEl || $("table"); t.className = "table decoder";
+  const t = C.tableEl || $("table"); t.className = "table decoder"; t.dataset.tablet = tabletOf(C.state.prog.tablet);
   t.innerHTML = `<div class="dec-board" aria-live="polite"></div>`; board = t.firstChild;
   // Tap a card on the table to see it up close (Chamber's #zoom viewer); tap a script medal to open that script.
   board.onclick = (e) => {
@@ -230,3 +231,12 @@ function dateLevel(l) {
     C.chime && C.chime(); reward(l, 3, `${m.longCount.join(".")}: ${m.days.toLocaleString("en-US")} days since 4 Ajaw 8 Kumk'u. Your day sign is ${m.tone} ${m.signName}.`); });
   $("dec-back").onclick = () => scriptMenu(l.script);
 }
+
+/** Store try-on: a sample inscription on the given tablet (drawn into the reading table by the Chamber store). */
+// Try-on in the Essence store: lay a sample inscription on the tablet being tried.
+export function tabletPreview(id, { tableEl } = {}) {
+  styleOnce(); const it = SHOP.items.find((x) => x.id === id) || SHOP.items[0], l = byId(it.sample) || LEVELS[0];
+  const t = tableEl || document.getElementById("table"); t.className = "table decoder"; t.dataset.tablet = tabletOf(it.id);
+  t.innerHTML = `<div class="dec-board">${strip(l, target(l).slice(0, 4))}<div class="dec-progress">${esc(it.name)} · ${esc(l.title)}</div></div>`;
+}
+room.shop = { ...SHOP, preview: tabletPreview };
