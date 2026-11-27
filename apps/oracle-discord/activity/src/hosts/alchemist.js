@@ -139,7 +139,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const alchemist = {
   id: "alchemist", name: "Magister Vell", house: "The Alchemist's House", emoji: "⚗️", accent: "#E89A55",
   channelIds: ["1575967994633396544"], // #⚗️-laboratory
-  readings: false, rooms: ["alchemy", "duel", "grimoire", "bench", "commissions", "fireworks", "leadgold", "flametest", "minerals"], daily: "alchemy",
+  readings: false, rooms: ["alchemy", "duel", "grimoire", "bench", "commissions", "fireworks", "leadgold", "flametest", "minerals", "possession"], daily: "alchemy",
   // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass",
     sting: { type: "triangle", glide: 1.5, notes: [[392, 0, 0.09], [494, 0.08, 0.09], [587, 0.16, 0.09], [784, 0.24, 0.22, 0.35]] } }, // door sting: three bubbles pop, then a bright brass note
@@ -162,6 +162,7 @@ export const alchemist = {
       "Alchemists wanted to turn lead into gold. Physicists have managed it in particle accelerators. It costs far more than the gold. Classic."],
   },
   banter: {
+    possession: G("Ben Jonson's comedy The Alchemist opened in 1610. Its alchemist was a con man too.", "The Chymical Wedding of 1616 told alchemy as a story. You're writing the sequel.", "A tale well brewed, {name}! Every Great Work needs a good story.", "The flask cooled before the tale was done. Stir it again, colleague."),
     alchemy: G("Stir gently. The flask doesn't mind, but I do.", "Smell that? That's either sulfur or progress.", "It worked! Write it in the lab book before you forget!", "No reaction. Very scientific of it. Try again."),
     duel: G("Careful, I've balanced more equations than you've had breakfasts.", "A noble gas! Lovely. Unreactive, but lovely.", "Beaten! My compounds came apart. Well played, {name}.", "My reaction wins! Don't worry, it was exothermic. You'll warm up."),
     bench: G("Test it, note it, test again. That is the whole method.", "Scheele found oxygen around 1771, but Priestley published first, in 1774.", "Discovered and logged! The bench remembers good work, {name}.", "Not this time. Even Boyle filled notebooks with failed trials."),

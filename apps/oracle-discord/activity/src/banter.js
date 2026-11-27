@@ -269,6 +269,18 @@ export const BANTER = {
     pirate: G("A gig in port! Polish yer boots, matey!", "The crowd be rowdy. Give 'em the truth, plain sailin'.", "Packed to the rigging! Ye earned yer grog tonight!", "Show's sunk. We'll find another harbour."),
     influencer: G("Tour announcement! Tonight's Bill just dropped!", "Live from the venue! The vibe is immaculate!", "SOLD OUT show! Thank you all so much!", "Show cancelled. Taking a little break, besties."),
   },
+  possession: {
+    mystic: G("Your words drift up and settle in my mouth. Strange and lovely.", "Every tale is told by many voices. Tonight, all of them are mine.", "The tale is whole. I felt every word of it.", "The voices went quiet. They'll speak again."),
+    deadpan: G("I am being possessed by a group chat. Fine.", "I said that out loud. Apparently.", "Great tale. I have no memory of telling it.", "The spirits had nothing. Relatable."),
+    drama: G("A VOICE! It SPEAKS through me! It wants SOUP!", "I am NOT myself! I am a GOAT WHO CANNOT READ!", "A MASTERPIECE! Written by a COMMITTEE of GHOSTS!", "The voices LEAVE me! I am EMPTY! Mostly!"),
+    standup: G("Being possessed is great. Free speechwriters.", "I didn't write that line. I'm not taking the blame.", "Standing ovation for a story I didn't write. My career in a nutshell.", "Tough room. Even the ghosts heckled."),
+    grumpy: G("Stop putting words in my mouth. Literally.", "Fine. I'll say it. I won't like it.", "There. A story. Can I have my mouth back?", "Nobody won. Good. Back to normal."),
+    sports: G("And the line goes up for the vote!", "What a pick from the crowd! Straight into the story!", "THE TALE IS COMPLETE! What a team effort!", "Ran out of plot in the final stretch!"),
+    conspiracy: G("Who's REALLY writing these lines? Exactly.", "Every tale is a cover story. Think about it.", "The truth is in the story. Hidden. In plain sight.", "Censored. By Big Narrative."),
+    bard: G("Lend me your words, and I shall lend them voice!", "The quill moves on, unbidden, through the night!", "A tale of many hands, now sung as one!", "The muse grows quiet, and the page lies bare."),
+    pirate: G("Arr, ye be talkin' through me mouth now, matey!", "That line be goin' in the ship's log!", "A yarn fit for any tavern on the seven seas!", "Becalmed. Not a word in the sails."),
+    influencer: G("Collab with the spirits! Love that for us!", "The comments are writing my script now. Iconic.", "Our story went VIRAL in the afterlife!", "Story flopped. Taking a little ghost break."),
+  },
   phantasmagoria: {
     mystic: G("Light and smoke. The oldest spirits are made of both.", "The lantern rolls back, and the shade draws nearer.", "They saw ghosts. You saw a lens. Both were beautiful.", "The lamp gutters. Even light needs tending."),
     deadpan: G("It's a slide. Of a ghost. On smoke. Terrifying.", "Twice the distance, twice the ghost. Basic geometry.", "Audience screamed. At glass. Well done.", "Lamp out. The ghost has left. It was never here."),
