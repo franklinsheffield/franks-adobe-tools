@@ -6,6 +6,7 @@
 import { DANGER, EVIDENCE } from "./plants.js";
 import { LEVELS, ALL, LEAVES, keyOf, perLeaf, safetyPts, claimPts, room as grim, solvedCount, titleOf, nextTitle, plantById, nextPlant, start, moreClue, usePick, whichPlant, choices, guessName, guessSafety, guessClaim, settle, scoreOf } from "./logic.js";
 import { pageSvg, twinSvg, thumbSvg } from "./sketch.js";
+import { loreHtml } from "./lore.js";
 import { gardens, claimGardenPrizes, GARDEN_PRIZE } from "./herbarium.js";
 import { dailyState, finishDaily, postDaily, boardOf, boardHtml, todayKey, dayNumber } from "../daily.js";
 import { DAILY_ID, dailyPick, dailyBonus, dailyDetail, shareLine } from "./daily.js";
@@ -47,6 +48,7 @@ export function pageHtml(p, esc) {
     <div class="gr-badges"><span class="gr-badge ${p.danger[0]}">${d.emoji} ${esc(d.name)}</span><span class="gr-badge">${e.emoji} ${esc(e.name)}</span></div>
     <div class="gr-sec"><b class="h">📜 Folklore</b>${esc(p.folklore)}</div>
     <div class="gr-sec"><b class="h">🔬 What science says</b>${esc(p.science)}</div>
+    ${loreHtml(p, esc, Date.now(), poison)}
     <div class="gr-sec safety${poison ? " poison" : ""}"><b class="h">${d.emoji} Safety</b>${esc(p.safety)}${poison ? `<br><br>${esc(POISON_HELP)}` : ""}</div>
     <div class="gr-warn">${esc(NOT_ADVICE)}</div></div>`;
 }
