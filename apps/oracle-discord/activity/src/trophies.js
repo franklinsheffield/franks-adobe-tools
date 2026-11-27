@@ -26,6 +26,7 @@ export const TROPHIES = [
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
   { id: "flametest", game: "Flame Test Lab", name: "Bunsen's Burner", art: "burner", need: 3 },
   { id: "minerals", game: "Mineral Cabinet", name: "Collector's Geode", art: "geode", need: 3 },
+  { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
   const n = t.need, w = n === 1 ? "Win" : `Win ${n} rounds`;
@@ -51,6 +52,7 @@ export const LINES = {
   rummy: "The Star Hand. You read the heavens and the table. Unbeatable combo.",
   memory: "The Sealed Grimoire opens only for minds like yours. Remember this moment.",
   flametest: "Bunsen's Burner, in your colours. Every flame you read was a real element.",
+  bench: "The Golden Crucible. Every discovery in it was real chemistry.",
   minerals: "The Collector's Geode. Crack it open: crystals, and your name on the label.",
 };
 
@@ -120,6 +122,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     book: `<path d="M26 22 L50 28 L74 22 L74 66 L50 72 L26 66Z" ${F}/><path d="M50 28 L50 72" stroke="${lo}" stroke-width="1.5"/><g class="tr-rot"><circle cx="62" cy="46" r="7" fill="none" stroke="${lo}" stroke-width="1.6"/><path d="M62 39 L62 53 M55 46 L69 46" stroke="${lo}" stroke-width="1.2"/></g><path d="M34 36 L44 38 M34 44 L44 46 M34 52 L44 54" stroke="${lo}" stroke-width="1.4"/><rect x="45" y="72" width="10" height="7" ${F}/>`,
     burner: `<path class="tr-flame" d="M50 8 C62 24 60 36 50 44 C40 36 38 24 50 8Z" fill="#66E0C8" opacity=".85"/><path d="M50 22 C56 30 55 36 50 40 C45 36 44 30 50 22Z" fill="#fff" opacity=".7"/><rect x="44" y="44" width="12" height="28" rx="2" ${F}/><rect x="40" y="58" width="20" height="6" rx="2" ${F}/><rect x="30" y="72" width="40" height="7" rx="3" ${F}/>`,
     geode: `<path d="M22 54 Q20 26 50 20 Q80 26 78 54 Q76 76 50 78 Q24 76 22 54Z" ${F}/><path d="M32 52 Q32 34 50 30 Q68 34 68 52 Q66 68 50 70 Q34 68 32 52Z" fill="#7a4ad0" opacity=".85"/><path class="tr-gem" d="M42 52 L50 36 L58 52 L50 64Z" fill="#c8a8ff"/><path d="M36 56 L44 46 L46 60Z M56 46 L64 54 L56 62Z" fill="#e6d8ff" opacity=".8"/>`,
+    crucible: `<path d="M26 34 L74 34 L66 74 Q64 80 56 80 L44 80 Q36 80 34 74Z" ${F}/><rect x="22" y="28" width="56" height="8" rx="3" ${F}/><path d="M34 46 L66 46 L63 60 L37 60Z" fill="#ffcf6a" opacity=".85"/><circle class="tr-bub" cx="46" cy="50" r="2.5" fill="#fff" opacity=".8"/><path class="tr-flame" d="M40 92 Q46 82 50 92 Q54 82 60 92Z" fill="#ff8a3a"/>`,
     mortar: `<path class="tr-pestle" d="M58 44 L74 14" stroke="${mid}" stroke-width="7" stroke-linecap="round"/><path d="M24 46 L76 46 Q74 74 50 76 Q26 74 24 46Z" ${F}/><rect x="22" y="42" width="56" height="6" rx="3" ${F}/><path d="M36 42 Q40 36 44 42 M48 42 Q52 34 56 42" fill="#7ad16a"/>`,
   };
   const base = plinth ? `<rect x="28" y="84" width="44" height="8" rx="2" fill="#2a1d0c" stroke="#E2B04A" stroke-width=".8"/><rect x="34" y="78" width="32" height="7" rx="1.5" ${F}/>` : "";
