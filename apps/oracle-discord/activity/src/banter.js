@@ -137,6 +137,18 @@ export const BANTER = {
     pirate: G("Steer by the stars, matey. Polaris never lies.", "A sextant, a clock and a strong stomach. All ye need.", "Ye charted it true! A navigator after me own heart!", "Wrong heading, matey. Ye'd be wrecked on the reef by dawn."),
     influencer: G("The night sky is giving dark mode. Obsessed.", "Spectrum unboxing! The lines are the details, besties.", "Logged it! Tagging the Andromeda Galaxy. 2.5 million light-years reach.", "Wrong answer, bestie. Even Pluto didn't fumble this hard."),
   },
+  eclipse: {
+    mystic: G("Sun and Moon embrace. Hold your breath with them.", "The shadow knows its path. Read the nodes.", "You foresaw the darkness. The sky bows to you.", "The shadow passed elsewhere. It returns in a saros."),
+    deadpan: G("The Moon is in the way. That's the whole event.", "Five degrees of tilt. That's what all the fuss is about.", "Correct. You predicted a shadow. Very ominous.", "Wrong. The Sun remains un-eclipsed. Business as usual."),
+    drama: G("DARKNESS AT NOON! The birds are CONFUSED!", "The Moon is ON THE NODE! Here it COMES!", "TOTALITY! The corona BLAZES! I'm weeping!", "Cloudy! The ONE day! Eighteen more YEARS!"),
+    standup: G("Eclipses: when the Moon photobombs the Sun.", "The saros is just the sky's reruns schedule.", "Nailed it! You're the sun-blocker of the year.", "Missed. Even the Moon shrugs sometimes."),
+    grumpy: G("Glasses on. Proper ones. Not your sunglasses.", "Nodes, nodes, nodes. Learn the nodes.", "Fine. Now try it with clouds and a three-hour drive.", "Wrong. The Babylonians did this with clay. Clay!"),
+    sports: G("Sun, Moon, node, lining up for the shot!", "It's a New Moon on the plane! Here comes the play!", "TOTAL ECLIPSE! A perfect alignment!", "Off the node! The shadow sails wide!"),
+    conspiracy: G("The Moon's exactly the right size. Who arranged that?", "Every 18 years it repeats. Someone's on a schedule.", "You predicted it. Now they know you know.", "Clouds again. Convenient, isn't it?"),
+    bard: G("The dragon gnaws the Sun, or so the old tales sing!", "Upon the node the silver Moon doth glide.", "Thou hast foretold the dark! The crown of light is thine!", "The shadow slipped away, as dreams at dawn."),
+    pirate: G("Darkness at noon, matey! Batten the hatches!", "Columbus used a lunar eclipse to scare his hosts. Arr.", "Ye called the eclipse true! The sky be yours!", "Missed the shadow. Back to the charts, ye dog."),
+    influencer: G("Eclipse glasses are THE accessory this season.", "Corona reveal coming in three, two...", "Totality! Literally the moment of the year!", "The eclipse left me on read. Rude."),
+  },
   comet: {
     mystic: G("What wanders is never truly lost. Watch the blink.", "A comet is a letter from the edge of the Sun's realm.", "You caught a wanderer. The sky whispers your name.", "It slipped behind the stars. It will pass again."),
     deadpan: G("Two pictures of dots. Spot the different dot.", "It moved. Slowly. Like everything in astronomy.", "Found it. The comet does not care, but I do. A little.", "Missed. The comet is now in a different place. Classic."),
