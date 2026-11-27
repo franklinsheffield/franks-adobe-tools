@@ -136,3 +136,25 @@ export function cardDeal(count = 3, step = 0.2) {
   burst(t0 + 0.92, 0.09, 900, 0.5, 0.8); // the halves meet
   for (let i = 0; i < count; i++) { const t = t0 + 1.1 + i * step; burst(t, 0.16, 2400, 0.28, 0.6); burst(t + 0.15, 0.03, 1200, 0.45, 2); }
 }
+
+/** A trophy rises: a swelling chord, an arpeggio that climbs higher for each tier, and a bell. On an upgrade, a molten whoosh first. */
+export function trophyWin(tier = 1, upgrade = false) {
+  if (muted || !ctx || ctx.state !== "running") return;
+  const t0 = ctx.currentTime + (upgrade ? 0.35 : 0);
+  if (upgrade) { const n = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / d.length);
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = n; f.type = "bandpass";
+    f.frequency.setValueAtTime(300, ctx.currentTime); f.frequency.exponentialRampToValueAtTime(3000, ctx.currentTime + 0.45); g.gain.value = 0.6;
+    src.connect(f); f.connect(g); g.connect(out); src.start(); }
+  [262, 330, 392].forEach((f) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "triangle"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+    o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 1.65); });
+  const run = [523, 659, 784, 1047, 1319, 1568, 2093].slice(0, 3 + Math.min(4, tier));
+  run.forEach((f, i) => { const t = t0 + 0.2 + i * 0.1, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "square"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.24); });
+  const tb = t0 + 0.3 + run.length * 0.1;
+  [[2093, 1], [3136, 0.5], tier >= 4 ? [4186, 0.4] : null].filter(Boolean).forEach(([f, a]) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, tb); g.gain.exponentialRampToValueAtTime(0.3 * a, tb + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, tb + 1.8);
+    o.connect(g); g.connect(out); o.start(tb); o.stop(tb + 1.85); });
+}

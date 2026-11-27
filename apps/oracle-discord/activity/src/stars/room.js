@@ -301,6 +301,7 @@ export const stars = {
       if (run.revealed) run.done = false;
       const before = foundCount(state.prog), r = settle(state.prog, run, fi);
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
+      ctx.trophy?.("stars", L.n, { won: !!run.done, perfect: !!run.done && starsFor(run.mistakes) === 3 }); // Trophy Case (trophies.js)
       const t = titleOf(foundCount(state.prog)), titled = titleOf(before).name !== t.name;
       say(line);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];

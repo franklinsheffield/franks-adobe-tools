@@ -248,6 +248,7 @@ function outOf(L, p, run) {
 }
 function finish(L, p, run) {
   const prog = C.state.prog, before = titleOf(starsOf(prog)).name, r = settle(prog, run), aw = C.award(r.xp, r.essence);
+  C.trophy?.("calendar", L.n, { won: run.won, perfect: run.won && r.stars === 3 }); // Trophy Case (trophies.js)
   save(); C.showStats();
   const t = titleOf(r.total), titled = t.name !== before, nextL = LEVELS[L.n], unlocked = nextL && r.first && doneCount(prog, L) === 4;
   C.say(run.won ? pick(["Logged in the Keeper's book.", "Another day well counted.", "The calendars thank you."]) : "We'll count that one again another day.");

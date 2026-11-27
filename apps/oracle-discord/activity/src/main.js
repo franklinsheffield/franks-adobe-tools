@@ -29,6 +29,8 @@ import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
 import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
+import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
+import { trophyWin } from "./voice-sfx.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -167,7 +169,7 @@ function award(xp = 0, essence = 0) {
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   state.inRoom = id;
-  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award });
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award, trophy });
 }
 
 function choose(sys) {
@@ -232,7 +234,7 @@ async function reveal(sys, options, question = "") {
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
-  useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
+  useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name);
   const pages = [words, deliver(pid(), a.line, { name: state.name }), joke(sys.key)];
   if (pid() === "standup") setTimeout(rimshot, 400);
@@ -325,7 +327,7 @@ function reward(g, sys) {
 function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
-  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>`;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${showcaseHtml(p)}`;
 }
 
 const EARNED_DESIGN = { velvet: "", starchart: "constellations", goldleaf: "filigree", moonlit: "moonphases", obsidian: "obsidian" };
@@ -515,3 +517,72 @@ showVoice();
   await loadProgress();
   greet();
 })();
+
+// ---- the Trophy Case (trophies.js): full-screen cabinet, the collect moment, showcase pins ----
+const tq = []; let tShowing = false;
+function tierKey(n) { return TIERS[n].key; }
+function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="button" class="tr-pins" id="tr-pins" title="Your showcase: open the Trophy Case">${p.showcase.map((id) => { const t = TROPHIES.find((x) => x.id === id); return t ? `<span class="tr-pin">${trophyArt(t.art, tierKey(tierOf(p, id)), { plinth: false })}</span>` : ""; }).join("")}</button>` : ""; }
+document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
+/** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
+function trophy(id, level, o) { try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); } }
+function trophyNews(n) {
+  if (!n) return;
+  if (n.pay) award(0, n.pay); saveProgress(); showStats();
+  tq.push(n); if (!tShowing) setTimeout(nextCollect, reduced ? 0 : 1200);
+}
+function nextCollect() {
+  const n = tq.shift(), el = $("tcollect"); if (!n) { tShowing = false; return; }
+  tShowing = true;
+  const t = TROPHIES.find((x) => x.id === n.id), T = TIERS[n.tier], up = n.from > 0;
+  const kicker = n.tier === 4 ? "Fully mastered" : up ? "Trophy upgraded" : "New trophy";
+  const rays = Array.from({ length: 16 }, (_, i) => `<i style="--a:${i * 22.5}deg"></i>`).join("");
+  const motes = Array.from({ length: 14 }, (_, i) => `<b style="--x:${(i * 37) % 100}%;--d:${(i * 0.23).toFixed(2)}s;--s:${0.6 + (i % 4) * 0.25}"></b>`).join("");
+  el.className = `tcollect t-${T.key}${up ? " up" : ""}`;
+  el.innerHTML = `<div class="tc-rays">${rays}</div><div class="tc-motes">${motes}</div>
+    <div class="tc-card" role="dialog" aria-label="${esc(kicker)}: ${esc(t.name)}">
+      <div class="tc-kicker">✦ ${esc(kicker)} ✦</div>
+      <div class="tc-art">${up ? `<div class="tc-old">${trophyArt(t.art, tierKey(n.from))}</div>` : ""}<div class="tc-new">${trophyArt(t.art, T.key)}</div></div>
+      <h2 class="tc-name">${esc(t.name)}</h2>
+      <div class="tc-tier">${esc(T.name)} · ${esc(t.game)}</div>
+      <p class="tc-line">“${esc(LINES[t.id] || "")}”</p>
+      <div class="tc-pay">+💎 <span id="tc-count">0</span> Essence</div>
+      ${n.sets.map((s) => `<div class="tc-set">🏆 ${esc(s.name)} complete: Gold on ${s.ids.length} games · bonus 💎 ${s.bonus}</div>`).join("")}
+      <div class="choices"><button class="c main" type="button" id="tc-ok">✦ Collect</button><button class="c" type="button" id="tc-case">🏆 Open the case</button></div>
+    </div>`;
+  el.hidden = false; trophyWin(n.tier, up);
+  const cnt = $("tc-count"), t0 = performance.now(), dur = reduced ? 0 : 1200;
+  const tick = (now) => { const k = dur ? Math.min(1, (now - t0 - 700) / dur) : 1; cnt.textContent = Math.max(0, Math.round(n.pay * k)); if (k < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  $("tc-ok").focus();
+  const done = (open) => { checkout(); el.classList.add("out"); setTimeout(() => { el.hidden = true; el.innerHTML = ""; if (open) openCase(); else nextCollect(); }, reduced ? 0 : 350); };
+  $("tc-ok").onclick = () => done(false); $("tc-case").onclick = () => { tq.length = 0; done(true); };
+}
+function openCase(focus = null) {
+  const p = state.prog, el = $("tcase"), pts = points(p), lv = caseLevel(p), nextLv = CASE_LEVELS.find((l) => l.at > pts);
+  const got = TROPHIES.filter((t) => tierOf(p, t.id) > 0).length;
+  const bay = (t) => { const n = tierOf(p, t.id), T = TIERS[n], pinned = (p.showcase || []).includes(t.id);
+    const motes = n >= 3 ? Array.from({ length: 5 }, (_, k) => `<span class="mote" style="left:${18 + k * 15}%;animation-delay:${(k * 0.6).toFixed(1)}s"></span>`).join("") : "";
+    return `<button type="button" class="bay t-${T.key}${focus === t.id ? " sel" : ""}" data-tr="${t.id}" aria-label="${esc(t.name)}, ${T.name}"><span class="glow">${motes}</span>${pinned ? `<span class="pinmark" title="In your showcase">📌</span>` : ""}${trophyArt(t.art, T.key)}<span class="nm">${esc(t.name)}</span><span class="tr-tier">${T.name}</span><span class="pips">${[1, 2, 3].map((k) => `<i class="${n >= k ? "on" : ""}"></i>`).join("")}${n >= 4 ? `<i class="on pr"></i>` : ""}</span></button>`; };
+  const sets = SETS.map((s) => { const have = s.ids.filter((x) => tierOf(p, x) >= 3).length, done = (p.trophySets || []).includes(s.id);
+    return `<div class="tset${done ? " done" : ""}"><b>${done ? "🏆" : "◇"} ${esc(s.name)}</b><span>Gold on ${s.ids.map((x) => esc(TROPHIES.find((t) => t.id === x).name)).join(", ")} · ${have} / ${s.ids.length} · bonus 💎 ${s.bonus}</span></div>`; }).join("");
+  const sel = focus && TROPHIES.find((t) => t.id === focus);
+  const detail = sel ? (() => { const n = tierOf(p, sel.id), pinned = (p.showcase || []).includes(sel.id);
+    return `<div class="tdetail"><div class="td-art t-${TIERS[n].key}">${trophyArt(sel.art, TIERS[n].key)}</div><div class="td-txt"><h3>${esc(sel.name)}</h3><div class="td-game">${esc(sel.game)} · ${TIERS[n].name}</div>
+      <ol>${sel.how.map((h, i) => `<li class="${n > i ? "ok" : ""}"><b>${TIERS[i + 1].name}</b> ${esc(h)} · 💎 ${TIERS[i + 1].pay}${n > i ? " ✓" : ""}</li>`).join("")}</ol>
+      ${n ? `<button class="c small" type="button" id="td-pin">${pinned ? "📌 Unpin from showcase" : "📌 Pin to showcase"}</button>` : `<div class="note">Win it to pin it beside your name.</div>`}</div></div>`; })() : `<div class="tdetail hint">Tap a trophy to see how to upgrade it. Pin up to three to show beside your name.</div>`;
+  el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The Trophy Case">
+    <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
+      <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
+      <button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
+    <div class="shelf">${TROPHIES.map(bay).join("")}</div>
+    ${detail}
+    <div class="tsets">${sets}</div>
+    <div class="note">Bronze, Silver and Gold come from finishing Levels 1, 2 and 3. Prismatic needs a perfect round on every level. Each tier pays its Essence once.</div></div>`;
+  el.hidden = false; el.scrollTop = 0;
+  $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
+  el.querySelectorAll("[data-tr]").forEach((b) => (b.onclick = () => { chime(1); openCase(b.dataset.tr); }));
+  if ($("td-pin")) $("td-pin").onclick = () => { togglePin(p, focus); saveProgress(); showStats(); openCase(focus); };
+}
+$("trophy-btn").onclick = () => openCase();
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tcase").hidden && $("tcollect").hidden) $("tcase-x").click(); });
+if (PREVIEW) window.__trophyTest = (id = "seance", level = 1, perfect = false) => trophy(id, level, { won: true, perfect });

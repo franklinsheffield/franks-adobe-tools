@@ -140,6 +140,7 @@ export const alchemy = {
     // ---- results ----
     function finish(L, x, run, hz) {
       const before = solvedCount(P()), r = settle(P(), run, x), aw = award(r.xp, r.essence); saveProgress(); showStats();
+      ctx.trophy?.("alchemy", L.n, { won: run.won, perfect: run.won && !run.wrong.length && !r.boom }); // Trophy Case (trophies.js)
       const after = solvedCount(P()), t = titleOf(after), titled = titleOf(before).name !== t.name;
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
       if (r.boom) bits.push(`💥 exploded: ${esc(hz.name)} · lesson added to your Codex`); else bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");

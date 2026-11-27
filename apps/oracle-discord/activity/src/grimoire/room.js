@@ -156,6 +156,7 @@ export const room = {
     function finish(L, p, run) {
       const before = solvedCount(state.prog), r = settle(state.prog, run);
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
+      ctx.trophy?.("grimoire", L.n, { won: run.won, perfect: run.won && !run.wrong.length }); // Trophy Case (trophies.js)
       const after = solvedCount(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name;
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
       if (run.won) bits.push(`score ${r.score}${r.first ? " · new page in your grimoire" : r.best ? " · new best" : ` · best stays ${prog().solved[keyOf(L, p)]}`}${run.mode === "type" ? " · typed it!" : ""}`);
