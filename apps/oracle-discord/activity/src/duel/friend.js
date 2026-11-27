@@ -8,6 +8,7 @@ import { LEVELS, COND, GOAL, SHIELD, newGame, friendMove, viewFor, compoundOf, s
 import { sceneSvg, powerTier, kindOf } from "./scene.js";
 import { SFX } from "./sfx.js";
 import { joinTable } from "../net.js";
+import { cardFace } from "./cardart.js";
 
 const sign = (o) => (o > 0 ? "+" + o : String(o));
 /** A move result, made small enough to send, and seen from side `as` ("you" or "oracle" of the host's game). */
@@ -77,8 +78,7 @@ export async function friendDuel(ctx, { look, back }) {
     if (fx && fx.c) $("reading-body").innerHTML = `<div class="du-page"><h3>${esc(pretty(fx.c.f))} · ${esc(fx.c.name)}</h3><div class="du-sec"><b class="h">🔬 Fact</b>${esc(fx.c.fact)}</div></div>`;
     if (V.over) end(); else paint();
   }
-  const card = (c, on) => { const e = EL[c.s], col = FAMILY[e.fam].col;
-    return `<button class="du-card${on ? " small hint" : ""}" type="button" data-fc="${c.id}" style="--fam:${col}" title="${esc(e.name)} · ${esc(e.fact)}" aria-label="${esc(e.name)}"><span class="z">${e.z}</span><span class="ox">${e.ox.filter((o) => o).slice(0, 2).map(sign).join(" ") || "0"}</span><span class="sym">${c.s}</span><span class="nm">${esc(e.name)}</span><span class="fam"></span></button>`; };
+  const card = (c, on) => cardFace(c, esc, `data-fc="${c.id}"`, on ? "small hint" : "");
   function paint() {
     if (!T) return;
     const leave = `<div class="choices"><button class="c small" type="button" id="du-fleave">Leave the table</button></div>`;

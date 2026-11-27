@@ -251,3 +251,28 @@ test("Duel a friend: two humans take turns through friendMove, each sees only th
   assert.ok(g.over); const v = viewFor(g, "oracle"); assert.ok(["you", "oracle", "draw"].includes(v.over.winner));
   const r = settle({}, v); assert.ok(r.xp > 0);
 });
+
+test("Card faces: every element has a picture and a classical association", async () => {
+  const { ART, classicalOf, iconSvg, cardFace, PLANET } = await import("../activity/src/duel/cardart.js");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  for (const e of ELEMENTS) {
+    assert.ok(ART[e.s], "art for " + e.s); assert.match(iconSvg(e.s), /<svg class="du-ico"/);
+    const h = cardFace({ id: 1, s: e.s }, esc, 'data-h="1"'); assert.match(h, /du-tri/); assert.doesNotMatch(h, /undefined|NaN/);
+  }
+  const of = (k) => ELEMENTS.filter((e) => classicalOf(e.s) === k).map((e) => e.s);
+  assert.deepEqual(of("water").sort(), ["Br", "Hg"]); // the only liquid elements at room temperature
+  assert.deepEqual(of("air").sort(), ["Ar", "Cl", "F", "H", "He", "Kr", "N", "Ne", "O", "Rn", "Xe"]); // the gases
+  assert.ok(of("fire").includes("Na") && of("earth").includes("Au"));
+  assert.deepEqual(Object.keys(PLANET).sort(), ["Ag", "Au", "Cu", "Fe", "Hg", "Pb", "Sb", "Sn"]);
+});
+
+test("Chemistry study material: six guides, in the Study hall, covering every card and compound", async () => {
+  const { CHEM_GUIDES } = await import("../activity/src/duel/chemistry.js");
+  const { STUDY } = await import("../activity/src/study.js");
+  assert.equal(CHEM_GUIDES.length, 6);
+  const duel = STUDY.find((x) => x.room === "duel"); for (const g of CHEM_GUIDES) assert.ok(duel.guides.some((x) => x.id === g.id), g.id);
+  const all = (id) => CHEM_GUIDES.find((g) => g.id === id).sections.flatMap((s) => s.p).join(" ");
+  for (const e of ELEMENTS) assert.match(all("chem-elements"), new RegExp(`<b>${e.z} · ${e.s} · `), e.s);
+  assert.equal(CHEM_GUIDES.find((g) => g.id === "chem-compounds").sections.slice(1).reduce((n, s) => n + s.p.length, 0), COMPOUNDS.length);
+  for (const g of CHEM_GUIDES) assert.doesNotMatch(JSON.stringify(g), /undefined|\bNaN\b/, g.id);
+});
