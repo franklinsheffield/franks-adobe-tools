@@ -38,7 +38,7 @@ async function send(method, url, payload, files = []) {
   if (!r.ok) throw new Error(`Discord ${method} ${r.status}: ${(await r.text()).slice(0, 300)}`);
 }
 
-async function main() {
+export async function main() {
   if (!MODULES.includes(E.COMMAND)) throw new Error("unknown command " + E.COMMAND);
   const { options, user } = await open(E.PAYLOAD, E.ORACLE_KEY);
   const mod = await import(`../src/modules/${E.COMMAND}/index.js`);
@@ -53,7 +53,7 @@ async function main() {
   const msgs = oracleMessages(r, options, user, E);
   await send("PATCH", base + "/messages/@original", msgs[0], r.files || []);
   for (const m of msgs.slice(1)) await send("POST", base, { ...m, flags: priv ? 64 : 0 });
-  console.log(`posted ${E.COMMAND}: ${r.embeds.length} embeds in ${1 + rest.length} message(s)`);
+  console.log(`posted ${E.COMMAND}: ${r.embeds.length} embeds in ${msgs.length} message(s)`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main().catch(async (e) => {
