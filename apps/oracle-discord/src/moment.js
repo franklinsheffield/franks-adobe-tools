@@ -87,7 +87,7 @@ export function momentRows(m, { detail = false } = {}) {
     return rows;
   }
   const zoneLine = m.lmt ? `local mean time (before standard time zones), ${offsetText(m.offset)}` : `${m.abbr} ${offsetText(m.offset)}, ${m.dst ? `daylight time in force (standard is ${offsetText(m.standard)})` : "standard time"}`;
-  if (detail) rows.push(["Birth moment", `${m.birth.year}-${pad(m.birth.month)}-${pad(m.birth.day)} ${hm(m.birth)} clock time at ${m.where.lat.toFixed(2)}°, ${m.where.lon.toFixed(2)}° · ${m.zone}: ${zoneLine} · ${m.utc.toISOString().slice(0, 16).replace("T", " ")} UTC`]);
+  if (detail) rows.push(["Birth moment", `${pad(m.birth.day)}/${pad(m.birth.month)}/${m.birth.year} ${hm(m.birth)} clock time at ${m.where.lat.toFixed(2)}°, ${m.where.lon.toFixed(2)}° · ${m.zone}: ${zoneLine} · ${pad(m.utc.getUTCDate())}/${pad(m.utc.getUTCMonth() + 1)}/${m.utc.getUTCFullYear()} ${m.utc.toISOString().slice(11, 16)} UTC`]);
   else rows.push(["Birth moment", `clock time converted to UTC with the zone rules in force at the birthplace that day (${m.lmt ? "local mean time, before standard zones" : m.dst ? "daylight time was in force" : "standard time"}). The full conversion is shown in private readings.`]);
   if (m.skipped) rows.push(["Clock check", "that clock time did not exist that day (clocks were set forward). It is read as if the clocks had not yet changed."]);
   if (m.repeated) rows.push(["Clock check", "that clock time happened twice that day (clocks were set back). The first occurrence is used."]);
