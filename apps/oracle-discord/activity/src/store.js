@@ -107,6 +107,20 @@ export const STORE = [
   { id: "v-mayan", kind: "vibe", name: "Jungle Temple", note: "Mayan: jade stone steps and turquoise jungle", price: 150, stars: ["#bfffe0", "#4ad6b8"] },
   { id: "v-egyptian", kind: "vibe", name: "Valley of the Kings", note: "Egyptian: desert dusk, lapis and gold", price: 150, stars: ["#FADE8C", "#6a9cff"] },
   { id: "v-celtic", kind: "vibe", name: "Druid's Grove", note: "Celtic: mossy greens, mist and uncial script", price: 150, stars: ["#c9ffb0", "#7ad65a"] },
+  // Full sets (featured.js SETS): robe + cloth + candles + Grimoire binding; wear all four for the set's aura
+  { id: "set-abyss-robe", set: "deepsea", kind: "outfit", name: "Abyssal robe", note: "Deep Sea set: black-teal hood, glowing jellyfish trim, rising bubbles", price: 140, element: "water", hood: ["#0d4a5a", "#062a36", "#010a0e"], trim: "#5ff6ff" },
+  { id: "set-abyss-cloth", set: "deepsea", kind: "cloth", name: "Sunken chart", note: "Deep Sea set: a drowned star chart in teal ink", price: 90, c: ["#0d4a5a", "#062a36", "#010a0e"], design: "constellations", ink: "#5ff6ff" },
+  { id: "set-abyss-flame", set: "deepsea", kind: "flame", name: "Anglerfish lanterns", note: "Deep Sea set: dark wax with cold blue lure-lights", price: 70, wax: ["#1d3a44", "#0d2028"], flame: ["#fff", "#aaf8ff", "#1fb8d6"], halo: "#7ff0ff", detail: "wisp" },
+  { id: "set-clock-robe", set: "clockwork", kind: "outfit", name: "Clockwork robe", note: "Clockwork set: brass-trimmed leather, sparks at the cuffs", price: 140, element: "lightning", hood: ["#6b4320", "#3a230f", "#120a04"], trim: "#f0c060" },
+  { id: "set-clock-cloth", set: "clockwork", kind: "cloth", name: "Orrery cloth", note: "Clockwork set: brass orbits on oxblood felt", price: 90, c: ["#5a1a14", "#3a0f0a", "#120403"], design: "solomon", ink: "#f0c060" },
+  { id: "set-clock-flame", set: "clockwork", kind: "flame", name: "Brass lamp candles", note: "Clockwork set: candles in brass dishes with amber flames", price: 70, wax: ["#e9d8b0", "#c9b07a"], flame: ["#fff", "#ffd88a", "#ff9a2a"], halo: "#ffd88a", detail: "dish" },
+  { id: "set-aurora-robe", set: "aurora", kind: "outfit", name: "Aurora mantle", note: "Aurora set: violet-green hood full of stars and a comet", price: 160, element: "cosmos", hood: ["#2f7a6a", "#3a1d6e", "#05030f"], trim: "#8affc8" },
+  { id: "set-aurora-cloth", set: "aurora", kind: "cloth", name: "Polar night cloth", note: "Aurora set: moon phases on midnight green", price: 90, c: ["#1d4a4a", "#13284a", "#05081a"], design: "moonphases", ink: "#8affc8" },
+  { id: "set-aurora-flame", set: "aurora", kind: "flame", name: "Northern candles", note: "Aurora set: frosted wax, green and violet flames", price: 70, wax: ["#eef8ff", "#c9d8ea"], flame: ["#fff", "#b8ffd8", "#8a4aff"], halo: "#9affd0", detail: "sigil" },
+  // Rare: only sold in the weeks they are featured (featured.js)
+  { id: "rare-phoenix", rare: true, kind: "outfit", name: "Phoenix robe", note: "Rare: crimson and gold, the hem always burning", price: 320, element: "fire", hood: ["#c8321e", "#7a1408", "#1a0402"], trim: "#ffd27a" },
+  { id: "rare-moonstone", rare: true, kind: "orb", name: "Moonstone sphere", note: "Rare: milky glass with a slow blue sheen", price: 280, f: "saturate(.4) brightness(1.35) hue-rotate(170deg)" },
+  { id: "rare-eclipse", rare: true, kind: "flame", name: "Eclipse candles", note: "Rare: jet-black wax and a white flame ringed in gold", price: 240, wax: ["#141218", "#050407"], flame: ["#fff", "#ffffff", "#E2B04A"], halo: "#fff3c4", detail: "sigil" },
 ];
 export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["cardback", "🃏 Card backs"], ["vibe", "✨ Vibes"]];
 
@@ -194,17 +208,19 @@ export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
 /** The store's five departments. Each lists the shelves (kinds) inside it; room shelves that aren't named land in "Game rooms".
  *  Ghosts also shows every haunted item from other shelves (items tagged ghost: true). */
 export const DEPTS = [
+  { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "sets", "boxes"] },
   { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["outfit", "avatar", "voice", "persona"] },
   { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
 ];
+const SPECIAL = { featured: "🗓️ This week", sets: "🎽 Full sets", boxes: "📦 Mystery boxes" };
 export function departments() {
   const named = new Set(DEPTS.flatMap((d) => d.kinds));
-  return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || KINDS.some(([x]) => x === k)) }));
+  return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || SPECIAL[k] || KINDS.some(([x]) => x === k)) }));
 }
 export const deptOf = (kind) => departments().find((d) => d.kinds.includes(kind)) || departments()[0];
-export const kindLabel = (kind) => (kind === "haunted" ? "👻 Haunted picks" : (KINDS.find(([k]) => k === kind) || [kind, kind])[1]);
+export const kindLabel = (kind) => (SPECIAL[kind] ? SPECIAL[kind] : kind === "haunted" ? "👻 Haunted picks" : (KINDS.find(([k]) => k === kind) || [kind, kind])[1]);
 /** Items on a shelf. "haunted" gathers the ghost-themed items from every other shelf, each keeping its own kind. */
-export const goodsOf = (kind) => (kind === "haunted" ? STORE.filter((s) => s.ghost) : STORE.filter((s) => s.kind === kind));
+export const goodsOf = (kind) => (kind === "haunted" ? STORE.filter((s) => s.ghost && !s.rare) : STORE.filter((s) => s.kind === kind && !s.rare));
