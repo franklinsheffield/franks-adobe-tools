@@ -7,12 +7,14 @@
 // identification pays ✦ and 💎; replays pay only the improvement on your best.
 import { GHOSTS } from "./ghosts.js";
 import { POOL, GENERAL, SPECIFIC } from "./practices.js";
+import { SKEPTICS, CASES } from "./debunk.js";
 
-/** Three levels: 1 general practices, 2 specific practices, 3 historical people. Points scale with the level. */
+/** Four levels: 1 general practices, 2 specific practices, 3 historical people, 4 debunk a fake medium. Points scale. */
 export const LEVELS = [
   { n: 1, name: "Apprentice", what: "General practices", deck: GENERAL, pool: POOL, ask: "Which kind of science or magic did it practise?", mult: 1 },
   { n: 2, name: "Adept", what: "Specific techniques", deck: SPECIFIC, ask: "Which technique is this?", mult: 1.5 },
   { n: 3, name: "Master", what: "Historical scientists and magicians", deck: GHOSTS, ask: "Who is this?", mult: 2 },
+  { n: 4, name: "Debunker", what: "Expose a fake medium", deck: CASES, pool: SKEPTICS, ask: "Who exposed the trick?", mult: 2.5, debunk: true },
 ];
 export const ALL = LEVELS.flatMap((L) => L.deck.map((g) => ({ L, g })));
 export const keyOf = (L, g) => L.n + ":" + g.id;
@@ -42,6 +44,43 @@ export const nextGhost = (p, L, after) => {
 export const start = (g, L = LEVELS[2]) => ({ id: g.id, level: L.n, shown: 1, candles: CANDLES, field: null, fieldRight: false, wrong: [], mode: "type", done: false, won: false });
 
 export function guessField(run, g, f) { if (run.field) return null; run.field = f; run.fieldRight = f === g.field; return run.fieldRight; }
+/** Level 4's first step: which of the four explanations is the real method (one try). */
+export function guessMethod(run, g, i) { if (run.field) return null; run.field = "m" + i; run.fieldRight = +i === g.answer; return run.fieldRight; }
+
+/** Paid hints (💎 Essence), each once per séance, before you spend candles. Returns [{ id, label, text }]. */
+export const HINT_COST = 15;
+export function hintsFor(L, g) {
+  const right = L.pool ? L.pool.find((x) => x.id === g.answers[0]) : g, nm = right.name;
+  const out = [{ id: "letter", label: "🔤 First letter", text: `It begins with “${nm.replace(/^(the|a|an) /i, "").charAt(0).toUpperCase()}”.` }];
+  if (g.life) out.push({ id: "when", label: "🗓️ When", text: `They lived ${g.life}.` });
+  if (g.year) out.push({ id: "when", label: "🗓️ When", text: `It happened in ${g.year}${g.place ? ", " + g.place : ""}.` });
+  if (L.pool) { const h = [...g.id].reduce((n, c) => n * 31 + c.charCodeAt(0), 7) >>> 0, wrong = L.pool.filter((x) => !g.answers.includes(x.id));
+    const two = [wrong[h % wrong.length], wrong[(h + 5) % wrong.length]].filter((x, i, a) => a.indexOf(x) === i);
+    out.push({ id: "narrow", label: "🧭 Narrow it", text: `It's one of: ${[right, ...two].sort((a, b) => a.name.localeCompare(b.name)).map((x) => x.name).join(", ")}.` }); }
+  else out.push({ id: "shape", label: "📏 Shape", text: `${nm.split(/\s+/).map((w) => w.replace(/[A-Za-z]/g, "_")).join("  ")} (${nm.split(/\s+/).length} word${nm.split(/\s+/).length > 1 ? "s" : ""})` });
+  return out;
+}
+/** Spend Essence on a hint. "ok" | "poor" | "had". */
+export function buyHint(p, run, id) {
+  run.hints ||= []; if (run.hints.includes(id)) return "had";
+  if ((p.essence || 0) < HINT_COST) return "poor";
+  p.essence -= HINT_COST; run.hints.push(id); return "ok";
+}
+
+/** The ghost journal's "try next": a related ghost on another level (shared kind or a named link), else same level. */
+const LINKS = { houdini: ["2:metamorph", "1:straitjacket", "4:margery"], pepper: ["2:peppersghost"], tesla: ["2:teslacoil", "1:electric"], faraday: ["2:induction", "4:table"],
+  maskelyne: ["4:davenport", "1:vanisher"], curie: ["1:forensic"], newton: ["1:lensmaker", "2:spectroscopy"], galileo: ["1:astrophys"], dee: ["1:courtastro"], kepler: ["1:courtastro", "1:almanac"],
+  paracelsus: ["1:elixir", "2:distil"], rosalind: ["2:xray"], benfranklin: ["1:hypnotist", "2:doubleblind"], vernon: ["1:cardsharp", "2:force"], kellar: ["1:levitator"], chunglingsoo: ["2:bulletcatch"],
+  darwin: ["1:marinebio", "1:botanist"], lovelace: ["1:electric"], roberthoudin: ["1:vanisher"], adelaide: ["1:assistant", "2:bulletcatch"],
+  table: ["3:faraday"], davenport: ["3:maskelyne"], margery: ["3:houdini"], mumler: ["1:spiritphoto"], duncan: ["1:ectoplasm"], forer: ["1:fortune", "2:coldreading"], cottingley: ["1:spiritphoto"] };
+export function related(L, g) {
+  const found = (LINKS[g.id] || []).map((k) => { const [n, id] = k.split(":"), l = LEVELS[+n - 1]; const x = l && ghostById(id, l); return x ? { L: l, g: x } : null; }).filter(Boolean);
+  if (found.length) return found[0];
+  const same = L.deck.filter((x) => x.id !== g.id && x.field === g.field && (!g.answers || (x.answers || [])[0] === g.answers[0]));
+  const pool = same.length ? same : L.deck.filter((x) => x.id !== g.id);
+  const h = [...g.id].reduce((n, c) => n * 31 + c.charCodeAt(0), 7) >>> 0;
+  return { L, g: pool[h % pool.length] };
+}
 
 /** Another clue from the ghost. Keeps one candle back for a final guess. */
 export function moreClue(run, g) {

@@ -6,7 +6,7 @@ import { FIELDS } from "./ghosts.js";
 import { shop, candleLook } from "./shop.js";
 import { ghostShop, ghostBody } from "./ghostlooks.js";
 import * as sfx from "./sfx.js";
-import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST } from "./logic.js";
+import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST, guessMethod, hintsFor, buyHint, HINT_COST, related } from "./logic.js";
 
 const an = (n) => (/^[aeiou]/i.test(n) ? "an " : "a ") + n.charAt(0).toLowerCase() + n.slice(1);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -65,6 +65,7 @@ const INTRO = {
   1: "This ghost practised a craft its whole life. Each clue is one real method from it.",
   2: "This ghost mastered one very particular technique. Each clue is a real detail of how it works.",
   3: "A famous name is knocking. Each clue is a true fact from their life and work.",
+  4: "A famous fake is back, still claiming a power. Each clue is real evidence from the investigation, though some of it is beside the point.",
 };
 
 shop.draw = (id, prog) => sceneSvg(null, null, false, id, "", null, prog?.ghost);
@@ -94,18 +95,34 @@ export const seance = {
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">5 candles. The first clue is free; each extra clue and each wrong name snuffs one. Stuck? "Show me 4" gives you choices but blows out 3 candles.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
-        ${known.length ? `<div class="group">Ghosts you've named</div><div class="choices">${known.map(({ L, g }) => `<button class="c small" type="button" data-k="${L.n}:${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, g)]}</span></button>`).join("")}</div>` : ""}`);
+        ${known.length ? `<div class="group">📖 Ghost journal: tap a ghost to read its page</div><div class="choices">${known.map(({ L, g }) => `<button class="c small" type="button" data-k="${L.n}:${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, g)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; summon(L, nextGhost(state.prog, L, prog().last)); }));
       $("back").onclick = greet;
-      $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const [n, id] = b.dataset.k.split(":"), L = LEVELS[+n - 1]; summon(L, ghostById(id, L)); }));
+      $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const [n, id] = b.dataset.k.split(":"), L = LEVELS[+n - 1]; journal(L, ghostById(id, L)); }));
     }
 
-    const clueList = (g, run, fresh = false) => `<div class="clues">${g.clues.slice(0, run.shown).map((c, i) => `<div class="clue${fresh && i === run.shown - 1 ? " new" : ""}"><b>👻 Clue ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
+    /** A named ghost's journal page: every clue, the real story, how it connects, and a related ghost to try next. */
+    function journal(L, g) {
+      clearReading(); draw(g, { candles: CANDLES }, true); cap(title(g));
+      const nx = related(L, g), seen = prog().solved[keyOf(nx.L, nx.g)];
+      const what = L.debunk ? `Exposed by ${answersOf(g, L)[0].name}. ${g.exposed ? "(" + g.exposed + ")" : ""}` : L.pool ? kinds(L, g) : "";
+      say(`${g.name}. ${g.link}`);
+      ui(`<div class="cx-top"><b>📖 ${esc(g.name)}</b> · Level ${L.n} · best ${prog().solved[keyOf(L, g)] || 0}</div>
+        <div class="kit">${L.debunk ? `<div class="kit-row"><b>The claim</b><span>${esc(g.scene.join(" "))}</span></div><div class="kit-row"><b>The real method</b><span>${esc(g.options[g.answer])}</span></div>` : ""}
+        <div class="kit-row"><b>${L.debunk ? "How it was exposed" : "The real story"}</b><span>${esc(g.bio)}</span></div>${what ? `<div class="kit-row"><b>${L.debunk ? "The skeptic" : "Counts as"}</b><span>${esc(what)}</span></div>` : ""}
+        <div class="kit-row"><b>Why it matters</b><span>${esc(g.link)}</span></div></div>
+        ${clueList(g, { shown: g.clues.length }, false, L)}
+        <div class="choices"><button class="c main" type="button" id="sc-next">${nx.g.emoji} Try next: ${esc(nx.g.name)} <span class="note">· L${nx.L.n}${seen ? " · named" : ""}</span></button><button class="c" type="button" id="sc-again">↻ Summon this ghost again</button><button class="c" type="button" id="sc-lobby">📜 Back to the séance</button></div>`);
+      $("sc-next").onclick = () => summon(nx.L, nx.g); $("sc-again").onclick = () => summon(L, g); $("sc-lobby").onclick = () => lobby(false);
+    }
+
+    const clueList = (g, run, fresh = false, L = null) => `<div class="clues">${g.clues.slice(0, run.shown).map((c, i) => `<div class="clue${fresh && i === run.shown - 1 ? " new" : ""}"><b>${L && L.debunk ? "🔎 Evidence" : "👻 Clue"} ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
     const candleBar = (L, run) => `<div class="cx-top">Level ${L.n} · 🕯️ ${"●".repeat(run.candles)}${"○".repeat(CANDLES - run.candles)} · ${run.candles} candle${run.candles === 1 ? "" : "s"} left${run.field ? ` · naming it now scores ${perCandle(run.mode, L) * run.candles}${run.mode === "pick" ? " (multiple choice)" : ""}` : ""}</div>`;
 
     function summon(L, g) {
       const run = start(g, L);
       lastLit = CANDLES; clearReading(); cap(`🕯️ Level ${L.n} · a ghost is knocking…`); draw(g, run, false, "summon"); sfx.summon(); setTimeout(() => sfx.ghostCry(state.prog.ghost), 900);
+      if (L.debunk) return talkThrough([`${pick(["The candles lean. Someone is here.", "Raps, from under the table. Our guest has arrived."])} ${INTRO[4]}`, ...g.scene, `First piece of evidence: “${g.clues[0]}”`], () => askMethod(L, g, run));
       talkThrough([pick(["Hands on the table, please. Spirit, are you there? …Knock once for yes.", "The candles lean. Someone is here.", "Shh. Listen. Raps, from under the table. Our guest has arrived."]) + " " + INTRO[L.n], `First clue: “${g.clues[0]}”`], () => askField(L, g, run));
     }
 
@@ -121,17 +138,36 @@ export const seance = {
       }));
     }
 
+    /** Level 4, step 1: the real method, from four explanations (one try). */
+    function askMethod(L, g, run) {
+      say(g.question);
+      ui(`${candleBar(L, run)}${clueList(g, run, false, L)}<div class="choices col">${g.options.map((o, i) => `<button class="c" type="button" data-m="${i}">${esc(o)}</button>`).join("")}</div>
+        <div class="note">+${fieldPts(L)} if you're right. One guess.</div>`);
+      $("ui").querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => {
+        const ok = guessMethod(run, g, +b.dataset.m);
+        if (ok) { chime(1); draw(g, run, false, "nod"); } else { sfx.wrong(); draw(g, run, false, "no"); }
+        name(L, g, run, `${ok ? `Exactly: ${g.options[g.answer].charAt(0).toLowerCase() + g.options[g.answer].slice(1)}. +${fieldPts(L)}.` : `No. The real method: ${g.options[g.answer].charAt(0).toLowerCase() + g.options[g.answer].slice(1)}.`} Now, who exposed the trick?`);
+      }));
+    }
+
     function name(L, g, run, line, fx = null, fresh = false) {
       if (fx !== null) draw(g, run, false, fx); if (line) say(line);
-      const more = run.shown < g.clues.length && run.candles > 1, what = L.n === 3 ? "Name the ghost" : L.n === 1 ? "Name the practice" : "Name the technique";
+      const more = run.shown < g.clues.length && run.candles > 1, what = L.debunk ? "Name who exposed it" : L.n === 3 ? "Name the ghost" : L.n === 1 ? "Name the practice" : "Name the technique";
       // No <form>: Discord's Activity iframe has no allow-forms, so submit never fires. Button click + Enter instead.
-      const poolHint = L.pool ? `<div class="note sc-pool"><b>Answer pool:</b> ${L.pool.map((x) => `${x.emoji} ${esc(x.name)}`).join(" · ")}</div>` : "";
+      const poolHint = L.pool ? `<div class="note sc-pool"><b>${L.debunk ? "The skeptics" : "Answer pool"}:</b> ${L.pool.map((x) => `${x.emoji} ${esc(x.name)}`).join(" · ")}</div>` : "";
       const form = run.mode === "type"
-        ? `<div class="form one"><label for="sc-n">${what}<input id="sc-n" type="text" maxlength="60" autocomplete="off" enterkeyhint="go" placeholder="${L.n === 3 ? "Full name or surname" : L.n === 1 ? "e.g. biology, mentalism…" : "e.g. card force, carbon dating…"}"></label></div>${poolHint}
+        ? `<div class="form one"><label for="sc-n">${what}<input id="sc-n" type="text" maxlength="60" autocomplete="off" enterkeyhint="go" placeholder="${L.debunk ? "e.g. Houdini, Faraday…" : L.n === 3 ? "Full name or surname" : L.n === 1 ? "e.g. biology, mentalism…" : "e.g. card force, carbon dating…"}"></label></div>${poolHint}
            <div class="choices"><button class="c main" type="button" id="sc-ok">✦ Name it</button>${more ? `<button class="c" type="button" id="sc-more">👻 Another clue (🕯️ 1)</button>` : ""}<button class="c" type="button" id="sc-pick">🎴 Show me 4 (🕯️ ${PICK_COST})</button></div>`
         : `<div class="choices col">${choices(g, L).map((x) => `<button class="c" type="button" data-n="${x.id}" ${run.wrong.includes(x.id) ? "disabled" : ""}>${run.wrong.includes(x.id) ? "✗ " : ""}${L.pool ? x.emoji + " " : ""}${esc(x.name)}</button>`).join("")}</div>
            <div class="choices">${more ? `<button class="c" type="button" id="sc-more">👻 Another clue (🕯️ 1)</button>` : ""}</div>`;
-      ui(`${candleBar(L, run)}${clueList(g, run, fresh)}${form}<div class="choices"><button class="c small" type="button" id="sc-leave">End the séance</button></div>`);
+      // Paid hints: each once per séance, for 💎 Essence instead of a candle.
+      const hs = hintsFor(L, g), got = hs.filter((h) => (run.hints || []).includes(h.id)), left = hs.filter((h) => !(run.hints || []).includes(h.id)), ess = state.prog.essence || 0;
+      const hintBox = `${got.length ? `<div class="sc-hints">${got.map((h) => `<div class="clue sc-hint"><b>${h.label}</b><span>${esc(h.text)}</span></div>`).join("")}</div>` : ""}
+        ${left.length ? `<div class="choices sc-buy">${left.map((h) => `<button class="c small" type="button" data-h="${h.id}" ${ess < HINT_COST ? "disabled" : ""}>${h.label} · 💎 ${HINT_COST}</button>`).join("")}</div>` : ""}`;
+      ui(`${candleBar(L, run)}${clueList(g, run, fresh, L)}${hintBox}${form}<div class="choices"><button class="c small" type="button" id="sc-leave">End the séance</button></div>`);
+      $("ui").querySelectorAll("[data-h]").forEach((b) => (b.onclick = () => { const h = hs.find((x) => x.id === b.dataset.h), r = buyHint(state.prog, run, h.id);
+        if (r === "poor") return say("Not enough Essence for that hint. Name a few ghosts and come back.");
+        if (r === "ok") { saveProgress(); showStats(); sfx.knock(1); name(L, g, run, `The ghost whispers: ${h.text}`, null); } }));
       if ($("sc-more")) $("sc-more").onclick = () => { if (moreClue(run, g)) { sfx.knock(2); sfx.snuff(1); name(L, g, run, `Rap, rap: “${g.clues[run.shown - 1]}”`, "knock", true); } };
       if ($("sc-pick")) $("sc-pick").onclick = () => { const had = run.candles; if (usePick(run)) { sfx.snuff(had - run.candles); setTimeout(sfx.deal, 500); name(L, g, run, `Whoosh. ${had - run.candles} candle${had - run.candles === 1 ? "" : "s"} gutter out. Very well: one of these four. Choose carefully.`, ""); } };
       $("sc-leave").onclick = () => lobby(false);
@@ -152,14 +188,14 @@ export const seance = {
     }
 
     const kinds = (L, g) => { const a = answersOf(g, L).map((x) => x.name); return a.length > 1 ? `That counts as ${a.join(" or ")}.` : `That's ${a[0]}.`; };
-    const title = (g) => `${g.emoji} ${g.name}${g.life ? " · " + g.life : ""}`;
+    const title = (g) => `${g.emoji} ${g.name}${g.life ? " · " + g.life : g.year ? " · " + g.year : ""}`;
     function revealed(L, g, run) {
       draw(g, run, true, "yes"); sfx.reveal(); cap(title(g));
-      talkThrough([L.n === 3 ? `Yes! It's ${g.name}. The ghost bows.` : L.pool ? `Yes! The ghost was ${an(g.name)}. ${kinds(L, g)}` : `Yes! ${g.name}. The ghost glows with professional pride.`, g.bio, g.link], () => finish(L, g, run));
+      talkThrough([L.debunk ? `Yes! ${answersOf(g, L)[0].name} exposed it. The fake ghost slinks off, caught.` : L.n === 3 ? `Yes! It's ${g.name}. The ghost bows.` : L.pool ? `Yes! The ghost was ${an(g.name)}. ${kinds(L, g)}` : `Yes! ${g.name}. The ghost glows with professional pride.`, g.bio, g.link], () => finish(L, g, run));
     }
     function outOfCandles(L, g, run) {
       sfx.snuff(1); setTimeout(sfx.darkness, 300); draw(g, run, true, "dark"); cap(title(g));
-      talkThrough([L.pool ? `The last candle goes out… and the ghost tells you, a little hurt: it was ${an(g.name)}. ${kinds(L, g)}` : `The last candle goes out… and the ghost tells you, a little hurt: ${g.name}.`, g.bio, g.link], () => finish(L, g, run));
+      talkThrough([L.debunk ? `The last candle goes out… It was ${answersOf(g, L)[0].name} who exposed it.` : L.pool ? `The last candle goes out… and the ghost tells you, a little hurt: it was ${an(g.name)}. ${kinds(L, g)}` : `The last candle goes out… and the ghost tells you, a little hurt: ${g.name}.`, g.bio, g.link], () => finish(L, g, run));
     }
 
     function finish(L, g, run) {
@@ -167,13 +203,14 @@ export const seance = {
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
       ctx.trophy?.("seance", L.n, { won: run.won, perfect: run.won && !run.wrong.length }); // Trophy Case (trophies.js)
       const after = solvedCount(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name;
-      say(run.won ? `${g.name}: named. The spirits are impressed.` : `${g.name} stays a mystery… for now.`);
+      say(run.won && L.debunk ? `${g.name}: exposed. Houdini would be proud.` : run.won ? `${g.name}: named. The spirits are impressed.` : `${g.name} stays a mystery… for now.`);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
       if (run.won) bits.push(`score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${prog().solved[keyOf(L, g)]}`}${run.mode === "type" ? " · typed it!" : ""}`);
       else bits.push("not named this time");
       const up = LEVELS[L.n] && solvedCount(state.prog, L) === 3 && run.won && r.first ? `<div class="up">🔓 Ready for Level ${L.n + 1}: ${esc(LEVELS[L.n].what)}</div>` : "";
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🕯️ Séance title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
-        <div class="choices"><button class="c main" type="button" id="sc-go">🕯️ Another Level ${L.n} ghost</button>${run.won ? "" : `<button class="c" type="button" id="sc-again">↻ Try this ghost again</button>`}<button class="c" type="button" id="sc-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        <div class="choices"><button class="c main" type="button" id="sc-go">🕯️ Another Level ${L.n} ghost</button>${run.won ? "" : `<button class="c" type="button" id="sc-again">↻ Try this ghost again</button>`}<button class="c" type="button" id="sc-page">📖 Journal page</button><button class="c" type="button" id="sc-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      $("sc-page").onclick = () => journal(L, g);
       if (titled || aw.rankUp) chime(2);
       $("sc-go").onclick = () => summon(L, nextGhost(state.prog, L, g.id));
       if ($("sc-again")) $("sc-again").onclick = () => summon(L, g);
