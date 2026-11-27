@@ -15,7 +15,7 @@ export const CSS = `
 .gm-tools{display:flex;gap:6px;flex-wrap:wrap}.gm-tools .c{padding:4px 10px;font-size:.8rem}
 .gm-top b{color:var(--gold2)}.gm-combo{color:var(--pink);font-weight:700;animation:gm-pop .4s ease-out}
 .gm-board{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:clamp(4px,.8vw,8px);width:100%;max-width:calc(var(--cols) * 112px);margin:4px auto 8px;perspective:900px}
-@media (max-width:640px){.gm-board{grid-template-columns:repeat(var(--cols-sm),minmax(0,1fr));max-width:100%;gap:4px}.gm-card{aspect-ratio:4/5}.gm-face{padding:2px;border-radius:7px}.gm-back{border-radius:7px}.gm-face.m small{font-size:.5rem}}
+@media (max-width:640px){.gm-board{grid-template-columns:repeat(var(--cols-sm),minmax(0,1fr));max-width:100%;gap:4px}.gm-card{aspect-ratio:4/5}.gm-face{padding:2px;border-radius:7px}.gm-back{border-radius:7px}.gm-face.m small{font-size:.5rem}.gm-spells .nm{display:none}}
 .gm-card{position:relative;aspect-ratio:3/4;border:0;padding:0;background:none;cursor:pointer;font:inherit;color:var(--fg);
   animation:gm-deal .5s cubic-bezier(.2,.9,.3,1.2) calc(var(--i) * 45ms) both;-webkit-tap-highlight-color:transparent}
 @keyframes gm-deal{from{opacity:0;transform:translateY(-60px) rotate(calc(var(--i) * 7deg - 20deg)) scale(.6)}}
@@ -32,9 +32,19 @@ export const CSS = `
 .gm-face.s .gm-g{font-size:clamp(1.5rem,6vw,2.3rem);line-height:1;text-shadow:0 0 10px rgba(226,176,74,.55)}
 .gm-face.s svg{width:62%;height:auto;max-height:70%;color:var(--gold2);filter:drop-shadow(0 0 5px rgba(226,176,74,.5))}
 .gm-face.s .m-fill{fill:var(--gold2)}.gm-face.s .m-ink{stroke:var(--gold2)}
-.gm-face.m b{font-family:var(--display);font-size:clamp(.62rem,2.6vw,.82rem);line-height:1.1;word-break:break-word}
+.gm-face.m b{font-family:var(--display);font-size:clamp(.62rem,2.6vw,.82rem);line-height:1.1;overflow-wrap:anywhere;hyphens:auto}.gm-face.m b.ln{font-size:clamp(.5rem,2vw,.7rem)}
 .gm-face.m small{font-size:clamp(.52rem,2.1vw,.64rem);line-height:1.15;color:#5a4320}
 .gm-face.m i{font-style:normal;font-size:clamp(.6rem,2.4vw,.74rem);color:#7a2a6a;font-weight:700}
+.gm-face.s .gm-lbl{display:flex;flex-direction:column;align-items:center;line-height:1}.gm-lbl sup{font-size:clamp(.5rem,2vw,.7rem);color:var(--muted);font-family:var(--display);margin-bottom:3px;letter-spacing:.04em}
+.gm-face.s .gm-lbl b{font-size:clamp(1.2rem,4.6vw,1.9rem);font-family:var(--display);text-shadow:0 0 10px rgba(226,176,74,.55)}
+.gm-lbl.long b{font-size:clamp(.95rem,3.4vw,1.4rem)}
+.gm-astro{font-family:"Noto Sans Symbols","Noto Sans Symbols 2","Segoe UI Symbol","DejaVu Sans",serif}
+.gm-spells{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.gm-spells .c{padding:4px 9px;font-size:.8rem}.gm-spells .c[disabled]{opacity:.45}
+.gm-card.hint .gm-back{box-shadow:0 0 0 2px var(--teal),0 0 18px rgba(102,224,200,.8);animation:gm-hint .5s ease-in-out 4 alternate}
+@keyframes gm-hint{to{filter:brightness(1.6)}}
+.gm-satchel{display:grid;gap:8px;margin:6px 0}.gm-satchel .row{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid rgba(226,176,74,.3);border-radius:10px;padding:8px 10px}
+.gm-satchel .row span{flex:1}.gm-satchel small{display:block;color:var(--muted)}
+.gm-daily{border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin:6px 0;background:rgba(226,176,74,.06)}
 .gm-face.m.maya b{font-size:clamp(1.3rem,5vw,1.9rem)}
 .gm-face .gm-tag{position:absolute;top:3px;left:5px;font-size:.6rem;opacity:.75}
 .gm-card.done .gm-face{animation:gm-match .7s ease-out both;box-shadow:0 0 0 2px var(--teal),0 0 16px rgba(102,224,200,.55)}
@@ -109,8 +119,16 @@ export const CSS = `
 @keyframes gm-rise{from{opacity:0;transform:translateY(24px) scale(.7)}}
 @keyframes gm-float{50%{transform:translateY(-8px)}}
 .gm-spark{position:absolute;inset:0;pointer-events:none}
-.gm-spark i{position:absolute;left:var(--x);top:60%;width:6px;height:6px;border-radius:50%;background:var(--gold2);box-shadow:0 0 8px var(--gold2);opacity:0;animation:gm-spark 1.3s ease-out var(--d) both}
+.gm-spark i{position:absolute;left:var(--x);top:60%;width:6px;height:6px;border-radius:50%;background:var(--s1,var(--gold2));box-shadow:0 0 8px var(--s2,var(--gold2));opacity:0;animation:gm-spark 1.3s ease-out var(--d) both;font-style:normal;color:var(--s1);font-family:"dec-runic",serif;font-size:14px;line-height:1;text-align:center}
+.gm-spark.star i{width:9px;height:9px;border-radius:0;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.gm-spark.petal i{width:9px;height:6px;border-radius:80% 0 80% 0}
+.gm-spark.drop i{width:7px;height:9px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%}
+.gm-spark.rune i{width:auto;height:auto;background:none;box-shadow:none;text-shadow:0 0 6px var(--s2)}
+.gm-spark.fall i{top:5%;animation-name:gm-fall;animation-duration:1.6s}
+.gm-spark.burst i{top:45%;animation-name:gm-burst;animation-duration:1s}
 @keyframes gm-spark{0%{opacity:0;transform:translateY(10px) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translateY(-120px) scale(1.2)}}
+@keyframes gm-fall{0%{opacity:0;transform:translate(0,-10px) rotate(0)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),130px) rotate(260deg)}}
+@keyframes gm-burst{0%{opacity:0;transform:translate(0,0) scale(.3)}20%{opacity:1}100%{opacity:0;transform:translate(calc(var(--dx) * 2),calc(var(--dx) * -1.6 - 40px)) scale(1)}}
 .gm-trophy{font-size:clamp(3rem,10vw,4.5rem);animation:gm-rise .8s cubic-bezier(.2,1.6,.4,1) both}
-@media (prefers-reduced-motion: reduce){.gm-flame,.gm-slot.new,.gm-candle.snuff .gm-flame,.gm-card,.gm-card.done .gm-face,.gm-card.miss .gm-in,.gm-board.won .gm-card,.gm-fcard,.gm-show,.gm-show .gm-sym,.gm-spark i,.gm-big span{animation:none}.gm-in{transition:none}}
+@media (prefers-reduced-motion: reduce){.gm-flame,.gm-slot.new,.gm-card.hint .gm-back,.gm-candle.snuff .gm-flame,.gm-card,.gm-card.done .gm-face,.gm-card.miss .gm-in,.gm-board.won .gm-card,.gm-fcard,.gm-show,.gm-show .gm-sym,.gm-spark i,.gm-big span{animation:none}.gm-in{transition:none}}
 `;
