@@ -104,3 +104,70 @@ test("titles reach the whole deck; shop and scene render for every theme", () =>
   const p = fresh(); room(p).cards.delphi = true;
   assert.ok(codexHtml(p, esc).includes("Oracle of Delphi"));
 });
+
+// ---- improvements: daily, pinpoint, decks, myths, links ----
+import { DAILY, DECK, pinRange, pinpoint, answerMyth, yearText, MYTH_PTS, PIN } from "../activity/src/timeline/logic.js";
+import { DECKS, MYTHS, LINKS, MORE } from "../activity/src/timeline/events2.js";
+import { dailySeed } from "../activity/src/daily.js";
+import { GHOSTS } from "../activity/src/seance/ghosts.js";
+import { SCRIPTS } from "../activity/src/decoder/levels.js";
+
+test("expansion: about a hundred events, decks only name real cards and always deal", () => {
+  assert.ok(EVENTS.length >= 100 && MORE.length >= 35);
+  for (const D of DECKS) {
+    assert.ok(D.ids.length >= 8, D.id); for (const id of D.ids) assert.ok(EVENTS.some((e) => e.id === id), `${D.id}: ${id}`);
+    assert.ok(GUIDES["deck-" + D.id]?.sections.length >= 2, D.id);
+    for (let s = 1; s <= 60; s++) { const d = deal(DECK, { deck: D.id, r: rng(s) }); assert.equal(d.hand.length, DECK.cards);
+      for (const c of d.hand) assert.ok(D.ids.includes(c.id));
+      for (let i = 0; i < d.hand.length; i++) for (let j = i + 1; j < d.hand.length; j++) assert.ok(apart(d.hand[i], d.hand[j], DECK.gap)); }
+  }
+});
+
+test("daily: everyone gets the same deal and myth today, a different one tomorrow", () => {
+  const a = deal(DAILY, { r: rng(dailySeed("timeline", "2026-11-27")) }), b = deal(DAILY, { r: rng(dailySeed("timeline", "2026-11-27")) });
+  const c = deal(DAILY, { r: rng(dailySeed("timeline", "2026-11-28")) });
+  assert.deepEqual(a.hand.map((x) => x.id), b.hand.map((x) => x.id)); assert.equal(a.myth, b.myth);
+  assert.notDeepEqual(a.hand.map((x) => x.id), c.hand.map((x) => x.id));
+  assert.equal(a.hand.length, 6); assert.ok(new Set(a.hand.map((x) => x.era)).size >= 3);
+});
+
+test("pinpoint: range sits between neighbours and always contains the true year; grades and points", () => {
+  for (let s = 1; s <= 80; s++) {
+    const L = levelOf((s % 3) + 1), run = start(L, deal(L, { era: ERAS[s % 4].id, r: rng(s) }));
+    while (current(run)) { const c = current(run); place(run, slotOf(run.line, c)); const { lo, hi } = pinRange(run, c);
+      assert.ok(lo <= c.year && c.year <= hi, `${c.id} ${lo}..${hi}`); }
+  }
+  const L = levelOf(1), run = start(L, deal(L, { r: rng(9) })), c = current(run); place(run, slotOf(run.line, c));
+  assert.equal(pinpoint(run, c, c.year).grade, "bull"); assert.equal(run.pins[0].pts, PIN.bull);
+  const { lo, hi } = pinRange(run, c), far = Math.abs(c.year - lo) > Math.abs(c.year - hi) ? lo : hi;
+  assert.equal(pinpoint(run, c, far).grade === "bull", false);
+  assert.equal(yearText(-410), "410 BCE"); assert.equal(yearText(64), "64 CE"); assert.equal(yearText(1888), "1888");
+});
+
+test("myth or fact: one answer per game, scores, pays 3 💎 once, all myths explained", () => {
+  assert.ok(MYTHS.length >= 12 && MYTHS.some((m) => m.fact) && MYTHS.some((m) => !m.fact));
+  for (const m of MYTHS) { assert.ok(m.claim && m.truth.length > 60, m.id); assert.ok(m.truth.startsWith(m.fact ? "Fact" : "M") || m.truth.startsWith("Legend") || m.truth.startsWith("Probably"), m.id); }
+  const p = fresh(), L = levelOf(1), run = start(L, deal(L, { r: rng(4) })), m = MYTHS.find((x) => x.id === run.myth.id);
+  assert.equal(answerMyth(run, m.fact), true); assert.equal(answerMyth(run, !m.fact), null);
+  while (current(run)) place(run, slotOf(run.line, current(run)));
+  const r = settle(p, run); assert.equal(r.mythNew, true); assert.ok(r.score >= MYTH_PTS);
+  const run2 = start(L, deal(L, { r: rng(4) })); answerMyth(run2, m.fact); while (current(run2)) place(run2, slotOf(run2.line, current(run2)));
+  assert.equal(settle(p, run2).mythNew, false);
+});
+
+test("era seals and deck badges pay once when every card is chronicled", () => {
+  const p = fresh(), r0 = room(p);
+  for (const e of EVENTS) if (e.era === "modern" && e.id !== "bem") r0.cards[e.id] = true;
+  const L = levelOf(3); let got = null;
+  for (let s = 1; s < 400 && !got; s++) { const d = deal(L, { era: "modern", r: rng(s) }); if (!d.hand.slice(1).some((c) => c.id === "bem")) continue;
+    const run = start(L, d); while (current(run)) place(run, slotOf(run.line, current(run))); got = settle(p, run); }
+  assert.ok(got); assert.deepEqual(got.seals, ["modern"]); assert.ok(got.essence >= 25);
+});
+
+test("links point at real Séance ghosts and Decoder scripts", () => {
+  for (const [id, l] of Object.entries(LINKS)) {
+    assert.ok(EVENTS.some((e) => e.id === id), id);
+    if (l.seance) assert.ok(GHOSTS.some((g) => g.id === l.seance), l.seance);
+    if (l.decoder) assert.ok(SCRIPTS[l.decoder], l.decoder);
+  }
+});
