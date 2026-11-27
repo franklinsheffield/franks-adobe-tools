@@ -187,7 +187,7 @@ function migrateIds(p) {
     if (p.voice === old) { p.voice = now; if (!p.owned.includes(now)) p.owned.push(now); }
   }
 }
-export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); migrateBacks(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["cardback", "cb-deck"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); migrateBacks(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["cardback", "cb-deck"], ["vibe", "chamber"], ["gem", "gem-quartz"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;
@@ -212,7 +212,7 @@ export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
 export const DEPTS = [
   { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "seasonal", "sets", "boxes"] },
   { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke, and who keeps me company", kinds: ["creator", "outfit", "avatar", "familiar", "voice", "persona"] },
-  { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "orb", "flame", "record"] },
+  { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "gem", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },

@@ -1,4 +1,4 @@
-// The Chamber's music (activity/src/music.js): 12 records, one to start, 8 by tasks, 3 in the store, an endless playlist.
+// The Chamber's music (activity/src/music.js): 16 records, one to start, 12 by tasks, 3 in the store, an endless playlist.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -6,10 +6,10 @@ import { TRACKS, STARTER, musicOf, hasTrack, checkUnlocks, playlist, togglePlayl
 import { fresh } from "../activity/src/game.js";
 import { STORE, registerShelf, deptOf } from "../activity/src/store.js";
 
-test("12 records: 1 to start, 8 by tasks, 3 for sale, 2 battle themes, every file present", () => {
-  assert.equal(TRACKS.length, 12); assert.equal(new Set(TRACKS.map((t) => t.id)).size, 12);
+test("16 records: 1 to start, 12 by tasks, 3 for sale, 2 battle themes, every file present", () => {
+  assert.equal(TRACKS.length, 16); assert.equal(new Set(TRACKS.map((t) => t.id)).size, 16);
   assert.deepEqual(TRACKS.filter((t) => t.how === "start").map((t) => t.id), [STARTER]);
-  assert.equal(TRACKS.filter((t) => t.how === "task").length, 8); assert.equal(TRACKS.filter((t) => t.how === "shop").length, 3);
+  assert.equal(TRACKS.filter((t) => t.how === "task").length, 12); assert.equal(TRACKS.filter((t) => t.how === "shop").length, 3);
   assert.deepEqual(TRACKS.filter((t) => t.hero).map((t) => t.id).sort(), ["arcade-heros-theme", "high-score-hero"]);
   for (const t of TRACKS) { assert.ok(existsSync(new URL(`../activity/music/${t.id}.mp3`, import.meta.url)), t.id); if (t.how === "task") assert.ok(t.task && typeof t.test === "function", t.id); }
 });
@@ -38,4 +38,10 @@ test("three records are sold on the Records shelf in The Chamber department", ()
   assert.equal(recordShop.items.length, 3); for (const it of recordShop.items) assert.ok(!STORE.some((s) => s.id === it.id), it.id);
   registerShelf(recordShop); assert.equal(deptOf("record").id, "chamber");
   const css = readFileSync(new URL("../activity/src/chamber.css", import.meta.url), "utf8"); assert.ok(css.includes(".tt.playing .tt-disc"));
+});
+
+test("the four themed records unlock their own way: runes, coins, daily streaks, a mystery box", () => {
+  const p = fresh(); musicOf(p); checkUnlocks(p);
+  p.gs = ["cipher"]; p.essence = 1000; p.daily = { duel: { best: 3 } }; p.boxes = 1;
+  assert.deepEqual(checkUnlocks(p).map((t) => t.id).sort(), ["arcade-alley", "coin-drop-groove", "jade-cartridge-shop", "the-nordic-trading-post"]);
 });
