@@ -8,6 +8,7 @@ import { CSS } from "./style.js";
 import { GUIDES } from "./guide.js";
 import { SHOP, tabletOf } from "./shop.js";
 import { play } from "./sfx.js";
+import { cardBackSvg, equippedBack } from "../cardbacks.js";
 
 export const room = { id: "decoder", row: "cards", label: "Rune & Glyph Decoder", emoji: "🗝️", blurb: "Card game: play sound cards onto real runes, Ogham, hieroglyphs and Maya numbers", open };
 
@@ -157,9 +158,10 @@ function puzzle(l) {
     show(`<div class="dec-cardtable${first ? " deal" : ""}">${strip(l, g.picks, { wrongAt })}</div>` + (g.book ? codebook(l) : `<div class="dec-progress">${g.picks.length} / ${target(l).length} · deck ${g.deck.length}</div>`));
     first = false; const now = board.querySelector(".now"); now && now.scrollIntoView && now.scrollIntoView({ block: "nearest" });
   };
+  const backId = equippedBack(C.state.prog), backs = () => [0, 1].map(() => `<span class="dec-back${backId ? " cb" : ""}">${backId ? cardBackSvg(backId) : ""}</span>`).join(""); // the shared 🎴 card back, if one is equipped
   const drawHand = (fresh = []) => {
     C.ui(`<div class="dec-play"><button class="dec-deck" type="button" id="dec-draw" ${g.deck.length && g.ink >= INK_DRAW ? "" : "disabled"} aria-label="Draw a card for ${INK_DRAW} ink">
-        <span class="dec-back"></span><span class="dec-back"></span><b>${g.deck.length}</b><small>Draw · ${INK_DRAW}🪶</small></button>
+        ${backs()}<b>${g.deck.length}</b><small>Draw · ${INK_DRAW}🪶</small></button>
       <div class="dec-hand">${g.hand.map((c, i) => cardFace(c).replace('class="dec-hcard', `style="--i:${i}" class="dec-hcard${fresh.includes(c.id) ? " fresh" : ""}`)).join("")}</div></div>
       <div class="dec-inkbar">${inkRow()}<span class="note">ink · wrong card −${INK_MISS} · right card +1</span></div>
       <div class="choices"><button class="c" type="button" id="dec-book">${g.book ? "📖 Close codebook" : "📖 Codebook"}</button><button class="c" type="button" id="dec-hint">💡 Hint</button><button class="c" type="button" id="dec-quit">↩ Leave</button></div>`);
