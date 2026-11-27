@@ -150,3 +150,19 @@ test("spot the look-alike: every pair is a safe plant and a poison double, with 
   for (let i = 0; i < 20; i++) assert.notEqual(nextTwin(prog, TWINS[1].id).id, TWINS[1].id);
   assert.notEqual(nextTwin(prog, null, () => 0).id, t.id, "prefers pairs not yet spotted");
 });
+
+test("daily specimen: same plant all day, spoiler-free share line and board detail, streak bonus", async () => {
+  const { dailyPick, dailyBonus, dailyDetail, shareLine, DAILY_ID } = await import("../activity/src/grimoire/daily.js");
+  const { finishDaily, dailyState } = await import("../activity/src/daily.js");
+  assert.equal(dailyPick("2026-11-27").p.id, dailyPick("2026-11-27").p.id);
+  const days = new Set(Array.from({ length: 30 }, (_, i) => dailyPick(new Date(Date.UTC(2026, 10, 1 + i)).toISOString().slice(0, 10)).p.id));
+  assert.ok(days.size > 15, "varies by day");
+  assert.equal(dailyBonus(1), 10); assert.equal(dailyBonus(3), 14); assert.equal(dailyBonus(40), 30);
+  const { L, p } = dailyPick("2026-11-27"), run = start(p, L); moreClue(run, p); guessName(run, p, p); guessSafety(run, p, p.danger[0]); guessClaim(run, p, !p.claim.fact);
+  const line = shareLine(run, 3, "2026-11-27"), det = dailyDetail(run);
+  for (const t of [line, det]) for (const a of [p.name, ...p.aliases]) assert.ok(!t.toLowerCase().includes(a.toLowerCase()), "no spoiler: " + a);
+  assert.match(line, /#331/); assert.match(line, /🍃🍃🍃🍃▫️/); assert.match(det, /typed · 4 leaves · safety ✓/);
+  const prog = fresh(); finishDaily(prog, DAILY_ID, { score: 9 }, "2026-11-27");
+  assert.equal(finishDaily(prog, DAILY_ID, { score: 99 }, "2026-11-27").first, false, "first run of the day counts");
+  assert.equal(dailyState(prog, DAILY_ID, "2026-11-27").today.score, 9);
+});
