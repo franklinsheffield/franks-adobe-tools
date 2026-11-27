@@ -1,6 +1,9 @@
 // Pixel Scape Activity (Discord D3): serves the Pixel Scape web build (static assets) and swaps the Discord sign-in
 // code for an access token. The client secret stays here, never in the page.
 //   POST /api/token  { code } -> { access_token }, or 403 { error: "locked" } when the member lacks an access role.
+//   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs; same role gate)
+import { Rooms } from "./rooms.mjs";
+export { Rooms };
 // Role gate: GATE_GUILD_ID + GATE_ROLE_IDS (comma list). Unset = no gate.
 export const gateRoles = (env) => String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
 export const hasAccess = (env, roles) => { const need = gateRoles(env); return !need.length || (roles || []).some((r) => need.includes(r)); };
@@ -32,7 +35,16 @@ export default {
       if (!g.ok) { console.log("locked:", g.reason); return json({ error: "locked", message: env.GATE_MESSAGE || "Pixel Scape is locked." }, 403); }
       return json(r.body, 200);
     }
-    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET });
+    if (path === "/api/room") {
+      if ((req.headers.get("upgrade") || "").toLowerCase() !== "websocket") return json({ error: "WebSocket only" }, 426);
+      const guild = url.searchParams.get("guild") || "", room = url.searchParams.get("room") || "";
+      const dev = env.DEV_ROOMS === "1" && guild === "dev";
+      if (!dev && !/^\d{5,25}$/.test(guild)) return json({ error: "building together works in a server" }, 400);
+      if (!/^[\w:.-]{1,100}$/.test(room)) return json({ error: "missing room" }, 400);
+      if (!env.ROOMS) return json({ error: "rooms are not set up" }, 503);
+      return env.ROOMS.get(env.ROOMS.idFromName("guild:" + guild)).fetch(req);
+    }
+    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, rooms: !!env.ROOMS, posting: !!env.DISCORD_BOT_TOKEN });
     return env.ASSETS.fetch(req);
   }
 };
