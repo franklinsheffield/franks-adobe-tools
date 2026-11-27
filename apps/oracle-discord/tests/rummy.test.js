@@ -75,3 +75,24 @@ test("rewards: first win pays more, progress kept, card backs", () => {
   assert.equal(backOf({}), "cb-midnight"); assert.equal(backOf({ cardback: "cb-deck" }), "cb-midnight"); assert.equal(backOf({ cardback: "cb-pulsar" }), "cb-pulsar");
   assert.ok(GUIDE.sections.length >= 5);
 });
+
+test("2 to 4 seats with personas: every game finishes, no card is lost, seats rotate", async () => {
+  const { nextSeat, freeze, thaw, PERSONAS } = await import("../activity/src/rummy/engine.js");
+  for (const L of LEVELS) for (let n = 2; n <= 4; n++) for (let seed = 1; seed <= 12; seed++) {
+    const seats = Array.from({ length: n }, (_, i) => "s" + i), keys = Object.keys(PERSONAS), persona = Object.fromEntries(seats.map((s, i) => [s, keys[(i + seed) % keys.length]]));
+    let g = newGame(L, seed, { seats, persona }), total = g.deck.length + g.discard.length + seats.reduce((a, s) => a + g.hands[s].length, 0), steps = 0;
+    assert.ok(seats.every((s) => g.hands[s].length === L.hand), "full hands");
+    while (!g.over && steps++ < 500) { const who = g.turn; for (const _ of oracleTurn(g, who)) {} if (!g.over) assert.equal(g.turn, nextSeat(g, who)); if (steps % 7 === 0) g = thaw(JSON.parse(JSON.stringify(freeze(g)))); }
+    assert.ok(g.over, `L${L.n} ${n} seats seed ${seed} ends`);
+    const cards = [...g.deck, ...g.discard, ...seats.flatMap((s) => g.hands[s]), ...g.melds.flatMap((m) => m.cards.map((c) => c.hip))];
+    assert.equal(cards.length, total); assert.equal(new Set(cards).size, total);
+    const t = tally(g, "s0"); assert.equal(Object.keys(t.by).length, n); assert.ok(t.place >= 1 && t.place <= n);
+  }
+});
+
+test("a first win against a persona pays its prize once", async () => {
+  const p = { xp: 0, essence: 0, owned: [] }, g = newGame(LEVELS[0], 5, { persona: { or: "trickster" } });
+  g.over = true; g.out = "me"; g.hands.me = []; g.melds = [{ id: 1, type: "con", key: "Ori", owner: "me", cards: CARDS.filter((c) => c.con === "Ori").map((c) => ({ hip: c.hip, by: "me" })) }];
+  const r = settle(p, g); assert.equal(r.beat.key, "trickster"); assert.equal(r.essence, 4 + 10 + 3 + 20);
+  assert.equal(settle(p, g).beat, null);
+});
