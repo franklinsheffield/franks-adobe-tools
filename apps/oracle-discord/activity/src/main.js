@@ -13,7 +13,8 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const state = { name: "traveller", userId: "guest", token: null, profile: null, last: null };
+const PREVIEW = window.ORACLE_PREVIEW || null; // set only by the standalone preview page (build-preview.mjs)
+const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null };
 
 // ---- the Oracle and her sky ----
 $("teller").innerHTML = `<svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${sigilRingSvg({ cx: 200, cy: 200, r: 196, id: "t" })}${figureSvg({ id: "t" })}</svg>`;
@@ -85,7 +86,7 @@ function choose(sys) {
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
     ui(`<form class="form${rows.length === 1 ? " one" : ""}" id="f">${rows.join("")}</form>
       <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
-      <div class="note">${state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
+      <div class="note">${PREVIEW ? PREVIEW.note + " " : state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
     $("f").onsubmit = (e) => { e.preventDefault();
       const o = optionsFor(sys), v = (id) => ($(id) ? $(id).value.trim() : "");
       o[f.date] = v("d");
