@@ -119,8 +119,8 @@ export const seance = {
         <div class="kit-row"><b>${L.debunk ? "How it was exposed" : "The real story"}</b><span>${esc(g.bio)}</span></div>${what ? `<div class="kit-row"><b>${L.debunk ? "The skeptic" : "Counts as"}</b><span>${esc(what)}</span></div>` : ""}
         <div class="kit-row"><b>Why it matters</b><span>${esc(g.link)}</span></div></div>
         ${clueList(g, { shown: g.clues.length }, false, L)}
-        <div class="choices"><button class="c main" type="button" id="sc-next">${nx.g.emoji} Try next: ${esc(nx.g.name)} <span class="note">· L${nx.L.n}${seen ? " · named" : ""}</span></button><button class="c" type="button" id="sc-again">↻ Summon this ghost again</button><button class="c" type="button" id="sc-lobby">📜 Back to the séance</button></div>`);
-      $("sc-next").onclick = () => summon(nx.L, nx.g); $("sc-again").onclick = () => summon(L, g); $("sc-lobby").onclick = () => lobby(false);
+        <div class="choices"><button class="c main" type="button" id="sc-next">${nx.g.emoji} Try next: ${esc(nx.g.name)} <span class="note">· L${nx.L.n}${seen ? " · named" : ""}</span></button><button class="c" type="button" id="sc-again">↻ Summon this ghost again</button>${L.n === 3 && ctx.go ? `<button class="c" type="button" id="sc-tl">⏳ Find them in the History of Magic</button>` : ""}<button class="c" type="button" id="sc-lobby">📜 Back to the séance</button></div>`);
+      if ($("sc-tl")) $("sc-tl").onclick = () => ctx.go("timeline"); $("sc-next").onclick = () => summon(nx.L, nx.g); $("sc-again").onclick = () => summon(L, g); $("sc-lobby").onclick = () => lobby(false);
     }
 
     const clueList = (g, run, fresh = false, L = null) => `<div class="clues">${g.clues.slice(0, run.shown).map((c, i) => `<div class="clue${fresh && i === run.shown - 1 ? " new" : ""}"><b>${L && L.debunk ? "🔎 Evidence" : "👻 Clue"} ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
@@ -323,7 +323,8 @@ export const seance = {
         $("sc-gok").onclick = go; box.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(); } }; }
     }
 
-    lobby(true);
+    const asked = ctx.arg && ctx.arg.ghost && ghostById(ctx.arg.ghost, LEVELS[2]); // from another room, e.g. History of Magic
+    if (asked) summon(LEVELS[2], asked); else lobby(true);
   },
 };
 
