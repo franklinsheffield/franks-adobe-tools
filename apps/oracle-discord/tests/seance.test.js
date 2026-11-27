@@ -121,3 +121,11 @@ test("hints cost Essence, once each; journal links a related ghost", () => {
   assert.equal(buyHint(p, run, "letter"), "had"); assert.equal(buyHint(p, run, "when"), "poor");
   const n = hintsFor(LEVELS[0], LEVELS[0].deck[0]).find((h) => h.id === "narrow"); assert.ok(n.text.includes(POOL.find((x) => x.id === LEVELS[0].deck[0].answers[0]).name));
 });
+
+test("Daily Ghost: same pick for a seed, rotates levels, share line has no spoilers", async () => {
+  const { dailyPick, shareLine } = await import("../activity/src/seance/logic.js");
+  const a = dailyPick(12345), b = dailyPick(12345); assert.equal(a.g.id, b.g.id); assert.equal(a.L.n, b.L.n);
+  assert.equal(new Set([0, 1, 2, 3].map((i) => dailyPick(1000 + i).L.n)).size, 4);
+  const run = { candles: 3, won: true, mode: "type", fieldRight: true, hints: [] }, line = shareLine(run, a.L, 331);
+  assert.ok(line.includes("#331") && line.includes("🕯️🕯️🕯️💨💨")); assert.ok(!line.toLowerCase().includes(a.g.name.toLowerCase()));
+});

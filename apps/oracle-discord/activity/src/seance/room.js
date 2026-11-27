@@ -6,7 +6,8 @@ import { FIELDS } from "./ghosts.js";
 import { shop, candleLook } from "./shop.js";
 import { ghostShop, ghostBody } from "./ghostlooks.js";
 import * as sfx from "./sfx.js";
-import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST, guessMethod, hintsFor, buyHint, HINT_COST, related } from "./logic.js";
+import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST, guessMethod, hintsFor, buyHint, HINT_COST, related, dailyPick, shareLine } from "./logic.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 
 const an = (n) => (/^[aeiou]/i.test(n) ? "an " : "a ") + n.charAt(0).toLowerCase() + n.slice(1);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -92,12 +93,15 @@ export const seance = {
       const lvl = (L) => { const n = solvedCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"🕯️".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${L.deck.length} named · points ×${L.mult}</span></button>`; };
       const known = ALL.filter(({ L, g }) => prog().solved[keyOf(L, g)]);
-      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
+      const ds = dailyState(state.prog, "seance"), dp = dailyPick(dailySeed("seance"));
+      const dailyBtn = `<button class="c level sc-daily" type="button" id="sc-daily"><b>🌙 Daily Ghost #${dayNumber()}</b><span>${ds.played ? `Done today: ${esc(ds.today.detail || "")} · tap for the board` : `Everyone gets the same ghost today · Level ${dp.L.n}`}${ds.streak ? ` · 🔥 ${ds.streak}-day streak` : ""}</span></button>`;
+      ui(`${stats()}<div class="levels">${dailyBtn}${LEVELS.map(lvl).join("")}</div>
         <div class="note">5 candles. The first clue is free; each extra clue and each wrong name snuffs one. Stuck? "Show me 4" gives you choices but blows out 3 candles.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
         ${known.length ? `<div class="group">📖 Ghost journal: tap a ghost to read its page</div><div class="choices">${known.map(({ L, g }) => `<button class="c small" type="button" data-k="${L.n}:${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, g)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; summon(L, nextGhost(state.prog, L, prog().last)); }));
       $("back").onclick = greet;
+      $("sc-daily").onclick = () => (dailyState(state.prog, "seance").played ? dailyBoard() : summon(dp.L, dp.g, true));
       $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const [n, id] = b.dataset.k.split(":"), L = LEVELS[+n - 1]; journal(L, ghostById(id, L)); }));
     }
 
@@ -119,8 +123,25 @@ export const seance = {
     const clueList = (g, run, fresh = false, L = null) => `<div class="clues">${g.clues.slice(0, run.shown).map((c, i) => `<div class="clue${fresh && i === run.shown - 1 ? " new" : ""}"><b>${L && L.debunk ? "🔎 Evidence" : "👻 Clue"} ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
     const candleBar = (L, run) => `<div class="cx-top">Level ${L.n} · 🕯️ ${"●".repeat(run.candles)}${"○".repeat(CANDLES - run.candles)} · ${run.candles} candle${run.candles === 1 ? "" : "s"} left${run.field ? ` · naming it now scores ${perCandle(run.mode, L) * run.candles}${run.mode === "pick" ? " (multiple choice)" : ""}` : ""}</div>`;
 
-    function summon(L, g) {
-      const run = start(g, L);
+    /** Today's shared board, with your own result line to paste in chat. */
+    async function dailyBoard(line) {
+      const ds = dailyState(state.prog, "seance");
+      clearReading(); cap(`🌙 Daily Ghost #${dayNumber()}`); draw(null, null, false);
+      say(ds.played ? `Today's ghost is laid to rest. 🔥 ${ds.streak}-day streak. A new ghost rises at midnight, UTC.` : "You haven't summoned today's ghost yet.");
+      const share = line || ds.today?.share || "";
+      const paint = (board) => ui(`${share ? `<div class="group">Share it (no spoilers)</div><textarea class="sc-share" id="sc-share" readonly rows="2">${esc(share)}</textarea><div class="choices"><button class="c small" type="button" id="sc-copy">📋 Copy</button></div>` : ""}
+        <div class="group">🏆 Today's board</div>${board === undefined ? `<div class="note">Reading the board…</div>` : boardHtml(board, esc, { unit: "pts", local: ds.today })}
+        <div class="choices"><button class="c" type="button" id="sc-lobby">📜 Back to the séance</button></div>`);
+      const wire = () => { $("sc-lobby").onclick = () => lobby(false);
+        if ($("sc-copy")) $("sc-copy").onclick = async () => { const t = $("sc-share"); t.select(); let ok = false;
+          try { await navigator.clipboard.writeText(share); ok = true; } catch { try { ok = document.execCommand("copy"); } catch {} }
+          say(ok ? "Copied. Paste it in the channel and see who beats you." : "Select the text and copy it yourself: the spirits can't reach your clipboard here."); }; };
+      paint(undefined); wire();
+      const board = await boardOf(state, "seance"); if (state.inRoom === "seance" && $("sc-lobby")) { paint(board); wire(); }
+    }
+
+    function summon(L, g, daily = false) {
+      const run = start(g, L); run.daily = daily;
       lastLit = CANDLES; clearReading(); cap(`🕯️ Level ${L.n} · a ghost is knocking…`); draw(g, run, false, "summon"); sfx.summon(); setTimeout(() => sfx.ghostCry(state.prog.ghost), 900);
       if (L.debunk) return talkThrough([`${pick(["The candles lean. Someone is here.", "Raps, from under the table. Our guest has arrived."])} ${INTRO[4]}`, ...g.scene, `First piece of evidence: “${g.clues[0]}”`], () => askMethod(L, g, run));
       talkThrough([pick(["Hands on the table, please. Spirit, are you there? …Knock once for yes.", "The candles lean. Someone is here.", "Shh. Listen. Raps, from under the table. Our guest has arrived."]) + " " + INTRO[L.n], `First clue: “${g.clues[0]}”`], () => askField(L, g, run));
@@ -211,6 +232,12 @@ export const seance = {
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🕯️ Séance title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
         <div class="choices"><button class="c main" type="button" id="sc-go">🕯️ Another Level ${L.n} ghost</button>${run.won ? "" : `<button class="c" type="button" id="sc-again">↻ Try this ghost again</button>`}<button class="c" type="button" id="sc-page">📖 Journal page</button><button class="c" type="button" id="sc-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("sc-page").onclick = () => journal(L, g);
+      if (run.daily) { // Daily Ghost: only the first finished run of the day counts
+        const line = shareLine(run, L, dayNumber()), res = finishDaily(state.prog, "seance", { score: run.won ? r.score : 0, won: run.won, detail: line.split(" · ").slice(2).join(" · ") });
+        if (res.first) { state.prog.daily.seance.today.share = line; saveProgress(); postDaily(state, "seance", { score: run.won ? r.score : 0, won: run.won, detail: state.prog.daily.seance.today.detail }); }
+        $("ui").insertAdjacentHTML("afterbegin", `<div class="up">🌙 Daily Ghost #${dayNumber()} ${res.first ? `done · 🔥 ${res.streak}-day streak` : "(only your first run today counts)"}</div><div class="choices"><button class="c main" type="button" id="sc-board">🏆 Today's board and share</button></div>`);
+        $("sc-board").onclick = () => dailyBoard(res.first ? line : undefined);
+      }
       if (titled || aw.rankUp) chime(2);
       $("sc-go").onclick = () => summon(L, nextGhost(state.prog, L, g.id));
       if ($("sc-again")) $("sc-again").onclick = () => summon(L, g);

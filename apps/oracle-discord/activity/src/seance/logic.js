@@ -152,3 +152,14 @@ export function settle(p, run) {
   if (out.score > prev) { out.best = !!prev; out.xp = out.essence = out.score - prev; r.solved[k] = out.score; }
   return out;
 }
+
+/** Daily Ghost: everyone gets the same ghost each UTC day (seed from daily.js). The level rotates 1, 2, 3, 4. */
+export function dailyPick(seed) {
+  const L = LEVELS[seed % LEVELS.length];
+  return { L, g: L.deck[Math.floor(seed / LEVELS.length) % L.deck.length] };
+}
+/** A spoiler-free result line to paste in chat: lit and snuffed candles, never the answer. */
+export function shareLine(run, L, n) {
+  const c = "🕯️".repeat(run.candles) + "💨".repeat(CANDLES - run.candles);
+  return `🕯️ Séance Daily #${n} · Level ${L.n} · ${run.won ? c : "💀".repeat(CANDLES)} · ${run.won ? (run.mode === "type" ? "named it ✍️" : "picked it 🎴") : "stumped"}${run.fieldRight ? " · ✓ kind" : ""}${(run.hints || []).length ? ` · ${run.hints.length} hint${run.hints.length > 1 ? "s" : ""}` : ""}`;
+}
