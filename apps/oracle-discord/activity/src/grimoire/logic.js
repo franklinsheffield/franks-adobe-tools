@@ -1,6 +1,7 @@
 // Herbalist's Grimoire: rules kept pure for tests. Progress lives in prog.rooms.grimoire:
 //   { plays, solved: { "<level>:<id>": bestScore }, last }
-// A specimen arrives with 5 leaves. Its first clue is free; each further clue and each wrong name costs a leaf.
+// A specimen arrives with 5 leaves. Its first clue is free; each further clue and each wrong typed name costs a leaf;
+// a wrong pick from the four choices costs WRONG_PICK (3) leaves.
 // Step 1: name the plant (typed scores double; "show me 4" halves it). Step 2: gentle, handle with care, or poison?
 // Step 3: one claim about it: does science back it, or is it just folklore? Points scale with the level.
 // The first identification pays ✦ and 💎; replays pay only the improvement on your best.
@@ -16,6 +17,7 @@ export const keyOf = (L, p) => L.n + ":" + p.id;
 export const TITLES = [{ at: 0, name: "Seedling" }, { at: 6, name: "Herb Gatherer" }, { at: 14, name: "Hedge Scholar" }, { at: 24, name: "Apothecary" }, { at: ALL.length, name: "Master Herbalist" }];
 
 export const LEAVES = 5;
+export const WRONG_PICK = 3;
 export const perLeaf = (mode, L = LEVELS[0]) => Math.round((mode === "pick" ? 1.5 : 3) * L.mult);
 export const safetyPts = (L = LEVELS[0]) => Math.round(5 * L.mult);
 export const claimPts = (L = LEVELS[0]) => Math.round(5 * L.mult);
@@ -74,7 +76,7 @@ export function choices(plant, L = LEVELS[0]) {
 export function guessName(run, plant, pick) {
   if (run.named) return null;
   if (pick && pick.id === plant.id) { run.named = true; run.won = true; return "right"; }
-  run.wrong.push(pick ? pick.id : "?"); run.leaves--;
+  run.wrong.push(pick ? pick.id : "?"); run.leaves = Math.max(0, run.leaves - (run.mode === "pick" ? WRONG_PICK : 1));
   if (run.leaves <= 0) { run.named = true; return "out"; }
   return "wrong";
 }
