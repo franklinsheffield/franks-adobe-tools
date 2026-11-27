@@ -18,6 +18,11 @@ const WRONG = [
   "Close in spirit, wrong in species. One leaf fewer.",
   "The page curls at the corner. A leaf crumbles to dust.",
 ];
+const WRONG_PICK_LINES = [
+  "Wrong pick from the four. Three leaves fall from the page.",
+  "Not that one. A wrong pick costs three leaves, and down they flutter.",
+  "The specimen shakes its head. Three leaves drop away.",
+];
 const UNKNOWN = ["No plant by that name grows in this garden. Try its common name, or check the spelling. No leaf lost.", "Hmm, that's not on this level's list. Try another name. No leaf lost."];
 const INTRO = {
   1: "A specimen from the kitchen garden. Each clue is a true fact about it: how it looks, its lore, its chemistry.",
@@ -118,7 +123,7 @@ export const room = {
       const answer = (who) => { const r = guessName(run, p, who);
         if (r === "right") return named(L, p, run, true);
         if (r === "out") return named(L, p, run, false);
-        if (r === "wrong") { SFX.wrong(); name(L, p, run, pick(WRONG), { shake: true }); } };
+        if (r === "wrong") { SFX.wrong(); name(L, p, run, pick(run.mode === "pick" ? WRONG_PICK_LINES : WRONG), { shake: true }); } };
       // Discord's Activity iframe blocks <form> submit: a button and the Enter key do it instead.
       if ($("gr-n")) { const go = () => { const v = $("gr-n").value.trim(); if (!v) return; const who = whichPlant(v, L); if (!who) { SFX.wrong(); say(pick(UNKNOWN)); return; } answer(who); };
         setTimeout(() => $("gr-n") && $("gr-n").focus(), 50);
