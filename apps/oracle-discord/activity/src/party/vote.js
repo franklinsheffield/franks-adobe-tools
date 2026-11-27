@@ -9,11 +9,13 @@
 // Safety nets (so a missing or dropped player never stalls the room): when time runs out, anyone who wrote nothing gets
 // a house fib written for them, and voting closes without them. People who arrive mid-prompt watch and vote as audience
 // (no score) and take a seat at the next prompt. The table host can skip ahead at any time.
+// Audience bonus: every audience vote a fib catches earns its writer AUD_FOOL points; every truth an audience member
+// finds earns them 1 💎 at the end of the match (at most AUD_GEMS), so watching the stream still pays a little.
 //
 // A prompt: { id, ask, truth, truthText, fact?, parse(text) -> value | null, show(value) -> text, near(value) -> bool,
 //             house(rand) -> [value...] }   (value = anything comparable with ===, e.g. a year)
 
-export const TRUTH = 10, FOOL = 5, FINAL_MULT = 2, HOUSE_FIBS = 2, MAX_CHOICES = 8;
+export const TRUTH = 10, FOOL = 5, AUD_FOOL = 2, AUD_GEMS = 3, FINAL_MULT = 2, HOUSE_FIBS = 2, MAX_CHOICES = 8;
 export const TIMES = { write: 60, vote: 30 }, LONG = 2; // seconds; "long timers" doubles both (stream delay, slow typers)
 
 const shuffle = (a, r) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -22,7 +24,7 @@ const shuffle = (a, r) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--
 export function startMatch(prompts, members, { long = false } = {}) {
   const ids = members.map((m) => m.id);
   return { i: 0, n: prompts.length, prompts: prompts.map((p) => p.id), phase: "write", seats: ids, fibs: {}, votes: {}, aud: {},
-    choices: [], score: Object.fromEntries(ids.map((id) => [id, 0])), log: [], long: !!long, over: false, last: null };
+    choices: [], score: Object.fromEntries(ids.map((id) => [id, 0])), audFound: {}, log: [], long: !!long, over: false, last: null };
 }
 export const isFinal = (st) => st.i === st.n - 1;
 export const mult = (st) => (isFinal(st) ? FINAL_MULT : 1);
@@ -78,8 +80,13 @@ export function reveal(st) {
     if (c.truth) { gain[who] += TRUTH * m; found.push(who); }
     else for (const a of c.by) if (a !== who) { gain[a] = (gain[a] || 0) + FOOL * m; (fooled[a] ||= []).push(who); }
   }
+  let audTruth = 0; st.audFound ||= {};
+  for (const [who, key] of Object.entries(st.aud)) {
+    const c = st.choices.find((x) => x.key === key); if (!c) continue;
+    if (c.truth) { audTruth++; st.audFound[who] = (st.audFound[who] || 0) + 1; }
+    else for (const a of c.by) if (a !== who) gain[a] = (gain[a] || 0) + AUD_FOOL * m;
+  }
   for (const [id, g] of Object.entries(gain)) st.score[id] = (st.score[id] || 0) + g;
-  const audTruth = Object.values(st.aud).filter((k) => (st.choices.find((x) => x.key === k) || {}).truth).length;
   st.last = { prompt: st.prompts[st.i], found, fooled, gain, aud: Object.keys(st.aud).length, audTruth, final: isFinal(st) };
   st.log.unshift(st.last); st.log.length = Math.min(st.log.length, 8);
   st.phase = "reveal"; return st.last;
@@ -123,3 +130,6 @@ export function reward(st, me, players = 1) {
   const found = st.log.filter((l) => l.found.includes(me)).length;
   return { won, perfect: found === st.n, xp: 4 + found * 2 + (won && players > 1 ? 6 : 0), essence: Math.min(10, found + (won && players > 1 ? 4 : 0)), score: mine.score, place: mine.place, found };
 }
+
+/** 💎 for truths found while watching as audience (capped). */
+export const audienceReward = (st, me) => Math.min(AUD_GEMS, (st.audFound || {})[me] || 0);

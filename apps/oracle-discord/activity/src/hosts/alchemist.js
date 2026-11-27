@@ -97,6 +97,8 @@ body[data-house="alchemist"] .gate-title{color:#E89A55;font-family:"IM Fell Engl
 @keyframes hv-glint{0%,80%,100%{opacity:.15}88%{opacity:.75}}
 @media (prefers-reduced-motion: reduce){.ph.playing .ph-b,.ph.playing .ph-horn,.h-vell .hv-glint,[class^="hr-"],[class*=" hr-"]{animation:none}}`;
 
+/** The Magnum Opus red stone, set in her goggle rim once the Great Work is finished (opus.js). */
+const RUBEDO_GEM = `<g class="hv-rubedo"><circle cx="240" cy="132" r="7" fill="#e3173e" stroke="#7a4f12" stroke-width="1.4"/><circle cx="238" cy="130" r="2.2" fill="#fff" opacity=".7"/></g>`;
 /** Dress the shared figure as Magister Vell: copper mask, brass goggle, gear badge, lens colour. */
 function paint(svg, prog, id = "t") {
   if (!svg) return;
@@ -110,7 +112,7 @@ function paint(svg, prog, id = "t") {
   const rivets = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return `<circle cx="${(200 + 47 * Math.cos(a)).toFixed(1)}" cy="${(152 + 34 * Math.sin(a)).toFixed(1)}" r="2.6" fill="#FADE8C" stroke="#7a4f12" stroke-width=".6"/>`; }).join("");
   g.innerHTML = `${sootSvg()}<path d="M118 150 L153 150 M247 150 L282 150" stroke="#3b2414" stroke-width="9" stroke-linecap="round"/>
     <g class="hv-goggle"><ellipse cx="200" cy="152" rx="47" ry="34" fill="none" stroke="#C88A3A" stroke-width="8"/>
-    <ellipse cx="200" cy="152" rx="52" ry="39" fill="none" stroke="#7a4f12" stroke-width="1.6"/>${rivets}
+    <ellipse cx="200" cy="152" rx="52" ry="39" fill="none" stroke="#7a4f12" stroke-width="1.6"/>${rivets}${prog && prog.houses && prog.houses.alchemist && prog.houses.alchemist.opus ? RUBEDO_GEM : ""}
     <ellipse class="hv-glint" cx="200" cy="152" rx="42" ry="29" fill="${L.iris[1]}" opacity=".15"/>
     <path d="M168 136 A38 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <g transform="translate(200 92)"><circle r="11" fill="#C88A3A" stroke="#7a4f12"/>${Array.from({ length: 8 }, (_, i) => `<rect x="-2.4" y="-15" width="4.8" height="6" fill="#C88A3A" transform="rotate(${i * 45})"/>`).join("")}<circle r="4" fill="#3b2414"/></g>`;

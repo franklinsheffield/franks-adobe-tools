@@ -24,6 +24,7 @@ export const TROPHIES = [
   { id: "duel", game: "Element Duel", name: "Elemental Crown", art: "crown", need: 1 },
   { id: "rummy", game: "Constellation Rummy", name: "Star Hand", art: "cards", need: 1 },
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
+  { id: "starparty", game: "Star Party", name: "Radiant Medal", art: "astro", need: 3, how: ["Clear First watch", "Clear Busy sky", "Clear Seasoned counter", "A perfect watch at every level"] },
   { id: "messier", game: "Messier's Catalogue", name: "Ferret of Comets", art: "astro", need: 3, how: ["Clear What is it?", "Clear Where is it?", "Clear Tonight", "A perfect run at every level"] },
   { id: "navigator", game: "Celestial Navigator", name: "Brass Sextant", art: "astro", need: 3, how: ["Clear Polaris", "Clear The noon Sun", "Clear Longitude", "A perfect voyage at every level"] },
   { id: "eclipse", game: "Eclipse Chaser", name: "Corona Medal", art: "astro", need: 3, how: ["Clear Line them up", "Clear The nodes", "Clear Saros and paths", "A perfect run at every level"] },
@@ -39,6 +40,7 @@ export const TROPHIES = [
   { id: "darkseance", game: "The Dark Séance", name: "Spirit Trumpet", art: "trumpet", need: 3 },
   { id: "mentalist", game: "The Mentalist", name: "Silk Blindfold", art: "blindfold", need: 3 },
   { id: "phantasmagoria", game: "Phantasmagoria", name: "Brass Lantern", art: "lantern", need: 3 },
+  { id: "roguesgallery", game: "The Rogues' Gallery", name: "Gilt Frame", art: "frame", need: 1 }, // L1 a pair, L2 the whole wall, L3 the Final Séance
   { id: "possession", game: "Possession", name: "Spirit Planchette", art: "planchette", need: 3, how: ["Win 3 short tales", "Win 3 tales", "Win 3 epics", "A perfect tale at every length"] },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
   { id: "fireworks", game: "Fireworks Workshop", name: "Golden Rocket", art: "rocket", need: 2, how: ["Win Level 1", "Win Level 2", "Win a Level 3 show", "A perfect Level 3 show"] },
@@ -53,6 +55,7 @@ for (const t of TROPHIES) if (!t.how) {
 export const SETS = [
   { id: "story", name: "Story set", ids: ["seance", "decoder", "alchemy", "timeline"], bonus: 100 },
   { id: "cards", name: "Card set", ids: ["duel", "rummy", "memory"], bonus: 100 },
+  { id: "topbill", name: "Top of the Bill", ids: ["seance", "timeline", "darkseance", "mentalist", "phantasmagoria"], bonus: 300 }, // Gold on all 5 Séance Parlour games
   { id: "orrery", name: "The Grand Orrery", ids: ["stars", "calendar", "rummy", "comet", "eclipse", "navigator"], bonus: 250 }, // obsprog.js OBS_GAMES: Gold on every Observatory game
 ];
 export const CASE_LEVELS = [{ at: 0, name: "Apprentice" }, { at: 8, name: "Curator" }, { at: 20, name: "Archivist" }, { at: 32, name: "Grand Keeper" }];
@@ -76,6 +79,7 @@ export const LINES = {
   leadgold: "The Philosopher's Nucleus. You did what the alchemists only dreamed of.",
   commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
+  starparty: "The Radiant Medal. You counted the shower true, strays and all left out.",
   messier: "The Ferret of Comets. Louis XV's name for Messier, and now yours.",
   navigator: "The Brass Sextant. You found your way home with nothing but the sky and a clock.",
   eclipse: "The Corona Medal. You lined up Sun, Moon and node like a Babylonian scribe.",
@@ -89,6 +93,7 @@ export const LINES = {
   darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
   possession: "The Spirit Planchette. Sold for spirit writing in the 1850s; tonight every word came from you.",
   phantasmagoria: "The Brass Lantern. It filled Paris with ghosts in 1798, and every one was a painted slide.",
+  roguesgallery: "The Gilt Frame. Every face on the wall fooled someone, and someone else found out how.",
   mentalist: "The Silk Blindfold. You never read a mind in it, only the audience, and that was the whole act.",
 };
 
@@ -164,6 +169,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     mask: `<path d="M18 40 Q34 28 50 38 Q66 28 82 40 Q84 58 68 62 Q56 62 50 52 Q44 62 32 62 Q16 58 18 40Z" ${F}/><ellipse cx="35" cy="46" rx="7" ry="5" fill="#0b0818"/><ellipse cx="65" cy="46" rx="7" ry="5" fill="#0b0818"/><g class="tr-swing"><path d="M50 52 L50 80" stroke="${mid}" stroke-width="3" stroke-linecap="round"/></g><path class="tr-gem" d="M26 36 Q34 32 42 36" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`,
     trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
     blindfold: `<path d="M14 44 Q50 30 86 44 L86 56 Q50 44 14 56 Z" ${F}/><path d="M20 54 Q14 68 22 80" stroke="${lo}" stroke-width="4" fill="none"/><path d="M28 52 Q26 70 34 82" stroke="${lo}" stroke-width="3" fill="none"/><circle class="tr-gem" cx="50" cy="44" r="5" fill="#fff" opacity=".7"/>`,
+    frame: `<rect x="22" y="18" width="56" height="66" rx="3" ${F}/><rect x="31" y="27" width="38" height="48" rx="19" stroke="${lo}" stroke-width="3" fill="none"/><circle cx="50" cy="45" r="7" stroke="${lo}" stroke-width="3" fill="none"/><path d="M38 66 Q50 54 62 66" stroke="${lo}" stroke-width="3" fill="none"/>`,
     lantern: `<rect x="34" y="34" width="32" height="34" rx="4" ${F}/><path d="M42 34v-10h16v10" ${F}/><circle cx="50" cy="20" r="4" ${F}/><path d="M66 46h14l4 -4v16l-4 -4h-14z" ${F}/><circle class="tr-gem" cx="50" cy="51" r="7" fill="#FFD27A" opacity=".85"/><path d="M84 46 L96 38 M84 54 L96 62" stroke="#FFF3C4" stroke-width="2" opacity=".6"/>`,
     planchette: `<path d="M50 18 C70 18 80 36 76 54 C72 70 58 80 50 80 C42 80 28 70 24 54 C20 36 30 18 50 18Z" ${F}/><circle class="tr-gem" cx="50" cy="44" r="10" fill="#b8f0ff" opacity=".6"/><circle cx="36" cy="70" r="3.5" fill="${lo}"/><circle cx="64" cy="70" r="3.5" fill="${lo}"/><path d="M50 80 L50 90" stroke="${lo}" stroke-width="3"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,

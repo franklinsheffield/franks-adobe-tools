@@ -34,6 +34,7 @@ import { bookings, bookingsCodex } from "./bookings/room.js";
 import { darkseance, darkseanceCodex } from "./darkseance/room.js";
 import { mentalist, mentalistCodex } from "./mentalist/room.js";
 import { phantasmagoria, phantasmagoriaCodex } from "./phantasmagoria/room.js";
+import { roguesgallery, galleryCodex } from "./parlour/room.js";
 import { possession, possessionCodex } from "./possession/room.js";
 import { bench, benchCodex } from "./bench/room.js";
 import { commissions, commissionsCodex } from "./commissions/room.js";
@@ -49,6 +50,7 @@ import { watch, watchCodex } from "./watch/room.js";
 import { comet, cometCodex } from "./comet/room.js";
 import { eclipse, eclipseCodex } from "./eclipse/room.js";
 import { messier, messierCodex } from "./messier/room.js";
+import { starParty, starPartyCodex } from "./starparty/room.js";
 import { celestialNavigator, navigatorCodex } from "./navigator/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
@@ -72,6 +74,9 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
+import { notebookPages, studyToday, claimTable, litTable, NOTEBOOK_CSS } from "./notebook.js";
+import { claimOpus, OPUS_CSS, OPUS_GAMES } from "./opus.js";
+import { addTokens } from "./hosts/tokens.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
@@ -390,7 +395,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -596,7 +601,7 @@ const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
   if (u.kind === "record") { const t = trackOf(id), L = musicOf(state.prog).list; if (t && !L.includes(t.id)) togglePlaylist(state.prog, t.id); saveProgress(); player.refresh(); player.play(t.id); return; }
-  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (changed) flourish(u.kind);
+  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) flourish(u.kind);
 }
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
@@ -795,23 +800,25 @@ const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()
   // first open: bring in the readings saved before the Journal kept a log
   return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
 function logEvent(k, e, t, ref = null, d = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref, Date.now(), d))); } catch { /* storage full or blocked */ } }
-const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
+const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false, nb: "table" };
+const BOOK_TABS = [["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["notebook", "🧪 Lab Notebook"], ["secrets", "🗝️ Secrets"]];
 function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("close"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
 function openBook(sec = "codex") {
   const old = $("book"); if (old) old.remove();
   const b = bookOf(state.prog); BK.sec = sec; BK.entry = null; BK.li = null;
   const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
-    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
+    <div class="bk-top"><nav class="bk-tabs" role="tablist">${BOOK_TABS.map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
     <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
       <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div></div></div></div>`;
+  if (!$("nb-style")) { const st = document.createElement("style"); st.id = "nb-style"; st.textContent = NOTEBOOK_CSS + OPUS_CSS; document.head.append(st); }
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
     if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
-  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "charts", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = BOOK_TABS.map((t) => t[0]), back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
     turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; BK.li = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
   bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
@@ -829,7 +836,7 @@ function turnTo(change, back = false, n = 3) {
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
   document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
-  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "notebook" ? notebookPages(p, esc, BK.nb) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
   bookCodes(p, L, R);
@@ -851,7 +858,29 @@ function drawBook() {
   on("[data-wb]", (b) => wearBook(b.dataset.wb));
   on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }, false, 6));
   on("[data-seal]", () => breakSeal());
+  on("[data-nb]", (b) => turnTo(() => { BK.nb = b.dataset.nb; }, false, 1));
+  on("[data-nb-study]", () => { if (studyToday(p)) { bookSfx("page"); chime(1); logEvent("game", "🧪", "Studied the Element of the Day in the Lab Notebook"); } payNotebook(p); drawBook(); });
+  if (BK.sec === "notebook") payNotebook(p);
   if (BK.sec === "charts") bindCharts();
+}
+/** Pay finished Magnum Opus stages (🪨 5 each); the fourth grants the Opus, sets Vell's red stone and rolls the credits. */
+function payOpus(p) {
+  const out = claimOpus(p, Object.keys(litTable(p)).length); if (!out.stones && !out.finished) return false;
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const n of out.stages) logEvent("trophy", "🔴", `Magnum Opus: ${n} stage complete (+🪨 5)`);
+  saveProgress(); showStats(); chime(2);
+  if (out.finished) { logEvent("trophy", "🪨", "Finished the Magnum Opus: the Great Work"); if (HOST().id === "alchemist") applyLook(); closeBook(); setTimeout(() => rollCredits(true, "opus"), reduced ? 0 : 700); }
+  else mood.bubble(`${out.stages.join(" and ")} complete! +🪨 ${out.stones}`);
+  return true;
+}
+/** Pay the Lab Notebook's table rewards: 💎 per full period, 🪨 and Mendeleev's seal for all 118. */
+function payNotebook(p) {
+  const out = claimTable(p); payOpus(p); if (!out.essence && !out.stones) { saveProgress(); return; }
+  if (out.essence) award(0, out.essence);
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const per of out.rows) logEvent("trophy", "🧮", `Lab Notebook: period ${per} of the table is full (+${50} 💎)`);
+  if (out.seal) logEvent("trophy", "🏵️", "Lab Notebook: all 118 elements lit. Mendeleev's seal");
+  chime(2); saveProgress(); showStats();
 }
 // ---- My charts (mycharts.js): every chart's data from the saved birth details, what is stored where, and the delete controls ----
 const profKey = (pr) => JSON.stringify(pr || null);
@@ -1275,6 +1304,7 @@ function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" :
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
+  if (o && o.won && OPUS_GAMES.includes(id)) payOpus(state.prog);
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
@@ -1384,7 +1414,8 @@ if (PREVIEW) window.__masterAll = () => { const p = state.prog; p.trophies = p.t
 
 // ---- the end credits (credits.js): a starfield scroll timed to the credits song ----
 let creditsDue = false;
-function rollCredits(auto) {
+function rollCredits(auto, kind = "crown") {
+  const opus = kind === "opus";
   creditsDue = false; if (document.getElementById("credits")) return;
   const tc = $("tcase"); tc.hidden = true; tc.innerHTML = ""; $("music-pop").hidden = true;
   const p = state.prog, c = (p.credits ||= { rolls: 0 }); c.rolls = (c.rolls || 0) + 1; saveProgress();
@@ -1393,11 +1424,11 @@ function rollCredits(auto) {
   const el = document.createElement("div"); el.id = "credits"; el.className = "credits"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "End credits");
   el.innerHTML = `<div class="cr-stars" aria-hidden="true">${stars}</div><button class="c small cr-x" type="button" id="cr-x" aria-label="Close the credits">✕ Close</button>
     <div class="cr-roll" id="cr-roll">
-      <div class="cr-title"><small>${auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>The Oracle Chamber</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
+      <div class="cr-title"><small>${opus ? "The Great Work is finished" : auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>${opus ? "The Magnum Opus" : "The Oracle Chamber"}</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
       ${rows}
       <section class="cr-sec cr-thanks"><h3>Special thanks</h3><div class="cr-big">${esc(SPECIAL_THANKS.name)}</div><p>${esc(SPECIAL_THANKS.line)}</p></section>
       <section class="cr-end"><div class="cr-sig">⚛</div><h2>The End</h2><p>${esc(END_LINE)}</p>
-        ${hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
+        ${opus ? `<div class="cr-crown">🔴 <b>The red stone</b><span>Is set in Vell's goggle for good. The Magnum Opus record and the Magister coat are yours.</span></div>` : hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
         <button class="c main" type="button" id="cr-done">✦ Back to the Chamber</button></section>
     </div>`;
   document.body.append(el);
@@ -1409,7 +1440,8 @@ function rollCredits(auto) {
     roll.style.transform = `translateY(${y.toFixed(1)}px)`; if (k >= 1 && !over) { over = true; el.classList.add("over"); } raf = requestAnimationFrame(frame); };
   if (reduced) { roll.style.position = "relative"; el.classList.add("still"); } else raf = requestAnimationFrame(frame);
   const close = () => { cancelAnimationFrame(raf); song.pause(); el.classList.add("out"); setTimeout(() => el.remove(), reduced ? 0 : 400); player.hold(false); document.removeEventListener("keydown", esc_);
-    if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
+    if (opus) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}! Nigredo, albedo, citrinitas, rubedo. The Great Work, finished. Look at my goggle: a red stone, and it stays there.` }); }, reduced ? 0 : 500);
+    else if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
   const esc_ = (e) => { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", esc_); $("cr-x").onclick = close; $("cr-done").onclick = close; $("cr-x").focus();
   song.addEventListener("ended", () => { el.classList.add("over"); });

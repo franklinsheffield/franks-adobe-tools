@@ -4,6 +4,7 @@ import { room as ER, ROUNDS, PASS, roundOf, starsFor, isOpen, settleRun, PHASES,
 import { GUIDE } from "./guide.js";
 import { dailySeed, dailyState, finishDaily, todayKey, dayNumber } from "../daily.js";
 import * as S from "../stars/sfx.js";
+import { makeRace } from "../obsrace.js";
 
 export const CORONAE = [
   { id: "co-pearl", name: "Pearly corona", price: 0, c1: "#f4f6ff", c2: "#9fb4ff", rays: 10, note: "The corona is the Sun's outer atmosphere, over a million degrees, and only shows to the eye during totality." },
@@ -99,6 +100,7 @@ export const eclipse = {
     const shake = () => { const s = $id("ec-svg"); if (!s) return; s.classList.remove("shake"); void s.getBoundingClientRect(); s.classList.add("shake"); };
     const LV = [null, ["☀️ 1 · Line them up", "Where is the Moon? Say what happens"], ["🌗 2 · The nodes", "Which real New or Full Moon makes the eclipse?"], ["🗺️ 3 · Saros and paths", "Predict real eclipses ahead"]];
 
+    const race = makeRace(C, { game: "eclipse", title: "Co-op prediction", emoji: "🌑", unit: "★", coop: true, goal: (n) => 9 * n, coopWin: "Like the Babylonian scribes, you found the eclipse moons together.", intro: "Same four Moons for everyone. Your stars add up.", play: (seed, done) => run(2, false, { seed, onDone: done }), back: () => lobby(false), sfx: (w) => S.verdict(w) });
     function lobby(first) {
       clearReading(); cap("🌑 Eclipse Chaser"); tableEl.className = "table eclipse"; tableEl.innerHTML = totalitySvg(coronaOf(P()), glassesOf(P()));
       const nx = nextSolar();
@@ -109,14 +111,15 @@ export const eclipse = {
       const lv = (n) => `<button class="c level" type="button" id="ec-go${n}"${isOpen(P(), n) ? "" : " disabled"}><b>${LV[n][0]}</b><span>${isOpen(P(), n) ? `${LV[n][1]}${r.best[n] ? ` · best ${r.best[n]}★` : ""}` : `Clear Level ${n - 1} to open`}</span></button>`;
       ui(`<div class="cx-top"><b>🌑 Eclipse Chaser</b> · ${r.cleared.length} / 3 levels cleared · next on Earth: ${esc(nx.kind)} solar eclipse, ${esc(fmtDate(nx.ms))}</div>
         <div class="levels">${lv(1)}${lv(2)}${lv(3)}</div>
-        <div class="choices"><button class="c main" type="button" id="ec-daily">📅 Daily Eclipse #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="ec-guide">📖 Eclipse notes</button><button class="c small" type="button" id="back">✦ Leave</button></div>
+        <div class="choices"><button class="c main" type="button" id="ec-daily">📅 Daily Eclipse #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="ec-guide">📖 Eclipse notes</button><button class="c small" type="button" id="ec-race">🤝 Predict together</button><button class="c small" type="button" id="back">✦ Leave</button></div>
         <div class="note">${ROUNDS} questions a run. Get ${PASS} right to clear a level. Never look at the Sun without proper eclipse glasses.</div>`);
       [1, 2, 3].forEach((n) => { const b = $("ec-go" + n); if (b && isOpen(P(), n)) b.onclick = () => run(n, false); });
-      $("ec-daily").onclick = () => run(1, true); $("back").onclick = greet; $("ec-guide").onclick = () => (C.study ? C.study("eclipse", () => lobby(false)) : null);
+      $("ec-daily").onclick = () => run(1, true); $("back").onclick = () => { race.leave(); greet(); }; $("ec-race").onclick = () => race.open(); $("ec-guide").onclick = () => (C.study ? C.study("eclipse", () => lobby(false)) : null);
     }
 
-    function run(level, daily) {
-      const results = [], base = daily ? dseed : (Math.random() * 2 ** 31) >>> 0; let i = 0, settled = -1;
+    function run(level, daily, opt = {}) {
+      const t0 = Date.now();
+      const results = [], base = opt.seed != null ? opt.seed >>> 0 : daily ? dseed : (Math.random() * 2 ** 31) >>> 0; let i = 0, settled = -1;
       const dots = () => `<span class="ec-dots">${Array.from({ length: ROUNDS }, (_, k) => (k < results.length ? (results[k] ? "★".repeat(results[k]) : "✗") : "·")).join(" ")}</span>`;
       const next = (stars, wait = 1400) => { if (settled === i) return; settled = i; $("ui").querySelectorAll("button:not(#ec-lobby)").forEach((b) => (b.disabled = true)); results.push(stars); i++; setTimeout(() => (i < ROUNDS ? play() : finish()), reduced ? 400 : wait); };
       const play = () => {
@@ -142,6 +145,7 @@ export const eclipse = {
         const res = settleRun(P(), level, results), stars = res.stars, xp = 3 * stars, es = 2 * stars + (res.first ? 10 : 0);
         let bonus = ""; if (daily) { const d = finishDaily(P(), "eclipse", { score: stars * 10, won: res.won, detail: `${stars}★` }, day); if (d.first) bonus = " · 📅 Daily done"; }
         const aw = award(xp, es); save(); showStats(); C.trophy?.("eclipse", level, { won: res.won, perfect: res.perfect });
+        if (opt.onDone) return opt.onDone({ n: stars, t: Date.now() - t0 });
         S.verdict(res.won); const b = C.banter && C.banter("eclipse", res.won ? "win" : "lose"); if (b && C.bubble) C.bubble(b, 3500);
         if (res.won) tableEl.innerHTML = totalitySvg(coronaOf(P()), glassesOf(P()));
         say(res.won ? (res.perfect ? "Every one first time. The Babylonians would have made you chief scribe." : `${res.right} of ${ROUNDS}. A good chase.`) : `${res.right} of ${ROUNDS}. Eclipses are patient. Try again.`);

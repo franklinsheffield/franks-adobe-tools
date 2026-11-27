@@ -4,6 +4,8 @@
 // casebook by method class, and each method you uncover becomes a trick to rehearse in the Workshop.
 export const allLevel3 = (p) => LEVELS[2].pool.every((id) => cfOf(p).solved.includes(id));
 import { CASES, CLASSES, LEVELS, METHODS, TOOLS, TOOL_KEYS, caseOf, method, findingOf } from "./data.js";
+import { openFactFib } from "../party/factfib-ui.js";
+import { kit as fibKit } from "./factfib.js";
 import { room as cfOf, start, nextOf, useTool, accuse, scoreOf, perfect, settle, dailyOf, useful, CANDLES } from "./logic.js";
 import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { deskSvg } from "./scene.js";
@@ -47,11 +49,11 @@ export const casefiles = {
       ui(`<div class="cx-top"><b>🗂️ Case Files</b> · ${r.solved.length} / ${CASES.length} solved · ${r.methods.length} / ${METHODS.length} methods learned</div><div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">${CANDLES} candles per case. Each tool burns one, and so does a wrong answer. Reading the claim is free.</div>
         <button class="c level${ds.played ? " done" : ""}" type="button" id="cf-daily"><b>📅 Daily case${ds.played ? " · done ✓" : ""}</b><span>The same file for everyone today · Level ${dd.L.n}${ds.streak ? ` · 🔥 ${ds.streak}-day streak` : ""}</span></button>
-        <div class="choices"><button class="c" type="button" id="cf-book">📒 My casebook</button><button class="c" type="button" id="cf-shop">🔍 Investigator's desk</button><button class="c" type="button" id="back">✦ Back</button></div>`);
+        <div class="choices"><button class="c" type="button" id="cf-book">📒 My casebook</button><button class="c" type="button" id="cf-shop">🔍 Investigator's desk</button><button class="c" type="button" id="ff-open">🎭 Fact or Fib (party)</button><button class="c" type="button" id="back">✦ Back</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; begin(start(L, nextOf(P(), L))); }));
       $("cf-daily").onclick = () => { const d = dailyOf(); begin(start(d.L, d.id, { seed: d.seed, daily: d.day })); };
       $("cf-book").onclick = () => { const rb = $("reading-body"), on = !rb.querySelector(".cf-book"); page(); rb.innerHTML = on ? casebookHtml(P(), esc) : ""; $("cf-book").textContent = on ? "✕ Close" : "📒 My casebook"; if (on) rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" }); };
-      $("cf-shop").onclick = shop; $("back").onclick = greet;
+      $("cf-shop").onclick = shop; $("back").onclick = greet; $("ff-open").onclick = () => openFactFib(ctx, fibKit(tableEl), () => lobby(false));
     }
 
     const begin = (run) => { clearReading(); sfx.knock(3); show(run); };

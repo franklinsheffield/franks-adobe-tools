@@ -7,6 +7,7 @@ import { dailySeed, dailyState, finishDaily, todayKey, dayNumber } from "../dail
 import { observatory } from "../hosts/observatory.js";
 import { addTokens } from "../hosts/tokens.js";
 import * as S from "../stars/sfx.js";
+import { makeRace } from "../obsrace.js";
 
 const KIND = "comettail";
 export const TAILS = [
@@ -120,6 +121,7 @@ export const comet = {
     const mid = () => C.banter && C.banter("comet", "mid");
     const LV = [null, ["🔭 1 · Spot the mover", "Blink two plates, tap what moved, dodge the decoys"], ["🌫️ 2 · Comet or Messier object", "Did the fuzzy patch move? If not, name it"], ["🪐 3 · Predict a return", "When does a real comet come back?"]];
 
+    const race = makeRace(C, { game: "comet", title: "Plate race", emoji: "☄️", unit: "★", intro: "Same plate pairs for everyone: find what moved.", play: (seed, done) => run(1, false, { seed, onDone: done }), back: () => lobby(false), sfx: (w) => S.verdict(w) });
     function lobby(first) {
       clearReading(); cap("☄️ Comet Hunter"); tableEl.className = "table comet";
       tableEl.innerHTML = `<svg class="ch-plate" viewBox="0 0 400 260" role="img" aria-label="A comet"><rect width="400" height="260" fill="#05070f"/>${cometSvg(tailOf(P()), 120, 170, reduced ? "" : "streak")}</svg>`;
@@ -129,14 +131,15 @@ export const comet = {
       const lv = (n) => `<button class="c level" type="button" id="ch-go${n}"${isOpen(P(), n) ? "" : " disabled"}><b>${LV[n][0]}</b><span>${isOpen(P(), n) ? `${LV[n][1]}${r.best[n] ? ` · best ${r.best[n]}★` : ""}` : `Clear Level ${n - 1} to open`}</span></button>`;
       ui(`<div class="cx-top"><b>☄️ Comet Hunter</b> · ${r.caught.length} / ${COMETS.length} comets caught · ${r.cleared.length} / 3 levels cleared</div>
         <div class="levels">${lv(1)}${lv(2)}${lv(3)}</div>
-        <div class="choices"><button class="c main" type="button" id="ch-daily">📅 Daily Blink #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="ch-guide">📖 Handbook</button><button class="c small" type="button" id="back">✦ Leave</button></div>
+        <div class="choices"><button class="c main" type="button" id="ch-daily">📅 Daily Blink #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="ch-guide">📖 Handbook</button><button class="c small" type="button" id="ch-race">⚔️ Plate race</button><button class="c small" type="button" id="back">✦ Leave</button></div>
         <div class="note">${ROUNDS} plates a run. Get ${PASS} right to clear a level. First try 3★, second 2★, third 1★.</div>`);
       [1, 2, 3].forEach((n) => { const b = $("ch-go" + n); if (b && isOpen(P(), n)) b.onclick = () => run(n, false); });
-      $("ch-daily").onclick = () => run(1, true); $("back").onclick = greet; $("ch-guide").onclick = () => (C.study ? C.study("comet", () => lobby(false)) : null);
+      $("ch-daily").onclick = () => run(1, true); $("back").onclick = () => { race.leave(); greet(); }; $("ch-race").onclick = () => race.open(); $("ch-guide").onclick = () => (C.study ? C.study("comet", () => lobby(false)) : null);
     }
 
-    function run(level, daily) {
-      const results = [], base = daily ? dseed : (Math.random() * 2 ** 31) >>> 0; let i = 0;
+    function run(level, daily, opt = {}) {
+      const t0 = Date.now();
+      const results = [], base = opt.seed != null ? opt.seed >>> 0 : daily ? dseed : (Math.random() * 2 ** 31) >>> 0; let i = 0;
       const dots = () => `<span class="ch-dots">${Array.from({ length: ROUNDS }, (_, k) => (k < results.length ? (results[k] ? "★".repeat(results[k]) : "✗") : "·")).join(" ")}</span>`;
       let settled = -1;
       const next = (stars) => { if (settled === i) return; settled = i; $("ui").querySelectorAll("button:not(#ch-lobby)").forEach((b) => (b.disabled = true)); results.push(stars); i++; setTimeout(() => (i < ROUNDS ? play() : finish()), reduced ? 300 : level === 1 ? 2600 : 1300); };
@@ -224,6 +227,7 @@ export const comet = {
         let bonus = "";
         if (daily) { const d = finishDaily(P(), "comet", { score: stars * 10, won: res.won, detail: `${stars}★` }, day); if (d.first) bonus = " · 📅 Daily done"; }
         const aw = award(xp, es); save(); showStats(); C.trophy?.("comet", level, { won: res.won, perfect: res.perfect });
+        if (opt.onDone) return opt.onDone({ n: stars, t: Date.now() - t0 });
         S.verdict(res.won); const b = C.banter && C.banter("comet", res.won ? "win" : "lose"); if (b && C.bubble) C.bubble(b, 3500);
         say(res.won ? (res.perfect ? "Every plate on the first try. Messier would have hired you." : `${res.right} of ${ROUNDS}. A good night's hunting.`) : `${res.right} of ${ROUNDS}. The sky's patient. Try again.`);
         ui(`<div class="reward"><div>${res.won ? "✓ Run cleared" : "Run over"} · ${stars}★ ${dots()}</div><div class="up">+${xp} ✦ · +${es} 💎${res.first ? " · level cleared!" : ""}${bonus}${aw && aw.rankUp ? ` · 🏅 You are now <b>${esc(aw.rankUp)}</b>` : ""}</div></div>
