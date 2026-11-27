@@ -359,7 +359,6 @@ function choose(sys) {
 }
 
 async function reveal(sys, options, question = "") {
-  if (!cine.mid && !reduced) return cine(CINE.reading, () => { reveal(sys, options, question); });
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question; markCard(state.prog);
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
@@ -680,7 +679,7 @@ const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()
   return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
 function logEvent(k, e, t, ref = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref))); } catch { /* storage full or blocked */ } }
 const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
-function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("cover"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
+function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("close"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
 function openBook(sec = "codex") {
   const old = $("book"); if (old) old.remove();
   const b = bookOf(state.prog); BK.sec = sec; BK.entry = null;
@@ -688,9 +687,9 @@ function openBook(sec = "codex") {
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
     <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
-    <div class="bk-book"><div class="bk-pages"><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
+    <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
-      <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div><div class="bk-cv-back"></div></div></div></div>`;
+      <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div></div></div></div>`;
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
@@ -698,14 +697,14 @@ function openBook(sec = "codex") {
   el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
     turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
-  bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1250); $("bk-x").focus();
+  bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
 }
 /** Turn a page: the leaf sweeps over, and the new pages are drawn under it halfway through. */
 /** Turn the pages: n leaves riffle over in a quick stagger (more for a jump to another section); the view changes under them. */
 function turnTo(change, back = false, n = 3) {
   if (BK.busy) return; const box = $("bk-leaves"); if (!box) return;
   if (reduced) { change(); drawBook(); return; }
-  const STEP = 75, DUR = 640; BK.busy = true; bookSfx("page"); setTimeout(() => bookSfx("page"), STEP * Math.max(1, n - 1));
+  const STEP = 75, DUR = 640; BK.busy = true; bookSfx(n > 3 ? "riffle" : "page"); if (n > 1 && n <= 3) setTimeout(() => bookSfx("page", { gain: 0.7 }), STEP * (n - 1));
   box.innerHTML = Array.from({ length: n }, (_, i) => `<i class="bk-lf${back ? " back" : ""}" style="--i:${i};--n:${n}"></i>`).join("");
   setTimeout(() => { change(); drawBook(); }, Math.floor((n - 1) / 2) * STEP + DUR * 0.5);
   setTimeout(() => { box.innerHTML = ""; BK.busy = false; }, (n - 1) * STEP + DUR + 40);
@@ -854,7 +853,7 @@ function sealedPage(p) {
   return pageHead("👑 The sealed chapter", "The Science is Magic creed") + `<ol class="bk-creed">${CREED.map((c) => `<li>${esc(c)}</li>`).join("")}</ol>${owns("bk-crown") ? `<button type="button" class="c small${p.book === "bk-crown" ? " on" : ""}" data-wb="bk-crown">${p.book === "bk-crown" ? "✓ Bound in stars" : "👑 Bind this book in stars"}</button>` : ""}`;
 }
 function breakSeal() {
-  const w = document.querySelector("#book .bk-wax"); if (w) w.classList.add("break"); bookSfx("cover");
+  const w = document.querySelector("#book .bk-wax"); if (w) w.classList.add("break"); bookSfx("thump");
   setTimeout(() => { const p = state.prog; p.owned = p.owned || []; if (!p.owned.includes("bk-crown")) p.owned.push("bk-crown"); revealSecret("sealed"); drawBook(); }, reduced ? 0 : 700);
 }
 function sharePageNow() {
