@@ -38,6 +38,8 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
+import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 
@@ -402,7 +404,7 @@ function reward(g, sys) {
 function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
-  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${showcaseHtml(p)}`;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`;
 }
 
 const EARNED_DESIGN = { velvet: "", starchart: "constellations", goldleaf: "filigree", moonlit: "moonphases", obsidian: "obsidian" };
@@ -448,7 +450,20 @@ function applyLook(over = {}) {
   root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
   if (applyLook.vibe !== vibe.id) { applyLook.vibe = vibe.id; $("vfx-o").innerHTML = vibeFx(vibe.id, "o"); $("vfx-t").innerHTML = vibeFx(vibe.id, "t"); }
   const v = item(p.voice); setVoiceStyle(v ? v.v : null);
+  // every candle in the Chamber (Memory's candle row, the séance wax) burns in the equipped candles
+  root.style.setProperty("--cw1", fl.wax[0]); root.style.setProperty("--cw2", fl.wax[1]);
+  root.style.setProperty("--cf1", fl.flame[1]); root.style.setProperty("--cf2", fl.flame[2]); root.style.setProperty("--ch", fl.halo);
+  applyCrown(svg, p);
   refreshEnergy();
+}
+/** The Star Crown: the Oracle's permanent reward once a member has finished every game on every level. */
+function applyCrown(svg, p) {
+  const old = svg.querySelector(".o-crown"); if (!hasCrown(p)) { if (old) old.remove(); return; } if (old) return;
+  const st = (x, y, r, d) => `<path class="cr-star" style="--d:${d}s" d="M${x} ${y - r} L${x + r * 0.3} ${y - r * 0.3} L${x + r} ${y} L${x + r * 0.3} ${y + r * 0.3} L${x} ${y + r} L${x - r * 0.3} ${y + r * 0.3} L${x - r} ${y} L${x - r * 0.3} ${y - r * 0.3}Z"/>`;
+  const pts = [[132, 40, 7], [154, 26, 9], [178, 18, 10], [200, 12, 14], [222, 18, 10], [246, 26, 9], [268, 40, 7]];
+  svg.insertAdjacentHTML("beforeend", `<g class="o-crown" aria-hidden="true"><ellipse class="cr-halo" cx="200" cy="34" rx="78" ry="16" fill="none" stroke="#FADE8C" stroke-width="3" opacity=".75"/>
+    <ellipse cx="200" cy="34" rx="78" ry="16" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2 9" opacity=".8"/>
+    <g fill="#FADE8C" stroke="#fff" stroke-width="1.2">${pts.map(([x, y, r], i) => st(x, y, r, (i * 0.3).toFixed(1))).join("")}</g></g>`);
 }
 
 // ---- the Essence store ----
@@ -606,7 +621,7 @@ showVoice();
   if (inDiscord()) {
     try {
       const d = await startDiscord();
-      if (d.user) { state.name = d.user.global_name || d.user.username; state.userId = d.user.id; state.token = d.token; }
+      if (d.user) { state.name = d.user.global_name || d.user.username; state.userId = d.user.id; state.token = d.token; state.guildId = d.guildId; }
       if (d.token) {
         const p = await fetch(api("/api/profile"), { headers: { authorization: "Bearer " + d.token } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
         if (p && p.profile) state.profile = p.profile;
@@ -614,13 +629,31 @@ showVoice();
     } catch (e) { console.warn("Discord SDK failed to start", e); }
   }
   await loadProgress();
+  await checkBoost();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); };
+  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); };
   $("enter").onclick = enter; $("enter").focus();
 })();
+
+// ---- server boosts (boost.js): the Worker checks the boost with the bot and pays each one once; the Oracle says thank you ----
+async function checkBoost() {
+  if (!state.token || !state.guildId) return;
+  const b = await fetch(api("/api/boost"), { method: "POST", headers: { authorization: "Bearer " + state.token, "content-type": "application/json" }, body: JSON.stringify({ guildId: state.guildId }) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  if (!b) return; state.booster = !!b.boosting;
+  if (b.fresh && b.reward > 0) { award(0, b.reward); state.prog.boosts = (state.prog.boosts || 0) + 1; saveProgress(); state.boostNews = "thanks"; }
+  else if (b.boosting) state.boostNews = Math.random() < 0.35 ? "hello" : null;
+  showStats();
+}
+/** After the door opens: thank a new booster (big), or now and then greet a returning one. */
+function boostThanks() {
+  const kind = state.boostNews; state.boostNews = null; if (!kind) return;
+  const line = pickLine(kind === "thanks" ? BOOST_THANKS : BOOSTER_HELLO, {});
+  setTimeout(() => { if (kind === "thanks") { chime(3); mood.gesture("snap"); } mood.emote(kind === "thanks" ? "love" : "joy", { say: line }); }, reduced ? 0 : 3200);
+}
+if (PREVIEW) window.__boostTest = () => { state.booster = true; award(0, 500); state.boostNews = "thanks"; showStats(); boostThanks(); };
 
 // ---- the Trophy Case (trophies.js): full-screen cabinet, the collect moment, showcase pins ----
 const tq = []; let tShowing = false;
@@ -632,6 +665,7 @@ function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" :
   mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
+  if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
   if (!n) return;
@@ -639,7 +673,7 @@ function trophyNews(n) {
   tq.push(n); if (!tShowing) setTimeout(nextCollect, reduced ? 0 : 1200);
 }
 function nextCollect() {
-  const n = tq.shift(), el = $("tcollect"); if (!n) { tShowing = false; return; }
+  const n = tq.shift(), el = $("tcollect"); if (!n) { tShowing = false; if (creditsDue) setTimeout(() => rollCredits(true), reduced ? 0 : 700); return; }
   tShowing = true; mood.emote("cheer", { quiet: true });
   const t = TROPHIES.find((x) => x.id === n.id), T = TIERS[n.tier], up = n.from > 0;
   const kicker = n.tier === 4 ? "Fully mastered" : up ? "Trophy upgraded" : "New trophy";
@@ -686,7 +720,8 @@ function openCase(focus = null, view = null) {
       ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
-    <div class="tsets">${sets}</div>
+    <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);
+      return `<div class="tset tmaster${c ? " done" : ""}"><b>${c ? "👑" : "◇"} The Star Crown</b><span>${c ? "Every game finished on every level. The Oracle wears the Star Crown for good." : `Finish all ${GAMES.length} games on every level to roll the credits and crown the Oracle forever · ${m.done} / ${m.of} levels`}</span><button class="c small" type="button" data-credits="1">🎬 Roll the credits</button></div>`; })()}</div>
     <div class="note">Bronze, Silver and Gold come from finishing Levels 1, 2 and 3. Prismatic needs a perfect round on every level. Each tier pays its Essence once.</div></div>`;
   el.hidden = false; el.scrollTop = 0; wireCaseTabs();
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
@@ -695,7 +730,8 @@ function openCase(focus = null, view = null) {
 }
 $("trophy-btn").onclick = () => openCase(null, "trophies");
 const caseTabs = () => `<div class="tc-views" role="tablist"><button class="c small${caseView === "trophies" ? " on" : ""}" type="button" role="tab" aria-selected="${caseView === "trophies"}" data-cv="trophies">🏆 Trophies</button><button class="c small${caseView === "music" ? " on" : ""}" type="button" role="tab" aria-selected="${caseView === "music"}" data-cv="music">🎵 Record player</button></div>`;
-function wireCaseTabs() { $("tcase").querySelectorAll("[data-cv]").forEach((b) => (b.onclick = () => { chime(1); openCase(null, b.dataset.cv); })); }
+function wireCaseTabs() { $("tcase").querySelectorAll("[data-cv]").forEach((b) => (b.onclick = () => { chime(1); openCase(null, b.dataset.cv); }));
+  $("tcase").querySelectorAll("[data-credits]").forEach((b) => (b.onclick = () => rollCredits(false))); }
 
 // ---- music (music.js data, player.js audio + record player): always-there 🎵 button, the record player in the Trophy Case ----
 const player = createPlayer({ getProg: () => state.prog, save: saveProgress, onChange: () => musicUi() });
@@ -736,3 +772,38 @@ function musicNews(silent = false) {
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tcase").hidden && $("tcollect").hidden) $("tcase-x").click(); });
 if (PREVIEW) window.__trophyTest = (id = "seance", level = 1, perfect = false) => trophy(id, level, { won: true, perfect });
+if (PREVIEW) window.__masterAll = () => { const p = state.prog; p.trophies = p.trophies || {}; for (const t of GAMES) { const r = (p.trophies[t.id] ||= { tier: 0, wins: {}, perfect: {} }); r.wins = { 1: t.need, 2: t.need, 3: t.need }; r.tier = Math.max(r.tier, 2); } const last = GAMES[GAMES.length - 1]; p.trophies[last.id].wins[3] = last.need - 1; trophy(last.id, 3, { won: true }); };
+
+// ---- the end credits (credits.js): a starfield scroll timed to the credits song ----
+let creditsDue = false;
+function rollCredits(auto) {
+  creditsDue = false; if (document.getElementById("credits")) return;
+  const tc = $("tcase"); tc.hidden = true; tc.innerHTML = ""; $("music-pop").hidden = true;
+  const p = state.prog, c = (p.credits ||= { rolls: 0 }); c.rolls = (c.rolls || 0) + 1; saveProgress();
+  const rows = creditSections().map((s) => `<section class="cr-sec"><h3>${esc(s.h)}</h3>${s.rows.map(([r, n]) => `<div class="cr-row${r ? "" : " solo"}">${r ? `<span>${esc(r)}</span>` : ""}<b>${esc(n)}</b></div>`).join("")}</section>`).join("");
+  const stars = Array.from({ length: 70 }, (_, i) => `<i style="left:${(i * 53) % 100}%;top:${(i * 37) % 100}%;--d:${((i % 9) * 0.4).toFixed(1)}s;--s:${1 + (i % 3)}px"></i>`).join("");
+  const el = document.createElement("div"); el.id = "credits"; el.className = "credits"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "End credits");
+  el.innerHTML = `<div class="cr-stars" aria-hidden="true">${stars}</div><button class="c small cr-x" type="button" id="cr-x" aria-label="Close the credits">✕ Close</button>
+    <div class="cr-roll" id="cr-roll">
+      <div class="cr-title"><small>${auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>The Oracle Chamber</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
+      ${rows}
+      <section class="cr-sec cr-thanks"><h3>Special thanks</h3><div class="cr-big">${esc(SPECIAL_THANKS.name)}</div><p>${esc(SPECIAL_THANKS.line)}</p></section>
+      <section class="cr-end"><div class="cr-sig">⚛</div><h2>The End</h2><p>${esc(END_LINE)}</p>
+        ${hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
+        <button class="c main" type="button" id="cr-done">✦ Back to the Chamber</button></section>
+    </div>`;
+  document.body.append(el);
+  const roll = $("cr-roll"), song = new Audio(`music/${CREDITS_SONG}.mp3`), m = musicOf(p), t0 = performance.now();
+  el.song = song; song.volume = Math.max(0.2, m.vol || 0.45); player.hold(true); song.play().catch(() => {});
+  let raf = 0, over = false;
+  const frame = () => { const d = isFinite(song.duration) && song.duration > 0 ? song.duration : 151.6, t = song.currentTime > 0 ? song.currentTime : (performance.now() - t0) / 1000;
+    const k = Math.min(1, t / (d - 4)), vh = el.clientHeight, H = roll.scrollHeight, y = vh * 0.72 - k * (vh * 0.72 + H - vh * 0.92);
+    roll.style.transform = `translateY(${y.toFixed(1)}px)`; if (k >= 1 && !over) { over = true; el.classList.add("over"); } raf = requestAnimationFrame(frame); };
+  if (reduced) { roll.style.position = "relative"; el.classList.add("still"); } else raf = requestAnimationFrame(frame);
+  const close = () => { cancelAnimationFrame(raf); song.pause(); el.classList.add("out"); setTimeout(() => el.remove(), reduced ? 0 : 400); player.hold(false); document.removeEventListener("keydown", esc_);
+    if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
+  const esc_ = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", esc_); $("cr-x").onclick = close; $("cr-done").onclick = close; $("cr-x").focus();
+  song.addEventListener("ended", () => { el.classList.add("over"); });
+  if (auto) { applyLook(); musicNews(true); }
+}
