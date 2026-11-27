@@ -56,7 +56,23 @@ const shadow = (x, y, rx, ry = rx * 0.35) => `<ellipse cx="${x}" cy="${y}" rx="$
 const d = (i, step = 0.16, base = 0) => `style="--d:${f1(base + i * step)}s"`;
 
 // ---- each system's tools, cast with the k-* animations ----
+const TAROT_POS = {
+  one: [[200, 222]],
+  three: [[146, 222], [200, 222], [254, 222]],
+  five: [[120, 222], [160, 222], [200, 222], [240, 222], [280, 222]],
+  celtic: [[150, 220], [172, 220], [161, 258], [126, 220], [161, 182], [196, 220], [262, 270], [262, 238], [262, 206], [262, 174]],
+};
 const SCENES = {
+  tarot(o = {}) {
+    const pos = TAROT_POS[o.spread] || TAROT_POS.three, small = pos.length > 5, w = small ? 17 : 24, h = small ? 28 : 40, DX = 200, DY = 160;
+    const back = (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#2a0f4a" stroke="${G.gold}" stroke-width="1.1"/><rect x="${-cw / 2 + 2.5}" y="${-ch / 2 + 2.5}" width="${cw - 5}" height="${ch - 5}" rx="1.5" fill="none" stroke="${G.gold}" stroke-width=".5" opacity=".7"/><circle r="${cw * 0.18}" fill="none" stroke="${G.light}" stroke-width=".8"/><circle r="${cw * 0.06}" fill="${G.pink}"/>`;
+    const front = (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#f6ead0" stroke="${G.gold}" stroke-width="1.1"/><circle r="${cw * 0.26}" fill="url(#tb-sun)"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="#7a4f12" stroke-width="1"/>`;
+    const deck = (cls, dx) => `<g class="${cls}">${[0, 1, 2, 3].map((k) => `<g transform="translate(${dx + k * 0.6} ${-k * 1.2})">${back(30, 48)}</g>`).join("")}</g>`;
+    const riff = [0, 1, 2, 3, 4, 5].map((k) => `<g class="k-only k-riff" style="animation-delay:${f1(0.35 + k * 0.08)}s" transform="translate(${k % 2 ? 4 : -4} ${-8 - k})">${back(30, 48)}</g>`).join("");
+    const cards = pos.map(([x, y], i) => { const dd = 1.1 + i * (small ? 0.13 : 0.2);
+      return `<g transform="translate(${x} ${y})" class="k-only"><g class="k-deal" style="--d:${f1(dd)}s;--sx:${DX - x}px;--sy:${DY - y}px">${shadow(0, h / 2 - 1, w * 0.55, 3)}<g class="k-turn" style="--d:${f1(dd + 0.45)}s">${back(w, h)}<g class="k-face" style="--d:${f1(dd + 0.65)}s">${front(w, h)}</g></g></g></g>`; }).join("");
+    return `<g transform="translate(${DX} ${DY})">${shadow(0, 26, 26, 6)}${deck("k-riffl", -2)}${deck("k-riffr", 2)}${riff}</g>${cards}`;
+  },
   iching() {
     const pos = [[140, 172], [200, 166], [260, 172], [140, 226], [200, 232], [260, 226]];
     return pos.map(([x, y], i) => `<g transform="translate(${x} ${y})">${shadow(0, 14, 15)}<g class="k-drop" ${d(i)}><g class="k-flip" ${d(i)}>
@@ -146,7 +162,7 @@ const sparkle = () => Array.from({ length: 10 }, (_, i) => { const a = (i / 10) 
 /** Idle: a single faceted crystal on the sigil. */
 const idle = () => `<g class="k-float"><path d="M200 150 L222 184 L200 238 L178 184Z" fill="${G.teal}" opacity=".55" stroke="${G.light}" stroke-width="1.2"/><path d="M200 150 L210 184 L200 238 L190 184Z" fill="#fff" opacity=".25"/></g>${shadow(200, 246, 30, 6)}`;
 
-const scene = (key) => (SCENES[key] || sparkle)();
+const scene = (key, o) => (SCENES[key] || sparkle)(o);
 
 export function makeTable(el, { reduced = false } = {}) {
   let last = ["", ""];
@@ -157,7 +173,7 @@ export function makeTable(el, { reduced = false } = {}) {
     /** Tools at rest for the chosen system. */
     rest(key) { set(scene(key), "rest"); },
     /** Cast: the tools fly, spin, crack or turn. Returns after the animation's main beats. */
-    cast(key) { set(scene(key), "casting"); return new Promise((r) => setTimeout(r, reduced ? 0 : 2600)); },
+    cast(key, o) { set(scene(key, o), "casting"); return new Promise((r) => setTimeout(r, reduced ? 0 : 2600)); },
     /** Lay the real reading art on the table. */
     reveal(svgs) {
       const art = svgs[0];
