@@ -124,7 +124,7 @@ test("win conditions and whole games finish, harder levels are harder", () => {
     }
     rate[lvl] = wins / 120; assert.ok(playable / turns > 0.5, `level ${lvl} hands are playable (${(playable / turns).toFixed(2)})`);
   }
-  assert.ok(rate[1] > rate[2] && rate[1] > rate[3], JSON.stringify(rate)); assert.ok(rate[3] < 0.75, "Master is a real fight");
+  assert.ok(rate[1] > rate[2] && rate[1] > rate[3], JSON.stringify(rate)); assert.ok(rate[2] > rate[3], "Master is harder than Chemist " + JSON.stringify(rate)); assert.ok(rate[3] < 0.55, "Master is a real fight");
 });
 
 test("randomness: seeds repeat, different seeds deal different hands and conditions", () => {
