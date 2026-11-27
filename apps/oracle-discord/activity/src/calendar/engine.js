@@ -23,6 +23,19 @@ export function dateOf(j) {
   const d = Math.floor((4 * c + 3) / 1461), e = c - Math.floor(1461 * d / 4), m = Math.floor((5 * e + 2) / 153);
   return { day: e - Math.floor((153 * m + 2) / 5) + 1, month: m + 3 - 12 * Math.floor(m / 10), year: 100 * b + d - 4800 + Math.floor(m / 10) };
 }
+/** Julian-calendar date to JDN (astronomical years). Historians date events before 1582 in the Julian calendar. */
+export function julianJdn({ year, month, day }) {
+  const a = Math.floor((14 - month) / 12), y = year + 4800 - a, m = month + 12 * a - 3;
+  return day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - 32083;
+}
+/** JDN to a Julian-calendar date. */
+export function julianOf(j) {
+  const c = j + 32082, d = Math.floor((4 * c + 3) / 1461), e = c - Math.floor((1461 * d) / 4), m = Math.floor((5 * e + 2) / 153);
+  return { day: e - Math.floor((153 * m + 2) / 5) + 1, month: m + 3 - 12 * Math.floor(m / 10), year: d - 4800 + Math.floor(m / 10) };
+}
+/** "28 May 585 BCE" in the Julian calendar. */
+export const GREGORIAN_START = 2299161; // 15 Oct 1582
+export const fmtJ = (j, long = false) => { const g = julianOf(j); return `${g.day} ${(long ? MONTHS : MON)[g.month - 1]} ${g.year > 0 ? g.year : `${1 - g.year} BCE`}`; };
 /** JDN from a JS Date (UTC calendar day). */
 export const jdnOfDate = (dt) => jdnOf({ year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() });
 export const utcOf = (j) => { const g = dateOf(j); return new Date(Date.UTC(g.year, g.month - 1, g.day, 12)); };
