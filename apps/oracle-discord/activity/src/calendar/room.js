@@ -96,10 +96,10 @@ function lobby(first) {
 function birthday(v) {
   const prof = C.state.profile && C.state.profile.date, j = v ?? (prof ? E.parseYmd(prof) : null), today = E.todayJdn();
   C.clearReading(); C.cap("🎂 Your birthday in every calendar");
-  const form = (val) => `<div class="form one"><label for="cal-b">Birth date (year-month-day)<input id="cal-b" value="${C.esc(val)}" maxlength="11" autocomplete="off" inputmode="numeric" placeholder="1990-04-09"></label></div>
+  const form = (val) => `<div class="form one"><label for="cal-b">Birth date (DD/MM/YYYY)<input id="cal-b" value="${C.esc(val)}" maxlength="11" autocomplete="off" inputmode="numeric" placeholder="09/04/1990"></label></div>
     <div class="choices"><button class="c main" type="button" id="cal-bgo">✦ Turn the wheels to my birthday</button><button class="c small" type="button" id="cal-lobby">📜 Back to the levels</button></div>
     <div class="note">${prof ? "Filled in from your saved /profile. " : ""}Your birth date stays on this screen; only the calendar names go in your Codex.</div>`;
-  const wire = () => { const go = () => { const b = E.parseYmd($("cal-b").value); if (b == null || b > today) { C.say("That date won't turn the wheels. Try year-month-day, like 1990-04-09."); return; } birthday(b); };
+  const wire = () => { const go = () => { const b = E.parseYmd($("cal-b").value); if (b == null || b > today) { C.say("That date won't turn the wheels. Try DD/MM/YYYY, like 09/04/1990."); return; } birthday(b); };
     $("cal-bgo").onclick = go; onEnter("cal-b", go); $("cal-lobby").onclick = () => lobby(false); };
   if (j == null) { desk(today); C.say("Tell me the day you were born and I'll find it in all three calendars."); C.ui(form("")); wire(); return; }
   const B = birthdayOf(j, today), g = E.dateOf(j), ymd = `${g.year}-${String(g.month).padStart(2, "0")}-${String(g.day).padStart(2, "0")}`, k = B.celtic;
@@ -171,12 +171,12 @@ function deskReport(j) {
 function freeDesk(j) {
   C.cap("🗓️ Keeper's desk"); desk(j); $("reading-body").innerHTML = deskReport(j);
   C.say(pick(["Turn the wheels. Watch the 13 and the 20 slide past each other.", "Step a day at a time, or leap to the next festival or eclipse.", "Any date you like. The calendars don't mind."]));
-  const g = E.dateOf(j), ymd = `${g.year}-${String(g.month).padStart(2, "0")}-${String(g.day).padStart(2, "0")}`;
-  C.ui(`<div class="form one"><label for="cal-d">Date (year-month-day)<input id="cal-d" value="${ymd}" maxlength="11" autocomplete="off" inputmode="numeric"></label></div>
+  const g = E.dateOf(j), ymd = `${String(g.day).padStart(2, "0")}/${String(g.month).padStart(2, "0")}/${g.year}`; // shown DD/MM/YYYY
+  C.ui(`<div class="form one"><label for="cal-d">Date (DD/MM/YYYY)<input id="cal-d" value="${ymd}" maxlength="11" autocomplete="off" inputmode="numeric"></label></div>
     <div class="choices cal-steps">${[[-1, "◀ 1 day"], [1, "1 day ▶"], [13, "+13"], [20, "+20"], [260, "+260"], [365, "+365"]].map(([n, t]) => `<button class="c small" type="button" data-n="${n}">${t}</button>`).join("")}</div>
     <div class="choices"><button class="c main" type="button" id="cal-go">✦ Turn the wheels</button><button class="c" type="button" id="cal-today">Today</button><button class="c" type="button" id="cal-fest">🔥 Next festival</button><button class="c" type="button" id="cal-ecl">🌘 Next eclipse</button></div>
     <div class="choices"><button class="c small" type="button" id="cal-lobby">📜 Back to the levels</button></div>`);
-  const go = () => { const v = E.parseYmd($("cal-d").value); if (v == null) { C.say("That date doesn't turn the wheels. Try year-month-day, like 2012-12-21."); return; } freeDesk(v); };
+  const go = () => { const v = E.parseYmd($("cal-d").value); if (v == null) { C.say("That date doesn't turn the wheels. Try DD/MM/YYYY, like 21/12/2012."); return; } freeDesk(v); };
   $("cal-go").onclick = go; onEnter("cal-d", go);
   $("ui").querySelectorAll("[data-n]").forEach((b) => (b.onclick = () => freeDesk(j + +b.dataset.n)));
   $("cal-today").onclick = () => freeDesk(E.todayJdn());

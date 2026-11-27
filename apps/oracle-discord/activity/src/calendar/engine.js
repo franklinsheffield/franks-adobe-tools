@@ -43,7 +43,8 @@ export const utcOf = (j) => { const g = dateOf(j); return new Date(Date.UTC(g.ye
 export const todayJdn = (now = new Date()) => jdnOf({ year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() });
 /** "21 Dec 2012" (or with weekday). */
 export const fmt = (j, long = false) => { const g = dateOf(j); return `${g.day} ${(long ? MONTHS : MON)[g.month - 1]} ${g.year > 0 ? g.year : `${1 - g.year} BCE`}`; };
-export const parseYmd = (s) => { const m = /^(-?\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || "").trim()); if (!m) return null;
+export const parseYmd = (s) => { const t = String(s || "").trim(), d = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{1,4})$/.exec(t); // DD/MM/YYYY as typed, or year-first
+  const m = d ? [t, d[3], d[2], d[1]] : /^(-?\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(t); if (!m) return null;
   const g = { year: +m[1], month: +m[2], day: +m[3] }; if (g.month < 1 || g.month > 12 || g.day < 1 || g.day > 31) return null;
   const j = jdnOf(g), back = dateOf(j); return back.month === g.month && back.day === g.day ? j : null; };
 

@@ -3,6 +3,7 @@
 // Plugs into main.js ROOMS: room.open(ctx) with ctx = { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, ... }.
 import { SCRIPTS, LEVELS, SCRIPT_ORDER, LONG_COUNT, levelsOf, byId } from "./levels.js";
 import { glyphsOf, target, taught, tiles, check, hint, starsFor, deal, playCard, drawCard, needed, INK_DRAW, INK_MISS, HAND_MAX, POWERS, POWER_ORDER, POWERS_PER_LEVEL, satchel, canPower, usePower, takePeek, writeIn, mayaOf, complete, unlocked, scriptStars, dec, signOf } from "./engine.js";
+import { dmy } from "../../../src/birthplace.js";
 import { FONTS } from "./fonts.gen.js";
 import { CSS } from "./style.js";
 import { GUIDES } from "./guide.js";
@@ -272,15 +273,15 @@ function writeLevel(l) {
   $("dec-back").onclick = () => scriptMenu(l.script);
 }
 function dateLevel(l) {
-  const p0 = (C.state.profile && C.state.profile.date) || "";
+  const p0 = dmy((C.state.profile && C.state.profile.date) || "");
   const draw = (iso) => { const m = mayaOf(iso);
     show(m ? `<div class="dec-strip maya lc">${m.longCount.map((n, i) => `<div class="dec-cell"><em>${esc(LONG_COUNT[i][0])}</em>${mayaSvg(n, 44)}<b>${n}</b></div>`).join("")}</div>
-      <div class="dec-round">${m.tone} ${esc(m.signName)} · ${esc(m.haabName)}</div><div class="dec-progress">${m.days.toLocaleString("en-US")} days since the creation date</div>` : `<div class="dec-learn"><p class="dec-note">Enter a date as year-month-day.</p></div>`); return m; };
+      <div class="dec-round">${m.tone} ${esc(m.signName)} · ${esc(m.haabName)}</div><div class="dec-progress">${m.days.toLocaleString("en-US")} days since the creation date</div>` : `<div class="dec-learn"><p class="dec-note">Enter a date as DD/MM/YYYY.</p></div>`); return m; };
   C.say(l.lesson);
-  C.ui(`<div class="form one" id="dec-df"><label for="dec-date">Birth date<input id="dec-date" placeholder="1990-04-09" value="${esc(p0)}" autocomplete="off"></label></div>
+  C.ui(`<div class="form one" id="dec-df"><label for="dec-date">Birth date (DD/MM/YYYY)<input id="dec-date" placeholder="DD/MM/YYYY" value="${esc(p0)}" autocomplete="off"></label></div>
     <div class="choices"><button class="c main" type="button" id="dec-df-go">✦ Count the days</button><button class="c" type="button" id="dec-back">↩ Levels</button></div>`);
   const inp = $("dec-date"); inp.oninput = () => draw(inp.value); draw(inp.value);
-  onGo("dec-df-go", "dec-date", () => { const m = draw(inp.value); if (!m) { C.say("That date doesn't fit the count. Try year-month-day, like 1990-04-09."); return; }
+  onGo("dec-df-go", "dec-date", () => { const m = draw(inp.value); if (!m) { C.say("That date doesn't fit the count. Try DD/MM/YYYY, like 09/04/1990."); return; }
     play("solve"); reward(l, 3, `${m.longCount.join(".")}: ${m.days.toLocaleString("en-US")} days since 4 Ajaw 8 Kumk'u. Your day sign is ${m.tone} ${m.signName}.`); });
   $("dec-back").onclick = () => scriptMenu(l.script);
 }

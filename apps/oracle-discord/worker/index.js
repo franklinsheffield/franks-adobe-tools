@@ -3,6 +3,7 @@
 import { MODULES, isPrivate, flatten } from "../src/registry.js";
 import { seal } from "../src/seal.js";
 import { fieldsFor, loadProfile, saveProfile, deleteProfile, checkBirth, fillFromProfile, needsForm, birthModal, fromModal } from "../src/profiles.js";
+import { dmy } from "../src/birthplace.js";
 import { menuMessage, askModal, systemByKey } from "../src/oracle/chat.js";
 import { optionsFor } from "../src/oracle/systems.js";
 import { PORTRAIT_PNG_B64 } from "../src/oracle/portrait.js";
@@ -42,12 +43,12 @@ async function profileReply(env, userId, o, say) {
   if (o.subcommand === "delete") { await deleteProfile(env, userId); return say("🗑️ Your saved birth details are deleted."); }
   if (o.subcommand === "show") {
     const p = await loadProfile(env, userId);
-    return say(p ? `🪪 Saved: **${p.date}**, ${p.time && p.time !== "unknown" ? `**${p.time}**` : "time unknown"}, ${p.place ? `**${p.place}**` : "no place"}, ${p.name ? `name **${p.name}**` : "no birth name (add one for /numerology)"}. Change it with \`/profile set\`, remove it with \`/profile delete\`.` : "Nothing saved. Use `/profile set` to save your birth details.");
+    return say(p ? `🪪 Saved: **${dmy(p.date)}**, ${p.time && p.time !== "unknown" ? `**${p.time}**` : "time unknown"}, ${p.place ? `**${p.place}**` : "no place"}, ${p.name ? `name **${p.name}**` : "no birth name (add one for /numerology)"}. Change it with \`/profile set\`, remove it with \`/profile delete\`.` : "Nothing saved. Use `/profile set` to save your birth details.");
   }
   const old = (await loadProfile(env, userId)) || {};
   const p = { date: o.date || old.date, place: o.place || old.place, name: o.name || old.name };
   p.time = o.time || (o.date && o.date !== old.date ? "unknown" : old.time || "unknown");
-  if (!p.date) return say("🔮 Add your birth date the first time: `/profile set date:1990-04-09`.");
+  if (!p.date) return say("🔮 Add your birth date the first time: `/profile set date:09/04/1990`.");
   const bad = checkBirth(p, ["date", ...(o.place ? ["place"] : []), ...(o.name ? ["name"] : [])]);
   if (bad) return say("🔮 " + bad);
   await saveProfile(env, userId, p, { merge: false });

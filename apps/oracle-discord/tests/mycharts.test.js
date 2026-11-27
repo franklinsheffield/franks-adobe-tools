@@ -28,3 +28,13 @@ test("My charts: the storage list names every place data is kept", () => {
   const all = rows.map((r) => r.join(" ")).join(" ");
   for (const w of ["profile:<your id>", "progress:<your id>", "prog.houses", "oracle-log:<your id>", "Not stored anywhere"]) assert.ok(all.includes(w), w);
 });
+import { toIso, dmy, parseBirth } from "../src/birthplace.js";
+import { parseYmd } from "../activity/src/calendar/engine.js";
+import { mayaOf } from "../activity/src/decoder/engine.js";
+test("dates are typed DD/MM/YYYY (saved year-first ones still read)", () => {
+  assert.equal(toIso("09/04/1990"), "1990-04-09"); assert.equal(toIso("9.4.1990"), "1990-04-09"); assert.equal(toIso("09-04-1990"), "1990-04-09");
+  assert.equal(toIso("1990-04-09"), "1990-04-09"); assert.equal(toIso("04/1990"), null); assert.equal(dmy("1990-04-09"), "09/04/1990");
+  assert.deepEqual(parseBirth("09/04/1990", "14:30"), { year: 1990, month: 4, day: 9, hour: 14, minute: 30 });
+  assert.throws(() => parseBirth("1990/13/40", "12:00")); assert.throws(() => parseBirth("31/13/1990", "12:00"), /valid/);
+  assert.equal(parseYmd("21/12/2012"), parseYmd("2012-12-21")); assert.equal(mayaOf("21/12/2012").longCount.join("."), "13.0.0.0.0");
+});

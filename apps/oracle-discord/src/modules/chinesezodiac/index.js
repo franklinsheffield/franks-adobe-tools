@@ -10,7 +10,7 @@ export const command = {
   name: "chinesezodiac",
   description: "Your Chinese zodiac animal, element and four pillars from the real lunar calendar",
   options: [
-    { type: 3, name: "date", description: "Birth date as year-month-day (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
     { type: 3, name: "time", description: "Birth time, local clock (for the hour pillar). Leave out if unknown", max_length: 8 },
     { type: 3, name: "place", description: "Birth town/city and country (for the time zone)", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
