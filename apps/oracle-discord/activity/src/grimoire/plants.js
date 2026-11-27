@@ -518,7 +518,7 @@ export const POISON = [
       "It flavours the green spirit nicknamed 'the green fairy', banned in the United States in 1912 and France in 1915.",
       "It contains thujone, which was blamed for driving drinkers mad.",
     ],
-    folklore: "It is the bitter herb of the Bible and of Hamlet ('Wormwood, wormwood'). It was used against intestinal worms, which gave it its name, and as a protective charm. In the 1800s it became the soul of absinthe, the drink of Paris artists.",
+    folklore: "It is the bitter herb of the Bible and of Hamlet ('Wormwood, wormwood'). It was used against intestinal worms and as a protective charm. Its English name comes from Old English wermōd (the source of 'vermouth' too); the 'worm' spelling is a later folk link to that use. In the 1800s it became the soul of absinthe, the drink of Paris artists.",
     science: "Tests of sealed pre-ban absinthe found too little thujone to explain the madness blamed on it: the harm was most likely the very high alcohol. Its relative sweet wormwood gave the malaria drug artemisinin, found by Tu Youyou after reading a 4th-century Chinese recipe. She won the 2015 Nobel Prize.",
     safety: "Thujone in large doses causes seizures, so the plant and its oil shouldn't be taken as medicine. Avoid in pregnancy and with epilepsy. Absinthe sold today must stay under legal thujone limits.",
     claim: { t: "Thujone in absinthe made 19th-century drinkers hallucinate.", fact: false, why: "Analyses of old bottles found low thujone. The effects blamed on absinthe were most likely from its very strong alcohol." } },
