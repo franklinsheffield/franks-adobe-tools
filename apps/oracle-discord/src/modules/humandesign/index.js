@@ -14,7 +14,7 @@ export const command = {
   name: "humandesign",
   description: "Your Human Design bodygraph from real planetary data, with a Science is Magic reading",
   options: [
-    { type: 3, name: "date", description: "Birth date as year-month-day (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
     { type: 3, name: "time", description: "Birth time, local clock, e.g. 14:30 or 2:30 pm (leave out if unknown)", max_length: 8 },
     { type: 3, name: "place", description: "Birth town/city and country, e.g. Phoenix, USA", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },

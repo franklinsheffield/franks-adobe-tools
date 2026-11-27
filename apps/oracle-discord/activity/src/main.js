@@ -66,6 +66,7 @@ import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./m
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
+import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
@@ -391,7 +392,7 @@ function choose(sys) {
   } else {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
     const field = (id, label, ph, val, req) => `<label for="${id}">${label}<input id="${id}" ${req ? "required" : ""} placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
-    const rows = [field("d", "Birth date", "1990-04-09", p.date, true)];
+    const rows = [field("d", "Birth date (DD/MM/YYYY)", "09/04/1990", dmy(p.date || ""), true)];
     if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
@@ -813,7 +814,7 @@ function drawBook() {
 const profKey = (pr) => JSON.stringify(pr || null);
 function chartsPages(p) {
   const pr = state.profile, rows = storedRows(p, { hasProfile: !!pr, signedIn: !!state.token });
-  const saved = pr ? `<dl class="mc-dl"><dt>Birth date</dt><dd>${esc(pr.date || "")}</dd><dt>Birth time</dt><dd>${esc(pr.time && pr.time !== "unknown" ? pr.time : "unknown")}</dd><dt>Birth place</dt><dd>${esc(pr.place || "not saved")}</dd><dt>Birth name</dt><dd>${esc(pr.name || "not saved")}</dd>${pr.saved ? `<dt>Saved</dt><dd>${new Date(pr.saved).toLocaleDateString()}</dd>` : ""}</dl>` : `<p class="bk-empty">No birth details saved.</p>`;
+  const saved = pr ? `<dl class="mc-dl"><dt>Birth date</dt><dd>${esc(dmy(pr.date || ""))}</dd><dt>Birth time</dt><dd>${esc(pr.time && pr.time !== "unknown" ? pr.time : "unknown")}</dd><dt>Birth place</dt><dd>${esc(pr.place || "not saved")}</dd><dt>Birth name</dt><dd>${esc(pr.name || "not saved")}</dd>${pr.saved ? `<dt>Saved</dt><dd>${new Date(pr.saved).toLocaleDateString()}</dd>` : ""}</dl>` : `<p class="bk-empty">No birth details saved.</p>`;
   const left = pageHead("🔭 My charts", "Your personal data: what is kept, where, and how to remove it") + saved
     + `<div class="mc-store">${rows.map(([k, what, from, where, del]) => `<div class="mc-row"><b>${k}</b><span>${esc(what)}</span><small>From: ${esc(from)} · Kept: ${esc(where)} · Remove: ${esc(del)}</small></div>`).join("")}</div>
     <div class="choices"><button class="c small" type="button" id="mc-del" ${pr ? "" : "disabled"}>🗑️ Delete my saved birth details</button><button class="c small" type="button" id="mc-clear">🧹 Clear this device's Journal</button></div>

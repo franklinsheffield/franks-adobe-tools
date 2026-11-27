@@ -10,7 +10,7 @@ export const command = {
   name: "egyptian",
   description: "Your Egyptian zodiac deity (a modern reconstruction) and your birthday in the Egyptian calendar",
   options: [
-    { type: 3, name: "date", description: "Birth date as year-month-day (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
 };
