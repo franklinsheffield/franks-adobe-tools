@@ -5,6 +5,8 @@
 import { FIELDS } from "./ghosts.js";
 import { shop, candleLook } from "./shop.js";
 import { ghostShop, ghostBody } from "./ghostlooks.js";
+import { maskShop } from "./masks.js";
+import { openImpostor } from "./impostor-room.js";
 import * as sfx from "./sfx.js";
 import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST, guessMethod, hintsFor, buyHint, HINT_COST, related, dailyPick, shareLine } from "./logic.js";
 import { canJoin, joinTable } from "../net.js";
@@ -76,7 +78,7 @@ ghostShop.draw = (id, prog) => sceneSvg(null, null, false, prog?.[shop.kind], "s
 ghostShop.cry = (id) => setTimeout(() => sfx.ghostCry(id), 700);
 
 export const seance = {
-  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️", shop, shops: [ghostShop],
+  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️", shop, shops: [ghostShop, maskShop],
   blurb: "Guess what kind of science or magic the ghost practised",
   open(ctx) {
     const { $, esc, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
@@ -97,13 +99,14 @@ export const seance = {
       const known = ALL.filter(({ L, g }) => prog().solved[keyOf(L, g)]);
       const ds = dailyState(state.prog, "seance"), dp = dailyPick(dailySeed("seance"));
       const dailyBtn = `<button class="c level sc-daily" type="button" id="sc-daily"><b>🌙 Daily Ghost #${dayNumber()}</b><span>${ds.played ? `Done today: ${esc(ds.today.detail || "")} · tap for the board` : `Everyone gets the same ghost today · Level ${dp.L.n}`}${ds.streak ? ` · 🔥 ${ds.streak}-day streak` : ""}</span></button>`;
-      ui(`${stats()}<div class="levels">${dailyBtn}${LEVELS.map(lvl).join("")}<button class="c level sc-group" type="button" id="sc-group"><b>👥 Group séance</b><span>Everyone in the call, one ghost, shared candles · first to name it wins</span></button></div>
+      ui(`${stats()}<div class="levels">${dailyBtn}${LEVELS.map(lvl).join("")}<button class="c level sc-group" type="button" id="sc-impostor"><b>🎭 The Impostor</b><span>Party round: one sitter holds the wrong ghost. Lay hints, then vote</span></button><button class="c level sc-group" type="button" id="sc-group"><b>👥 Group séance</b><span>Everyone in the call, one ghost, shared candles · first to name it wins</span></button></div>
         <div class="note">5 candles. The first clue is free; each extra clue and each wrong name snuffs one. Stuck? "Show me 4" gives you choices but blows out 3 candles.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
         ${known.length ? `<div class="group">📖 Ghost journal: tap a ghost to read its page</div><div class="choices">${known.map(({ L, g }) => `<button class="c small" type="button" data-k="${L.n}:${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, g)]}</span></button>`).join("")}</div>` : ""}`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; summon(L, nextGhost(state.prog, L, prog().last)); }));
       $("back").onclick = greet;
       $("sc-group").onclick = group;
+      $("sc-impostor").onclick = () => { leaveGroup(); openImpostor(ctx, () => lobby(false)); };
       $("sc-daily").onclick = () => (dailyState(state.prog, "seance").played ? dailyBoard() : summon(dp.L, dp.g, true));
       $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const [n, id] = b.dataset.k.split(":"), L = LEVELS[+n - 1]; journal(L, ghostById(id, L)); }));
     }
