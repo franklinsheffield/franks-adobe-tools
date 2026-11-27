@@ -1148,25 +1148,25 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .bk-tabs{display:flex;gap:6px;flex:1;flex-wrap:wrap}
 .bk-tab{font:inherit;font-family:var(--display);letter-spacing:.04em;padding:8px 16px 10px;border:1px solid var(--foil);border-bottom:0;border-radius:10px 10px 0 0;background:linear-gradient(var(--cv1),var(--cv2));color:var(--foil);cursor:pointer;transform:translateY(4px);transition:transform .2s}
 .bk-tab.on,.bk-tab:hover{transform:translateY(0);box-shadow:0 -4px 12px rgba(0,0,0,.4)}
-.bk-book{position:relative;flex:1;min-height:0;perspective:2600px;transform:translateX(-25%) scale(.92);transition:transform 1.1s cubic-bezier(.6,.05,.3,1)}
-.book-ov.open .bk-book{transform:none}
-.bk-pages{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;border-radius:8px;padding:10px;background:linear-gradient(var(--cv1),var(--cv2));box-shadow:0 20px 50px rgba(0,0,0,.7),inset 0 0 0 2px var(--foil);transform-style:preserve-3d;clip-path:inset(-60px -60px -60px 50%);transition:clip-path 1.1s cubic-bezier(.6,.05,.3,1)}
-.book-ov.open .bk-pages{clip-path:inset(-60px -60px -60px 0)}
-.book-ov.ready .bk-pages{clip-path:none;transition:none}
+.bk-book{position:relative;flex:1;min-height:0;perspective:2600px}
+
+.bk-pages{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;border-radius:8px;padding:10px;background:linear-gradient(var(--cv1),var(--cv2));box-shadow:0 20px 50px rgba(0,0,0,.7),inset 0 0 0 2px var(--foil);transform-style:preserve-3d}
+
+
 .bk-page{position:relative;overflow-y:auto;padding:22px 24px;color:var(--ink);background:linear-gradient(90deg,var(--pg2),var(--pg1) 12%,var(--pg1) 88%,var(--pg2));font-family:var(--body,"Cormorant Garamond",Georgia,serif);font-size:16px;line-height:1.45}
-.bk-page>*{opacity:0;transition:opacity .45s .7s}.book-ov.open .bk-page>*{opacity:1}
+
 .bk-left{border-radius:6px 0 0 6px;box-shadow:inset -18px 0 24px -16px rgba(0,0,0,.45)}
 .bk-right{border-radius:0 6px 6px 0;box-shadow:inset 18px 0 24px -16px rgba(0,0,0,.45)}
 .bk-stage[data-page="grid"] .bk-page{background-image:linear-gradient(rgba(15,107,99,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(15,107,99,.12) 1px,transparent 1px);background-size:18px 18px;background-color:var(--pg1)}
 .bk-stage[data-page="chart"] .bk-page{background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.5) 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(255,255,255,.4) 0 1px,transparent 2px),linear-gradient(90deg,var(--pg2),var(--pg1) 12%,var(--pg1) 88%,var(--pg2));background-size:90px 90px,130px 130px,auto}
 
-.bk-cover{position:absolute;top:0;bottom:0;left:50%;width:50%;transform-origin:left center;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.6,.05,.3,1);z-index:3}
+.bk-cover{position:absolute;top:0;bottom:0;left:50%;width:50%;z-index:3;pointer-events:none}
 .bk-cv-front svg{filter:drop-shadow(0 14px 24px rgba(0,0,0,.6))}
 .bk-cover svg{width:100%;height:100%;display:block}
-.book-ov.open .bk-cover{transform:rotateY(-180deg);pointer-events:none;animation:bk-coverfade .35s ease .95s forwards}
-@keyframes bk-coverfade{to{opacity:0;visibility:hidden}}
-.bk-cv-front,.bk-cv-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.bk-cv-back{transform:rotateY(180deg);border-radius:8px 0 0 8px;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.08) 0 18%,transparent 19%) 0 0/34px 34px,radial-gradient(circle at 70% 70%,rgba(0,0,0,.18) 0 16%,transparent 17%) 0 0/28px 28px,linear-gradient(90deg,var(--cv2),var(--cv1));box-shadow:inset 0 0 0 10px var(--cv1),inset 0 0 0 11px var(--foil),inset -20px 0 30px -10px rgba(0,0,0,.6)}
+
+
+
+
 /* page turns: several leaves riffle over in a stagger (turnTo) */
 .bk-leaves{position:absolute;top:10px;bottom:10px;left:50%;width:calc(50% - 10px);pointer-events:none;z-index:2;transform-style:preserve-3d}
 .bk-lf{position:absolute;inset:0;transform-origin:left center;border-radius:0 6px 6px 0;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 14%),linear-gradient(90deg,var(--pg2),var(--pg1) 20%,var(--pg1) 92%,var(--pg2));
@@ -1208,7 +1208,7 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @keyframes bk-hue{to{filter:hue-rotate(360deg)}}
 .bk-tw{animation:bk-tw 2.4s ease-in-out var(--d) infinite}@keyframes bk-tw{50%{opacity:.2}}
 .bk-spin{transform-origin:0 0;animation:bk-sp 9s linear infinite}@keyframes bk-sp{to{transform:rotate(360deg)}}
-@media (max-width:700px){.bk-pages{grid-template-columns:1fr;grid-template-rows:auto 1fr;overflow-y:auto}.bk-left{max-height:38vh;border-radius:6px 6px 0 0}.bk-right{border-radius:0 0 6px 6px}.bk-leaves{left:10px;width:calc(100% - 20px);top:38%}.bk-book,.book-ov.open .bk-book{transform:none}.bk-pages,.book-ov.open .bk-pages{clip-path:none}.bk-cover{left:0;width:100%}.bk-page{padding:14px 14px}.bk-tabs{flex:1 1 100%;flex-wrap:nowrap;order:2}.bk-tab{padding:6px 8px 8px;font-size:12px;flex:1;white-space:nowrap}.bk-top{justify-content:flex-end}}
+@media (max-width:700px){.bk-pages{grid-template-columns:1fr;grid-template-rows:auto 1fr;overflow-y:auto}.bk-left{max-height:38vh;border-radius:6px 6px 0 0}.bk-right{border-radius:0 0 6px 6px}.bk-leaves{left:10px;width:calc(100% - 20px);top:38%}.bk-cover{left:0;width:100%}.bk-page{padding:14px 14px}.bk-tabs{flex:1 1 100%;flex-wrap:nowrap;order:2}.bk-tab{padding:6px 8px 8px;font-size:12px;flex:1;white-space:nowrap}.bk-top{justify-content:flex-end}}
 @media (prefers-reduced-motion: reduce){.bk-cover,.bk-page,.book-ov{transition:none}.bk-lf,.bk-holo,.bk-tw,.bk-spin,.bk-stage[data-fx="holo"] .bk-pages{animation:none}}
 
 /* ---- vibes restyle buttons and box borders (Frank): each vibe sets these tokens; .c, .pane, .box, the reading bar, the Trophy Case and Your Grimoire use them ---- */
@@ -1627,9 +1627,42 @@ body[data-mood="sleepy"] .scene{filter:brightness(.6)}
 @media (max-width:520px){.pf-top{flex-direction:column;text-align:center}.pf-grid{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.pull-modal,.gift-in,.pf-in,.gl,.gl-box,.pf-card::before,.ev-banner{animation:none!important}}
 @media (max-width:560px){.hm-quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hm-quick .c{padding:9px 8px}}
-/* the cover's two faces swap when it is edge-on (Chrome flattens backface-visibility inside the fading overlay) */
-.book-ov.open .bk-cv-front{animation:bk-front 1s linear forwards}
-.bk-cv-back{opacity:0}.book-ov.open .bk-cv-back{animation:bk-backf 1s linear forwards}
-@keyframes bk-front{0%,47%{opacity:1}48%,100%{opacity:0}}
-@keyframes bk-backf{0%,47%{opacity:0}48%,100%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.book-ov.open .bk-cv-front,.book-ov.open .bk-cv-back{animation:none}}
+
+
+
+
+
+
+/* ---- the Grimoire opening (2D, no backface tricks): the closed book rises in the middle, the cover folds back
+   on its spine while the book slides to centre the spread, the inside cover unfolds on the left, then the pages
+   fill in. Timeline: 0-.35s rise · .35-.75s cover folds · .75-1.15s inside cover unfolds · 1.1-1.45s writing ---- */
+.book-ov .bk-book{opacity:0}
+.book-ov.open .bk-book{animation:bk-rise 1.15s cubic-bezier(.45,.05,.3,1) both}
+@keyframes bk-rise{0%{opacity:0;transform:translateX(-25%) translateY(18px) scale(.94)}26%{opacity:1;transform:translateX(-25%)}36%{transform:translateX(-25%)}100%{opacity:1;transform:none}}
+.bk-cv-front{position:absolute;inset:0;transform-origin:left center}
+.bk-cv-front svg{filter:drop-shadow(0 14px 24px rgba(0,0,0,.6))}
+.book-ov.open .bk-cv-front{animation:bk-fold .4s cubic-bezier(.55,0,.9,.6) .35s forwards}
+@keyframes bk-fold{from{transform:none;filter:brightness(1)}to{transform:scaleX(0) skewY(-7deg);filter:brightness(.5)}}
+.book-ov.open .bk-cover{animation:bk-gone 0s 1s forwards}@keyframes bk-gone{to{visibility:hidden}}
+.bk-endpaper{position:absolute;top:10px;bottom:10px;left:10px;width:calc(50% - 10px);transform-origin:right center;transform:scaleX(0);border-radius:6px 0 0 6px;z-index:0;
+  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.1) 0 18%,transparent 19%) 0 0/34px 34px,radial-gradient(circle at 70% 70%,rgba(0,0,0,.2) 0 16%,transparent 17%) 0 0/28px 28px,linear-gradient(90deg,var(--cv2),var(--cv1));
+  box-shadow:inset 0 0 0 8px var(--cv1),inset 0 0 0 9px var(--foil),inset -20px 0 30px -10px rgba(0,0,0,.6)}
+.book-ov.open .bk-endpaper{animation:bk-unfold .4s cubic-bezier(.1,.4,.45,1) .75s forwards}
+@keyframes bk-unfold{from{transform:scaleX(0) skewY(7deg);filter:brightness(.5)}to{transform:none;filter:brightness(1)}}
+/* the left half of the boards is hidden until the inside cover unfolds over it */
+.bk-pages{-webkit-mask:linear-gradient(90deg,transparent 50%,#000 50%);mask:linear-gradient(90deg,transparent 50%,#000 50%);-webkit-mask-size:200% 100%;mask-size:200% 100%;-webkit-mask-position:50% 0;mask-position:50% 0}
+.book-ov.open .bk-pages{animation:bk-unmask .4s cubic-bezier(.1,.4,.45,1) .75s forwards}
+@keyframes bk-unmask{from{-webkit-mask-position:50% 0;mask-position:50% 0}to{-webkit-mask-position:100% 0;mask-position:100% 0}}
+.book-ov.ready .bk-pages{-webkit-mask:none;mask:none;animation:none}
+.bk-left{opacity:0;z-index:1}.book-ov.open .bk-left{animation:bk-fadein .3s ease 1.12s forwards}
+.bk-right>*{opacity:0}.book-ov.open .bk-right>*{animation:bk-fadein .35s ease .8s forwards}
+.book-ov.ready .bk-left,.book-ov.ready .bk-right>*{opacity:1;animation:none}
+@keyframes bk-fadein{to{opacity:1}}
+@media (max-width:700px){.book-ov.open .bk-book{animation:bk-rise-m .5s ease both}@keyframes bk-rise-m{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+  .bk-pages,.book-ov.open .bk-pages{-webkit-mask:none;mask:none;animation:none}.bk-endpaper{display:none}.bk-cover{left:0;width:100%}
+  .book-ov.open .bk-left{animation-delay:.7s}}
+@media (prefers-reduced-motion:reduce){.book-ov .bk-book,.book-ov.open .bk-book{opacity:1;animation:none}.bk-cover{display:none}.bk-pages,.book-ov.open .bk-pages{-webkit-mask:none;mask:none;animation:none}.bk-left,.bk-right>*,.book-ov.open .bk-left,.book-ov.open .bk-right>*{opacity:1;animation:none}.bk-endpaper{display:none}}
+
+/* during a reading's trance the palm eyes are wide open */
+body.trance .teller .o-peye{transform:scaleY(1.1);opacity:1}body.trance .teller .o-pline{opacity:0}
+body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}

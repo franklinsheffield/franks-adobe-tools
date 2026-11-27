@@ -102,15 +102,31 @@ export function hoursOf(log) {
 
 // ---- sound: a paper page turn (noise swept through a filter) and a heavy cover thump ----
 let AC = null;
-export function bookSfx(kind = "page") {
+/** Book sounds, made from shaped noise (no files): "page" a dry paper swish with crackle, "cover" the leather spine
+ *  creaking open, "thump" the board landing, "close" a creak then a thump. */
+export function bookSfx(kind = "page", { gain = 1 } = {}) {
   try {
-    AC ||= new (window.AudioContext || window.webkitAudioContext)(); const t = AC.currentTime, dur = kind === "cover" ? 0.5 : 0.32;
-    const buf = AC.createBuffer(1, Math.floor(AC.sampleRate * dur), AC.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, kind === "cover" ? 3 : 1.5);
-    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = buf;
-    f.type = "bandpass"; f.frequency.setValueAtTime(kind === "cover" ? 300 : 2400, t); f.frequency.exponentialRampToValueAtTime(kind === "cover" ? 120 : 900, t + dur); f.Q.value = 0.8;
-    g.gain.setValueAtTime(kind === "cover" ? 0.5 : 0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(f).connect(g).connect(AC.destination); src.start(t);
+    AC ||= new (window.AudioContext || window.webkitAudioContext)(); const t0 = AC.currentTime;
+    const noise = (dur, shape) => { const b = AC.createBuffer(1, Math.max(1, Math.floor(AC.sampleRate * dur)), AC.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = shape(i / d.length, Math.random() * 2 - 1); const s = AC.createBufferSource(); s.buffer = b; return s; };
+    const out = (node, at, peak, dur, attack = 0.012) => { const g = AC.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak * gain, at + attack); g.gain.exponentialRampToValueAtTime(0.0001, at + dur); node.connect(g).connect(AC.destination); };
+    const filt = (type, f, q = 0.7) => { const x = AC.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; return x; };
+    const page = (at, level = 0.32) => { // paper: a bright swish that rises and falls, with sparse crackles in it
+      const dur = 0.26, s = noise(dur, (p, n) => n * Math.sin(Math.PI * Math.min(1, p * 1.6)) * (Math.random() < 0.035 ? 3.2 : 0.55));
+      const hp = filt("highpass", 1400), bp = filt("bandpass", 4200, 0.6); bp.frequency.setValueAtTime(5200, at); bp.frequency.exponentialRampToValueAtTime(2200, at + dur);
+      s.connect(hp).connect(bp); out(bp, at, level, dur, 0.03); s.start(at); };
+    const creak = (at, dur = 0.42, level = 0.18) => { // leather spine: low, grainy friction that wavers in pitch
+      const s = noise(dur, (p, n) => n * (0.4 + 0.6 * Math.abs(Math.sin(p * 46 + Math.sin(p * 9) * 3))));
+      const bp = filt("bandpass", 420, 6); bp.frequency.setValueAtTime(520, at); bp.frequency.linearRampToValueAtTime(300, at + dur);
+      s.connect(bp); out(bp, at, level, dur, 0.06); s.start(at); };
+    const thump = (at, level = 0.55) => { // a heavy board meeting the table: a short low body plus a soft knock
+      const o = AC.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(140, at); o.frequency.exponentialRampToValueAtTime(52, at + 0.16); out(o, at, level, 0.2, 0.004); o.start(at); o.stop(at + 0.22);
+      const s = noise(0.09, (p, n) => n * (1 - p) * (1 - p)), lp = filt("lowpass", 700); s.connect(lp); out(lp, at, level * 0.5, 0.09, 0.002); s.start(at); };
+    if (kind === "page") page(t0);
+    else if (kind === "riffle") { for (let i = 0; i < 5; i++) page(t0 + i * 0.07 + Math.random() * 0.02, 0.2 - i * 0.02); }
+    else if (kind === "cover") { creak(t0 + 0.3, 0.5); thump(t0 + 1.12, 0.35); page(t0 + 1.1, 0.16); }
+    else if (kind === "close") { creak(t0, 0.25, 0.14); thump(t0 + 0.22, 0.5); }
+    else if (kind === "thump") thump(t0);
   } catch { /* no audio */ }
 }
 
