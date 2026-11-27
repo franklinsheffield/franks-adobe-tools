@@ -143,19 +143,25 @@ $("table").addEventListener("click", (e) => {
   setTimeout(() => { if (c.isConnected) { c.classList.remove("out"); c.classList.add("relit"); ignite(); setTimeout(() => c.classList.remove("relit"), 700); } }, 3200);
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
-function say(text, done) {
+/** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
+function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
+/** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
+function say(text, done, { keep = false } = {}) {
   clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
+  if (!keep) $("said").innerHTML = "";
+  /** Long text scrolls: keep the line being spoken in view. */
+  const follow = () => { const over = el.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 14; if (over > 0) box.scrollBy({ top: over, behavior: "instant" }); };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
   const pros = prosody(plain);
   say.finish = null;
-  if (reduced) { el.textContent = plain; stop(); done && done(); return; }
+  if (reduced) { el.textContent = plain; stop(); follow(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
-  say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); done && done(); };
+  say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); follow(); done && done(); };
   let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking"); refreshEnergy();
   const step = () => {
-    const ch = plain[i++]; el.textContent = plain.slice(0, i);
+    const ch = plain[i++]; el.textContent = plain.slice(0, i); follow();
     mood.flick(flickFor(ch));
     if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch, { ...pros[i - 1], wordEnd: !/[\p{L}\p{N}]/u.test(plain[i + 1] || " ") }); teller.classList.toggle("syl"); document.body.classList.toggle("syl"); } }
     if (i >= plain.length) { say.finish = null; blip("o", { final: true }); stop(); done && done(); return; }
@@ -166,7 +172,10 @@ function say(text, done) {
 const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
 const joke = (key) => personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
-const ui = (html) => { $("ui").innerHTML = html; };
+/** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
+const ui = (html) => { $("ctl").innerHTML = ""; $("ui").innerHTML = html; };
+/** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
+const ctl = (html) => { $("ctl").innerHTML = html; };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
 function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * 6.28; return `<i style="--x:${Math.cos(a) * 110}px;--y:${Math.sin(a) * 70}px"></i>`; }).join("");
   p.classList.remove("go"); void p.offsetWidth; p.classList.add("go"); }
@@ -333,8 +342,8 @@ function outOfReadings(sys) {
 /** The menu once the Oracle has answered: go deeper, ask another question, save, or start again. */
 function afterReading() {
   const L = state.last, more = L.di < L.deeper.length;
-  ui(`<div class="choices"><button class="c main" type="button" id="deeper" ${more ? "" : "disabled"}>🔮 ${more ? "Go deeper" : "That's the bottom of the well"}</button><button class="c" type="button" id="askq">❓ Ask another question</button><button class="c" type="button" id="save">📖 Save to journal</button><button class="c" type="button" id="back">✦ Another reading</button>${L.files.length ? `<button class="c" type="button" id="big">🔍 Enlarge the art</button>` : ""}</div>
-    <details class="written"><summary>📜 The full written reading</summary><div id="written"></div></details>`);
+  ui(`<details class="written"><summary>📜 The full written reading</summary><div id="written"></div></details>`);
+  ctl(`<div class="choices"><button class="c main" type="button" id="deeper" ${more ? "" : "disabled"}>🔮 ${more ? "Go deeper" : "That's the bottom of the well"}</button><button class="c" type="button" id="askq">❓ Ask another question</button><button class="c" type="button" id="save">📖 Save to journal</button><button class="c" type="button" id="back">✦ Another reading</button>${L.files.length ? `<button class="c" type="button" id="big">🔍 Enlarge the art</button>` : ""}</div>`);
   $("deeper").onclick = goDeeper;
   $("askq").onclick = askAgain;
   $("save").onclick = (e) => { saveJournal(L); e.target.textContent = "✓ Saved"; e.target.disabled = true; };
@@ -350,39 +359,41 @@ function goDeeper() {
   if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
   if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
   else pages.push(joke(L.sys.key));
-  talkThrough(pages, afterReading);
+  talkThrough(pages, afterReading, { keep: true });
 }
 
 /** Ask another question: cast systems cast again; birth systems answer from the same chart. */
 function askAgain() {
   const L = state.last;
-  ui(`<div class="form one" id="qf"><label for="q2">What else would you like to know?<input id="q2" maxlength="200" autocomplete="off" placeholder="Should I…, When will…, What do I need to…"></label></div>
+  ui(""); ctl(`<div class="form one" id="qf"><label for="q2">What else would you like to know?<input id="q2" maxlength="200" autocomplete="off" placeholder="Should I…, When will…, What do I need to…"></label></div>
     <div class="choices"><button class="c main" type="button" id="go">✦ Ask</button><button class="c" type="button" id="cancel">Never mind</button></div>`);
   setTimeout(() => $("q2").focus(), 50);
   $("cancel").onclick = afterReading;
   $("qf").onsubmit = (e) => { e.preventDefault(); const q = $("q2").value.trim(); if (!q) return;
     if (L.sys.kind === "cast") { reveal(L.sys, optionsFor(L.sys, { [L.sys.ask || "question"]: q }), q); return; }
-    clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); $("say").textContent = "…"; ui("");
+    clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); keepLine(); $("say").textContent = "…"; ui("");
     setTimeout(() => { document.body.classList.remove("trance");
-      talkThrough([deliver(pid(), answer(q, L.text, state.name, L.r.analysis).line, { name: state.name }), joke(L.sys.key)], afterReading); }, reduced ? 0 : 2000);
+      talkThrough([deliver(pid(), answer(q, L.text, state.name, L.r.analysis).line, { name: state.name }), joke(L.sys.key)], afterReading, { keep: true }); }, reduced ? 0 : 2000);
   };
   bindGo("qf");
 }
 
 let talkKey = null;
-function talkThrough(pages, done) {
+/** Speak pages one after another. Each page stays on screen above the next; keep also holds what was said before this run. */
+function talkThrough(pages, done, { keep = false } = {}) {
   let i = 0;
   const next = () => {
     if (i >= pages.length) { removeEventListener("keydown", talkKey); talkKey = null; done(); return; }
     const raw = pages[i++], page = raw.text ?? raw, last = i >= pages.length;
     if (raw.mood) mood.emote(raw.mood);
-    ui(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
+    if (i > 1 || keep) keepLine(); else $("said").innerHTML = "";
+    ui(""); ctl(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
     $("skip").onclick = () => say.finish && say.finish(); // Skip only skips the typing effect: the full text shows at once
     say(page, () => {
       if (raw.after) mood.emote(raw.after);
-      ui(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
+      ctl(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
       $("more").onclick = next;
-    });
+    }, { keep: true });
   };
   if (talkKey) removeEventListener("keydown", talkKey);
   talkKey = (e) => { if ((e.key === " " || e.key === "Enter") && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) {

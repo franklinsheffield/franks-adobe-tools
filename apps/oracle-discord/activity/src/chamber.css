@@ -26,7 +26,11 @@ html,body{height:100%;margin:0;background:var(--night);color:var(--fg);font:15px
 .table-pane{background:var(--bg-table,radial-gradient(80% 60% at 50% 20%,#2a1548 0%,#120a24 70%,#08040f 100%))}
 .box{grid-column:1 / -1;position:relative;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;
   background:rgba(14,10,32,.95);border:1px solid var(--gold);border-radius:14px;padding:12px 16px 18px;display:block}
-.box-head{position:sticky;top:-12px;margin:-12px -16px 8px;padding:10px 16px 6px;background:rgba(14,10,32,.98);display:flex;align-items:center;justify-content:space-between;z-index:2;border-bottom:1px solid rgba(58,47,110,.6)}
+/* The head and the reading controls stay fixed at the top of the box; the Oracle's words run on and scroll beneath them. */
+.box-top{position:sticky;top:-12px;margin:-12px -16px 8px;background:rgba(14,10,32,.98);z-index:2;border-bottom:1px solid rgba(58,47,110,.6)}
+.box-head{padding:10px 16px 6px;display:flex;align-items:center;justify-content:space-between}
+.ctl{padding:0 16px 6px;max-height:24vh;overflow-y:auto}.ctl:empty{display:none}.ctl .choices,.ctl .talkbar{margin:2px 0}
+.said p{margin:4px 0 8px;font-size:1.05rem;opacity:.72}.said:empty{display:none}
 .speaker{font-family:var(--display);color:var(--gold);font-size:.8rem;letter-spacing:.16em}
 .say{font-size:1.05rem;min-height:1.5em;margin:4px 0 10px}
 .say::after{content:"";display:inline-block;width:.5em;height:1em;margin-left:2px;vertical-align:-2px;background:var(--gold2);opacity:0}
@@ -213,7 +217,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 #zoom-art{width:100%;height:100%;min-height:0}
 #zoom-art svg{width:100%;height:100%}
 
-@media (max-width:560px){.stage{gap:6px;padding:6px}.form{grid-template-columns:1fr}.say{font-size:.98rem}.box{padding:10px 12px 14px}.box-head{margin:-10px -12px 8px;padding:8px 12px 6px}}
+@media (max-width:560px){.stage{gap:6px;padding:6px}.form{grid-template-columns:1fr}.say{font-size:.98rem}.box{padding:10px 12px 14px}.box-top{top:-10px;margin:-10px -12px 8px}.box-head{padding:8px 12px 6px}.ctl{padding:0 12px 6px}.said p{font-size:.98rem}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
