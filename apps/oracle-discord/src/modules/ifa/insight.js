@@ -48,7 +48,7 @@ export function analyse(c, who) {
     "Eight half-pods each fall open or closed with equal chance, giving 2 x 2 x 2 x 2 = 16 figures per leg and 16 x 16 = 256 in all.",
     `Any one figure, including ${c.name}: about 1 in 256 (0.39%). A Méjì of any kind: 1 in 16.`,
     `${plural(open, "open pod")} of 8: ${odds(binom(8, open, 0.5))}.`,
-    "The names, marks and order of the sixteen principal Odù are as widely published. The themes are short summaries, not verses.",
+    "The names and marks of the sixteen principal Odù follow a widely published order; lineages differ slightly in the ranking. The themes are short summaries, not verses.",
   ];
   return insight({ data, patterns, conclusions, questions, method, who });
 }
