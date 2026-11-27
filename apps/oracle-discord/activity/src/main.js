@@ -39,6 +39,7 @@ import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
 import { checkCollect, collectHtml } from "./collect.js";
+import { RELICS, ownsRelic, moonLeft, buyRelic, relicsHtml, relicThumb, levelTokens, FAMILIAR_TOKENS, buyFamiliar } from "./moonrelics.js";
 import { ALL_EMOTES, emoteAny, owned as emotesOwned, useEmote, emoteBookHtml, emoteFxHtml, slots as emoteSlots, toggleSlot, SLOTS as EMO_SLOTS } from "./emotes.js";
 import { CODES, BOOK_CODES, broken as cdBroken, tryCode, spot as cdSpot, codesOn, scrapHtml, glyphLayer } from "./codes.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
@@ -48,7 +49,7 @@ import { joinTable, canJoin } from "./net.js";
 import { gemShop, gemSvg } from "./gems.js";
 import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBoost, profileOf, profileHtml, profileLines, inviteSent, INVITE_REWARD } from "./pullin.js";
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
-import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
+import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
@@ -228,7 +229,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }); }
+  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -495,7 +496,7 @@ function reward(g, sys) {
 function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
-  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens to spend on Moon relics. Earn them with your first reading each day and by beating game levels.">🌙 ${moonLeft(p)}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`;
   setTimeout(() => { try { musicNews(); } catch {} }, 0); // Essence-based records (Coin Drop Groove) unlock as the total changes
 }
 
@@ -593,7 +594,7 @@ function showStore(tab = "outfit", opener = null) {
   const p = state.prog, depts = departments(), dept = deptOf(tab);
   say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
   const earnedOf = (k) => (k === "cloth" || k === "orb" ? UNLOCKS.filter((u) => u.kind === k).map((u) => ({ ...u, earned: true })) : []);
-  const goodsFor = (k) => (k === "creator" ? [] : k === "seasonal" ? SEASONAL : k === "featured" ? [...featured(), rareOf()].filter(Boolean) : k === "sets" ? STORE.filter((x) => x.set) : k === "boxes" ? [] : [...earnedOf(k), ...goodsOf(k)]);
+  const goodsFor = (k) => (k === "creator" ? [] : k === "seasonal" ? SEASONAL : k === "featured" ? [...featured(), rareOf()].filter(Boolean) : k === "sets" ? STORE.filter((x) => x.set) : k === "boxes" || k === "moon" ? [] : [...earnedOf(k), ...goodsOf(k)]);
   const deptBtns = depts.filter((d) => d.kinds.length).map((d) => { const all = d.kinds.filter((k) => k !== "haunted").flatMap(goodsFor), have = all.filter((it) => owns(it.id)).length;
     return `<button class="dept${d.id === dept.id ? " on" : ""}" type="button" data-tab="${d.kinds[0]}" title="${esc(d.blurb)}"><b>${d.label}</b><small>${have} / ${all.length} owned</small></button>`; }).join("");
   const tabs = dept.kinds.length > 1 ? `<div class="choices tabs">${dept.kinds.map((k) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${kindLabel(k)}</button>`).join("")}</div>` : "";
@@ -617,6 +618,13 @@ function showStore(tab = "outfit", opener = null) {
       + emoteBookHtml(p, esc, (id) => (item(id) || {}).name || id, { modal: false }); }
   else if (tab === "sets") cards = LOOK_SETS.map((st, si) => { const pr = setProgress(p, st), items = Object.values(st.kinds).map((id) => STORE.find((x) => x.id === id)).filter(Boolean), worn = pr.worn === pr.of;
     return `<div class="set-head${worn ? " worn" : ""}" data-set-id="${st.id}"><b>${st.e} ${esc(st.name)}</b><span class="note">${esc(st.blurb)} when all four are worn.</span><span class="set-prog">${pr.own}/${pr.of} owned</span>${pr.own === pr.of ? `<button class="c small${worn ? "" : " main"}" type="button" data-wearset="${st.id}" ${worn ? "disabled" : ""}>${worn ? "✓ Set worn" : "Wear the set"}</button>` : ""}<button class="c small" type="button" data-tryset="${st.id}">👁 Try the set</button></div>${items.map((it, i) => cardOf(it, si * 4 + i)).join("")}`; }).join("");
+  else if (tab === "moon") cards = `<div class="note box-note">🌙 ${moonLeft(p)} moon tokens to spend. Moon relics stay in the Oracle's chamber for good, all at once. Earn them with your first reading each day and the first time you beat each game level: Level 1 🌙2, Level 2 🌙4, Level 3 🌙6, and 🌙3 more for beating all three. One game's full series is about one good relic.</div>`
+    + RELICS.map((r, i) => { const own = ownsRelic(p, r.id); return `<div class="shop-card mr-card${own ? " owned" : ""}" style="--i:${i}"><span class="th th-relic">${relicThumb(r)}</span><div class="sc-body"><b>${r.e} ${esc(r.name)}</b><span class="note">${esc(r.note)}</span>
+      <div class="sc-acts">${own ? `<span class="note">✓ In your chamber</span>` : `<button class="c small main" type="button" data-relic="${r.id}" ${moonLeft(p) >= r.price ? "" : "disabled"}>Place it · 🌙 ${r.price}</button>`}</div></div></div>`; }).join("")
+    + `<h4 class="mr-h">🐾 Familiars <small class="note">One keeps the Oracle company at a time. Swap them any time for free.</small></h4>`
+    + FAMILIARS.map((f, i) => { const own = f.price === 0 || owns(f.id), on = (p.familiar || "fam-none") === f.id, n = FAMILIAR_TOKENS[f.id];
+      return `<div class="shop-card mr-card${on ? " owned" : ""}" style="--i:${i}"><span class="th th-relic">${f.id === "fam-none" ? "✖" : familiarSvg(f.id)}</span><div class="sc-body"><b>${esc(f.name)}</b><span class="note">${esc(f.note)}</span>
+      <div class="sc-acts">${on ? `<span class="note">✓ With the Oracle</span>` : own ? `<button class="c small" type="button" data-famwear="${f.id}">${f.id === "fam-none" ? "Send them off" : "Bring along"}</button>` : `<button class="c small main" type="button" data-fambuy="${f.id}" ${moonLeft(p) >= n ? "" : "disabled"}>Adopt · 🌙 ${n}</button>`}</div></div></div>`; }).join("");
   else if (tab === "boxes") cards = BOXES.map((bx, i) => { const P = boxPool();
     return `<div class="shop-card box-card" style="--i:${i}"><span class="th th-box">${bx.e}</span><div class="sc-body"><b>${esc(bx.name)}</b><span class="note">One item from the store. A duplicate gives back ${Math.round(REFUND * 100)}% (💎 ${Math.round(bx.price * REFUND)}).</span>
       <table class="odds">${BOX_TIERS.map((t) => `<tr><td>${t.name}</td><td>${bx.odds[t.id]}%</td><td class="note">${P[t.id].length} items${t.max === Infinity ? ", over 200" : `, up to ${t.max}`} 💎</td></tr>`).join("")}</table>
@@ -654,6 +662,14 @@ function showStore(tab = "outfit", opener = null) {
     for (const [k, id] of Object.entries(st.kinds)) if (owns(id)) state.prog[k] = id; saveProgress(); applyLook(); flourish("outfit"); mood.emote("joy"); showStore("sets", `The full ${st.name} set. ${st.blurb}. Now that is a look.`); }));
   $("ui").querySelectorAll("[data-tryset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.tryset), off = trying && trying.set === st.id;
     trying = off ? null : { set: st.id, kind: "set", id: st.id }; if (!off) { mood.emote("wow"); flourish("outfit"); } showStore("sets", off ? null : `The ${st.name} set, all four pieces. ${st.blurb}.`); }));
+  $("ui").querySelectorAll("[data-relic]").forEach((b) => (b.onclick = () => { const r = buyRelic(p, b.dataset.relic); if (!r) return;
+    saveProgress(); showStats(); paintScene(); chime(3); burst(); mood.emote("wow");
+    logEvent("buy", "🌙", `Placed a Moon relic: ${r.name}`, null, [["Relic", `${r.e} ${r.name}`], ["Price", `🌙 ${r.price}`], ["Moon tokens left", `🌙 ${moonLeft(p)}`], ["Where", "In the Oracle's chamber, for good"]]);
+    showStore("moon", `${r.name}. It stays in my chamber now, for good. Look behind me.`); }));
+  $("ui").querySelectorAll("[data-fambuy]").forEach((b) => (b.onclick = () => { const id = b.dataset.fambuy, f = FAMILIARS.find((x) => x.id === id); if (!buyFamiliar(p, id)) return;
+    logEvent("buy", "🐾", `Adopted a familiar: ${f.name}`, null, [["Familiar", f.name], ["Price", `🌙 ${FAMILIAR_TOKENS[id]}`], ["Moon tokens left", `🌙 ${moonLeft(p)}`]]);
+    saveProgress(); showStats(); chime(2); wear(id); mood.emote("love"); showStore("moon", `${f.name} moves in. Say hello.`); }));
+  $("ui").querySelectorAll("[data-famwear]").forEach((b) => (b.onclick = () => { wear(b.dataset.famwear); showStore("moon"); }));
   $("ui").querySelectorAll("[data-box]").forEach((b) => (b.onclick = () => { const bx = BOXES.find((x) => x.id === b.dataset.box), r = openBox(p, bx.id); if (!r) return;
     saveProgress(); showStats(); checkout(); trying = null; logEvent("buy", bx.e, `Opened a ${bx.name}: ${r.item.name} (${r.tier})${r.dupe ? `, a duplicate, ${r.refund} Essence back` : ""}`, null, [["Box", bx.name], ["Price", `💎 ${bx.price}`], ["Inside", r.item.name], ["Rarity", r.tier], ["Duplicate", r.dupe ? `Yes, 💎 ${r.refund} back` : "No, it is new"], ["Essence after", `💎 ${p.essence}`]]);
     const t = $("table"); t.className = "table box-show"; t.innerHTML = `<div class="box-open tier-${r.tier}"><div class="box-rays"></div><div class="box-lid">${bx.e}</div><div class="box-prize">${thumb(r.item)}<b>${esc(r.item.name)}</b><small>${esc(r.tier)}${r.dupe ? ` · duplicate · +${r.refund} 💎` : " · new!"}</small></div></div>`;
@@ -1000,6 +1016,7 @@ function joinLobby() {
   next();
 })();
 $("grimoire-btn").onclick = () => openBook("codex");
+if (PREVIEW) window.__relicTest = (ids) => { state.prog.relics = ids || RELICS.map((r) => r.id); paintScene(); };
 if (PREVIEW) window.__bookTest = (sec, book) => { if (book) { const p = state.prog; p.owned = [...new Set([...(p.owned || []), book])]; p.book = book; } openBook(sec); };
 
 // Progress: this device always; the member's Discord account too when signed in (newest by reading count wins).
@@ -1084,7 +1101,7 @@ showSpeech();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
+  const enter = () => { unlockVoice(); paintScene(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
   if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
@@ -1114,7 +1131,8 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
-  mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
+  mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) });
+  { const mt = levelTokens(state.prog, id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +🌙 ${mt.n}, series bonus included. That's a Moon relic.` : `First win at Level ${level}! +🌙 ${mt.n} for Moon relics.`, 3400, "🌙"), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }

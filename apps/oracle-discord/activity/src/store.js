@@ -211,13 +211,13 @@ export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
  *  Ghosts also shows every haunted item from other shelves (items tagged ghost: true). */
 export const DEPTS = [
   { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "seasonal", "sets", "boxes"] },
-  { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke, and who keeps me company", kinds: ["creator", "outfit", "avatar", "familiar", "voice", "persona"] },
+  { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke, and who keeps me company", kinds: ["creator", "moon", "outfit", "avatar", "voice", "persona"] },
   { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "gem", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
 ];
-const SPECIAL = { featured: "🗓️ This week", seasonal: "🍂 Seasonal", sets: "🎽 Full sets", boxes: "📦 Mystery boxes", creator: "🎨 Creator & emotes" };
+const SPECIAL = { featured: "🗓️ This week", seasonal: "🍂 Seasonal", sets: "🎽 Full sets", boxes: "📦 Mystery boxes", creator: "🎨 Creator & emotes", moon: "🌙 Moon relics" };
 export function departments() {
   const named = new Set(DEPTS.flatMap((d) => d.kinds));
   return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || SPECIAL[k] || KINDS.some(([x]) => x === k)) }));
