@@ -5,7 +5,7 @@ export const GODS = {
   Nile: { glyph: 0x13217, ranges: [[1, 1, 7], [6, 19, 28], [9, 1, 7], [11, 18, 26]], title: "the river of beginnings", kw: ["renewal", "flow", "fertility"],
     myth: "Hapi, the spirit of the Nile's yearly flood, was shown as a full-bellied figure carrying the river's gifts. Every summer the flood laid down the black silt that fed Egypt for another year.",
     about: "You're a source: ideas and energy pour out of you, sometimes faster than you can channel them. You thrive on new starts and you bring life to stagnant places.",
-    shadow: "Overflowing your banks. Pick a channel and let it carve deep.", allies: ["Amun-Ra", "Set"] },
+    shadow: "Overflowing your banks. A river carves deepest in a single channel.", allies: ["Amun-Ra", "Set"] },
   "Amun-Ra": { glyph: 0x131F3, ranges: [[1, 8, 21], [2, 1, 11]], title: "the hidden sun", kw: ["leadership", "confidence", "purpose"],
     myth: "Amun, 'the hidden one', merged with Ra, the sun, to become king of the gods at Thebes: an invisible power and a visible light in one.",
     about: "You lead naturally and you hold yourself to a high standard. People feel steadier when you're in charge, and you carry a quiet sense of purpose.",
@@ -49,7 +49,7 @@ export const GODS = {
   Sekhmet: { glyph: 0x130EC, ranges: [[7, 29, 31], [8, 1, 11], [10, 30, 31], [11, 1, 7]], title: "the lioness of fire", kw: ["power", "discipline", "healing"],
     myth: "Sekhmet, the lioness, was sent by Ra to punish humanity and was only stopped by beer dyed red. Her priests were also Egypt's physicians: the destroyer was the healer.",
     about: "You have fierce energy and high standards. You're disciplined, decisive and protective, and under the heat there's a healer.",
-    shadow: "Rage that outlasts its purpose. Know when to drink the red beer.", allies: ["Bastet", "Geb"] },
+    shadow: "Rage that outlasts its purpose. In the myth it took red beer to end Sekhmet's rampage.", allies: ["Bastet", "Geb"] },
 };
 
 // Coptic months: the direct descendants of the ancient Egyptian civil calendar's months.

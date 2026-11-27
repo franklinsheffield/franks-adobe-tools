@@ -5,27 +5,27 @@ export const TYPES = {
   Generator: {
     emoji: "🔋", tagline: "The sustainable reactor",
     about: "Your Sacral centre is a renewable power source. You are built to pour steady energy into work you genuinely love, and that energy recharges when it is spent on the right things. Life speaks to you through what shows up in front of you, and your body answers before your mind does.",
-    strategy: "Let life come to you, then respond. Notice the gut 'uh-huh' or 'uhn-uhn' when something is put in front of you, and follow that signal instead of forcing a start from the head.",
+    strategy: "The system's hypothesis for Generators: things go better when life arrives first and the gut answers it ('uh-huh' or 'uhn-uhn'), and worse when a start is forced from the head.",
   },
   "Manifesting Generator": {
     emoji: "⚡", tagline: "The fast-twitch reactor",
     about: "You carry the Generator's renewable engine wired straight to your voice. You move quickly, skip steps that don't matter, and often run several experiments at once. Your path is rarely linear, and that is a feature: you find the shortcut by trying things.",
-    strategy: "Respond first, then tell the people affected before you leap. A quick heads-up keeps your speed from turning into collisions.",
+    strategy: "The system's hypothesis for Manifesting Generators: a gut response first, then a heads-up to the people affected. The claim is that informing keeps speed from turning into collisions.",
   },
   Manifestor: {
     emoji: "🚀", tagline: "The ignition spark",
     about: "You are designed to start things. A motor feeds your throat directly, so you can act without waiting for permission or a prompt. Your aura is closed and impactful: people feel you arrive, and that can make them nervous if they don't know what you're up to.",
-    strategy: "Inform before you act. You don't need approval, but telling others what you're about to do clears the path and dissolves resistance before it forms.",
+    strategy: "The system's hypothesis for Manifestors: no approval is needed, but resistance dissolves when others are told what is about to happen before it happens.",
   },
   Projector: {
     emoji: "🔭", tagline: "The guiding lens",
     about: "You are here to see how energy moves through people and systems, and to guide it. You don't have consistent access to sustainable work energy, so your gift is efficiency and insight, not endurance. Your aura focuses on one person at a time and reads them deeply.",
-    strategy: "Let recognition come first, especially for the big things (work, love, home). Advice given before you're invited tends to bounce; advice that is asked for lands like a key in a lock.",
+    strategy: "The system's hypothesis for Projectors: for the big things (work, love, home), recognition comes before action. The claim is that uninvited advice tends to bounce, while advice that is asked for lands like a key in a lock.",
   },
   Reflector: {
     emoji: "🌕", tagline: "The living mirror",
     about: "All nine of your centres are open, so you sample and reflect the health of every environment you enter. You are rare (about 1 in 100). You are a barometer for your community: when you are thriving, the people around you usually are too.",
-    strategy: "Give big decisions a full lunar cycle (about 28 days). As the Moon moves through all 64 gates, talk it through with trusted people and watch how your view changes. Clarity arrives over time, not in a moment.",
+    strategy: "The system's hypothesis for Reflectors: big decisions take a full lunar cycle (about 28 days). As the Moon moves through all 64 gates the view changes, and clarity is said to arrive over time, not in a moment.",
   },
 };
 
@@ -38,14 +38,14 @@ export const SIGNATURE_TEXT = {
 };
 
 export const AUTHORITIES = {
-  Emotional: "Your Solar Plexus is defined, so truth arrives in waves, not in the moment. There is no clarity in the now. Sleep on decisions, ride the high and the low, and decide once the wave has settled into a calm, steady 'yes' or 'no'.",
-  Sacral: "Your decisions live in your gut. The Sacral answers instantly with a sound or a pull, an 'uh-huh' or 'uhn-uhn'. Ask yourself yes/no questions out loud, or have friends ask you, and trust the body's first reply over the mind's later reasoning.",
-  Splenic: "Your authority is the Spleen: a quiet, instant knowing that speaks once and doesn't repeat. It is about health and survival in the present moment. If something feels off right now, believe it, even when you can't explain why.",
-  "Ego Manifested": "Your will (the Heart centre) speaks directly through your throat. Listen to what you hear yourself say you want. Decisions are right when you're truly willing to commit your heart and effort to them.",
-  "Ego Projected": "Your will is your guide, expressed through your sense of self. Ask: what do I actually want, and what's in it for me? Honest self-interest is healthy here; promises made against your will drain you.",
-  "Self-Projected": "Your identity speaks through your voice. Talk your decisions through with people you trust, not for advice but to hear your own truth come out of your mouth. Clarity comes from listening to yourself.",
-  "Mental (Outer)": "You have no inner authority below the throat, so your mind is a brilliant observer but not your decider. Talk things through in the right environments with trusted sounding boards, then notice which place and people feel right. Correct surroundings bring correct decisions.",
-  Lunar: "As a Reflector, your authority is time. Track a decision through a full 28-day Moon cycle, discuss it with different people along the way, and let the answer settle naturally.",
+  Emotional: "Your Solar Plexus is defined, so truth arrives in waves, not in the moment. There is no clarity in the now. The system holds that a decision is reliable only after the high and the low have both passed and a calm, steady 'yes' or 'no' remains.",
+  Sacral: "Your decisions live in your gut. The Sacral answers instantly with a sound or a pull, an 'uh-huh' or 'uhn-uhn'. It responds best to yes/no questions asked out loud, and the system ranks the body's first reply above the mind's later reasoning.",
+  Splenic: "Your authority is the Spleen: a quiet, instant knowing that speaks once and doesn't repeat. It is about health and survival in the present moment. The system treats 'this feels off right now' as valid on its own, even without an explanation.",
+  "Ego Manifested": "Your will (the Heart centre) speaks directly through your throat. What is heard in one's own spoken wants is the signal. Decisions are right when you're truly willing to commit your heart and effort to them.",
+  "Ego Projected": "Your will is your guide, expressed through your sense of self. The test the system gives is 'what do I actually want, and what is in it for me?'. Honest self-interest is healthy here; promises made against your will drain you.",
+  "Self-Projected": "Your identity speaks through your voice. Decisions are talked through with trusted people, not for their advice but so the person hears their own truth spoken. Clarity comes from listening to yourself.",
+  "Mental (Outer)": "You have no inner authority below the throat, so your mind is a brilliant observer but not your decider. Decisions are talked through in the right environments with trusted sounding boards, and the signal is which place and people feel right. Correct surroundings bring correct decisions.",
+  Lunar: "As a Reflector, your authority is time. A decision is followed through a full 28-day Moon cycle and discussed with different people along the way, until the answer settles on its own.",
 };
 
 export const LINES = {
@@ -59,14 +59,14 @@ export const LINES = {
 
 export const CENTER_TEXT = {
   head: ["Consistent mental pressure and inspiration. You have reliable questions that drive your thinking.", "You take in other people's questions and inspirations. Not every puzzle in your head is yours to solve."],
-  ajna: ["A fixed way of processing ideas. Your thinking style is reliable and recognisable.", "Flexible thinking; you can see many viewpoints. You don't have to hold onto certainty."],
-  throat: ["Consistent voice and ability to manifest. People recognise how you speak and act.", "Your expression varies with who's around. Let speech come when invited instead of chasing attention."],
+  ajna: ["A fixed way of processing ideas. Your thinking style is reliable and recognisable.", "Flexible thinking; you can see many viewpoints. Certainty is optional here."],
+  throat: ["Consistent voice and ability to manifest. People recognise how you speak and act.", "Your expression varies with who's around. The system says speech lands best when invited, not when attention is chased."],
   g: ["A fixed sense of identity and direction. You know who you are and love what you love.", "Identity is fluid and environment matters hugely: the right places lead you to the right people."],
-  heart: ["Reliable willpower. You can make and keep promises, as long as you also rest.", "You don't have to prove your worth. Avoid promises made just to show you're enough."],
-  sacral: ["Sustainable life-force energy for work you love. Use it fully and you'll sleep well.", "You amplify others' energy and can overdo it. Know when enough is enough and rest before you're exhausted."],
-  solar: ["You run on an emotional wave. Your moods are part of your process, not a problem.", "You feel and amplify others' emotions. Learn which feelings are yours, and avoid making decisions just to escape tension."],
-  spleen: ["A steady immune and intuitive system. You feel generally well and trust your instincts.", "Highly sensitive to wellbeing; you may hold onto what isn't good for you. Practise letting go."],
-  root: ["Consistent pressure to get things done, handled at your own pace.", "You absorb outside pressure and rush. Not everything is urgent; finish things to be free of them, not to escape them."],
+  heart: ["Reliable willpower. You can make and keep promises, as long as you also rest.", "You don't have to prove your worth. Promises made only to prove worth are this centre's trap."],
+  sacral: ["Sustainable life-force energy for work you love. The system says it sleeps best when fully spent.", "You amplify others' energy and can overdo it. The trap is not knowing when enough is enough."],
+  solar: ["You run on an emotional wave. Your moods are part of your process, not a problem.", "You feel and amplify others' emotions. The lesson is telling which feelings are one's own; the trap is deciding just to escape tension."],
+  spleen: ["A steady immune and intuitive system. You feel generally well and trust your instincts.", "Highly sensitive to wellbeing; you may hold onto what isn't good for you. Letting go is this centre's lesson."],
+  root: ["Consistent pressure to get things done, handled at your own pace.", "You absorb outside pressure and rush. Not everything is urgent, and the trap is finishing things only to escape the pressure."],
 };
 
 export const DEFINITION_TEXT = {

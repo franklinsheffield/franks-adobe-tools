@@ -3,17 +3,17 @@ export const ANIMALS = {
   Rat: { emoji: "🐀", kw: ["resourceful", "quick", "observant"],
     about: "The Rat is the first animal of the cycle, the one that won the great race by riding on the Ox's back. That story is the Rat in a sentence: clever, alert to opportunity and better at reading systems than almost anyone.",
     gifts: "You spot openings early, adapt fast and keep a reserve for hard times. People underestimate how much you notice.",
-    shadow: "Anxiety about scarcity can turn into hoarding or over-scheming. Trust that you'll land on your feet: you usually do.",
+    shadow: "Anxiety about scarcity can turn into hoarding or over-scheming. The Rat's record of landing on its feet is the traditional counterweight.",
     love: "Loyal and attentive once you commit, and you show love through practical help." },
   Ox: { emoji: "🐂", kw: ["steady", "patient", "dependable"],
     about: "The Ox carried the Rat across the river and still came second, without complaint. Oxen win by endurance: the slow, unglamorous effort that ends up moving mountains.",
     gifts: "Reliability, stamina and calm under pressure. When you say it'll be done, it's done.",
-    shadow: "Stubbornness and quiet resentment when you've carried too much for too long. Say when the load is too heavy.",
+    shadow: "Stubbornness and quiet resentment when you've carried too much for too long. The pattern eases when the weight is spoken about.",
     love: "Slow to open, deeply devoted after. You prove love by showing up, year after year." },
   Tiger: { emoji: "🐅", kw: ["brave", "magnetic", "restless"],
     about: "The Tiger is the cycle's warrior: bold, protective and impossible to ignore. Tigers bring the energy that starts revolutions and rescues friends.",
     gifts: "Courage, charisma and a strong sense of justice. You act when others hesitate.",
-    shadow: "Impulsiveness and a hot temper. Not every fight is yours; choose the ones that matter.",
+    shadow: "Impulsiveness and a hot temper. Not every fight is the Tiger's to take up.",
     love: "Passionate and generous, needs freedom and a partner who can keep up." },
   Rabbit: { emoji: "🐇", kw: ["gentle", "elegant", "diplomatic"],
     about: "The Rabbit, sometimes the Cat in Vietnam, is the cycle's diplomat: refined, perceptive and lucky. Rabbits get far by charm and tact rather than force.",
@@ -33,22 +33,22 @@ export const ANIMALS = {
   Horse: { emoji: "🐎", kw: ["free", "energetic", "warm"],
     about: "The Horse is movement itself: travel, speed and a big, open heart. Horses do their best work when nobody's holding the reins too tight.",
     gifts: "Enthusiasm, independence and social warmth. You get people moving.",
-    shadow: "Restlessness and dropping things halfway. Finish one race before starting the next.",
+    shadow: "Restlessness and dropping things halfway. The traditional counterweight is one race finished before the next begins.",
     love: "Falls fast and loves freely; needs a partner who also values freedom." },
   Goat: { emoji: "🐐", kw: ["creative", "kind", "sensitive"],
     about: "The Goat (also called Sheep or Ram) is the cycle's artist: gentle, imaginative and attuned to beauty. Goats thrive in good company and calm surroundings.",
     gifts: "Creativity, empathy and an eye for beauty. You bring tenderness to a hard world.",
-    shadow: "Worry and indecision when you feel unsupported. Build a herd you can lean on.",
+    shadow: "Worry and indecision when you feel unsupported. The Goat is traditionally at its best inside a herd it can lean on.",
     love: "Devoted and affectionate, wants security and a shared creative life." },
   Monkey: { emoji: "🐒", kw: ["clever", "playful", "inventive"],
     about: "The Monkey is the cycle's trickster and problem-solver: curious, funny and endlessly inventive. Monkeys find the clever route nobody else saw.",
     gifts: "Wit, versatility and quick solutions. You learn anything fast.",
-    shadow: "Boredom and mischief. Use your cleverness to build, not just to win.",
+    shadow: "Boredom and mischief. The cleverness is read as better spent building than winning.",
     love: "Fun, flirtatious and lively; needs a partner who keeps them curious." },
   Rooster: { emoji: "🐓", kw: ["precise", "honest", "proud"],
     about: "The Rooster announces the dawn: punctual, observant and proud of good work. Roosters see details others miss and aren't shy about saying so.",
     gifts: "Precision, honesty and hard work. You hold the standard.",
-    shadow: "Criticism that lands harder than you intend. Lead with the praise you also mean.",
+    shadow: "Criticism that lands harder than you intend. The praise that is also meant tends to go unsaid.",
     love: "Loyal and dependable, shows love through care in the details." },
   Dog: { emoji: "🐕", kw: ["loyal", "just", "protective"],
     about: "The Dog is the cycle's guardian: honest, faithful and quick to defend the underdog. Dogs keep the circle safe.",
@@ -64,15 +64,15 @@ export const ANIMALS = {
 
 export const ELEMENTS = {
   Wood: { emoji: "🌳", colour: "#5BD08A", kw: "growth, vision, flexibility", year: "Wood adds growth and generosity: you think long-term and like to help things flourish.",
-    dm: "Your Day Master is **Wood**: you grow toward the light. You need room to expand, a cause to grow, and people to grow with.", lack: "More Wood: plan, learn, spend time with plants and trees, start something." },
+    dm: "Your Day Master is **Wood**: you grow toward the light. You need room to expand, a cause to grow, and people to grow with.", lack: "Wood is traditionally linked with planning, learning, plants and trees, and starting things." },
   Fire: { emoji: "🔥", colour: "#FF7A59", kw: "passion, visibility, warmth", year: "Fire adds passion and visibility: you light up rooms and push things forward.",
-    dm: "Your Day Master is **Fire**: you radiate. You need an audience, a purpose to burn for, and rest so you don't burn out.", lack: "More Fire: be seen, celebrate, move your body, get sunlight." },
+    dm: "Your Day Master is **Fire**: you radiate. You need an audience, a purpose to burn for, and rest so you don't burn out.", lack: "Fire is traditionally linked with being seen, celebration, movement and sunlight." },
   Earth: { emoji: "⛰️", colour: "#E2B04A", kw: "stability, care, reliability", year: "Earth adds steadiness and care: you are the ground other people stand on.",
-    dm: "Your Day Master is **Earth**: you hold things together. You need routine, trust and a place to call your own.", lack: "More Earth: keep routines, cook, garden, tidy your space, keep promises small and kept." },
+    dm: "Your Day Master is **Earth**: you hold things together. You need routine, trust and a place to call your own.", lack: "Earth is traditionally linked with routine, cooking, gardening, an ordered space and small promises kept." },
   Metal: { emoji: "⚔️", colour: "#DCD4FF", kw: "clarity, discipline, justice", year: "Metal adds clarity and resolve: you cut through noise and keep high standards.",
-    dm: "Your Day Master is **Metal**: you refine. You need clear values, quality and the courage to cut what doesn't serve.", lack: "More Metal: declutter, set rules, finish, practise precision." },
+    dm: "Your Day Master is **Metal**: you refine. You need clear values, quality and the courage to cut what doesn't serve.", lack: "Metal is traditionally linked with clearing out, rules, finishing and precision." },
   Water: { emoji: "🌊", colour: "#66E0C8", kw: "wisdom, adaptability, depth", year: "Water adds intuition and flow: you find a way around every obstacle.",
-    dm: "Your Day Master is **Water**: you flow and you know. You need depth, movement and time to reflect.", lack: "More Water: rest, reflect, read, swim, let things move at their own pace." },
+    dm: "Your Day Master is **Water**: you flow and you know. You need depth, movement and time to reflect.", lack: "Water is traditionally linked with rest, reflection, reading, swimming and letting things move at their own pace." },
 };
 
 // The ten Day Masters: one line each, original.
@@ -98,9 +98,9 @@ export const trineOf = (a) => TRINES.findIndex((t) => t.includes(a));
 
 /** How the current year's animal meets yours. */
 export function yearRelation(mine, now) {
-  if (mine === now) return { kind: "Ben Ming Nian (your own year)", text: "It's your own animal's year, traditionally a year to tread carefully: big changes stir. Wearing red for protection is the old custom; the modern version is simple: don't overcommit, and protect your health and reputation." };
-  if (clashOf(mine) === now) return { kind: "clash year", text: `The ${now} sits opposite your ${mine}. Clash years shake things loose: moves, job changes, endings that make room. Steer the change rather than waiting to be pushed.` };
-  if (HARMONY[mine] === now) return { kind: "secret friend year", text: `The ${now} is your secret friend. Help tends to arrive from unexpected places; say yes to good introductions.` };
-  if (trineOf(mine) === trineOf(now)) return { kind: "allied year", text: `The ${now} belongs to your trine. The year's energy flows with you: a good time to push projects you care about.` };
-  return { kind: "neutral year", text: `The ${now} neither helps nor hinders your ${mine} much. Results follow effort; build steadily.` };
+  if (mine === now) return { kind: "Ben Ming Nian (your own year)", text: "It's your own animal's year, traditionally a year of treading carefully, when big changes stir. Wearing red for protection is the old custom; modern readers take it as a year of caution about commitments, health and reputation." };
+  if (clashOf(mine) === now) return { kind: "clash year", text: `The ${now} sits opposite your ${mine}. Clash years shake things loose: moves, job changes, endings that make room. Tradition reads the change as easier steered than resisted.` };
+  if (HARMONY[mine] === now) return { kind: "secret friend year", text: `The ${now} is your secret friend. Help tends to arrive from unexpected places; often through introductions.` };
+  if (trineOf(mine) === trineOf(now)) return { kind: "allied year", text: `The ${now} belongs to your trine. The year's energy flows with you: tradition counts it favourable for projects that matter.` };
+  return { kind: "neutral year", text: `The ${now} neither helps nor hinders your ${mine} much. Tradition reads it as a year when results simply follow effort.` };
 }

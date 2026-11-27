@@ -26,12 +26,12 @@ export function buildReading(question, rand) {
   const { primary: p, relating: rel, nuclear: nu, values, focus } = r;
   const up = TRIGRAMS[p.upper], lo = TRIGRAMS[p.lower];
   const fields = [
-    { name: '☯ The situation', value: cut(p.text.j) },
-    { name: '🜁 The image', value: cut(`*${p.text.i}*`) },
+    { name: '☯ The judgement (the book\'s voice)', value: cut(`*The I Ching is a book of counsel. The lines below give its voice in plain language, for study; they are the text speaking, not instructions from the Oracle.*\n${p.text.j}`) },
+    { name: '🜁 The image text', value: cut(`*${p.text.i}*`) },
     { name: '☰ The trigrams', value: cut(`**Above:** ${up.hz} ${up.name} (${up.py}): ${up.quality}.\n**Below:** ${lo.hz} ${lo.name} (${lo.py}): ${lo.quality}.\n**Keywords:** ${p.text.kw.join(', ')}`) },
   ];
   if (r.changing.length) {
-    fields.push({ name: `✦ Changing lines (${r.changing.length})`, value: cut(r.changing.map(n => `**${lineName(values[n - 1], n - 1)}:** ${p.text.l[n - 1]}`).join('\n')) });
+    fields.push({ name: `✦ Changing line texts (${r.changing.length})`, value: cut(r.changing.map(n => `**${lineName(values[n - 1], n - 1)}:** ${p.text.l[n - 1]}`).join('\n')) });
   }
   const core = [
     ...focus.primary.map(k => `> ${textFor(k, p)}`),
@@ -39,7 +39,7 @@ export function buildReading(question, rand) {
   ];
   fields.push({ name: '🔮 Core message', value: cut(`${focus.rule}\n${core.join('\n')}`) });
   if (rel) fields.push({ name: `➜ Where it is heading: ${title(rel)}`, value: cut(`${rel.text.j}\n**Keywords:** ${rel.text.kw.join(', ')}`) });
-  fields.push({ name: `🜃 Hidden undercurrent: ${title(nu)}`, value: cut(`Beneath the surface: ${nu.text.kw.join(', ')}. ${nu.text.a}`) });
+  fields.push({ name: `🜃 Hidden undercurrent: ${title(nu)}`, value: cut(`Beneath the surface: ${nu.text.kw.join(', ')}. The book's counsel for it: ${nu.text.a.charAt(0).toLowerCase()}${nu.text.a.slice(1)}`) });
   fields.push({ name: '🕯 What the text counsels', value: cut(`*The classical counsel attached to ${rel ? 'these hexagrams' : 'this hexagram'}, as the tradition gives it:* ${rel ? `${p.text.a} Then: ${rel.text.a.charAt(0).toLowerCase()}${rel.text.a.slice(1)}` : p.text.a}`) });
 
   const embed = {

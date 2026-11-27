@@ -21,7 +21,7 @@ export const TREES = [
   { tree: "Willow", ogham: "ᚄ", letter: "Saille", start: [4, 15], kw: ["intuition", "memory", "cycles"],
     lore: "Willow loves water and the Moon, bends without breaking and roots from any cut branch. Its bark gave the world aspirin.",
     about: "You're perceptive, deeply feeling and tuned to life's rhythms. You remember everything and you heal through understanding.",
-    shadow: "Moodiness tied to the tides. Let the water move through you." },
+    shadow: "Moodiness tied to the tides. Willows live with water moving through them." },
   { tree: "Hawthorn", ogham: "ᚆ", letter: "Huath", start: [5, 13], kw: ["paradox", "creativity", "protection"],
     lore: "Hawthorn blossoms at Beltane and stands alone in fields, because farmers feared to cut the 'fairy tree'. Sweet flowers, sharp thorns.",
     about: "You're a paradox: calm outside, intense inside, funny and fierce. You're creative, adaptable and protective of what's tender.",
@@ -37,15 +37,15 @@ export const TREES = [
   { tree: "Hazel", ogham: "ᚉ", letter: "Coll", start: [8, 5], kw: ["wisdom", "knowledge", "insight"],
     lore: "Nine hazels dropped their nuts into the Well of Wisdom, where the salmon ate them; whoever tasted the salmon gained all knowledge.",
     about: "You're a knower: clever, organised and gifted at learning and teaching. You find the hidden pattern and explain it.",
-    shadow: "Knowing best. Leave room for other people's nuts." },
+    shadow: "Knowing best. Other people gather nuts of wisdom too." },
   { tree: "Vine", ogham: "ᚋ", letter: "Muin", start: [9, 2], kw: ["balance", "refinement", "harvest"],
     lore: "Vine (in Irish lore sometimes bramble) gives its fruit at harvest and is born near the equinox, when day and night stand equal.",
     about: "You have taste, charm and a gift for balance. You see both sides and you savour life's fruits.",
-    shadow: "Indecision. Pick a side of the scales sometimes." },
+    shadow: "Indecision. The scales rarely settle on their own." },
   { tree: "Ivy", ogham: "ᚌ", letter: "Gort", start: [9, 30], kw: ["loyalty", "persistence", "growth"],
     lore: "Ivy spirals as it climbs, holds walls together and flowers late, when everything else has finished.",
     about: "You're loyal, persistent and quietly unstoppable. You climb by holding on and you help others through hard seasons.",
-    shadow: "Clinging. Hold on to what's growing, not what's gone." },
+    shadow: "Clinging. Ivy holds on to what has died as firmly as to what is growing." },
   { tree: "Reed", ogham: "ᚍ", letter: "nGéadal", start: [10, 28], kw: ["depth", "truth-seeking", "secrets"],
     lore: "Reed made arrows, pens and thatch: the tools of hunters, scribes and homes. It grows straight in shifting water.",
     about: "You dig for the truth and you get to the heart of things. You're a natural detective, storyteller or healer of hidden wounds.",
@@ -58,7 +58,7 @@ export const TREES = [
 export const NAMELESS = { tree: "The Nameless Day", ogham: "ᚐ", letter: "the day between", kw: ["potential", "the threshold", "magic"],
   lore: "In Graves' calendar, 23 December stands outside the thirteen months: 'the day', the year and a day of the old riddles.",
   about: "Born on the day between, you belong to no single tree and to all of them. You're a threshold person: comfortable in between, hard to label, open to anything.",
-  shadow: "Never choosing a shape. Try on a tree now and then." };
+  shadow: "Never choosing a shape. A shape never chosen is the risk." };
 
 // The four Celtic fire festivals (cross-quarter days).
 export const FESTIVALS = [

@@ -28,8 +28,8 @@ export function analyse(r, OMENS, who) {
 
   const conclusions = [
     "Shang diviners put a matter to the bone twice, once as stated and once as its opposite, and compared the cracks. The result is the comparison, not either crack alone.",
-    Math.abs(d) >= 1.5 ? `The margin is wide. By the diviners' own logic the bone speaks clearly ${d > 0 ? "for" : "against"} the charge as worded.`
-      : d !== 0 ? `The margin is narrow. The bone leans ${d > 0 ? "toward" : "away from"} the charge, but a reading this close would often have been cracked again on a fresh hollow before anything was carved.`
+    Math.abs(d) >= 1.5 ? `The margin is wide. By the diviners' own logic the bone may be read as speaking clearly ${d > 0 ? "for" : "against"} the charge as worded.`
+      : d !== 0 ? `The margin is narrow. The bone may be read as leaning ${d > 0 ? "toward" : "away from"} the charge, but a reading this close would often have been cracked again on a fresh hollow before anything was carved.`
       : "With equal cracks the bone gives no preference. On surviving bones such charges were often repeated, sometimes several times, so an even result may simply mean the question is not yet ripe.",
     both === "good" ? "When the charge and its opposite both come up favourable, the matter may turn out acceptably either way. The stakes of the choice may be lower than they feel." : "",
     both === "bad" ? "When both sides come up troubled, the difficulty may not lie in choosing between them. It may lie in something the charge does not mention." : "",
