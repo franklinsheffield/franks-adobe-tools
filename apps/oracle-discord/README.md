@@ -21,6 +21,10 @@ One Discord app for the server's readings: `/oracle` (the fortune teller), `/hum
 - Discord Developer Portal: Activities on, URL mapping `/` -> the `oracle-chamber` Worker host and `/osm` -> `nominatim.openstreetmap.org`, OAuth2 redirect `https://127.0.0.1`. Then set `ACTIVITY_READY = "true"` in `wrangler.toml` so the bot's **Enter the Chamber** button launches it.
 - Local: `node activity/build.mjs`, then serve `activity/dist/` and open it in a browser (sign-in and profile are skipped outside Discord).
 
+### Rooms: Skeptic's Séance
+
+The Chamber hosts rooms, small games listed under "Investigate & learn" (registry `ROOMS` in `activity/src/main.js`; each room lives in `activity/src/<room>/` and keeps progress in `prog.rooms.<id>`). The first room is **Skeptic's Séance** (`activity/src/seance/`): 12 real historical hoaxes, from the Fox sisters (1848) to Forer's Barnum-effect test (1948). Players spend 4 candles on clues and guesses, name the method, then pick the Skeptic's Toolkit idea that cracked it. First solves pay ✦ and 💎, and replays only pay improvements. Hoaxes exposed and Toolkit both appear in the Codex. Séance cases don't use daily readings.
+
 ## Human Design
 `src/humandesign/`: chart (26 activations, design moment at 88° of solar arc, true node), branded bodygraph PNG, and original Science is Magic interpretation text. Verified against Ra Uru Hu's published chart and 400 random charts from an independent engine.
 
