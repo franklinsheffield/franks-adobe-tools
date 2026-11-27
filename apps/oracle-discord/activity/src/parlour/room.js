@@ -52,7 +52,10 @@ export const roguesgallery = {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, tableEl } = ctx;
     styleOnce(); const P = () => state.prog, rook = () => host().id === "parlour";
     const draw = (svg) => { tableEl.className = "table gallery"; tableEl.innerHTML = svg; };
-    function payout() { const r = settleGallery(P()); if (r.keys) addTokens(P(), host(), r.keys); if (r.gems || r.keys) { saveProgress(); showStats(); coins(); } return r; }
+    function payout() { const r = settleGallery(P()); if (r.keys) addTokens(P(), host(), r.keys);
+      if (r.fresh.length) ctx.trophy?.("roguesgallery", 1, { won: true, perfect: false }); // Trophy Case: a pair
+      if (r.keys) ctx.trophy?.("roguesgallery", 2, { won: true, perfect: true }); // the whole wall
+      if (r.gems || r.keys) { saveProgress(); showStats(); coins(); } return r; }
     function lobby(first) {
       clearReading(); cap("🖼️ The Rogues' Gallery"); draw(wallSvg(P())); const r = payout(), n = pairsDone(P());
       say(r.fresh.length ? `${r.fresh.length} new pair${r.fresh.length > 1 ? "s" : ""} on the wall! +💎 ${r.gems}${r.keys ? ` and 🗝️ ${r.keys} for the whole gallery` : ""}.`
@@ -83,7 +86,7 @@ export const roguesgallery = {
       $("gl-back").onclick = () => lobby(false); if ($("gl-credits")) $("gl-credits").onclick = credits;
       if ($("gl-try")) $("gl-try").onclick = () => { const res = solveFinale(p, $("gl-ans").value);
         if (res === "wrong") { sfx.wrong(); return finale("Not quite. Count it out: Answer is 2, so B. Tell is 5, so E."); }
-        if (res === "solved") { addTokens(p, host(), CROWN_PAY.keys); saveProgress(); showStats(); sfx.reveal(); chime(2); return credits(true); } };
+        if (res === "solved") { addTokens(p, host(), CROWN_PAY.keys); ctx.trophy?.("roguesgallery", 3, { won: true, perfect: true }); saveProgress(); showStats(); sfx.reveal(); chime(2); return credits(true); } };
     }
     function credits(fresh = false) {
       clearReading(); draw(finaleSvg(P(), true)); cap("🎬 Curtain call");

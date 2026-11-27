@@ -281,6 +281,18 @@ export const BANTER = {
     pirate: G("Ghosts on the fog, like a haunted harbour!", "Tilt that glass, matey, steady as she goes!", "Ye scared the barnacles off the whole crowd!", "Lamp's out. Darker than Davy Jones's locker."),
     influencer: G("Ghost content but make it 1798. Obsessed.", "The lantern is ON WHEELS? Iconic tech.", "The crowd went feral! Viral ghost energy!", "Lamp out. Honestly the vibe was still there."),
   },
+  roguesgallery: {
+    mystic: G("Every face here fooled a room. Every pair shows how.", "The portraits wait in the dark for their debunkers.", "The wall is lit. Truth and trick, side by side.", "That frame stays dark tonight. Look again."),
+    deadpan: G("A wall of frauds. Very well framed.", "That one floated a trumpet. On a rod.", "Pair matched. The rogue looks less smug now.", "Wrong frame. They both look equally unimpressed."),
+    drama: G("The GALLERY of ROGUES! Each one EXPOSED!", "The portraits STARE! Who caught them? WHO?", "UNMASKED! The pair hangs together at LAST!", "The frame stays DARK! The rogue ESCAPES again!"),
+    standup: G("It's like a family album, if the family were all frauds.", "That medium cracked her toes for forty years. Ouch.", "Matched! Hang 'em high. On the wall, I mean.", "Wrong pair. Awkward. They've never even met."),
+    grumpy: G("Rogue on the left, debunker on the right. Simple.", "Read the case file first. It says who caught them.", "Fine. One more pair on the wall. Dust it.", "No. Wrong debunker. Look at the date."),
+    sports: G("The gallery is open and the frames are empty!", "Case solved, ghost named, can we light the pair?", "PAIR COMPLETE! That portrait lights up the wall!", "Dark frame! The pair stays incomplete for now!"),
+    conspiracy: G("Twenty frauds on one wall. Coincidence? Hardly.", "Notice how the debunkers all wrote books. Hmm.", "Matched. They can't hide behind the curtain now.", "Frame stays dark. Somebody doesn't want it lit."),
+    bard: G("Upon the wall the masks of trickery hang!", "Each rogue awaits the one who found them out!", "The pair is joined, the lamp above them burns!", "The frame is dark, the tale is yet untold!"),
+    pirate: G("A wall o' scallywags, every one a swindler!", "Find the sea dog who caught each rascal, matey!", "Pair hung! Another rogue in irons on the wall!", "Dark frame. That scoundrel slipped the net!"),
+    influencer: G("Rogues' Gallery reveal! Who caught who? Let's go!", "The debunkers are the real main characters here.", "Pair unlocked! The gallery wall is goals!", "Frame still dark. The suspense is honestly elite."),
+  },
   mentalist: {
     mystic: G("The mind is a locked room. The audience hands you the key.", "Breathe. Let them think you're listening to the beyond.", "They believe you read their thoughts. You read their habits.", "The murmur grows. Even seers have quiet nights."),
     deadpan: G("You can't see. Except down the side of your nose.", "Seven. They always pick seven. Statistically speaking.", "Standing ovation. Minds read: none. Correct.", "Booed off. The audience read your mind instead."),
