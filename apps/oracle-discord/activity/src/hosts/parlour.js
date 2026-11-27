@@ -4,6 +4,7 @@
 import { vinylSvg } from "../player.js";
 import { parlourSceneHtml, bellJarSvg, propsSvg, react, SEANCE_EMOTES, ROOM_CSS, gownOf, gownShop } from "./parlour-room.js";
 import { coatOverlay } from "./alchemist-lab.js";
+import { PARLOUR_SECRETS, parlourBgHtml, PARLOUR_BG_CSS } from "../parlour/secrets.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -160,7 +161,7 @@ export const parlour = {
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
-  css: PARLOUR_CSS + ROOK_HANDS_CSS + ROOM_CSS, paint, scene: parlourSceneHtml, react, emotes: SEANCE_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: PARLOUR_CSS + ROOK_HANDS_CSS + ROOM_CSS, paint, scene: parlourSceneHtml, react, emotes: SEANCE_EMOTES, secrets: PARLOUR_SECRETS, menuBg: { css: PARLOUR_BG_CSS, html: parlourBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Spirit Trumpet Gramophone", deck: gramophoneSvg },
   shelves: [trickShop, gownShop],
   token: { id: "key", emoji: "🗝️", name: "skeleton key", plural: "skeleton keys", purse: "Key ring" },
