@@ -29,22 +29,22 @@ export const EMBLEM = {
   stars: (c) => { let p = ""; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 11 : 27; p += `${k ? "L" : "M"}${(r * Math.cos(a)).toFixed(1)} ${(r * Math.sin(a)).toFixed(1)}`; } return `<path d="${p}Z" fill="${c}"/>`; },
 };
 
-function face(x, y, w, h, d, label) {
+function face(x, y, w, h, d, label, k = 0) {
   const c = d.card, s = SUITS.find((q) => q.key === c.suit), cx = w / 2, small = w < 160;
   const lines = wrap(c.n.toUpperCase(), Math.max(8, Math.floor((w - 20) / 12)));
   const sc = Math.min(1.9, w / 120), keeper = c.num === "K";
-  return `<g transform="translate(${x} ${y})">
+  return `<g transform="translate(${x} ${y})"><g class="dk-card" style="--i:${k}">
     <rect x="6" y="${h - 4}" width="${w - 12}" height="16" rx="8" fill="#000" fill-opacity="0.35" filter="url(#soft)"/>
     <rect width="${w}" height="${h}" rx="14" fill="url(#md-face)" stroke="${PAL.gold}" stroke-width="3"/>
     <rect x="10" y="10" width="${w - 20}" height="${h - 20}" rx="9" fill="none" stroke="${s.col}" stroke-opacity="0.6" stroke-width="1.5"/>
     <text x="22" y="${small ? 34 : 42}" font-family="Cinzel" font-weight="900" font-size="${small ? 18 : 24}" fill="${s.col}">${keeper ? "✦" : c.num}</text>
-    <circle cx="${cx}" cy="${h * 0.42}" r="${(w * 0.3).toFixed(1)}" fill="${s.col}" fill-opacity="0.1"/>
-    <g transform="translate(${cx} ${(h * 0.42).toFixed(1)}) scale(${sc.toFixed(2)})">${EMBLEM[c.suit](s.col)}</g>
-    ${keeper ? `<circle cx="${cx}" cy="${h * 0.42}" r="${(w * 0.36).toFixed(1)}" fill="none" stroke="${PAL.gold}" stroke-width="2" stroke-dasharray="3 5"/>` : ""}
+    <circle class="dk-halo" cx="${cx}" cy="${h * 0.42}" r="${(w * 0.3).toFixed(1)}" fill="${s.col}" fill-opacity="0.1"/>
+    <g transform="translate(${cx} ${(h * 0.42).toFixed(1)}) scale(${sc.toFixed(2)})"><g class="dk-emb dk-${c.suit}">${EMBLEM[c.suit](s.col)}</g></g>
+    ${keeper ? `<circle cx="${cx}" cy="${h * 0.42}" r="${(w * 0.36).toFixed(1)}" fill="none" stroke="${PAL.gold}" stroke-width="2" stroke-dasharray="3 5" class="dk-ring"/>` : ""}
     ${lines.map((l, i) => `<text x="${cx}" y="${h - 26 - (lines.length - 1 - i) * 20}" font-family="Cinzel" font-weight="700" font-size="${Math.min(small ? 14 : 18, (w - 20) / (l.length * 0.72)).toFixed(1)}" fill="${PAL.light}" text-anchor="middle">${esc(l)}</text>`).join("")}
     <text x="${cx}" y="-14" font-size="${small ? 13 : 16}" letter-spacing="2" fill="${PAL.teal}" text-anchor="middle">${esc(label.toUpperCase())}</text>
     <text x="${cx}" y="${h + 30}" font-size="15" fill="${PAL.mute}" text-anchor="middle">${esc(c.kw[0])}</text>
-  </g>`;
+  </g></g>`;
 }
 
 function layout(n) {
@@ -56,7 +56,7 @@ function body(cast, spread, question) {
   const W = 1520, L = layout(cast.length), w = L.w, h = Math.round(w * 1.6);
   let s = `<ellipse cx="${W / 2}" cy="380" rx="720" ry="330" fill="url(#halo)"/>`;
   if (question) s += `<text x="${W / 2}" y="14" font-size="22" fill="${PAL.mute}" font-style="italic" text-anchor="middle">“${esc(question.length > 90 ? question.slice(0, 88) + "…" : question)}”</text>`;
-  cast.forEach((d, k) => { const [x, y] = L.pos[k]; s += face(x, y + 60, w, h, d, spread.positions[k][0]); });
+  cast.forEach((d, k) => { const [x, y] = L.pos[k]; s += face(x, y + 60, w, h, d, spread.positions[k][0], k); });
   return s;
 }
 

@@ -87,6 +87,9 @@ const FRONTS = {
   lenormand: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#f6ead0" stroke="${G.gold}" stroke-width="1.1"/><circle cy="${-ch * 0.08}" r="${cw * 0.24}" fill="none" stroke="#2f8a5a" stroke-width="1"/><rect x="${cw * 0.12}" y="${-ch / 2 + 2.5}" width="${cw * 0.3}" height="${ch * 0.24}" rx="1" fill="#fff" stroke="#7a5a2a" stroke-width=".5"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="#7a4f12" stroke-width="1"/>`,
   magicdeck: (cw, ch) => `<rect x="${-cw / 2}" y="${-ch / 2}" width="${cw}" height="${ch}" rx="2.5" fill="#241a5c" stroke="${G.gold}" stroke-width="1.1"/><circle cy="${-ch * 0.06}" r="${cw * 0.24}" fill="${G.teal}" opacity=".25"/><circle cy="${-ch * 0.06}" r="${cw * 0.1}" fill="${G.light}"/><path d="M${-cw / 2 + 3} ${ch / 2 - 5} h${cw - 6}" stroke="${G.light}" stroke-width="1"/>`,
 };
+/** A burst of gold sparks and a flash of the edge as a card turns face up. */
+const spark = (w, h, t) => `<rect class="k-flash" x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="2.5" fill="none" stroke="#fff" stroke-width="1.6" style="--d:${f1(t)}s"/>` +
+  [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const a = k * Math.PI / 4 + 0.3, r = w * 0.9; return `<circle class="k-spark" r="${k % 2 ? 0.9 : 1.4}" fill="${k % 3 ? G.gold : G.light}" style="--d:${f1(t)}s;--x:${f1(Math.cos(a) * r)}px;--y:${f1(Math.sin(a) * r)}px"/>`; }).join("");
 /** Riffle shuffle, then deal face down and turn each card over: shared by every deck on the "By the cards" row. */
 function deckScene(deckKey, pos) {
   const small = pos.length > 5, w = small ? 17 : 24, h = small ? 28 : 40, DX = 200, DY = 160;
@@ -94,7 +97,7 @@ function deckScene(deckKey, pos) {
   const deck = (cls, dx) => `<g class="${cls}">${[0, 1, 2, 3].map((k) => `<g transform="translate(${dx + k * 0.6} ${-k * 1.2})">${back(30, 48)}</g>`).join("")}</g>`;
   const riff = [0, 1, 2, 3, 4, 5].map((k) => `<g class="k-only k-riff" style="animation-delay:${f1(0.35 + k * 0.08)}s" transform="translate(${k % 2 ? 4 : -4} ${-8 - k})">${back(30, 48)}</g>`).join("");
   const cards = pos.map(([x, y], i) => { const dd = 1.1 + i * (small ? 0.13 : 0.2);
-    return `<g transform="translate(${x} ${y})" class="k-only"><g class="k-deal" style="--d:${f1(dd)}s;--sx:${DX - x}px;--sy:${DY - y}px">${shadow(0, h / 2 - 1, w * 0.55, 3)}<g class="k-turn" style="--d:${f1(dd + 0.45)}s">${back(w, h)}<g class="k-face" style="--d:${f1(dd + 0.65)}s">${front(w, h)}</g></g></g></g>`; }).join("");
+    return `<g transform="translate(${x} ${y})" class="k-only"><g class="k-deal" style="--d:${f1(dd)}s;--sx:${DX - x}px;--sy:${DY - y}px">${shadow(0, h / 2 - 1, w * 0.55, 3)}<g class="k-turn" style="--d:${f1(dd + 0.45)}s">${back(w, h)}<g class="k-face" style="--d:${f1(dd + 0.65)}s">${front(w, h)}</g></g>${spark(w, h, dd + 0.65)}</g></g>`; }).join("");
   return `<g transform="translate(${DX} ${DY})">${shadow(0, 26, 26, 6)}${deck("k-riffl", -2)}${deck("k-riffr", 2)}${riff}</g>${cards}`;
 }
 export const CARD_BACKS = Object.keys(BACKS).filter((k) => k.startsWith("cb-"));
