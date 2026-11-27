@@ -1823,3 +1823,35 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .co-bar{display:block;height:4px;margin-top:4px;border-radius:2px;background:color-mix(in srgb,var(--ink2) 20%,transparent);overflow:hidden}
 .co-bar i{display:block;height:100%;width:var(--p);background:linear-gradient(90deg,#c88a2a,#FADE8C)}
 .co-row.done .co-e{color:#3a8a3a}.co-row.done b{color:var(--ink)}
+/* Moon relics: permanent fixtures in the Oracle's pane (moonrelics.js) */
+.mr-layer{position:absolute;inset:0;pointer-events:none}
+.mr{position:absolute;height:auto;overflow:visible;filter:drop-shadow(0 0 6px rgba(0,0,0,.4))}
+.mr.mr-rose{opacity:.42}.mr.mr-arch{opacity:.85}
+.mr-float{animation:mr-float 4s ease-in-out var(--d,0s) infinite}
+@keyframes mr-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.mr-flame{transform-box:fill-box;transform-origin:50% 100%;animation:scflick 1.2s ease-in-out infinite}
+.mr-sway{animation:mr-sway 5s ease-in-out var(--d,0s) infinite}
+@keyframes mr-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.mr-glow{animation:mr-glow 3s ease-in-out infinite}
+@keyframes mr-glow{50%{opacity:.35}}
+.mr-wisp{animation:mr-wisp 3s linear var(--d,0s) infinite}
+@keyframes mr-wisp{from{transform:rotate(0) translateX(4px)}to{transform:rotate(360deg) translateX(4px)}}
+.mr-scope{animation:mr-scope 24s ease-in-out infinite}
+@keyframes mr-scope{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+.mr-star{animation:sc-tw 2.4s ease-in-out var(--d,0s) infinite}
+.mr-orbit{animation:gb-spin var(--t,8s) linear infinite}
+.mr-rose{animation:gb-spin 200s linear infinite;transform-origin:0 0}
+.mr-drop{animation:mr-sway 6s ease-in-out var(--d,0s) infinite}
+.mr-ripple{transform-box:fill-box;transform-origin:center;animation:mr-ripple 3.6s ease-out var(--d,0s) infinite;opacity:0}
+@keyframes mr-ripple{0%{opacity:.7;transform:scale(.3)}100%{opacity:0;transform:scale(2.6)}}
+body[data-mood] .mr-ripple{animation-duration:2.4s}
+.mr-moonref{animation:mr-glow 5s ease-in-out infinite}
+.mr-arch{animation:mr-glow 8s ease-in-out infinite}
+.mr-glint{animation:mr-glow 4s ease-in-out infinite}
+.th-relic{display:grid;place-items:center;background:radial-gradient(circle,#2a1d55,#0d0a22)}
+.mr-thumb{width:84%;height:84%}
+.mr-card.owned{border-color:rgba(250,222,140,.7)}
+@media (prefers-reduced-motion:reduce){.mr *{animation:none!important}}
+.mr-h{grid-column:1/-1;margin:14px 0 4px;font-family:var(--display,Cinzel,serif);color:var(--gold,#E2B04A)}
+.mr-h small{display:block;font-family:inherit;font-size:12px;margin-top:2px}
+.th-relic svg{width:84%;height:84%}
