@@ -92,6 +92,6 @@ export function gateHtml({ name = "", rank = "", streak = 0, back = false, esc, 
   <h1 class="gate-title">The Oracle Chamber</h1>
   <p class="gate-sub">${back ? `Welcome back${name ? ", " + esc(name) : ""}. ${esc(rank)}${streak > 1 ? ` · 🔥 ${streak} days in a row` : ""}` : `Readings, card games and real science, with a fortune teller who talks back${name ? `. Come in, ${esc(name)}` : ""}.`}</p>
   <button class="c main gate-go" type="button" id="enter">✦ Enter the Chamber</button>
-  <p class="gate-note">🔊 Sound on: she speaks. You can mute her any time.</p>
+  <p class="gate-note">🔊 Sound on: your host speaks. You can mute the voice any time.</p>
 </div>`;
 }
