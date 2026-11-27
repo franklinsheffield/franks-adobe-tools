@@ -51,4 +51,14 @@ export const CSS = `
 .dec-write{font-size:2.6rem;color:var(--gold2);text-shadow:0 0 14px rgba(226,176,74,.5);padding:8px 24px;word-break:break-all;max-width:100%}
 .dec-write.cartouche{border:3px solid var(--gold);border-radius:999px}.dec-write small{font-size:.9rem;color:var(--muted);font-family:var(--body)}
 @media (max-width:560px){.dec-cell span,.dec-cell.sep,.dec-strip.long .dec-cell span,.dec-strip.egyptian .dec-cell span{font-size:1.6rem}.dec-tiles.nums{grid-template-columns:repeat(5,minmax(0,1fr))}.dec-card{width:78px}}
+.dec-in{font-size:1.25em;color:var(--gold2);vertical-align:-.12em}
+.dec-guide h3{font-family:var(--display);color:var(--gold);letter-spacing:.08em;font-size:1rem;margin:0 0 8px}
+.dec-guide details{border:1px solid var(--line);border-radius:10px;margin:6px 0;background:rgba(22,16,48,.55)}
+.dec-guide summary{cursor:pointer;padding:8px 12px;font-weight:700;color:var(--gold2);list-style-position:inside}
+.dec-guide details[open] summary{border-bottom:1px solid var(--line)}
+.dec-guide p{margin:8px 12px;font-size:.9rem;line-height:1.55}.dec-guide b{color:var(--teal)}
+.dec-gtable{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:8px}
+.dec-gtable span{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.dec-gtable i{font-style:normal;font-size:1.7rem;color:var(--gold2);grid-row:span 2}.dec-gtable small{color:var(--muted);font-size:.68rem;line-height:1.2}
+.dec-gtable.maya{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}.dec-gtable.maya span{display:flex;flex-direction:column;gap:0}
 `;
