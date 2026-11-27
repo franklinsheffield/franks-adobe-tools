@@ -194,6 +194,7 @@ const shuffle = (a, seed) => { let h = [...seed].reduce((n, c) => (n * 31 + c.ch
 function reward(l, stars, why) {
   const p = P(), r = complete(p, l.id, stars);
   const a = (r.xp || r.essence) && C.award ? C.award(r.xp, r.essence) || {} : {};
+  { const ls = levelsOf(l.script), li = ls.indexOf(l); C.trophy?.("decoder", 1 + Math.floor(Math.max(0, li) * 3 / ls.length), { won: true, perfect: stars === 3 }); } // Trophy Case (trophies.js)
   save(); C.showStats && C.showStats();
   const next = levelsOf(l.script)[levelsOf(l.script).indexOf(l) + 1];
   board.insertAdjacentHTML("beforeend", `<div class="dec-reward">${sparks()}${starRow(r.best, 3, true)}${r.newCodex ? `<div>📜 Codex: <b>${esc(r.newCodex)}</b></div>` : ""}

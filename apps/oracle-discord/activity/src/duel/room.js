@@ -198,6 +198,7 @@ export const room = {
       busy = true; const won = g.over.winner === "you", draw_ = g.over.winner === "draw";
       fx = { kind: won ? "win" : "lose", draw: draw_ }; draw(); won ? SFX.win() : SFX.lose();
       const before = codexCount(state.prog), r = settle(state.prog, g), aw = award(r.xp, r.essence); saveProgress(); showStats();
+      ctx.trophy?.("duel", g.level, { won, perfect: won && g.over.how !== "time" }); // Trophy Case (trophies.js)
       const t = titleOf(codexCount(state.prog)), titled = titleOf(before).name !== t.name;
       const how = { stability: won ? "The Oracle's Stability hits zero." : "Your Stability hits zero.", discovery: won ? `You discovered ${GOAL} compounds first.` : `The Oracle discovered ${GOAL} compounds first.`, time: "Thirty rounds: the higher Stability takes it." }[g.over.how];
       say(won ? `${how} ${pick(["Well reacted, chemist.", "I am… destabilised. You win.", "Mendeleev would be proud."])}` : draw_ ? "A perfect stalemate. Even the atoms are confused." : `${how} ${pick(["Better luck next reaction.", "The Oracle's chemistry prevails. This time.", "Back to the textbooks, then come back."])}`);

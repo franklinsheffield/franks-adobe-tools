@@ -139,6 +139,7 @@ export const room = {
     function finish(T, D, g) {
       const before = learnedCount(state.prog), r = settle(state.prog, g, T, D);
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
+      ctx.trophy?.("memory", T.n, { won: true, perfect: r.stars === 3 }); // Trophy Case (trophies.js)
       const after = learnedCount(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name;
       $("gm-board").classList.add("won"); SFX.win(); const box = $("box"); if (box) box.scrollTop = 0;
       tableEl.className = "table gm-table"; tableEl.innerHTML = `<div class="gm-show"><div class="gm-trophy">🏆</div><b>${esc(D.name)} · ${esc(T.name)}</b><small>${g.pairs.length} pairs · ${g.misses} misses · best combo ×${g.bestCombo}</small></div>

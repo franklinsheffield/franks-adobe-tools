@@ -337,6 +337,7 @@ export const rummy = {
     function end() {
       busy = true;
       if (!g.result) { const before = winsOf(state.prog), r = settle(state.prog, g), aw = award(r.xp, r.essence); saveProgress(); showStats();
+        ctx.trophy?.("rummy", g.level, { won: r.win, perfect: r.win && g.out === "me" }); // Trophy Case (trophies.js)
         const t = titleOf(winsOf(state.prog)); g.result = { r, aw, t, titled: titleOf(before).name !== t.name }; }
       results(true);
     }

@@ -216,6 +216,7 @@ export const timeline = {
       const before = chronicled(state.prog), r = settle(state.prog, run);
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
       const after = chronicled(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name, all = perfect(run);
+      ctx.trophy?.("timeline", L.n, { won: all || run.right.length * 2 >= L.cards - 1, perfect: all }); // Trophy Case (trophies.js)
       draw(run, { party: all }); cap(`⏳ Level ${L.n} · ${all ? "a perfect chronicle" : "the scroll rolls up"}`);
       say(all ? `Every card in its place, ${state.name}. Herodotus would weep with joy.` : run.queue.length ? `The sand has run out, ${state.name}. History will wait for you.` : `${run.right.length} of ${L.cards - 1} placed right. Not bad for a time traveller.`);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`, `score ${r.score}${r.best ? " · new best" : ""}`];
