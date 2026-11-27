@@ -32,4 +32,7 @@ for (const f of ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "NotoSansEgyptianHiero
 copyFileSync(new URL("assets/oracle.png", app), new URL("assets/oracle.png", dist));
 // Vibe fonts (SIL Open Font License, from Fontsource), latin subsets.
 for (const f of readdirSync(new URL("src/fonts/", here))) if (f.endsWith(".woff2")) copyFileSync(new URL("src/fonts/" + f, here), new URL("assets/" + f, dist));
+// Music (Frank's soundtracks, music.js): served as static files beside the page.
+mkdirSync(new URL("music/", dist), { recursive: true });
+for (const f of readdirSync(new URL("music/", here))) if (f.endsWith(".mp3")) copyFileSync(new URL("music/" + f, here), new URL("music/" + f, dist));
 console.log("Oracle Chamber built:", MODULES.join(", "));
