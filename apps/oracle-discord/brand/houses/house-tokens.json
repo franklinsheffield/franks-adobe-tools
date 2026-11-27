@@ -1,0 +1,213 @@
+{
+  "_note": "Science is Magic Houses brand tokens, Nov 27 2026. Shared values apply to every House; each House adds its own.",
+  "shared": {
+    "background": "#07050F",
+    "text": "#F4F1FF",
+    "essence": "#F2B63C",
+    "bodyFont": "Cormorant Garamond",
+    "endorsement": "a Science is Magic House"
+  },
+  "houses": {
+    "oracle": {
+      "house": "The Oracle Chamber",
+      "host": "The Oracle",
+      "emoji": "🔮",
+      "channel": "1575683489712439467",
+      "tagline": "Ask the Oracle. Check the source.",
+      "colors": {
+        "accent": "#FF4FB3",
+        "surface": "#2E1E68",
+        "primary": "#E2B04A",
+        "highlight": "#FADE8C",
+        "glow": "#66E0C8",
+        "paper": "#F3E3C3"
+      },
+      "displayFont": "Cinzel",
+      "sound": {
+        "blip": {
+          "type": "square",
+          "base": 330
+        },
+        "player": "The Record Player",
+        "sting": "three rising glass notes on reveal"
+      },
+      "crest": "crests/oracle-chamber-crest.svg"
+    },
+    "alchemist": {
+      "house": "The Alchemist's House",
+      "host": "Magister Vell",
+      "emoji": "⚗️",
+      "channel": "1575967994633396544",
+      "tagline": "Goggles on. Curiosity on.",
+      "colors": {
+        "accent": "#E89A55",
+        "surface": "#26130A",
+        "primary": "#C88A3A",
+        "highlight": "#FADE8C",
+        "line": "#7A4F12",
+        "glow": "#66E0C8"
+      },
+      "displayFont": "IM Fell English (speaker name and gate title; PR #186)",
+      "sound": {
+        "blip": {
+          "type": "triangle",
+          "base": 270,
+          "lp": 3200
+        },
+        "player": "The Brass Phonograph",
+        "sting": "eureka ding on success, flat fizz on no reaction"
+      },
+      "crest": "crests/alchemists-house-crest.svg"
+    },
+    "observatory": {
+      "status": "proposed",
+      "house": "The Observatory",
+      "host": "Keeper Altair",
+      "pronoun": "he",
+      "emoji": "🔭",
+      "channel": "new #🔭-observatory",
+      "rooms": [
+        "stars",
+        "calendar",
+        "rummy"
+      ],
+      "daily": "stars",
+      "tagline": "Look up. Then look closer.",
+      "positioning": "Real stars, real calendars and the myths people told about them, with an astronomer who talks back",
+      "colors": {
+        "accent": "#8FB8FF",
+        "surface": "#0B1530",
+        "highlight": "#DCE6FF",
+        "warm": "#E2B04A",
+        "line": "#2A3F6E"
+      },
+      "displayFont": "Cormorant Garamond, wide-spaced capitals",
+      "sound": {
+        "blip": {
+          "type": "sine",
+          "base": 220
+        },
+        "player": "The Orrery Music Box",
+        "sting": "two chimes a fifth apart"
+      },
+      "shelf": "Star maps from different cultures (free: the Greek sky)",
+      "crest": "crests/observatory-crest.svg"
+    },
+    "parlour": {
+      "status": "proposed",
+      "house": "The Séance Parlour",
+      "host": "Madame Rook",
+      "pronoun": "she",
+      "emoji": "🕯️",
+      "channel": "new #🕯️-parlour",
+      "rooms": [
+        "seance",
+        "timeline"
+      ],
+      "daily": "timeline",
+      "tagline": "Every ghost has a method.",
+      "positioning": "Ghosts, conjurors and the real history of magic, with a medium who shows you the trick",
+      "colors": {
+        "accent": "#C3A6FF",
+        "surface": "#2A0F24",
+        "highlight": "#FFE3A3",
+        "line": "#8A7F99",
+        "secondary": "#E7A0B4"
+      },
+      "displayFont": "Cormorant Garamond italic",
+      "sound": {
+        "blip": {
+          "type": "sawtooth",
+          "base": 200,
+          "lp": 1800
+        },
+        "player": "The Spirit Trumpet Gramophone",
+        "sting": "three knocks, then a bright reveal chord"
+      },
+      "shelf": "Trick cards, each a real method (free: the classic card force)",
+      "crest": "crests/seance-parlour-crest.svg"
+    },
+    "scriptorium": {
+      "status": "proposed",
+      "house": "The Scriptorium",
+      "host": "Archivist Wren",
+      "pronoun": "they",
+      "emoji": "🪶",
+      "channel": "new #🪶-scriptorium",
+      "rooms": [
+        "decoder",
+        "memory"
+      ],
+      "daily": "decoder",
+      "tagline": "Every mark means something.",
+      "positioning": "Runes, glyphs and the signs people wrote, with a scribe who talks back",
+      "colors": {
+        "accent": "#E8483B",
+        "surface": "#1C1710",
+        "highlight": "#F1E4C6",
+        "secondary": "#3D6BE0",
+        "line": "#4A3A2C"
+      },
+      "displayFont": "Uncial Antiqua",
+      "sound": {
+        "blip": {
+          "type": "triangle",
+          "base": 380
+        },
+        "player": "The Hurdy-Gurdy",
+        "sting": "quill scratch, then a wax-seal thump"
+      },
+      "shelf": "Inks and pigments (free: iron-gall ink; vermilion, ultramarine, malachite, orpiment, Tyrian purple)",
+      "crest": "crests/scriptorium-crest.svg"
+    }
+  },
+  "labs": {
+    "pixel-scape": {
+      "status": "live app; game layer in design",
+      "name": "Pixel Scape",
+      "kind": "a Science is Magic Lab (not a House)",
+      "host": "PX-10, a survey drone",
+      "emoji": "🌍",
+      "channel": "#🌍-pixel-scape-play",
+      "tagline": "Any place on Earth. Built together.",
+      "positioning": "Build any real place on Earth in 3D, together, from real elevation and satellite data",
+      "colors": {
+        "background": "#05040C",
+        "surface": "#0B0A18",
+        "accent": "#5CF2FF",
+        "highlight": "#8FD8FF",
+        "success": "#3DFF8B",
+        "busy": "#FFC23D",
+        "error": "#FF3D6E"
+      },
+      "displayFont": "Night Machine (installed); web fallback VT323",
+      "sound": {
+        "style": "chiptune",
+        "ping": "sonar ping",
+        "done": "four-note rising arpeggio",
+        "badge": "short fanfare",
+        "sting": "sonar ping, then the arpeggio"
+      },
+      "game": {
+        "weeklyTheme": "The Weekly Build",
+        "challenge": "Expedition",
+        "room": "Survey Party",
+        "postedRender": "Field Report (5 pts showcase, +10 Hierophant pick)",
+        "titles": [
+          "Scout",
+          "Surveyor",
+          "Cartographer",
+          "Worldwright"
+        ],
+        "badges": [
+          "Summit (over 3,000 m)",
+          "Coastline",
+          "Home Town",
+          "First Remix",
+          "Full Party (8 builders)"
+        ]
+      },
+      "crest": "crests/pixel-scape-crest.svg"
+    }
+  }
+}
