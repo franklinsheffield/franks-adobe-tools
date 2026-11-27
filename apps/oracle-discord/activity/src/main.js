@@ -32,6 +32,7 @@ import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
 import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
+import { initMood, moodForOutcome, moodForTone, flickFor } from "./mood.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -93,10 +94,12 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 // The Oracle talks: letters appear at speaking pace (pausing on punctuation), each few letters a retro blip,
 // and the creature's eye and face pulse while it speaks.
 let typing = null;
+const mood = initMood($("teller"), { reduced, name: () => state.name });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 function say(text, done) {
   clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
+  if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking"); teller.classList.remove("syl"); };
   say.finish = null;
   if (reduced) { el.textContent = plain; stop(); done && done(); return; }
@@ -105,6 +108,7 @@ function say(text, done) {
   let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking");
   const step = () => {
     const ch = plain[i++]; el.textContent = plain.slice(0, i);
+    mood.flick(flickFor(ch));
     if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch); teller.classList.toggle("syl"); } }
     if (i >= plain.length) { say.finish = null; blip("o", { final: true }); stop(); done && done(); return; }
     typing = setTimeout(step, PAUSE[ch] || (ch === " " ? 34 : 26));
@@ -131,9 +135,10 @@ function bindGo(id) {
 }
 // ---- idle chatter: after 30 s with no click or key, the chosen personality pipes up (first 3 lines chained, then shuffled) ----
 const idle = { t: null, step: 0, used: [], on: false };
-function idleReset() { clearTimeout(idle.t); idle.step = 0; if (idle.on) idle.t = setTimeout(idleTick, IDLE_AFTER); }
+function idleReset() { clearTimeout(idle.t); idle.step = 0; mood.wake(); if (idle.on) idle.t = setTimeout(idleTick, IDLE_AFTER); }
 function idleTick() {
   const b = document.body.classList, busy = state.inRoom || b.contains("talking") || b.contains("trance") || $("more") || document.hidden;
+  if (!busy && idle.step >= 4) return mood.sleep(); // after four unanswered remarks she dozes off until you come back
   if (!busy) say(idleLine(pid(), idle.step++, idle.used, state.name));
   idle.t = setTimeout(idleTick, IDLE_AFTER);
 }
@@ -170,7 +175,8 @@ function award(xp = 0, essence = 0) {
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   state.inRoom = id;
-  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award, trophy });
+  const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble });
 }
 
 function choose(sys) {
@@ -224,6 +230,7 @@ async function reveal(sys, options, question = "") {
   document.body.classList.remove("trance"); cap(sys.emoji + " " + sys.label);
   if (err) {
     table.rest(sys.key);
+    mood.emote("sad");
     say("The glass clouds over. " + (err.message || "Something went wrong."));
     ui(`<div class="choices"><button class="c main" type="button" id="again">Try again</button><button class="c" type="button" id="back">Choose another</button></div>`);
     $("again").onclick = () => choose(sys); $("back").onclick = greet; return;
@@ -237,7 +244,7 @@ async function reveal(sys, options, question = "") {
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
   useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name);
-  const pages = [words, deliver(pid(), a.line, { name: state.name }), joke(sys.key)];
+  const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" }, { text: joke(sys.key), after: "laugh" }];
   if (pid() === "standup") setTimeout(rimshot, 400);
   talkThrough(pages, () => { afterReading(); reward(gain, sys); });
 }
@@ -246,6 +253,7 @@ async function reveal(sys, options, question = "") {
 function outOfReadings(sys) {
   const p = state.prog, rk = rankOf(p.xp).name, nx = nextRank(p.xp), lim = dailyLimit(rk);
   table.rest(sys.key);
+  mood.emote("sad");
   say(`The glass is resting, ${state.name}. A ${rk} gets ${lim} reading${lim === 1 ? "" : "s"} a day in the Chamber. Union rules for crystal balls. ${nx ? `Reach ${nx.name} for more.` : ""} A day pass buys one more, or ask me with /oracle in chat, where the line never closes.`);
   ui(`<div class="choices"><button class="c main" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading (💎 ${DAY_PASS}, you have ${p.essence})</button><button class="c" type="button" id="shop">💎 Store</button><button class="c" type="button" id="back">✦ Back</button></div>`);
   $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); chime(1); showStats(); choose(sys); } };
@@ -296,10 +304,12 @@ function talkThrough(pages, done) {
   let i = 0;
   const next = () => {
     if (i >= pages.length) { removeEventListener("keydown", talkKey); talkKey = null; done(); return; }
-    const page = pages[i++], last = i >= pages.length;
+    const raw = pages[i++], page = raw.text ?? raw, last = i >= pages.length;
+    if (raw.mood) mood.emote(raw.mood);
     ui(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
     $("skip").onclick = () => say.finish && say.finish(); // Skip only skips the typing effect: the full text shows at once
     say(page, () => {
+      if (raw.after) mood.emote(raw.after);
       ui(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
       $("more").onclick = next;
     });
@@ -322,6 +332,7 @@ function reward(g, sys) {
     g.unlocked.map((u) => `<div class="up">✨ Unlocked ${u.kind === "cloth" ? "table cloth" : "crystal ball"}: <b>${esc(u.name)}</b> <button class="c small" type="button" data-wear="${u.id}">Use it</button></div>`).join("");
   $("ui").appendChild(el);
   el.querySelectorAll("[data-wear]").forEach((b) => (b.onclick = () => { wear(b.dataset.wear); b.textContent = "✓ On"; b.disabled = true; }));
+  if (g.rankUp) mood.emote("cheer", { quiet: true }); else if (g.essence) mood.emote("joy", { quiet: true });
   if (g.rankUp || g.unlocked.length || g.newItems.length) { chime(g.rankUp || g.unlocked.length ? 2 : 1); $("table-pane").classList.remove("sparkle"); void $("table-pane").offsetWidth; $("table-pane").classList.add("sparkle"); }
 }
 
@@ -423,14 +434,14 @@ function showStore(tab = "outfit", opener = null) {
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
   const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
-    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); }));
+    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; if (!off) mood.emote("curious"); showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
   $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore.deck = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
   $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); const it = lookItem(b.dataset.w); showStore(tab, talk(it.kind, "tryon", it)); }));
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); showStore(tab, talk(it.kind, "buy", it)); } }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
@@ -544,7 +555,8 @@ function tierKey(n) { return TIERS[n].key; }
 function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="button" class="tr-pins" id="tr-pins" title="Your showcase: open the Trophy Case">${p.showcase.map((id) => { const t = TROPHIES.find((x) => x.id === id); return t ? `<span class="tr-pin">${trophyArt(t.art, tierKey(tierOf(p, id)), { plinth: false })}</span>` : ""; }).join("")}</button>` : ""; }
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
-function trophy(id, level, o) { try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); } }
+function trophy(id, level, o) { mood.emote(moodForOutcome(id, o || {}));
+  try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); } }
 function trophyNews(n) {
   if (!n) return;
   if (n.pay) award(0, n.pay); saveProgress(); showStats();
@@ -552,7 +564,7 @@ function trophyNews(n) {
 }
 function nextCollect() {
   const n = tq.shift(), el = $("tcollect"); if (!n) { tShowing = false; return; }
-  tShowing = true;
+  tShowing = true; mood.emote("cheer", { quiet: true });
   const t = TROPHIES.find((x) => x.id === n.id), T = TIERS[n.tier], up = n.from > 0;
   const kicker = n.tier === 4 ? "Fully mastered" : up ? "Trophy upgraded" : "New trophy";
   const rays = Array.from({ length: 16 }, (_, i) => `<i style="--a:${i * 22.5}deg"></i>`).join("");
