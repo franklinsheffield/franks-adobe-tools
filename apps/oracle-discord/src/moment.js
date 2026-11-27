@@ -102,3 +102,26 @@ export function momentRows(m, { detail = false } = {}) {
 export const momentMethod = (m) => (m.timeKnown
   ? "The clock time is converted to UTC with the historical time-zone rules for the birthplace (IANA tz database), including daylight time and, before standard zones, local mean time. True solar time comes from the Sun's hour angle at the birthplace."
   : "No birth time was given. Noon is used, and every result that changes within a day is marked as approximate.");
+
+/**
+ * Which day a birth belongs to when the day is not counted from midnight. Returns the civil date, the date if the
+ * day begins at sunrise (ancient Egypt), and the date if it begins at sunset (the Gauls, and one reading of the
+ * Maya count). Needs a known time and a place where the Sun rose and set that day; otherwise null.
+ */
+export function dayReckoning(m) {
+  if (!m || !m.timeKnown || !m.seasonal) return null;
+  const shift = (n) => { const d = new Date(Date.UTC(m.birth.year, m.birth.month - 1, m.birth.day + n)); return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }; };
+  const civil = shift(0), beforeSunrise = !m.daylight && m.birth.hour < 12, afterSunset = !m.daylight && m.birth.hour >= 12;
+  return { civil, beforeSunrise, afterSunset, part: m.daylight ? "in daylight" : beforeSunrise ? "at night, before sunrise" : "at night, after sunset",
+    fromSunrise: beforeSunrise ? shift(-1) : civil, fromSunset: afterSunset ? shift(1) : civil };
+}
+
+/** Shared intake for the date-only systems: an optional time and place give a birth moment; otherwise null. */
+export async function optionalMoment(o, birthAt, ctx, geocode) {
+  if (!o.place || !String(o.place).trim()) return null;
+  const where = ctx.geocoded || await geocode(o.place, ctx.fetch || fetch);
+  if (!where) return null; // these systems still work from the date alone
+  const timeKnown = !o.time_unknown && !!(o.time && String(o.time).trim());
+  return birthMoment(birthAt(timeKnown), where, timeKnown);
+}
+export const DATE_ONLY_ROW = ["Birth moment", "only the date is used here. With a birth time and place, the reading can also say whether the birth was by day or night and which day it belongs to when days are not counted from midnight."];

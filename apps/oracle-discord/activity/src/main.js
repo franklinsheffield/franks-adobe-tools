@@ -397,6 +397,9 @@ function choose(sys) {
     if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
+    const opt = f.opt || []; // optional extras: asked for, never required
+    if (opt.includes("time")) rows.push(field("t", "Birth time (optional, adds depth)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
+    if (opt.includes("place")) rows.push(field("p", "Birth town or city (optional)", "Phoenix, USA", p.place, false));
     rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
     ui(`<div class="form" id="f">${rows.join("")}</div>
       <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
@@ -407,6 +410,7 @@ function choose(sys) {
       if (need.includes("place")) o[f.place] = v("p");
       if (need.includes("name")) o[f.name] = v("n");
       if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
+      for (const [k, id] of [["time", "t"], ["place", "p"]]) if (opt.includes(k) && v(id)) o[f[k]] = v(id);
       reveal(sys, o, v("bq")); };
   }
   bindGo("f");
