@@ -9,6 +9,8 @@ import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
 import { sceneSvg, kindOf, KIND, powerTier, structureSvg } from "./scene.js";
 import { USES, MILESTONES } from "./uses.js";
+import { friendDuel } from "./friend.js";
+import { canJoin } from "../net.js";
 import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
@@ -95,6 +97,7 @@ export const room = {
         ? `Welcome to Element Duel, ${state.name}. Your cards are atoms. Put them together into real compounds, salt, water, rust, and hurl them at me. More exothermic means more power. Bring me to zero Stability, or discover five compounds before I do.`
         : pick([`Back for more chemistry, ${state.name}? Pick your level.`, "The deck is shuffled. The bench is clean. Which level?", `My atoms are ready, ${state.name}. Are yours?`]));
       ui(`${statsTop()}<div class="levels">${LEVELS.map((x) => `<button class="c level" type="button" data-l="${x.n}"><b>${"⚛️".repeat(x.n)} ${x.n} · ${esc(x.name)}</b><span>${esc(x.what)} · won ${r.wins[x.n] || 0} of ${r.played[x.n] || 0} · points ×${x.mult}</span></button>`).join("")}</div>
+        <div class="group">👥 Two players</div><div class="levels"><button class="c level" type="button" id="du-friend"><b>👥 Duel a friend</b><span>Live, in this Discord call: you each hold 7 atoms and take turns. Discoveries go in your Codex.</span></button></div>
         ${rivalsHtml()}
         ${dailyBtn()}
         <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button><button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
@@ -102,6 +105,7 @@ export const room = {
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => start(LEVELS[+b.dataset.l - 1])));
       $("ui").querySelectorAll("[data-rv]").forEach((b) => (b.onclick = () => start(LEVELS[2], false, b.dataset.rv)));
+      $("du-friend").onclick = () => { if (!canJoin(state)) return say("Duel a friend works inside a Discord voice call: open the Chamber in the call, and you both open Element Duel and press Duel a friend."); gen++; g = null; fx = null; clearReading(); friendDuel(ctx, { look, back: () => lobby(false) }); };
       $("du-daily").onclick = () => start(LEVELS[DAILY_LEVEL - 1], true);
       $("du-board").onclick = () => showBoard();
       $("du-how").onclick = () => toggle(guideHtml);
