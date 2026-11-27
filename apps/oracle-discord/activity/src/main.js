@@ -228,8 +228,13 @@ function paintScene() { let el = $("scene"); if (!el) { el = document.createElem
   el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
-function cine(kind) { if (reduced || !kind) return; const old = document.querySelector(".cine"); if (old) old.remove();
-  const el = document.createElement("div"); el.className = "cine cn-" + kind; el.setAttribute("aria-hidden", "true"); el.innerHTML = cineHtml(kind); $("stage").append(el); setTimeout(() => el.remove(), 1100); }
+/** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
+function cine(kind, fn = () => {}) {
+  if (reduced || !kind || cine.mid) { cine.mid = true; try { return fn(); } finally { cine.mid = false; } }
+  document.querySelector(".cine")?.remove();
+  const el = document.createElement("div"); el.className = "cine in cn-" + kind; el.setAttribute("aria-hidden", "true"); el.innerHTML = cineHtml(kind); $("stage").append(el);
+  setTimeout(() => { cine.mid = true; try { fn(); } finally { cine.mid = false; } el.classList.replace("in", "out"); setTimeout(() => el.remove(), 700); }, 520);
+}
 /** Notification orbs on the menu: today's card, each game's daily, a new store week. */
 function paintOrbs() {
   const o = orbsFor(state.prog), sb = $("store-btn"); sb.querySelector(".orb")?.remove(); if (o.store) sb.insertAdjacentHTML("beforeend", orbHtml(1, "New picks this week"));
@@ -257,7 +262,7 @@ function idleTick() {
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
 
 function greet() {
-  if (state.inRoom || document.querySelector(".pane.oracle-pane.showroom")) cine(CINE.home);
+  if (!cine.mid && (state.inRoom || $("ui").querySelector(".depts"))) return cine(CINE.home, greet);
   state.inRoom = null; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
@@ -311,7 +316,7 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
-  if (state.inRoom !== id) cine(CINE.room);
+  if (state.inRoom !== id && !cine.mid) return cine(CINE.room, () => openRoom(id, arg));
   state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
@@ -354,8 +359,9 @@ function choose(sys) {
 }
 
 async function reveal(sys, options, question = "") {
+  if (!cine.mid && !reduced) return cine(CINE.reading, () => { reveal(sys, options, question); });
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
-  ui(""); clearReading(); state.q = question; cine(CINE.reading); markCard(state.prog);
+  ui(""); clearReading(); state.q = question; markCard(state.prog);
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
   document.body.classList.add("trance"); mood.clear(); refreshEnergy(); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
   clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
@@ -578,7 +584,7 @@ function thumb(it) {
 const ACTIVE_KINDS = ["voice", "vibe", "persona"]; // "Active" reads better than "Wearing" for these
 /** The store: five departments, each with its shelves; `tab` is the open shelf (a kind, or "haunted"). */
 function showStore(tab = "outfit", opener = null) {
-  if (!$("ui").querySelector(".depts")) cine(CINE.store);
+  if (!$("ui").querySelector(".depts") && !cine.mid) return cine(CINE.store, () => showStore(tab, opener));
   markStore(state.prog); $("store-btn").querySelector(".orb")?.remove();
   clearReading(); cap(trying ? "👁 Trying on: " + (trying.set ? `the ${LOOK_SETS.find((x) => x.id === trying.set).name} set` : lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog, depts = departments(), dept = deptOf(tab);
@@ -683,22 +689,26 @@ function openBook(sec = "codex") {
     <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
     <div class="bk-book"><div class="bk-pages"><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
-      <div class="bk-leaf" id="bk-leaf" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
-      <div class="bk-cover" id="bk-cover" aria-hidden="true">${coverSvg(b, "Your Grimoire")}</div></div></div>`;
+      <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
+      <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div><div class="bk-cv-back"></div></div></div></div>`;
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
-    if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }); } };
-  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; })));
+    if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
+    turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
-  bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); $("bk-x").focus();
+  bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1250); $("bk-x").focus();
 }
 /** Turn a page: the leaf sweeps over, and the new pages are drawn under it halfway through. */
-function turnTo(change, back = false) {
-  if (BK.busy) return; const leaf = $("bk-leaf"); if (!leaf) return;
+/** Turn the pages: n leaves riffle over in a quick stagger (more for a jump to another section); the view changes under them. */
+function turnTo(change, back = false, n = 3) {
+  if (BK.busy) return; const box = $("bk-leaves"); if (!box) return;
   if (reduced) { change(); drawBook(); return; }
-  BK.busy = true; bookSfx("page"); leaf.className = "bk-leaf" + (back ? " back" : " turn");
-  setTimeout(() => { change(); drawBook(); }, 330); setTimeout(() => { leaf.className = "bk-leaf"; BK.busy = false; }, 700);
+  const STEP = 75, DUR = 640; BK.busy = true; bookSfx("page"); setTimeout(() => bookSfx("page"), STEP * Math.max(1, n - 1));
+  box.innerHTML = Array.from({ length: n }, (_, i) => `<i class="bk-lf${back ? " back" : ""}" style="--i:${i};--n:${n}"></i>`).join("");
+  setTimeout(() => { change(); drawBook(); }, Math.floor((n - 1) / 2) * STEP + DUR * 0.5);
+  setTimeout(() => { box.innerHTML = ""; BK.busy = false; }, (n - 1) * STEP + DUR + 40);
 }
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
@@ -718,7 +728,7 @@ function drawBook() {
   on("[data-mon]", (b) => turnTo(() => { const [y, m] = BK.ym || [new Date().getFullYear(), new Date().getMonth()], d = new Date(y, m + +b.dataset.mon, 1); BK.ym = [d.getFullYear(), d.getMonth()]; }, +b.dataset.mon < 0));
   on("[data-mark]", (b) => { toggleMark(b.dataset.mark, b.dataset.label); drawBook(); });
   on("[data-wb]", (b) => wearBook(b.dataset.wb));
-  on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }));
+  on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }, false, 6));
   on("[data-seal]", () => breakSeal());
 }
 const pageHead = (t, sub = "") => `<h3 class="bk-h">${t}</h3>${sub ? `<div class="bk-sub">${sub}</div>` : ""}`;
