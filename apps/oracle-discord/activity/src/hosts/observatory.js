@@ -5,6 +5,8 @@
 import { vinylSvg } from "../player.js";
 import { menuBg as OBS_MENU_BG } from "../watch/menubg.js";
 import { secrets as DARK_SKY } from "../watch/darksky.js";
+import { domeSceneHtml, astrolabeSvg, propsSvg, headSvg, react, SKY_EMOTES, DOME_CSS, obsCoatOf, obsCoatShop } from "./observatory-dome.js";
+import { coatOverlay } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -106,27 +108,32 @@ body[data-house="observatory"] .gate-title{color:#8FB8FF;font-family:"Cormorant 
 function paint(svg, prog, id = "t") {
   if (!svg) return;
   const stops = (gid, cols) => svg.querySelectorAll(`#${id}-${gid} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
-  stops("face", ["#DCE6FF", "#8FB8FF", "#2A3F6E"]); stops("hood", ["#1c2f5e", "#0B1530", "#03060f"]); stops("iris", ["#FFFFFF", "#8FB8FF", "#2A3F6E"]);
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#8FB8FF"); });
+  const C = prog && prog.obscoat ? obsCoatOf(prog.obscoat) : null;
+  stops("face", ["#DCE6FF", "#8FB8FF", "#2A3F6E"]); stops("hood", C ? C.hood : ["#1c2f5e", "#0B1530", "#03060f"]); stops("iris", ["#FFFFFF", "#8FB8FF", "#2A3F6E"]);
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", C ? C.trim : "#8FB8FF"); });
   const body = svg.querySelector(".o-body"), eye = svg.querySelector(".o-eye"); if (!body || !eye) return;
   svg.querySelector(".h-altair")?.remove();
   const M = starMapOf(prog && prog.starmap), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-altair");
   const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(200 + 44 * Math.cos(a)).toFixed(1)} ${(152 + 33 * Math.sin(a)).toFixed(1)}L${(200 + 49 * Math.cos(a)).toFixed(1)} ${(152 + 37 * Math.sin(a)).toFixed(1)}" stroke="#6b3f12" stroke-width="1.4"/>`; }).join("");
-  g.innerHTML = `<ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
+  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
     <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
     <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
     <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
-    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <g transform="translate(200 92)"><circle r="12" fill="#C88A3A" stroke="#6b3f12"/><circle r="8.5" fill="#0B1530"/><g class="hk-rete"><path d="M0 -8V8M-8 0H8" stroke="#E2B04A" stroke-width="1"/><circle cx="0" cy="-2" r="4.5" fill="none" stroke="#E2B04A" stroke-width="1"/></g><circle cx="0" cy="-14" r="2.6" fill="none" stroke="#C88A3A" stroke-width="1.4"/></g>
     <g class="hk-chart" transform="translate(140 204)">${chartG(M)}</g>`;
   eye.after(g);
+  svg.querySelector(".hv-coat")?.remove(); if (C && body.children[4]) body.children[4].insertAdjacentHTML("afterend", coatOverlay(C)); // his observing coat, over the robe
+  const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands"); // the astrolabe stands where the crystal ball was
+  if (ball) { ball.querySelector(".ao-astro")?.remove(); ball.insertAdjacentHTML("beforeend", astrolabeSvg(id)); }
+  if (hands) { hands.querySelector(".ao-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
   for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", altairHand(side)); } }
 }
-/** Altair's hands (left-hand coordinates; the right hand is mirrored). At rest his left hand holds up a small brass astrolabe
+/** Altair's hands (left-hand coordinates; the right hand is mirrored). At rest his left hand holds up a red observing torch (red light keeps night vision)
  *  and his right hangs open; his gestures: snap = a star twinkles at his fingertips, point = he traces a dotted star-hop,
  *  swat = a little comet streaks off his palm. */
 const altairHand = (side) => (side === "L"
-  ? `<g class="hg hg-astro"><circle cx="160" cy="250" r="20" fill="#0B1530" stroke="#C88A3A" stroke-width="4"/><circle cx="160" cy="250" r="13" fill="none" stroke="#E2B04A" stroke-width="1"/><g class="ha-rete"><path d="M160 236V264M146 250H174" stroke="#E2B04A" stroke-width="1.2"/><circle cx="165" cy="245" r="6" fill="none" stroke="#8FB8FF" stroke-width="1.2"/></g><circle cx="160" cy="228" r="4" fill="none" stroke="#C88A3A" stroke-width="2.4"/></g>`
+  ? `<g class="hg hg-rtorch"><rect x="153" y="236" width="14" height="40" rx="4" fill="#3a3a44" stroke="#111"/><rect x="150" y="226" width="20" height="13" rx="3" fill="#5a1414"/><circle class="ha-red" cx="160" cy="232" r="5" fill="#ff4a4a"/><circle cx="160" cy="232" r="12" fill="#ff3a3a" opacity=".18"/></g>`
   : `<g class="hg hg-star">${[[162, 252, 7], [176, 240, 4], [148, 238, 3.4]].map(([x, y, r], i) => `<path style="--d:${i * 0.08}s" d="M${x} ${y - r * 2} L${x + r * 0.5} ${y - r * 0.5} L${x + r * 2} ${y} L${x + r * 0.5} ${y + r * 0.5} L${x} ${y + r * 2} L${x - r * 0.5} ${y + r * 0.5} L${x - r * 2} ${y} L${x - r * 0.5} ${y - r * 0.5}Z" fill="#e9f0ff"/>`).join("")}</g>
     <g class="hg hg-hop" fill="none" stroke="#8FB8FF" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"><path d="M162 256 Q150 200 120 176 T60 150"/><circle cx="120" cy="176" r="3" fill="#e9f0ff" stroke="none"/><circle cx="60" cy="150" r="4" fill="#e9f0ff" stroke="none"/></g>`)
   + `<g class="hg hg-comet"><path d="M150 250 L104 226" stroke="#8FB8FF" stroke-width="5" stroke-linecap="round" opacity=".5"/><circle cx="150" cy="250" r="5" fill="#e9f0ff"/></g>`;
@@ -135,8 +142,8 @@ body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .o-h
 body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-handR{animation:a-rest 7s ease-in-out infinite}
 body[data-house="observatory"] .teller:not([data-mood]) .o-handL .o-f{animation:none;transform:rotate(44deg)}
 body[data-house="observatory"] .teller:not([data-mood]) .o-handR .o-f{animation-duration:6.5s}
-body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .hg-astro{opacity:1}
-.ha-rete{transform-origin:160px 250px;transform-box:view-box;animation:hr-spin 30s linear infinite}
+body[data-house="observatory"] .teller:not([data-mood]):not([data-gesture]) .hg-rtorch{opacity:1}
+.ha-red{animation:hk-tw 4s ease-in-out infinite}
 @keyframes a-hold{0%,100%{transform:translate(18px,-58px) rotate(-6deg)}50%{transform:translate(18px,-62px) rotate(-8deg)}}
 @keyframes a-rest{0%,100%{transform:translate(0,14px) rotate(-4deg)}50%{transform:translate(1px,11px) rotate(-5deg)}}
 .hg{opacity:0;pointer-events:none}
@@ -146,7 +153,7 @@ body[data-house="observatory"] [data-gesture="swatL"] .o-handL .hg-comet,body[da
 @keyframes a-twinkle{0%{transform:scale(0) rotate(0)}60%{transform:scale(1.3) rotate(45deg)}100%{transform:scale(.8) rotate(90deg);opacity:0}}
 @keyframes a-hop{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
 @keyframes a-comet{from{transform:translate(0,0)}to{transform:translate(-40px,-20px);opacity:0}}
-@media (prefers-reduced-motion: reduce){body[data-house="observatory"] .teller .o-hand,.ha-rete{animation:none!important}}`;
+@media (prefers-reduced-motion: reduce){body[data-house="observatory"] .teller .o-hand,.ha-red{animation:none!important}}`;
 
 /** Swap the Oracle's name for Altair's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
 const RENAME = [
@@ -166,9 +173,9 @@ export const observatory = {
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
-  css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS + DOME_CSS, paint, scene: domeSceneHtml, react, emotes: SKY_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
-  shelves: [starMapShop],
+  shelves: [starMapShop, obsCoatShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },
   relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
   strayIntro: "Something just rolled out of the telescope tube:",
