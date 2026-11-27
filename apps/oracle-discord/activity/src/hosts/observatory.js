@@ -8,6 +8,7 @@ import { secrets as DARK_SKY } from "../watch/darksky.js";
 import { domeSceneHtml, astrolabeSvg, propsSvg, headSvg, react, SKY_EMOTES, DOME_CSS, obsCoatOf, obsCoatShop } from "./observatory-dome.js";
 import { coatOverlay } from "./alchemist-lab.js";
 import { harmonyDone } from "../obsprog.js";
+import { scopeOf, scopeShop, skyShop } from "./observatory-shelves.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -129,7 +130,7 @@ function paint(svg, prog, id = "t") {
   svg.querySelector(".h-altair")?.remove();
   const M = starMapOf(prog && prog.starmap), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-altair");
   const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(200 + 44 * Math.cos(a)).toFixed(1)} ${(152 + 33 * Math.sin(a)).toFixed(1)}L${(200 + 49 * Math.cos(a)).toFixed(1)} ${(152 + 37 * Math.sin(a)).toFixed(1)}" stroke="#6b3f12" stroke-width="1.4"/>`; }).join("");
-  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
+  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="${scopeOf(prog && prog.obsscope).ring}" stroke-width="7"/>${scopeOf(prog && prog.obsscope).deco}${ticks}
     <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
     <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
     <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
@@ -189,7 +190,7 @@ export const observatory = {
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
   css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS + DOME_CSS, paint, scene: domeSceneHtml, react, emotes: SKY_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
-  shelves: [starMapShop, obsCoatShop],
+  shelves: [starMapShop, obsCoatShop, scopeShop, skyShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },
   relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
   strayIntro: "Something just rolled out of the telescope tube:",

@@ -262,3 +262,11 @@ test("Observatory Phase 4: six new relics and The Grand Orrery set", async () =>
   assert.equal(new Set(observatory.relics.map((r) => r.id)).size, observatory.relics.length);
   assert.deepEqual(SETS.find((s) => s.id === "orrery").ids, OBS_GAMES);
 });
+
+test("Observatory Phase 4 shelves: eyepieces and night skies, each with a free default", async () => {
+  const { SCOPES, SKIES, scopeShop, skyShop, skyHtml, scopeOf } = await import("../activity/src/hosts/observatory-shelves.js"), { observatory } = await import("../activity/src/hosts/observatory.js"), { DEPTS } = await import("../activity/src/store.js").catch(() => ({}));
+  assert.ok(observatory.shelves.includes(scopeShop) && observatory.shelves.includes(skyShop));
+  for (const L of [SCOPES, SKIES]) { assert.equal(L[0].price, 0); assert.ok(L.length >= 6); for (const x of L) assert.ok(x.note && x.name, x.id); }
+  assert.equal(skyHtml("sky-clear"), ""); assert.ok(skyHtml("sky-perseids").includes("<i ")); assert.equal(scopeOf("nope").id, "sc-brass");
+  if (DEPTS) assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("obssky"));
+});
