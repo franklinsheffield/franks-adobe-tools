@@ -6,8 +6,10 @@
 //
 // Wire (JSON text frames): client -> room
 //   hello {token, instance, channel} | {dev, name}     put {nid, o}   del {nid}   env {e}   lock {nid|null}   live {nid, p}
-//   replace {objs:[{nid,o}], env, cam, name}           get {h}        save {name} lib    open {id}   unsave {id}   post {h, caption}
-// room -> client: welcome, join, left, put, del, env, lock, live, scene, nack, lib, saved, posted, missing, full, error
+//   replace {objs:[{nid,o}], env, cam, name}           get {h}        save {name} lib    open {id}   unsave {id, kind}   post {h, caption}
+//   cam {c} (where I'm looking)   ping {x, y, z}   place {name, lat, lon, km, keep} (a real place picked in Terrain Lab)
+// room -> client: welcome, join, left, put, del, env, lock, live, scene, nack, lib, saved, posted, missing, full, error, cam, ping, place
+// The server library (lib) lists saved scenes and real places (Terrain Lab builds, /terrain builds opened here) together.
 // Binary frames carry blob chunks both ways: [u32 header length][header JSON {t:"chunk", h, i, n}][bytes]
 export const MAX_BUILDERS = 8;
 export const COLORS = ["#FF5A5A", "#FF6B9E", "#FFD166", "#7AA2FF", "#C38BFF", "#FF9F5A", "#4DE1FF", "#B8F35A"];
@@ -18,8 +20,11 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS rooms (room TEXT PRIMARY KEY, env TEXT, cam TEXT, name TEXT, at INTEGER)",
   "CREATE TABLE IF NOT EXISTS objs (room TEXT, nid TEXT, ord INTEGER, data TEXT, PRIMARY KEY (room, nid))",
   "CREATE TABLE IF NOT EXISTS blobs (h TEXT, i INTEGER, n INTEGER, d BLOB, at INTEGER, PRIMARY KEY (h, i))",
-  "CREATE TABLE IF NOT EXISTS scenes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, by TEXT, byId TEXT, at INTEGER, data TEXT)"
+  "CREATE TABLE IF NOT EXISTS scenes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, by TEXT, byId TEXT, at INTEGER, data TEXT)",
+  "CREATE TABLE IF NOT EXISTS places (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, lat REAL, lon REAL, km REAL, by TEXT, byId TEXT, at INTEGER)"
 ];
+// a link that opens the Activity with a custom id (the Activity reads it as discordSdk.customId)
+export const activityLink = (appId, customId) => "https://discord.com/activities/" + appId + "?custom_id=" + encodeURIComponent(customId);
 const HASH = /^[0-9a-f]{64}$/, NID = /^[A-Za-z0-9_-]{1,40}$/;
 const enc = new TextEncoder(), dec = new TextDecoder();
 
@@ -103,7 +108,17 @@ export class Hub {
   validScene(s) {
     return s && Array.isArray(s.objs) && s.objs.length <= MAX_OBJS && s.objs.every((x) => x && NID.test(x.nid) && x.o && typeof x.o === "object" && JSON.stringify(x.o).length <= MAX_OBJ);
   }
-  lib() { return this.q("SELECT id, name, by, at FROM scenes ORDER BY at DESC LIMIT 200"); }
+  lib() {
+    const sc = this.q("SELECT id, name, by, at FROM scenes ORDER BY at DESC LIMIT 200").map((r) => Object.assign(r, { kind: "scene" }));
+    const pl = this.q("SELECT id, name, lat, lon, km, by, at FROM places ORDER BY at DESC LIMIT 200").map((r) => Object.assign(r, { kind: "place" }));
+    return sc.concat(pl).sort((a, b) => b.at - a.at).slice(0, 200);
+  }
+  validPlace(x) { const lat = +x.lat, lon = +x.lon, km = +x.km; return Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(km) && Math.abs(lat) <= 85 && Math.abs(lon) <= 180 && km > 0 && km <= 60 ? { name: String(x.name || "A place").replace(/[@<>]/g, "").slice(0, 80) || "A place", lat: +lat.toFixed(5), lon: +lon.toFixed(5), km: +km.toFixed(2) } : null; }
+  keepPlace(m, p) {
+    const dup = this.q("SELECT id FROM places WHERE ABS(lat - ?) < 0.0005 AND ABS(lon - ?) < 0.0005 AND ABS(km - ?) < 0.05", p.lat, p.lon, p.km)[0];
+    if (dup) this.sql.exec("UPDATE places SET at = ?, name = ? WHERE id = ?", Date.now(), p.name, dup.id);
+    else this.sql.exec("INSERT INTO places (name, lat, lon, km, by, byId, at) VALUES (?, ?, ?, ?, ?, ?, ?)", p.name, p.lat, p.lon, p.km, m.name, m.userId, Date.now());
+  }
 
   async message(ws, data) {
     const m = this.meta(ws);
@@ -166,9 +181,9 @@ export class Hub {
       }
       case "lib": return this.send(ws, { t: "lib", items: this.lib() });
       case "unsave": {
-        const r = this.q("SELECT byId FROM scenes WHERE id = ?", +x.id)[0];
+        const tb = x.kind === "place" ? "places" : "scenes", r = this.q("SELECT byId FROM " + tb + " WHERE id = ?", +x.id)[0];
         if (!r) return; if (r.byId !== m.userId) return this.send(ws, { t: "error", error: "only the builder who saved it can remove it" });
-        this.sql.exec("DELETE FROM scenes WHERE id = ?", +x.id);
+        this.sql.exec("DELETE FROM " + tb + " WHERE id = ?", +x.id);
         return this.cast(room, { t: "lib", items: this.lib() });
       }
       case "open": {
@@ -182,6 +197,13 @@ export class Hub {
         if (!c || typeof c !== "object" || JSON.stringify(c).length > 512 || now - (m.camAt || 0) < 200) return;
         m.camAt = now; this.setMeta(ws, m);
         return this.cast(room, { t: "cam", sid: by, c }, ws);
+      }
+      case "place": {  // a real place picked in Terrain Lab: the others can look too; keep = add it to the server library
+        const p = this.validPlace(x), now = Date.now(); if (!p || now - (m.placeAt || 0) < 2000) return;
+        m.placeAt = now; this.setMeta(ws, m);
+        if (x.keep) { this.keepPlace(m, p); this.cast(room, { t: "lib", items: this.lib() }); }
+        if (x.share !== false) this.cast(room, Object.assign({ t: "place", sid: by, name: m.name, kept: !!x.keep }, { place: p }), ws);
+        return;
       }
       case "ping": {  // "look here" marker on the ground; relayed, never stored, at most 1 a second
         const now = Date.now(), p = [x.x, x.y, x.z].map(Number);
@@ -233,8 +255,16 @@ export class Hub {
     if (size > POST_MAX) return this.send(ws, { t: "posted", ok: false, error: "render too big (10 MB max)" });
     m.lastPost = now; this.setMeta(ws, m);
     const caption = String(x.caption || "").replace(/[@<>]/g, "").slice(0, 200);
+    // a copy of the scene goes into the server library, so the post's Remix button can open it
+    let remix = null; const s = this.scene(m.room);
+    if (s && this.env.DISCORD_APP_ID) {
+      const name = ("Remix: " + (s.name || "Untitled")).slice(0, 60);
+      this.sql.exec("INSERT INTO scenes (name, by, byId, at, data) VALUES (?, ?, ?, ?, ?)", name, m.name, m.userId, now, JSON.stringify(Object.assign({}, s, { name })));
+      remix = this.q("SELECT last_insert_rowid() AS id")[0].id; this.cast(m.room, { t: "lib", items: this.lib() });
+    }
     const form = new FormData();
-    form.append("payload_json", JSON.stringify({ content: "**" + m.name.replace(/[*_~`|@<>]/g, "") + "** rendered in Pixel Scape" + (caption ? ": " + caption : ""), allowed_mentions: { parse: [] }, attachments: [{ id: 0, filename: "pixel-scape.png" }] }));
+    form.append("payload_json", JSON.stringify({ content: "**" + m.name.replace(/[*_~`|@<>]/g, "") + "** rendered in Pixel Scape" + (caption ? ": " + caption : ""), allowed_mentions: { parse: [] }, attachments: [{ id: 0, filename: "pixel-scape.png" }],
+      components: remix ? [{ type: 1, components: [{ type: 2, style: 5, label: "Remix in Pixel Scape", url: activityLink(this.env.DISCORD_APP_ID, "scene|" + remix) }] }] : undefined }));
     form.append("files[0]", new Blob(parts, { type: "image/png" }), "pixel-scape.png");
     let ok = false, error = "";
     try { const r = await this.f(API + "/channels/" + channel + "/messages", { method: "POST", headers: { authorization: "Bot " + this.env.DISCORD_BOT_TOKEN }, body: form }); ok = r.ok; if (!ok) error = "Discord said " + r.status; }

@@ -7,6 +7,7 @@
 //  - three first-time tips (remembered in this browser)
 import { isPhone, lightRender } from "./phone.js";
 import { mark, onDraw } from "./marks.js";
+import { makeDrawer, startIntent, runIntent } from "./make.js";
 
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } } };
 const coarse = () => window.matchMedia("(pointer: coarse)").matches;
@@ -172,8 +173,10 @@ export function coachMarks(force) {
 export async function startExtras(phone) {
   const W = window.__wb; if (!W || !W.vp) return null;
   bigHandles(W); const quality = autoQuality(W); const ex = explore(W, phone); longPressPing(W);
-  const out = { quality, explore: ex };
+  const out = { quality, explore: ex, make: makeDrawer(W, phone) };
   window.__psExtras = out;
+  const intent = await startIntent();   // opened from a Discord post's link: go straight there, no start screen
+  if (intent) { out.intent = intent; out.choice = "link"; await runIntent(W, intent); coachMarks(); return out; }
   if (q().has("nostart")) return out;
   if (q().has("room") || q().has("frame_id")) {   // in a call: wait briefly for the room, so the screen can offer the shared build
     const t0 = Date.now(); while (Date.now() - t0 < 4000 && !(window.__psNet && (window.__psNet.ready || window.__psNet.closed))) await new Promise((r) => setTimeout(r, 150));
