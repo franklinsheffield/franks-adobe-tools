@@ -32,10 +32,11 @@ export const SFX = {
   unplace() { const c = ctx(); if (!c) return; const t = c.currentTime; tone(c, 520, t, 0.1, { type: "triangle", vol: 0.18, to: 380 }); },
   /**
    * The damage phase, timed to the table animation: cards swish in (0 s), the atoms fuse (0.5 s), the reaction plays its
-   * own sound by kind (0.8 s), an orb launches (1.15 s) and lands with a hit, or a clang on a shield (1.5 s).
+   * own sound by kind (0.8 s, with a deep boom for power 8+ and a bigger one for 11+), an orb launches (1.15 s) and lands with a hit, or a clang on a shield (1.5 s).
    */
   react(power = 5, kind = "crystal", { dmg = 1, blocked = 0 } = {}) {
-    const c = ctx(); if (!c) return; const t = c.currentTime;
+    const c = ctx(); if (!c) return; const t = c.currentTime, h0 = t + 1.5;
+    out.gain.setValueAtTime(power <= 4 ? 0.15 : 0.22, t); out.gain.setValueAtTime(0.22, t + 2.4); // small reactions are quieter
     for (let i = 0; i < 3; i++) hiss(c, t + i * 0.07, 0.12, { from: 2500, to: 6000, vol: 0.18, q: 1.5 });
     [523, 659].forEach((f, i) => tone(c, f, t + 0.5 + i * 0.06, 0.25, { type: "triangle", vol: 0.12 }));
     const k = t + 0.8, v = Math.min(0.8, 0.3 + power * 0.05);
@@ -49,6 +50,8 @@ export const SFX = {
       gas: () => { hiss(c, k, 1.2, { from: 800, to: 2400, vol: 0.35, q: 0.5 }); tone(c, 150, k, 0.5, { vol: 0.2, to: 90 }); },
       crystal: () => { [1568, 2093, 1760, 2637].forEach((f, i) => tone(c, f, k + i * 0.06, 0.6, { vol: 0.12 })); tone(c, 130, k, 0.5, { vol: v * 0.7, to: 60 }); },
     }[kind] || (() => {}))();
+    if (power >= 11) { tone(c, 55, k + 0.05, 1.4, { vol: 0.9, to: 28 }); hiss(c, k + 0.05, 1.1, { from: 200, to: 900, vol: 0.6, q: 0.3 }); tone(c, 82, h0 + 0.02, 0.6, { vol: 0.7, to: 35 }); }
+    else if (power >= 8) { tone(c, 70, k + 0.05, 0.9, { vol: 0.6, to: 35 }); hiss(c, k + 0.05, 0.7, { from: 300, to: 1200, vol: 0.4, q: 0.4 }); }
     tone(c, 300, t + 1.15, 0.35, { type: "triangle", vol: 0.12, to: 900 }); hiss(c, t + 1.15, 0.35, { from: 1200, to: 4000, vol: 0.18 });
     const h = t + 1.5;
     if (blocked) { [880, 1320].forEach((f) => tone(c, f, h, 0.6, { type: "square", vol: 0.07 })); hiss(c, h, 0.2, { from: 3000, to: 1500, vol: 0.2, q: 3 }); }

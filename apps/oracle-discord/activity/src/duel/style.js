@@ -74,6 +74,16 @@ export const CSS = `
 .du-k-card{opacity:0;animation:du-kcard .55s cubic-bezier(.3,.7,.3,1) calc(var(--i) * .05s) both;transform-box:fill-box;transform-origin:center}
 @keyframes du-kcard{0%{opacity:0;transform:translate(var(--sx),var(--sy)) rotate(-12deg) scale(.8)}35%{opacity:1}80%{opacity:1;transform:none}100%{opacity:0;transform:scale(.3)}}
 .du-kfx>*{transform-box:view-box;transform-origin:200px 138px}
+.du-rx .du-kfx,.du-rx .du-flash{transform-box:view-box;transform-origin:200px 138px}
+.du-rx.p-small .du-kfx,.du-rx.p-small .du-flash{transform:scale(.7)}.du-rx.p-small .du-kfx{opacity:.8}
+.du-rx.p-big .du-kfx,.du-rx.p-big .du-flash{transform:scale(1.3)}
+.du-rx.p-huge .du-kfx,.du-rx.p-huge .du-flash{transform:scale(1.65)}
+.du-rx.p-huge .du-impact{r:5}
+.du-tier{opacity:0;animation:du-tier 1.6s .85s ease-out both;transform-box:view-box;transform-origin:200px 100px}
+@keyframes du-tier{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.15)}30%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+.table.duel.du-quake>svg{animation:du-quake .7s .8s ease-in-out both}
+.table.duel.du-quake.big>svg{animation-duration:.45s}
+@keyframes du-quake{10%{transform:translate(-5px,3px)}25%{transform:translate(6px,-4px)}40%{transform:translate(-4px,-2px)}55%{transform:translate(4px,3px)}70%{transform:translate(-2px,1px)}85%{transform:translate(1px,-1px)}}
 .du-k-ring{opacity:0;animation:du-kring 1s .8s ease-out both}
 @keyframes du-kring{0%{opacity:0;transform:scale(.2)}30%{opacity:1}100%{opacity:0;transform:scale(1.9)}}
 .du-k-flame{opacity:0;animation:du-kflame 1.1s calc(.8s + var(--i) * .03s) ease-out both}
@@ -103,5 +113,5 @@ export const CSS = `
 .du-impact{opacity:0;animation:du-impact .7s 1.5s ease-out both;transform-box:fill-box;transform-origin:center}
 @keyframes du-impact{0%{opacity:1;transform:rotate(var(--a)) translateX(0)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
 .du-block{opacity:0;animation:du-kring .8s 1.45s ease-out both;transform-box:fill-box;transform-origin:center}
-@media (prefers-reduced-motion: reduce){.du-k-card,.du-kfx,.du-beam,.du-orb,.du-impact,.du-block{display:none}.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
+@media (prefers-reduced-motion: reduce){.table.duel.du-quake>svg{animation:none}.du-tier{opacity:1;animation:none}.du-k-card,.du-kfx,.du-beam,.du-orb,.du-impact,.du-block{display:none}.du-oback,.du-cond,.du-bonus,.du-idle,.du-shield,.du-glow,.du-fan,.du-rx .du-atom,.du-mol,.du-name,.du-wob,.du-smoke,.du-end text,.du-conf,.du-card,.du-card.glow,.du-hit-oracle .du-o,.du-hit-you .du-y{animation:none}.du-flash{display:none}.du-dmg{opacity:1;animation:none}}
 `;

@@ -54,6 +54,8 @@ function kindFx(k) {
   if (k === "gas") return R(7, (i) => `<circle class="du-k-cloud" style="--i:${i};--dx:${(i - 3) * 22}px;--dy:${-20 - (i % 3) * 12}px" cx="200" cy="138" r="${16 + (i % 3) * 6}" fill="${c}" opacity=".35"/>`).join("");
   return R(8, (i) => `<path class="du-k-shard" style="--i:${i};--a:${i * 45}deg" d="M200 138 l5 -14 l-5 -26 l-5 26 Z" fill="${c}" stroke="#fff" stroke-width=".8"/>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="36" fill="none" stroke="${c}" stroke-width="2.5"/>`;
 }
+/** How big a reaction looks and sounds: "small" (power 4 or less), "big" (8+), "huge" (11+), or "". */
+export const powerTier = (p) => (p == null ? "" : p >= 11 ? "huge" : p >= 8 ? "big" : p <= 4 ? "small" : "");
 /** The played cards flying from the hand (bottom) or the Oracle's hand (top) to the middle. */
 function flyingCards(cards, up) {
   const n = Math.min(cards.length, 7);
@@ -126,9 +128,10 @@ export function sceneSvg(s) {
     <text x="339" y="181" font-size="7.5" fill="#d8d0f0" text-anchor="middle" font-family="system-ui">+2 power · +3 💎</text></g>`;
   let centre = `<g class="du-idle" opacity=".55"><path d="M188 120 V146 L170 178 Q166 186 176 186 H224 Q234 186 230 178 L212 146 V120 Z" fill="rgba(200,230,255,.1)" stroke="#cfe6ff" stroke-width="1.6"/><path d="M174 172 H226 L230 180 Q232 186 224 186 H176 Q168 186 170 180 Z" fill="#66e0c8" opacity=".6"/><rect x="184" y="114" width="32" height="6" rx="2" fill="#cfe6ff" opacity=".7"/></g>`;
   if (fx.kind === "react" && fx.c) {
-    const up = fx.side === "you", ty = up ? 106 : 236, k = kindOf(fx.c), K = KIND[k], hitY = up ? 70 : 274;
-    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"} k-${k}" style="--kc:${K.col}">${flyingCards(fx.cards || [], up)}
+    const up = fx.side === "you", ty = up ? 106 : 236, k = kindOf(fx.c), K = KIND[k], hitY = up ? 70 : 274, tier = powerTier(fx.power);
+    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"} k-${k}${tier ? " p-" + tier : ""}" style="--kc:${K.col}">${flyingCards(fx.cards || [], up)}
       <circle class="du-flash" cx="200" cy="138" r="70" fill="url(#du-flash)"/><g class="du-kfx">${kindFx(k)}</g>${moleculeSvg(fx.c, 200, 138, fx.c.n > 5 ? 0.8 : 1, "du-mol")}
+      ${tier === "big" || tier === "huge" ? `<text class="du-tier" x="200" y="${up ? 214 : 98}" font-size="${tier === "huge" ? 15 : 12}" fill="${K.glow}" text-anchor="middle" font-family="Cinzel,Georgia,serif" letter-spacing="3" stroke="#000" stroke-width=".8" paint-order="stroke">${tier === "huge" ? "MASSIVE REACTION" : "BIG REACTION"} · ${fx.power}</text>` : ""}
       <text class="du-name" x="200" y="194" font-size="14" fill="#fff" text-anchor="middle" font-weight="700" font-family="system-ui" stroke="#000" stroke-width=".6" paint-order="stroke">${xml(pretty(fx.c.f))} · ${xml(fx.c.name)}</text>
       <path class="du-beam" d="M200 ${up ? 116 : 160} L200 ${hitY}" stroke="${K.col}" stroke-width="5" stroke-linecap="round"/><circle class="du-orb" cx="200" cy="138" r="7" fill="${K.glow}" stroke="${K.col}" stroke-width="3" style="--ty:${hitY - 138}px"/>
       ${fx.blocked ? `<circle class="du-block" cx="200" cy="${hitY}" r="26" fill="rgba(95,224,232,.25)" stroke="#5fe0e8" stroke-width="3"/>` : ""}
