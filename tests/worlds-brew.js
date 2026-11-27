@@ -42,6 +42,31 @@ module.exports = async function (t) {
     assert.throws(() => M.parseGLB(new ArrayBuffer(24), "x.glb"), /binary glTF/);
   });
 
+  await t("Pixel Scape: 3D library .glb features (quantised int16 / normalised UVs, texture transform, WebP source, meshopt needs a decoder)", () => {
+    const glbOf = (json, bin) => { const js = new TextEncoder().encode(JSON.stringify(json)), jp = new Uint8Array(js.length + (4 - js.length % 4) % 4).fill(32); jp.set(js);
+      const total = 28 + jp.length + bin.length, g = new Uint8Array(total), dv = new DataView(g.buffer);
+      dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true); dv.setUint32(12, jp.length, true); dv.setUint32(16, 0x4E4F534A, true); g.set(jp, 20);
+      dv.setUint32(20 + jp.length, bin.length, true); dv.setUint32(24 + jp.length, 0x004E4942, true); g.set(bin, 28 + jp.length); return g.buffer; };
+    // positions int16 normalised (stride 8, as KHR_mesh_quantization pads VEC3 to 8 bytes), UVs uint16 normalised, indices uint16
+    const P = new Int16Array([0, 0, 0, 0, 32767, 0, 0, 0, 0, 32767, 0, 0]), UV = new Uint16Array([0, 0, 65535, 0, 0, 65535]), I = new Uint16Array([0, 1, 2, 0]);
+    const bin = new Uint8Array(24 + 12 + 8); bin.set(new Uint8Array(P.buffer), 0); bin.set(new Uint8Array(UV.buffer), 24); bin.set(new Uint8Array(I.buffer), 36);
+    const json = () => ({ asset: { version: "2.0" }, extensionsUsed: ["KHR_mesh_quantization", "KHR_texture_transform", "EXT_texture_webp"], scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, indices: 2, material: 0 }] }], buffers: [{ byteLength: bin.length }],
+      materials: [{ pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1], baseColorTexture: { index: 0, extensions: { KHR_texture_transform: { offset: [0.5, 0.25], scale: [0.5, 0.5] } } } } }],
+      textures: [{ extensions: { EXT_texture_webp: { source: 0 } } }], images: [{ mimeType: "image/webp", uri: "data:image/webp;base64,AAAA" }],
+      bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 24, byteStride: 8 }, { buffer: 0, byteOffset: 24, byteLength: 12 }, { buffer: 0, byteOffset: 36, byteLength: 6 }],
+      accessors: [{ bufferView: 0, componentType: 5122, normalized: true, count: 3, type: "VEC3" }, { bufferView: 1, componentType: 5123, normalized: true, count: 3, type: "VEC2" }, { bufferView: 2, componentType: 5123, count: 3, type: "SCALAR" }] });
+    const white = { 0: { w: 1, h: 1, rgba: new Uint8Array([255, 255, 255, 255]) } };
+    const m = M.parseGLB(glbOf(json(), bin), "q.glb", { decoded: white });
+    assert.strictEqual(m.tris, 1); assert.ok(Math.abs(m.hy - 1) < 1e-6, "int16 normalised positions read as 0..1");
+    assert.deepStrictEqual(Array.from(m.uv).map((x) => +x.toFixed(3)), [0.5, 0.75, 1, 0.75, 0.5, 0.25], "UVs: normalised, then scale 0.5 + offset (0.5, 0.25), v flipped");
+    assert.deepStrictEqual(Array.from(m.tc), [255, 0, 0], "colour = factor x the WebP texture found through EXT_texture_webp");
+    const mo = json(); mo.bufferViews[0].extensions = { EXT_meshopt_compression: { buffer: 0, byteOffset: 0, byteLength: 24, byteStride: 8, count: 3, mode: "ATTRIBUTES" } };
+    assert.ok(M.needsMeshopt(mo)); assert.throws(() => M.parseGLB(glbOf(mo, bin), "c.glb"), /meshopt/);
+    let seen = null; M.parseGLB(glbOf(json(), bin), "e.glb", { decoded: white, editJson: (j) => { seen = j.materials.length; j.materials[0].pbrMetallicRoughness.baseColorFactor = [0, 0, 1, 1]; } });
+    assert.strictEqual(seen, 1);
+  });
+
   await t("Pixel Scape: 12 built-in scenes, all render, deterministically", async () => {
     const names = Object.keys(S.PRESETS); assert.strictEqual(names.length, 12);
     for (const n of names) {

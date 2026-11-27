@@ -56,6 +56,22 @@ function parseGLTF(text, name, opt) {
     const s = atobSafe(b.uri.split(",")[1]), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; });
   return gltfToMesh(json, bufs, name, opt);
 }
+// a texture's picture: plain, or the WebP / AVIF / KTX2 copy named by an extension
+function texSource(tx) { if (tx.source != null) return tx.source; const x = tx.extensions || {}; for (const k of ["EXT_texture_webp", "EXT_texture_avif", "KHR_texture_basisu"]) if (x[k] && x[k].source != null) return x[k].source; return null; }
+// EXT_meshopt_compression (the 3D library's files, gltf-transform / gltfpack): decoder = meshoptimizer's MeshoptDecoder,
+// already ready (the app passes it as opt.meshopt). Each compressed bufferView becomes its own plain buffer.
+const needsMeshopt = (json) => (json.bufferViews || []).some((bv) => bv.extensions && bv.extensions.EXT_meshopt_compression);
+function meshoptDecode(json, bufs, decoder) {
+  if (!decoder || !decoder.decodeGltfBuffer) throw new Error("this model is meshopt-compressed and can't be read here");
+  for (const bv of json.bufferViews) {
+    const x = bv.extensions && bv.extensions.EXT_meshopt_compression; if (!x) continue;
+    const src = new Uint8Array(bufs[x.buffer || 0], x.byteOffset || 0, x.byteLength), out = new Uint8Array(x.count * x.byteStride);
+    decoder.decodeGltfBuffer(out, x.count, x.byteStride, src, x.mode, x.filter || "NONE");
+    bufs.push(out.buffer); bv.buffer = bufs.length - 1; bv.byteOffset = 0; bv.byteLength = out.byteLength;
+    if (x.mode === "ATTRIBUTES") bv.byteStride = x.byteStride; else delete bv.byteStride;
+    delete bv.extensions.EXT_meshopt_compression;
+  }
+}
 // opt.image(uri) -> bytes: resolves textures kept in separate files (used by the asset-pack builder)
 function gltfToMesh(json, bufs, name, opt) {
   opt = opt || {};
@@ -63,7 +79,8 @@ function gltfToMesh(json, bufs, name, opt) {
   let coloured = false, hasUV = true;
   const imgCache = {}, texUse = new Set();
   const image = (ti) => { // texture index -> decoded RGBA, or null
-    const tx = (json.textures || [])[ti]; if (!tx || tx.source == null) return null;
+    const tx0 = (json.textures || [])[ti]; if (!tx0) return null;
+    const tx = { source: texSource(tx0) }; if (tx.source == null) return null;
     if (tx.source in imgCache) return imgCache[tx.source];
     let out = null;
     try {
@@ -77,10 +94,17 @@ function gltfToMesh(json, bufs, name, opt) {
     imgCache[tx.source] = out; return out;
   };
   const acc = (i) => { const a = json.accessors[i], bv = json.bufferViews[a.bufferView], comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type];
-    const T = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5121: Uint8Array }[a.componentType]; if (!T) throw new Error("unsupported glTF data type");
+    const T = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5122: Int16Array, 5121: Uint8Array, 5120: Int8Array }[a.componentType]; if (!T) throw new Error("unsupported glTF data type");
+    const k = a.normalized ? { 5123: 65535, 5122: 32767, 5121: 255, 5120: 127 }[a.componentType] : 0;   // KHR_mesh_quantization: normalised integers
     const stride = bv.byteStride ? bv.byteStride / T.BYTES_PER_ELEMENT : comps, start = (bv.byteOffset || 0) + (a.byteOffset || 0);
     const raw = new T(bufs[bv.buffer || 0].slice(start, start + ((a.count - 1) * stride + comps) * T.BYTES_PER_ELEMENT)), out = new Array(a.count * comps);
-    for (let e = 0; e < a.count; e++) for (let c = 0; c < comps; c++) out[e * comps + c] = raw[e * stride + c]; return out; };
+    for (let e = 0; e < a.count; e++) for (let c = 0; c < comps; c++) out[e * comps + c] = k ? Math.max(-1, raw[e * stride + c] / k) : raw[e * stride + c]; return out; };
+  // KHR_texture_transform on the colour texture (quantised UVs carry their scale and offset here)
+  const uvT = (info) => { const t = info && info.extensions && info.extensions.KHR_texture_transform; if (!t) return null;
+    const [ox, oy] = t.offset || [0, 0], [sx, sy] = t.scale || [1, 1], r = t.rotation || 0, c = Math.cos(r), sn = Math.sin(r);
+    return (uv) => { for (let i = 0; i < uv.length; i += 2) { const x = uv[i] * sx, y = uv[i + 1] * sy; uv[i] = c * x + sn * y + ox; uv[i + 1] = -sn * x + c * y + oy; } return uv; }; };
+  if (needsMeshopt(json)) meshoptDecode(json, bufs, opt.meshopt);
+  if (opt.editJson) opt.editJson(json, bufs);   // e.g. a skin recipe: change materials / hide primitives before reading
   const mul = (A, B) => { const C = new Array(16).fill(0); for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) for (let k = 0; k < 4; k++) C[c * 4 + r] += A[k * 4 + r] * B[c * 4 + k]; return C; };
   const local = (n) => { if (n.matrix) return n.matrix; const [x, y, z, w] = n.rotation || [0, 0, 0, 1], [sx, sy, sz] = n.scale || [1, 1, 1], [tx, ty, tz] = n.translation || [0, 0, 0];
     return [(1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + z * w) * sx, 2 * (x * z - y * w) * sx, 0, 2 * (x * y - z * w) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + x * w) * sy, 0,
@@ -90,12 +114,14 @@ function gltfToMesh(json, bufs, name, opt) {
       const pos = acc(pr.attributes.POSITION), base = P.length / 3;
       for (let i = 0; i < pos.length; i += 3) { const x = pos[i], y = pos[i + 1], z = pos[i + 2]; P.push(M[0] * x + M[4] * y + M[8] * z + M[12], M[1] * x + M[5] * y + M[9] * z + M[13], M[2] * x + M[6] * y + M[10] * z + M[14]); }
       const ind = pr.indices != null ? acc(pr.indices) : Array.from({ length: pos.length / 3 }, (_, k) => k); for (const k of ind) I.push(base + k);
-      const uv0 = pr.attributes.TEXCOORD_0 != null ? acc(pr.attributes.TEXCOORD_0) : null; if (!uv0) hasUV = false; else for (const k of ind) UVC.push(uv0[k * 2], 1 - uv0[k * 2 + 1]);   // glTF v runs downwards
-      // colour per triangle: material colour x texture at the triangle's centre x vertex colours
       const mat = pr.material != null && json.materials ? json.materials[pr.material] : null, pbr = (mat && mat.pbrMetallicRoughness) || {};
+      const tf = uvT(pbr.baseColorTexture), tf0 = tf && !pbr.baseColorTexture.texCoord ? tf : null;
+      let uv0 = pr.attributes.TEXCOORD_0 != null ? acc(pr.attributes.TEXCOORD_0) : null; if (uv0 && tf0) uv0 = tf0(uv0);
+      if (!uv0) hasUV = false; else for (const k of ind) UVC.push(uv0[k * 2], 1 - uv0[k * 2 + 1]);   // glTF v runs downwards
+      // colour per triangle: material colour x texture at the triangle's centre x vertex colours
       const fac = pbr.baseColorFactor || [1, 1, 1, 1], ti = pbr.baseColorTexture ? pbr.baseColorTexture.index : null, img = ti != null ? image(ti) : null;
       texUse.add(img && !pbr.baseColorTexture.texCoord ? img : null);
-      const uvAcc = img && pr.attributes["TEXCOORD_" + (pbr.baseColorTexture.texCoord || 0)], uv = uvAcc != null ? acc(uvAcc) : null;
+      const uvAcc = img && pr.attributes["TEXCOORD_" + (pbr.baseColorTexture.texCoord || 0)], uv = uvAcc != null ? (tf ? tf(acc(uvAcc)) : acc(uvAcc)) : null;
       const vcA = pr.attributes.COLOR_0, vc = vcA != null ? acc(vcA) : null, vcn = vc ? { VEC3: 3, VEC4: 4 }[json.accessors[vcA].type] : 0, vcs = vc ? ({ 5121: 255, 5123: 65535 }[json.accessors[vcA].componentType] || 1) : 1;
       if (mat || img || vc) coloured = true;
       const lin2s = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);   // glTF factors and vertex colours are linear
@@ -166,4 +192,4 @@ function meshFromJSON(j) { const v = new Float32Array(unb64(j.v)), f = new Uint3
 function exportOBJ(o) { const m = meshVerts(o), f = o.mesh.f, c = Math.cos(o.ry * Math.PI / 180), s = Math.sin(o.ry * Math.PI / 180), out = ["# Frank's Worlds Brew export: " + o.mesh.name];
   for (let i = 0; i < m.v.length; i += 3) { const lx = m.v[i] * o.s * o.sx, ly = m.v[i + 1] * o.s * o.sy, lz = m.v[i + 2] * o.s * o.sz; out.push("v " + (o.x + c * lx + s * lz).toFixed(5) + " " + (o.y + ly).toFixed(5) + " " + (o.z - s * lx + c * lz).toFixed(5)); }
   for (let i = 0; i < f.length; i += 3) out.push("f " + (f[i] + 1) + " " + (f[i + 1] + 1) + " " + (f[i + 2] + 1)); return out.join("\n") + "\n"; }
-module.exports = { finishMesh, vertexNormals, parseOBJ, parseSTL, parseGLB, parseGLTF, gltfImages, upright, meshVerts, lathe, toOBJ, SAMPLES, meshToJSON, meshFromJSON, exportOBJ };
+module.exports = { needsMeshopt, finishMesh, vertexNormals, parseOBJ, parseSTL, parseGLB, parseGLTF, gltfImages, upright, meshVerts, lathe, toOBJ, SAMPLES, meshToJSON, meshFromJSON, exportOBJ };
