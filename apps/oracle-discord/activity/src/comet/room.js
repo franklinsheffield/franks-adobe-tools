@@ -1,7 +1,7 @@
 // Comet Hunter: a room of the Chamber (Keeper Altair's House, #🔭-observatory). Blink plates, catch what moved, tell
 // comets from Messier objects, and predict returns like Halley. Logic in engine.js; this file draws and wires it.
 // Trophy levels: C.trophy("comet", level, { won, perfect }) at the end of each run. Daily: one Level 1 run a day.
-import { room as CR, ROUNDS, PASS, roundOf, hitMover, hitFlaw, starsFor, isOpen, settleRun, catchComet, COMETS } from "./engine.js";
+import { room as CR, ROUNDS, PASS, roundOf, pickAt, hopOf, PLUTO_ROUND, starsFor, isOpen, settleRun, catchComet, COMETS } from "./engine.js";
 import { GUIDE } from "./guide.js";
 import { dailySeed, dailyState, finishDaily, todayKey, dayNumber } from "../daily.js";
 import { observatory } from "../hosts/observatory.js";
@@ -22,7 +22,11 @@ const $id = (id) => document.getElementById(id);
 
 const CSS = `.table.comet{background:radial-gradient(ellipse at 50% 120%,#1a2b55 0%,#0B1530 55%,#050a18 100%);pointer-events:auto;overflow:hidden}
 .ch-plate{position:absolute;inset:6% 6% 10%;width:88%;height:84%;border-radius:10px;box-shadow:0 0 0 3px #9fb4d8,0 10px 30px #000a;background:#05070f}
-.ch-plate .pa,.ch-plate .pb{transition:opacity .05s}.ch-plate.blink .pb{animation:ch-blink 1.1s steps(1) infinite}.ch-plate.blink .pa{animation:ch-blink 1.1s steps(1) infinite reverse}
+.ch-plate .pa,.ch-plate .pb{transition:opacity .05s}.ch-plate.blink .pb{animation:ch-blink var(--bl,1.1s) steps(1) infinite}.ch-plate.blink .pa{animation:ch-blink var(--bl,1.1s) steps(1) infinite reverse}
+.ch-plate.bp:not(.blink) .pb{opacity:0}.ch-plate.bp.showb:not(.blink) .pb{opacity:1}.ch-plate.bp.showb:not(.blink) .pa{opacity:0}
+.ch-plate.bp{cursor:crosshair;touch-action:manipulation}.ch-plate.neg .sky{filter:invert(1)}
+#ch-loupe{pointer-events:none}.ch-ctl{display:flex;gap:6px;flex-wrap:wrap}.ch-ctl .c{flex:1 1 0;min-width:0}
+.ch-plate .arrow{stroke:#E2B04A;stroke-width:1.6;fill:none;stroke-dasharray:60;stroke-dashoffset:60;animation:ch-draw .8s ease-out forwards}@keyframes ch-draw{to{stroke-dashoffset:0}}
 @keyframes ch-blink{0%{opacity:1}50%{opacity:0}}
 .ch-plate .hit{cursor:crosshair}.ch-plate .ring{fill:none;stroke:#E2B04A;stroke-width:2;animation:ch-ring .9s ease-out forwards}
 @keyframes ch-ring{from{r:4;opacity:1}to{r:34;opacity:0}}
@@ -30,7 +34,7 @@ const CSS = `.table.comet{background:radial-gradient(ellipse at 50% 120%,#1a2b55
 .ch-plate.shake{animation:ch-shake .35s}@keyframes ch-shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .ch-fact{border-left:3px solid #8FB8FF;padding:4px 10px;margin:8px 0;color:#DCE6FF}
 .ch-dots{letter-spacing:.2em;color:#E2B04A}
-@media (prefers-reduced-motion:reduce){.ch-plate *,.ch-plate{animation:none!important}.ch-plate.blink .pb{opacity:.5}}`;
+@media (prefers-reduced-motion:reduce){.ch-plate *,.ch-plate{animation:none!important}.ch-plate.blink .pb{opacity:.5}.ch-plate .arrow{stroke-dashoffset:0}}`;
 function styleOnce() { if ($id("ch-style")) return; const s = document.createElement("style"); s.id = "ch-style"; s.textContent = CSS; document.head.appendChild(s); }
 
 // ---- drawings ----
@@ -44,14 +48,24 @@ const fuzzy = (x, y, shape, k) => {
   return `${g}<circle cx="${x}" cy="${y}" r="9" fill="url(#${id})"/>`; // a nebula, or a comet's coma far from the Sun
 };
 const field = (stars) => stars.map((s, i) => `<circle class="hit" data-k="s${i}" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="${s.s.toFixed(2)}" fill="#dfe8ff"/>`).join("");
-/** Level 1 plate: stars on both plates, the mover in two places, a flaw on one plate. */
-export function blinkSvg(pair) {
-  const m = pair.mover, f = pair.flaw, dot = (q, k) => `<circle class="hit" data-k="${k}" cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="${m.s.toFixed(2)}" fill="#fff"/>`;
-  const flaw = (on) => (f && f.on === on ? `<circle class="hit" data-k="flaw" cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" r="1.6" fill="#cfd6e6"/>` : "");
-  return `<svg class="ch-plate blink" id="ch-plate" viewBox="0 0 400 260" role="img" aria-label="Two plates of the same sky, blinking">
-    <rect width="400" height="260" fill="#05070f"/>${field(pair.stars)}
-    <g class="pa">${dot(m.a, "mover")}${flaw("a")}<text x="10" y="252" fill="#8FB8FF" font-size="10">Plate A · night 1</text></g>
-    <g class="pb">${dot(m.b, "mover")}${flaw("b")}<text x="390" y="252" fill="#8FB8FF" font-size="10" text-anchor="end">Plate B · night 8</text></g><g id="ch-fx"></g></svg>`;
+/** Level 1 plate: a photographic plate pair. Stars on both, the mover in two places, decoys on one plate, and a loupe. */
+export function blinkSvg(pair, { neg = false, pluto = false } = {}) {
+  const m = pair.mover, f = pair.flaw, v = pair.variable, t = pair.trail, n = (q) => q.toFixed(1);
+  const dot = (q, k) => `<circle cx="${n(q.x)}" cy="${n(q.y)}" r="${(m.s * 2.6).toFixed(2)}" fill="#dfe8ff" opacity=".18"/><circle class="hit" data-k="${k}" cx="${n(q.x)}" cy="${n(q.y)}" r="${m.s.toFixed(2)}" fill="#fff"/>`;
+  const flaw = (on) => (f && f.on === on ? `<path class="hit" data-k="flaw" d="M${n(f.x - 2)} ${n(f.y - 1)} q2 -2 4 0 q1 2 -1 3 q-3 1 -3 -3z" fill="#cfd6e6"/>` : "");
+  const varStar = (on) => (v ? `<circle cx="${n(v.x)}" cy="${n(v.y)}" r="${v.bright === on ? v.sa * 2.6 : v.sb * 2.6}" fill="#dfe8ff" opacity=".2"/><circle class="hit" data-k="variable" cx="${n(v.x)}" cy="${n(v.y)}" r="${v.bright === on ? v.sa : v.sb}" fill="#fff"/>` : "");
+  const trail = (on) => (t && t.on === on ? `<line class="hit" data-k="trail" x1="${t.x1}" y1="${n(t.y1)}" x2="${t.x2}" y2="${n(t.y2)}" stroke="#eef3ff" stroke-width=".9" opacity=".75"/>` : "");
+  const glow = pair.stars.filter((q) => q.s > 1.3).map((q) => `<circle cx="${n(q.x)}" cy="${n(q.y)}" r="${(q.s * 2.8).toFixed(2)}" fill="#dfe8ff" opacity=".16"/>`).join("");
+  const la = pluto ? "Plate A · 23 Jan 1930" : "Plate A · night 1", lb = pluto ? "Plate B · 29 Jan 1930" : "Plate B · night 7";
+  const sky = `<rect width="400" height="260" fill="#05070f"/><rect width="400" height="260" filter="url(#ch-grain)"/>${glow}${field(pair.stars)}
+    <g class="pa">${dot(m.a, "mover")}${varStar("a")}${flaw("a")}${trail("a")}<text x="10" y="252" fill="#8FB8FF" font-size="10">${la}</text></g>
+    <g class="pb">${dot(m.b, "mover")}${varStar("b")}${flaw("b")}${trail("b")}<text x="390" y="252" fill="#8FB8FF" font-size="10" text-anchor="end">${lb}</text></g>
+    <rect width="400" height="260" fill="url(#ch-vig)" pointer-events="none"/>`;
+  return `<svg class="ch-plate bp blink${neg ? " neg" : ""}" id="ch-plate" viewBox="0 0 400 260" role="img" aria-label="Two photographic plates of the same sky, blinking">
+    <defs><filter id="ch-grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .8  0 0 0 0 .85  0 0 0 0 1  0 0 0 .09 0"/></filter>
+    <radialGradient id="ch-vig"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient><clipPath id="ch-lc"><circle id="ch-lcc" cx="-99" cy="-99" r="38"/></clipPath></defs>
+    <g class="sky">${sky}</g>
+    <g id="ch-loupe" style="display:none"><g clip-path="url(#ch-lc)"><g id="ch-lu"><g class="sky">${sky.replace(/ class="hit" data-k="[^"]*"/g, "")}</g></g></g><circle id="ch-lr" cx="-99" cy="-99" r="38" fill="none" stroke="#E2B04A" stroke-width="2"/><circle id="ch-lx" cx="-99" cy="-99" r="2" fill="none" stroke="#E2B04A" stroke-width=".8"/></g><g id="ch-fx"></g></svg>`;
 }
 /** Level 2 plate: a fuzzy patch, moved (a comet) or not (a Messier object). */
 export function fuzzySvg(rd, seed) {
@@ -104,13 +118,13 @@ export const comet = {
     const fx = (html) => { const g = $id("ch-fx"); if (g) g.insertAdjacentHTML("beforeend", html); };
     const shake = () => { const s = $id("ch-plate"); if (!s) return; s.classList.remove("shake"); void s.getBoundingClientRect(); s.classList.add("shake"); };
     const mid = () => C.banter && C.banter("comet", "mid");
-    const LV = [null, ["🔭 1 · Spot the mover", "Blink two plates a week apart and tap what moved"], ["🌫️ 2 · Comet or Messier object", "Did the fuzzy patch move? If not, name it"], ["🪐 3 · Predict a return", "When does a real comet come back?"]];
+    const LV = [null, ["🔭 1 · Spot the mover", "Blink two plates, tap what moved, dodge the decoys"], ["🌫️ 2 · Comet or Messier object", "Did the fuzzy patch move? If not, name it"], ["🪐 3 · Predict a return", "When does a real comet come back?"]];
 
     function lobby(first) {
       clearReading(); cap("☄️ Comet Hunter"); tableEl.className = "table comet";
       tableEl.innerHTML = `<svg class="ch-plate" viewBox="0 0 400 260" role="img" aria-label="A comet"><rect width="400" height="260" fill="#05070f"/>${cometSvg(tailOf(P()), 120, 170, reduced ? "" : "streak")}</svg>`;
       if (first) S.domeOpen();
-      say(first ? `Two plates, one week apart. Something moved, ${state.name}. Let's find it.` : pick([`Comets don't announce themselves, ${state.name}. We blink and we wait.`, "Messier hunted comets for 50 years. He found 13. Let's beat that.", "Fresh plates in from last night. Shall we?"]));
+      say(first ? `Two plates of the same sky, nights apart. Something moved, ${state.name}. Let's find it.` : pick([`Comets don't announce themselves, ${state.name}. We blink and we wait.`, "Messier hunted comets for 50 years. He found 13. Let's beat that.", "Fresh plates in from last night. Shall we?"]));
       const r = R(), ds = dailyState(P(), "comet");
       const lv = (n) => `<button class="c level" type="button" id="ch-go${n}"${isOpen(P(), n) ? "" : " disabled"}><b>${LV[n][0]}</b><span>${isOpen(P(), n) ? `${LV[n][1]}${r.best[n] ? ` · best ${r.best[n]}★` : ""}` : `Clear Level ${n - 1} to open`}</span></button>`;
       ui(`<div class="cx-top"><b>☄️ Comet Hunter</b> · ${r.caught.length} / ${COMETS.length} comets caught · ${r.cleared.length} / 3 levels cleared</div>
@@ -125,26 +139,49 @@ export const comet = {
       const results = [], base = daily ? dseed : (Math.random() * 2 ** 31) >>> 0; let i = 0;
       const dots = () => `<span class="ch-dots">${Array.from({ length: ROUNDS }, (_, k) => (k < results.length ? (results[k] ? "★".repeat(results[k]) : "✗") : "·")).join(" ")}</span>`;
       let settled = -1;
-      const next = (stars) => { if (settled === i) return; settled = i; $("ui").querySelectorAll("button:not(#ch-lobby)").forEach((b) => (b.disabled = true)); results.push(stars); i++; setTimeout(() => (i < ROUNDS ? play() : finish()), reduced ? 300 : 1300); };
+      const next = (stars) => { if (settled === i) return; settled = i; $("ui").querySelectorAll("button:not(#ch-lobby)").forEach((b) => (b.disabled = true)); results.push(stars); i++; setTimeout(() => (i < ROUNDS ? play() : finish()), reduced ? 300 : level === 1 ? 2600 : 1300); };
       const play = () => {
         clearReading(); cap(`☄️ ${daily ? `Daily Blink #${dayNumber(day)}` : LV[level][0]} · plate ${i + 1} of ${ROUNDS}`); tableEl.className = "table comet";
         const seed = (base + i * 7919) >>> 0, rd = roundOf(level, seed, i); let tries = 0;
         if (level === 1) {
-          tableEl.innerHTML = blinkSvg(rd); S.ping(2);
-          say(i === 0 ? "Watch the blink. Stars stay still. Tap the one that jumps." : rd.flaw && i === 2 ? "Careful: dust and scratches show on one plate only. A real mover is on both." : pick(["Blink, and tap what moved.", "Somewhere in there, something's wandering.", "Same sky, a week apart. What's different?"]));
-          ui(`<div class="group">Plate ${i + 1} ${dots()}</div><div class="choices"><button class="c small" type="button" id="ch-pause">⏸ Hold the blink</button></div>${back()}`); wireBack();
-          $("ch-pause").onclick = () => { const s = $id("ch-plate"); s.classList.toggle("blink"); $("ch-pause").textContent = s.classList.contains("blink") ? "⏸ Hold the blink" : "▶ Blink again"; S.ping(3); };
-          tableEl.querySelectorAll(".hit").forEach((el) => (el.onclick = () => {
-            const k = el.dataset.k, x = +el.getAttribute("cx"), y = +el.getAttribute("cy");
-            if (k === "mover" || hitMover(rd, x, y, 4)) {
-              S.discover(); fx(`<circle class="ring" cx="${rd.mover.a.x}" cy="${rd.mover.a.y}" r="4"/><circle class="ring" cx="${rd.mover.b.x}" cy="${rd.mover.b.y}" r="4"/>`);
-              tableEl.querySelectorAll(".hit").forEach((h) => (h.onclick = null)); say(pick(["Got it. That's a wanderer: an asteroid or a comet.", "There! It moved. That's how Tombaugh found Pluto.", "Caught. The stars never move like that."])); return next(starsFor(tries + 1));
+          const pluto = i === PLUTO_ROUND, look = R(); let speed = look.blink || 1.1;
+          tableEl.innerHTML = blinkSvg(rd, { neg: !!look.neg, pluto }); S.ping(2);
+          const svg = $id("ch-plate"); svg.style.setProperty("--bl", speed + "s");
+          say(pluto ? "Last plate: a pair modelled on Tombaugh's, Gemini, January 1930. Something faint moved a tiny bit." : i === 0 ? "Watch the blink. Stars stay still. Tap the one that jumps. The loupe follows your finger." : i === 1 ? "One of these stars changes brightness. Brightening isn't moving." : i === 2 ? "Careful: dust shows on one plate only. A real mover is on both." : i === 3 ? "A satellite may streak across one plate. Streaks aren't movers." : pick(["Blink, and tap what moved.", "Somewhere in there, something's wandering.", "Same sky, a few nights apart. What's different?"]));
+          const ctl = () => ui(`<div class="group">Plate ${i + 1} ${dots()}</div><div class="ch-ctl"><button class="c small" type="button" id="ch-flip">${svg.classList.contains("blink") ? "⏸ Stop and flip by hand" : "🔁 Flip plates"}</button><button class="c small" type="button" id="ch-auto">${svg.classList.contains("blink") ? `⏱ Blink: ${speed < 1 ? "fast" : speed > 1.4 ? "slow" : "medium"}` : "▶ Auto blink"}</button><button class="c small" type="button" id="ch-neg">${svg.classList.contains("neg") ? "🎞 Positive" : "🎞 Negative"}</button></div>${back()}`);
+          const wire = () => {
+            ctl(); wireBack();
+            $("ch-flip").onclick = () => { if (svg.classList.contains("blink")) svg.classList.remove("blink"); else svg.classList.toggle("showb"); S.ping(svg.classList.contains("showb") ? 4 : 2); wire(); };
+            $("ch-auto").onclick = () => { if (svg.classList.contains("blink")) { speed = speed > 1.4 ? 0.7 : speed < 1 ? 1.1 : 1.6; look.blink = speed; save(); svg.style.setProperty("--bl", speed + "s"); } else svg.classList.add("blink"); S.ping(3); wire(); };
+            $("ch-neg").onclick = () => { svg.classList.toggle("neg"); look.neg = svg.classList.contains("neg"); save(); S.ping(1); wire(); };
+          };
+          wire();
+          const pt = (e) => { const ctm = svg.getScreenCTM(); if (!ctm) return null; const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse()); return { x: q.x, y: q.y }; };
+          const loupe = $id("ch-loupe"); let hide = 0;
+          const showLoupe = (q) => {
+            if (!q) return; clearTimeout(hide); const lx = Math.min(360, Math.max(40, q.x)), ly = q.y > 90 ? q.y - 52 : q.y + 52, Z = 3;
+            loupe.style.display = ""; $id("ch-lu").setAttribute("transform", `translate(${lx} ${ly}) scale(${Z}) translate(${-q.x} ${-q.y})`);
+            for (const id of ["ch-lcc", "ch-lr", "ch-lx"]) { $id(id).setAttribute("cx", lx); $id(id).setAttribute("cy", ly); }
+          };
+          svg.onpointermove = (e) => showLoupe(pt(e)); svg.onpointerdown = (e) => showLoupe(pt(e));
+          svg.onpointerleave = () => { hide = setTimeout(() => (loupe.style.display = "none"), 200); };
+          svg.onpointerup = (e) => { if (e.pointerType !== "mouse") hide = setTimeout(() => (loupe.style.display = "none"), 700); };
+          let over = false;
+          svg.onclick = (e) => {
+            if (over) return; const q = pt(e); if (!q) return; const k = pickAt(rd, q.x, q.y);
+            if (k === null) { say("Empty sky there. Tap right on a star or speck."); return; }
+            if (k === "mover") {
+              over = true; S.discover(); const h = hopOf(rd), A = rd.mover.a, B = rd.mover.b;
+              fx(`<circle class="ring" cx="${A.x}" cy="${A.y}" r="4"/><circle class="ring" cx="${B.x}" cy="${B.y}" r="4"/><line class="arrow" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" marker-end="url(#ch-ah)"/><defs><marker id="ch-ah" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L6 3L0 6z" fill="#E2B04A"/></marker></defs>`);
+              say(pluto ? "Caught! That's the hop that found Pluto." : pick(["Got it. A wanderer among the stars.", "There! It moved. Blinking is how Tombaugh found Pluto.", "Caught. The stars never move like that."]));
+              $id("reading-body").innerHTML = `<div class="ch-fact"><b>${esc(h.label)}</b> · hopped ${h.d} plate units. ${esc(h.note)}</div>`;
+              return next(starsFor(tries + 1));
             }
             tries++; S.gutter(); shake();
-            if (k === "flaw" || hitFlaw(rd, x, y, 4)) say("That's a flaw on one plate only: a speck of dust. A real mover shows on both plates.");
-            else { say(tries >= 3 ? "It got away. It was this one." : "That one stayed still. Keep watching the blink."); const m = mid(); if (m && C.bubble && tries === 1) C.bubble(m, 3000); }
-            if (tries >= 3) { fx(`<circle class="ring" cx="${rd.mover.a.x}" cy="${rd.mover.a.y}" r="4"/>`); tableEl.querySelectorAll(".hit").forEach((h) => (h.onclick = null)); next(0); }
-          }));
+            const why = { variable: "That star changed brightness but stayed put: a variable star. Real, but not a mover.", flaw: "That's on one plate only: a speck of dust. A real mover shows on both plates.", trail: "That streak is on one plate only: a satellite crossing during the exposure.", star: "That one stayed still. Keep watching the blink." }[k];
+            if (tries >= 3) { over = true; say(`${why} It got away. Here's the mover.`); fx(`<circle class="ring" cx="${rd.mover.a.x}" cy="${rd.mover.a.y}" r="4"/><circle class="ring" cx="${rd.mover.b.x}" cy="${rd.mover.b.y}" r="4"/>`); $id("reading-body").innerHTML = `<div class="ch-fact">${esc(hopOf(rd).note)}</div>`; return next(0); }
+            say(why); const m = mid(); if (m && C.bubble && tries === 1) C.bubble(m, 3000);
+          };
         } else if (level === 2) {
           tableEl.innerHTML = fuzzySvg(rd, seed); S.ping(4);
           say(pick(["A fuzzy patch. Comet, or one of Messier's?", "Messier's whole list exists because of patches like this.", "Blink it. Did it move?"]));
