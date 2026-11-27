@@ -34,6 +34,7 @@ export const TROPHIES = [
   { id: "casefiles", game: "Case Files", name: "Investigator's Lens", art: "lens", need: 3 },
   { id: "workshop", game: "The Workshop", name: "Golden Top Hat", art: "tophat", need: 3 },
   { id: "bookings", game: "Bookings", name: "Star Turn Ticket", art: "ticket", need: 3 },
+  { id: "darkseance", game: "The Dark Séance", name: "Spirit Trumpet", art: "trumpet", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
   { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
@@ -71,6 +72,7 @@ export const LINES = {
   casefiles: "The Investigator's Lens. Every ghost you looked through it had a method.",
   workshop: "The Golden Top Hat. Every trick under it is one a real medium used, and now you know how.",
   bookings: "The Star Turn Ticket. Your name at the top of the bill, and not one spirit on the payroll.",
+  darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
 };
 
 const room = (p, id) => { p.trophies = p.trophies || {}; return (p.trophies[id] = p.trophies[id] || { tier: 0, wins: {}, perfect: {} }); };
@@ -138,6 +140,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     cards: `<g transform="rotate(-14 50 70)"><rect x="28" y="20" width="26" height="40" rx="3" ${F}/></g><g transform="rotate(14 50 70)"><rect x="46" y="20" width="26" height="40" rx="3" ${F}/></g><rect x="37" y="16" width="26" height="42" rx="3" ${F}/><path class="tr-gem" d="M50 26 L53 34 L61 34 L55 39 L57 47 L50 42 L43 47 L45 39 L39 34 L47 34Z" fill="#0b0818"/><rect x="45" y="62" width="10" height="17" ${F}/>`,
     book: `<path d="M26 22 L50 28 L74 22 L74 66 L50 72 L26 66Z" ${F}/><path d="M50 28 L50 72" stroke="${lo}" stroke-width="1.5"/><g class="tr-rot"><circle cx="62" cy="46" r="7" fill="none" stroke="${lo}" stroke-width="1.6"/><path d="M62 39 L62 53 M55 46 L69 46" stroke="${lo}" stroke-width="1.2"/></g><path d="M34 36 L44 38 M34 44 L44 46 M34 52 L44 54" stroke="${lo}" stroke-width="1.4"/><rect x="45" y="72" width="10" height="7" ${F}/>`,
     burner: `<path class="tr-flame" d="M50 8 C62 24 60 36 50 44 C40 36 38 24 50 8Z" fill="#66E0C8" opacity=".85"/><path d="M50 22 C56 30 55 36 50 40 C45 36 44 30 50 22Z" fill="#fff" opacity=".7"/><rect x="44" y="44" width="12" height="28" rx="2" ${F}/><rect x="40" y="58" width="20" height="6" rx="2" ${F}/><rect x="30" y="72" width="40" height="7" rx="3" ${F}/>`,
+    trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,
     ticket: `<path d="M18 34 H82 V44 Q76 50 82 56 V66 H18 V56 Q24 50 18 44Z" ${F}/><path d="M38 36 V64" stroke="${lo}" stroke-width="1.5" stroke-dasharray="3 3"/><path class="tr-gem" d="M60 40 L63 47 L70 47 L64 51 L66 58 L60 54 L54 58 L56 51 L50 47 L57 47Z" fill="#fff6d0"/>`,
     lens: `<circle cx="44" cy="42" r="20" ${F}/><circle cx="44" cy="42" r="13" fill="#cfe8ff" opacity=".35"/><path class="tr-gem" d="M36 34 Q40 30 46 30" stroke="#fff" stroke-width="3" fill="none"/><path d="M58 56 L76 74" stroke="#5a3a12" stroke-width="9" stroke-linecap="round"/><path d="M58 56 L76 74" stroke="#C9A24A" stroke-width="5" stroke-linecap="round"/>`,
