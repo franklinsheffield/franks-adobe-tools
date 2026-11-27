@@ -5,7 +5,7 @@ import { BANTER, PERSONA_BANTER, banter } from "../activity/src/banter.js";
 import { STORE } from "../activity/src/store.js";
 
 const personas = STORE.filter((s) => s.kind === "persona").map((s) => s.id);
-const GAMES = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles"];
+const GAMES = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "workshop", "bookings"];
 
 test("every game has lines from every personality, all different and short", () => {
   assert.deepEqual(Object.keys(BANTER).sort(), [...GAMES].sort()); assert.ok(personas.length >= 10);
