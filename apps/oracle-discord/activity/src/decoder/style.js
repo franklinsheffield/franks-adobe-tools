@@ -131,9 +131,21 @@ export const CSS = `
 @keyframes dec-draw{from{opacity:0;transform:translateX(-70px) rotate(-20deg) scale(.7)}}
 .dec-hcard.hinted{box-shadow:0 0 0 3px var(--teal),0 0 18px var(--teal);transform:translateY(-10px)}
 .dec-flying{position:fixed;z-index:50;margin:0;pointer-events:none;transition:transform .3s cubic-bezier(.5,0,.6,1),opacity .3s;transform:none}
-.dec-inkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:24px 0 4px}
+.dec-inkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
 .dec-ink{display:inline-flex;gap:3px}.dec-ink i{width:10px;height:14px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:rgba(255,255,255,.12);border:1px solid var(--line);transition:background .3s}
 .dec-ink i.on{background:radial-gradient(circle at 35% 30%,#7fb8ff,#1d3f9a);border-color:#7fb8ff;box-shadow:0 0 5px rgba(127,184,255,.6)}
 @media (max-width:560px){.dec-hcard{flex-basis:48px;height:70px}.dec-hcard b{font-size:1.2rem}.dec-deck{flex-basis:54px;height:76px}.dec-deck b{top:22px}}
+
+/* power cards */
+.dec-powers{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:22px 0 0}
+.dec-pcard{display:flex;align-items:center;gap:5px;padding:5px 10px 5px 7px;border:1px solid #c58bff;border-radius:9px;background:linear-gradient(160deg,#4a2a8a,#22124a);color:var(--fg);cursor:pointer;box-shadow:0 0 10px rgba(197,139,255,.35);transition:transform .15s,box-shadow .15s}
+.dec-pcard span{font-size:1.2rem}.dec-pcard b{font-size:.8rem;color:var(--gold2)}.dec-pcard small{color:var(--muted);font-size:.72rem}
+.dec-pcard:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 0 16px rgba(197,139,255,.6)}
+.dec-pcard:not(:disabled) span{animation:dec-glow 2.4s ease-in-out infinite}
+.dec-pcard:disabled{opacity:.4;cursor:default;box-shadow:none}
+.dec-peek{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:8px;font-size:.8rem;color:var(--fg)}
+.dec-peek>div{display:flex;gap:8px}.dec-peek .dec-hcard{animation:dec-flip .45s both}.dec-peek .dec-hcard:nth-child(2){animation-delay:.08s}.dec-peek .dec-hcard:nth-child(3){animation-delay:.16s}
+@keyframes dec-flip{from{transform:rotateY(90deg)}}
+.dec-gift{color:#d9b8ff;animation:dec-pop .5s .9s both}
 @media (prefers-reduced-motion:reduce){.dec-board *,.dec-board *::after,.dec-hand *{animation:none!important;transition:none!important}}
 `;
