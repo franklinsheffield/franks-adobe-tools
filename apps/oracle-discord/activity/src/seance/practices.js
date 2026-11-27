@@ -26,7 +26,7 @@ export const GENERAL = [
   { id: "cometseeker", name: "Comet hunter", field: "science", emoji: "☄️", answers: ["astronomy"], aliases: ["comet hunter", "comet seeker"],
     clues: [
       "Night after night I sweep the sky for a faint fuzzy patch that moves against the stars.",
-      "Charles Messier listed 110 fuzzy objects in the 1700s so people like me wouldn't be fooled by them.",
+      "Charles Messier catalogued over 100 fuzzy objects in the 1700s so people like me wouldn't be fooled by them.",
       "My quarry grows a tail that always points away from the Sun.",
       "If I'm first to report one, it may be named after me.",
       "The most famous one I chase comes back about every 76 years, and Edmond Halley predicted its return.",
@@ -52,7 +52,7 @@ export const GENERAL = [
       "Most of the mass holding galaxies together seems to be dark matter that nobody can see.",
     ],
     bio: "Astrophysicists use physics to explain what astronomers see: how stars are born, burn and die, and how the universe is expanding.",
-    link: "We are made of star stuff: almost every atom in you was forged inside a star." },
+    link: "We are made of star stuff: nearly every atom in you heavier than hydrogen was forged inside a star." },
   // Physics
   { id: "particle", name: "Particle physicist", field: "science", emoji: "💥", answers: ["physics"], aliases: ["particle physicist", "particle physics"],
     clues: [
@@ -442,7 +442,7 @@ export const SPECIFIC = [
       "Neither the subjects nor the experimenters know who got the real thing.",
       "One group gets a placebo, a dummy treatment.",
       "Chance decides who goes in which group.",
-      "In 1784 Benjamin Franklin's commission blindfolded subjects to test Mesmer's 'animal magnetism'.",
+      "In 1784 Benjamin Franklin's commission ran an early single-blind version, blindfolding subjects to test Mesmer's 'animal magnetism'.",
       "I stop hopes and expectations from steering the result.",
     ],
     bio: "In a double-blind trial nobody involved knows who got what until the end, so belief can't tip the result. Franklin's 1784 blindfold tests found no 'animal magnetism', only imagination.",
@@ -521,7 +521,7 @@ export const SPECIFIC = [
     clues: [
       "I heat milk to about 72 °C for 15 seconds, then cool it fast.",
       "That kills most harmful bacteria without boiling away the taste.",
-      "A French chemist first used me on wine and beer in the 1860s.",
+      "A French chemist first used me on wine in the 1860s.",
       "His swan-neck flasks showed broth stays fresh if germs in the dust can't reach it.",
       "I'm why carton milk is safe to drink.",
     ],
