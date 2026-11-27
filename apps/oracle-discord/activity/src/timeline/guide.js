@@ -134,3 +134,51 @@ export const GUIDES = {
     ],
   },
 };
+
+// ---- Expansion cards (events2.js): one more section per era, plus a guide per themed deck ----
+GUIDES.ancient.sections.push({ h: "More from the ancient world", p: [
+  "The <b>Ebers Papyrus</b> (c. <b>1550 BCE</b>) lists about seven hundred remedies with spells to say over them. Some, like honey on wounds, really work.",
+  "<b>Thales</b> is said by Herodotus to have foretold the solar eclipse of <b>585 BCE</b> (28 May), which stopped a battle. <b>Empedocles</b> (c. <b>450 BCE</b>) taught the <b>four elements</b>, fire, air, earth and water. <b>Eratosthenes</b> (c. <b>240 BCE</b>) measured the size of the Earth from shadows.",
+  "<b>Pliny the Elder</b>'s Natural History (<b>77 CE</b>) called magic ‘the most fraudulent of arts’. <b>Apuleius</b> (c. <b>158 CE</b>) was tried for winning a wife by magic and defended himself in his <i>Apology</i>.",
+  "The <b>Kylver Stone</b> (c. <b>400 CE</b>, Gotland) lists all 24 runes in order. <b>Ogham</b> stones were carved in Ireland from about the <b>5th century CE</b>: try both scripts in the Rune & Glyph Decoder.",
+] });
+GUIDES.renaissance.sections.push({ h: "More from the Middle Ages and Renaissance", p: [
+  "<b>Gerbert of Aurillac</b>, who taught the abacus and Arabic-style numerals, became <b>Pope Sylvester II</b> in <b>999</b>; legend later gave him a talking brass head. <b>Geoffrey of Monmouth</b> made <b>Merlin</b> famous in about <b>1136</b>.",
+  "<b>Fibonacci</b>'s <b>Liber Abaci</b> (<b>1202</b>) taught Europe the digits 0–9. The Maya <b>Dresden Codex</b> (c. <b>1100–1300</b>) tracks Venus and eclipses.",
+  "<b>Gutenberg</b>'s printed Bible (c. <b>1455</b>) began the printing age. <b>Pico della Mirandola</b> offered to debate 900 theses in <b>1486</b>, launching Christian Kabbalah.",
+  "<b>Columbus</b> used an almanac to ‘predict’ the lunar eclipse of 29 February <b>1504</b> in Jamaica. <b>Della Porta</b>'s <b>Natural Magic</b> (<b>1558</b>) treated magic as nature's hidden workings. <b>Giordano Bruno</b> was burned in Rome in <b>1600</b>. <b>Francis Bacon</b>'s <b>Novum Organum</b> (<b>1620</b>) set out a method of experiment.",
+] });
+GUIDES.wonders.sections.push({ h: "More from the Age of Reason", p: [
+  "The <b>Royal Society</b> (<b>1660</b>): ‘take nobody's word for it’. <b>Newton's Opticks</b> (<b>1704</b>) split white light into colours. <b>Halley's comet</b> returned on time in <b>1758</b>, sixteen years after Halley died.",
+  "<b>Lavoisier</b>'s textbook (<b>1789</b>) listed 33 elements and the conservation of mass. <b>Galvani</b>'s twitching frogs (<b>1791</b>) led to Volta's battery. <b>Jenner</b>'s cowpox test (<b>1796</b>) was the first vaccine.",
+  "<b>Mary Shelley</b>'s <b>Frankenstein</b> (<b>1818</b>) has its hero read Agrippa and Paracelsus before turning to galvanism. The <b>daguerreotype</b> (<b>1839</b>) brought photography, and soon faked ghosts.",
+  "The slate-writer <b>Henry Slade</b> was caught and convicted in London in <b>1876</b>. The <b>Seybert Commission</b> (<b>1887</b>) found no genuine medium. The <b>Ouija board</b> was patented as a toy in <b>1891</b>.",
+] });
+GUIDES.modern.sections.push({ h: "More from the modern age", p: [
+  "<b>Aleister Crowley</b> wrote <b>The Book of the Law</b> in Cairo in <b>1904</b>. The <b>Rider–Waite tarot</b> (<b>1909</b>) was drawn by <b>Pamela Colman Smith</b>.",
+  "<b>P. T. Selbit</b> first sawed through a woman on a London stage in <b>1921</b>. <b>Houdini</b> died on Halloween <b>1926</b>, leaving his wife a secret code.",
+  "In <b>1952</b>, <b>Carl Jung</b> and <b>Wolfgang Pauli</b> published on <b>synchronicity</b>, and <b>Martin Gardner</b> published <i>In the Name of Science</i>, a founding skeptics' book.",
+  "<b>Shawn Carlson</b>'s double-blind test (<b>1985</b>, in Nature) found astrologers matched charts no better than chance. In <b>1988</b>, James Randi's <b>‘Carlos’</b> hoax fooled Australian media.",
+] });
+
+const D = (title, sections) => ({ title, sections });
+GUIDES["deck-stage"] = D("Stage magic study guide", [
+  { h: "Magic as entertainment", p: ["Conjuring is as old as storytelling: the <b>Westcar Papyrus</b> (c. 1700 BCE) has Djedi's goose trick; <b>Hero</b> built temple automata (c. 60 CE); <b>Seneca</b> enjoyed the cups and pebbles (c. 64 CE).", "<b>Reginald Scot</b> (1584) and <b>Hocus Pocus Junior</b> (1634) taught tricks in print, so juggling wouldn't be mistaken for witchcraft."] },
+  { h: "Machines and ghosts", p: ["The <b>Mechanical Turk</b> (1770) hid a human chess master. <b>Robertson's Fantasmagorie</b> (1798) projected ghosts. <b>Robert-Houdin</b> (1845) put magic in evening dress. <b>Pepper's Ghost</b> (1862) used angled glass, and <b>Maskelyne</b> copied the Davenports' spirit cabinet (1865).", "<b>Méliès</b> (1896) turned stage tricks into film effects."] },
+  { h: "The golden age and after", p: ["<b>The Magic Circle</b> (1905), Houdini's <b>Water Torture Cell</b> (1912), <b>sawing through a woman</b> (1921) and <b>Houdini's death</b> (1926). <b>David Copperfield</b> ‘vanished’ the Statue of Liberty in 1983 by turning the audience."] },
+]);
+GUIDES["deck-skeptics"] = D("Skeptics vs frauds study guide", [
+  { h: "The ancient doubters", p: ["A <b>Hippocratic</b> doctor (c. 400 BCE) called charm-healers frauds. <b>Pliny</b> (77 CE) called magic ‘the most fraudulent of arts’. <b>Lucian</b> (c. 180 CE) exposed a puppet-snake oracle."] },
+  { h: "Tests, not trust", p: ["<b>Reginald Scot</b> (1584) explained conjurors' tricks. The <b>Mesmer commission</b> (1784) used blindfolds, one of the first blind trials. <b>Faraday</b> (1853) found the ideomotor effect behind table-turning.", "Spiritualism began with the <b>Fox sisters</b> (1848), who confessed in 1888. Fakers included <b>Mumler</b>'s spirit photos (early 1860s), the <b>Davenports</b> (1865), and <b>Slade</b>'s slates (1876). The <b>Seybert Commission</b> (1887) found no real medium, and the <b>Indian Rope Trick</b> (1890) was a newspaper hoax."] },
+  { h: "Magicians join the lab", p: ["The <b>Cottingley fairies</b> (1917) and the medium <b>Margery</b> (1924, exposed by Houdini). <b>Rhine</b>'s ESP (1934) didn't replicate. Randi on <b>The Tonight Show</b> (1973), <b>CSICOP</b> (1976), <b>Project Alpha</b> (1983), <b>Carlson</b>'s astrology test (1985), <b>Carlos</b> and <b>water memory</b> (1988), the <b>Million Dollar Challenge</b> (1996), and <b>Bem</b>'s failed replications (2011)."] },
+]);
+GUIDES["deck-alchemy"] = D("Alchemy to chemistry study guide", [
+  { h: "Elements and transmutation", p: ["<b>Empedocles</b> (c. 450 BCE) gave the four elements; <b>Plato's Timaeus</b> (c. 360 BCE) built them from solids. <b>Zosimos</b> (c. 300 CE) wrote the earliest named alchemy."] },
+  { h: "From the lab of the magus", p: ["<b>Paracelsus</b> (1527) brought chemistry into medicine. <b>Della Porta</b>'s <b>Natural Magic</b> (1558) treated magic as nature's secrets. <b>Boyle</b> (1661) doubted the four elements but still practised alchemy, as did <b>Newton</b> (Principia, 1687)."] },
+  { h: "Chemistry is born", p: ["<b>Lavoisier</b> (1789) listed real elements and showed mass is conserved. <b>Galvani</b> (1791) found ‘animal electricity’. <b>Mendeleev</b> (1869) arranged the elements in the periodic table and predicted missing ones."] },
+]);
+GUIDES["deck-astro"] = D("Astrology to astronomy study guide", [
+  { h: "Omens in the sky", p: ["<b>Thales</b> (585 BCE) is said to have predicted an eclipse. The oldest <b>horoscope</b> is Babylonian, from 410 BCE. <b>Eratosthenes</b> (c. 240 BCE) measured the Earth, and the <b>Antikythera mechanism</b> (c. 100 BCE) predicted eclipses with gears.", "<b>Ptolemy</b> (c. 150 CE) wrote the standard books of both astronomy and astrology. The Maya <b>Dresden Codex</b> (c. 1100–1300) tracked Venus. The <b>Picatrix</b> (1256) taught planetary talismans."] },
+  { h: "The heavens change", p: ["<b>Copernicus</b> (1543) moved the Sun to the centre. <b>Nostradamus</b> (1555) wrote vague prophecies. <b>Tycho</b>'s new star (1572) showed the heavens change. <b>Kepler</b> (1596) and <b>Galileo</b> (1610) went from mystical order to real laws and moons."] },
+  { h: "Testing the stars", p: ["<b>Halley's comet</b> returned on schedule in 1758. <b>Shawn Carlson</b>'s double-blind test (1985) found astrology matched personalities no better than chance."] },
+]);
