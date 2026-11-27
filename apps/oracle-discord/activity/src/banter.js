@@ -173,6 +173,18 @@ export const BANTER = {
     pirate: G("Be it gold, or be it fool's gold? Many a pirate wept.", "Heavy for its size, like a chest o' doubloons.", "Ye named the rock! Stow it in the treasure drawer!", "Arr, that be the wrong rock. Back in the hold with it."),
     influencer: G("Rock unboxing! It's... a rock! Stay with me!", "This streak is giving earth tones. Very on trend.", "Named it! Mineral of the day, tagged and filed.", "Wrong guess, bestie. The rock's playing hard to get."),
   },
+  casefiles: {
+    mystic: G("Every haunting leaves fingerprints. Look for them.", "The candle burns low. The truth burns longer.", "The veil lifts, and behind it, a person. Well seen.", "The file stays closed. Some secrets keep a while."),
+    deadpan: G("It's a ghost story. They always have a sequel: the confession.", "Five candles. One method. Light accordingly.", "Exposed. The ghost has been demoted to a person.", "Unsolved. The ghost wins on a technicality."),
+    drama: G("A HAUNTING! In the FILES! I've gone cold all over!", "The evidence! Look at the EVIDENCE! I can't breathe!", "EXPOSED! The fraud! The scandal! The front page!", "The trickster ESCAPES! Into history! Laughing!"),
+    standup: G("Mediums charge by the hour. Ghosts work for free.", "The spirit knocked twice. Probably the plumbing.", "Case closed! Sherlock would ask for your card.", "Wrong method. The ghost asks for a refund."),
+    grumpy: G("Raps under the table. Oldest trick in the book.", "Turn the lights up. That's half of every case.", "Fine. Caught them. They had it coming.", "Wrong. You'd have paid for the séance, wouldn't you."),
+    sports: G("The investigator steps up! Candles lit! Tool in hand!", "The magnifier comes out! What a move!", "EXPOSED! A clean sweep of the evidence!", "And the fraud slips the tackle! What a dodge!"),
+    conspiracy: G("Notice the lights are always dim. ALWAYS. Why?", "The medium's cousin runs the newspaper. Coincidence?", "Exposed. Now ask who ELSE was in on it.", "Wrong method. Exactly what the file WANTED you to think."),
+    bard: G("Here lies a tale of knocks and candles low.", "Look close, good sleuth, where shadows hide the hand.", "The trick is bared! Its method joins my song.", "The trickster's secret slips into the dark once more."),
+    pirate: G("Every ghost be a stowaway, matey. Find the hidin' spot.", "Candles low, like a lantern on a foggy deck.", "Ye caught the scallywag! Into the brig with 'em!", "Arr, the trickster slipped the rope. Clever devil."),
+    influencer: G("Ghost story time! But make it a debunk!", "This medium's aesthetic is cheesecloth. Iconic, honestly.", "Exposed! Pinning this investigation to my profile.", "Missed it, bestie. The fraud keeps their followers."),
+  },
   bench: {
     mystic: G("Matter wants to change. You only show it the door.", "Every mixture is a question asked of the universe.", "A new substance is born. The world is one thing larger.", "No change today. Even stillness is an answer."),
     deadpan: G("Put thing in pot. Heat pot. That's chemistry.", "Three ingredients. One operation. Infinite smells.", "New substance. Congratulations. Don't eat it.", "Nothing happened. Very restful."),
