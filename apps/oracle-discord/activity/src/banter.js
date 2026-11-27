@@ -125,6 +125,18 @@ export const BANTER = {
     pirate: G("Cards and stars! I'd never bet me ship on either. Again.", "I'll trade ye a bright one for whatever ye're hidin'.", "Ye plundered the whole sky! Well played, ye scallywag!", "The night's mine! Hand over the doubloons! Er, Essence."),
     influencer: G("Collecting stars like it's a limited drop.", "My hand is giving main-character constellation.", "You won! Star player! Literally!", "I won, besties! Full set! Collection complete!"),
   },
+  watch: {
+    mystic: G("The sky keeps its own hours. Wait with it.", "Every plate is a night someone stayed awake for.", "Logged and understood. The heavens nod to you.", "The clouds keep this one secret. Tomorrow, perhaps."),
+    deadpan: G("Looking at old light. Very old. Still bright, though.", "It's a dot. A very important dot.", "Correct. The universe remains unimpressed. I'm not.", "Wrong. The star will be there tomorrow. And for a billion years."),
+    drama: G("The DOME is OPEN! The COSMOS pours in!", "A spectrum! Rainbow and SHADOW, all at once!", "MEASURED! Somewhere an astronomer is sobbing with joy!", "Clouded OUT! The tragedy! The sheer cosmic RUDENESS!"),
+    standup: G("Astronomers work nights. Great for avoiding meetings.", "The telescope's 1,000 mm. I asked, it said it's not compensating.", "Nailed it! You're a star. Technically, made of one.", "Wrong. Don't worry, light-years are a distance. So is that answer."),
+    grumpy: G("We had plates and cold fingers. You've got buttons.", "Stop fiddling. The sky isn't going anywhere. Mostly.", "Fine. Correct. Bessel did it with worse coffee.", "Wrong. Messier would have listed that as a mistake."),
+    sports: G("Eyepiece in, target locked, here comes the measurement!", "The challenger is splitting the double! Steady hands!", "LOGGED AND MEASURED! What a night at the dome!", "Missed it! The star slips behind the clouds! Next shift!"),
+    conspiracy: G("Notice the Moon always shows the same face. Hiding something.", "Glass plates. Half a million of them. Who's counting? I am.", "You measured it. Write it down twice. Hide one copy.", "Wrong. Or the plate was swapped. Think about it."),
+    bard: G("Lift thy gaze, for night hath set her jewels out.", "The glass doth hold a star as amber holds a fly.", "Thou readst the heavens! Uranus himself takes note.", "Alas, the stars withdraw behind a veil of cloud."),
+    pirate: G("Steer by the stars, matey. Polaris never lies.", "A sextant, a clock and a strong stomach. All ye need.", "Ye charted it true! A navigator after me own heart!", "Wrong heading, matey. Ye'd be wrecked on the reef by dawn."),
+    influencer: G("The night sky is giving dark mode. Obsessed.", "Spectrum unboxing! The lines are the details, besties.", "Logged it! Tagging the Andromeda Galaxy. 2.5 million light-years reach.", "Wrong answer, bestie. Even Pluto didn't fumble this hard."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */

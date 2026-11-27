@@ -24,6 +24,7 @@ export const TROPHIES = [
   { id: "duel", game: "Element Duel", name: "Elemental Crown", art: "crown", need: 1 },
   { id: "rummy", game: "Constellation Rummy", name: "Star Hand", art: "cards", need: 1 },
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
+  { id: "watch", game: "The Night Watch", name: "Brass Eyepiece", art: "astro", need: 3, how: ["Log 3 observations", "Measure 3 plates", "Deliver 3 Almanac Desk jobs", "A perfect round at every step"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
   const n = t.need, w = n === 1 ? "Win" : `Win ${n} rounds`;
