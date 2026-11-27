@@ -149,7 +149,7 @@ export const KITCHEN_2 = [
       "Its hot compound, capsaicin, is used in prescription skin patches for nerve pain.",
     ],
     folklore: "Grown in Mexico for at least 6,000 years, it was used by the Maya and Aztecs in food, medicine and even as a punishment, burned to make choking smoke. Hung over doors in many countries, it is said to ward off the evil eye.",
-    science: "Capsaicin triggers TRPV1, the nerve receptor that senses heat; its discovery shared the 2021 Nobel Prize. A high-strength capsaicin patch is approved for some nerve pain. Birds lack the matching receptor.",
+    science: "Capsaicin triggers TRPV1, the nerve receptor that senses heat; its discovery shared the 2021 Nobel Prize. A high-strength capsaicin patch is approved for some nerve pain. Birds have TRPV1 too, but their version does not respond to capsaicin.",
     safety: "Gentle as food. It burns skin and eyes, so wash your hands after cutting it. Extreme varieties have sent people to hospital with vomiting and chest pain.",
     claim: { t: "Birds can eat the hottest chillies without feeling the burn.", fact: true, why: "Birds' version of the TRPV1 heat receptor does not respond to capsaicin, so they eat the fruit and spread the seeds." } },
 
@@ -237,11 +237,11 @@ export const MEADOW_2 = [
     clues: [
       "A bristly, hairy herb with drooping, bright blue star-shaped flowers and a black cone at the centre.",
       "Its flowers taste faintly of cucumber and float in summer drinks.",
-      "An old Latin rhyme has it saying, in the first person, that it brings courage.",
+      "An old Latin rhyme has it boasting, in the first person, that it always brings joy. English versions turned the joy into courage.",
       "Roman soldiers and crusaders were said to drink it in wine before battle.",
       "Its seed oil is rich in gamma-linolenic acid, more so than evening primrose oil.",
     ],
-    folklore: "The herb of courage: 'I, Borage, bring always courage,' says the old rhyme, and it was steeped in wine for soldiers and knights. Pliny wrote that it brought gladness, and Gerard that it drove away sorrow.",
+    folklore: "The herb of courage: the Latin rhyme 'Ego Borago gaudia semper ago' means 'I, Borage, always bring joy', and English versions made it 'I, Borage, bring always courage'. It was steeped in wine for soldiers and knights. Pliny wrote that it brought gladness, and Gerard that it drove away sorrow.",
     science: "Its seed oil is about a fifth gamma-linolenic acid. Trials for eczema mostly found no benefit; some suggest a small effect in rheumatoid arthritis. There is no evidence for courage.",
     safety: "Its leaves and flowers contain pyrrolizidine alkaloids, which can damage the liver over time. Avoid regular use, and avoid it in pregnancy or with liver disease. Seed oil is only safe if certified free of these alkaloids.",
     claim: { t: "Drinking it before battle gives warriors courage.", fact: false, why: "A lovely old belief with no evidence behind it. Any courage came from the wine." } },
@@ -296,7 +296,7 @@ export const MEADOW_2 = [
     aliases: ["horsetail", "horse tail", "field horsetail", "scouring rush", "equisetum", "equisetum arvense"],
     clues: [
       "A plant with no flowers and no seeds: a jointed, hollow green stem ringed with whorls of thin, needle-like branches.",
-      "It spreads by spores, and its family is over 300 million years old; giant tree-sized relatives helped form coal.",
+      "It spreads by spores, and its lineage goes back over 300 million years; giant tree-sized relatives helped form coal.",
       "It is so full of silica that it was used to scour pots and polish pewter.",
       "Its stems pull apart at the joints and fit back together like a toy.",
       "It contains an enzyme that destroys vitamin B1; horses fed hay full of it can stagger and fall.",

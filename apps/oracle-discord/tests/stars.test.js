@@ -37,6 +37,7 @@ test("every figure in the deck can be drawn from real stars", () => {
     while (grew) { grew = false; for (const [a, b] of e) if (seen.has(a) !== seen.has(b)) { seen.add(a); seen.add(b); grew = true; } }
     if (c.id !== "cru") assert.equal(seen.size, figureStars(c).length, `${c.id} connected`);
   }
+  for (const c of DECK) assert.ok(c.fables.filter((f) => !/Greece/.test(f.c)).length >= 2, `${c.id}: at least two stories from outside Greece`);
   assert.deepEqual(figureStars(g("cru")).map((h) => STAR_NAMES[h]).sort(), ["Acrux", "Gacrux", "Imai", "Mimosa"]);
   assert.ok(figureStars(g("ori")).some((h) => STAR_NAMES[h] === "Betelgeuse") && figureStars(g("ori")).some((h) => STAR_NAMES[h] === "Rigel"));
   assert.ok(figureStars(g("lyr")).some((h) => STAR_NAMES[h] === "Vega"));
