@@ -3,6 +3,8 @@
 // midnight-blue hood stitched with a star chart, a brass telescope eyepiece over the eye and a small astrolabe badge.
 // Brand brief: brand/houses/README.md (House 3). Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
+import { menuBg as OBS_MENU_BG } from "../watch/menubg.js";
+import { secrets as DARK_SKY } from "../watch/darksky.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -160,7 +162,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
-  readings: false, rooms: ["stars", "calendar", "rummy"], daily: "stars",
+  readings: false, rooms: ["watch", "stars", "calendar", "rummy"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
@@ -183,10 +185,13 @@ export const observatory = {
       "A day on Venus is longer than its year. Imagine the paperwork."],
   },
   banter: {
+    watch: G("Let your eyes settle. Faint things need a slow look.", "Hipparchus ranked star brightness by eye: 1st to 6th magnitude.", "Logged! Every plate needs a night someone stayed up for.", "Clouded out. Even Herschel lost nights. Try again, {name}."),
     stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
     calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),
     rummy: G("A star from Orion? He's always showing off.", "I'm holding three of the Plough. Or am I?", "You went out first! The sky is yours tonight, {name}.", "My constellation is complete. The night favours the patient."),
   },
   poke: ["Careful, the eyepiece is brass and very old.", "Gently, {name}. I'm calibrated.", "Poke me again and I'll name a faint star after you. Unofficially."],
   perfect: ["A perfect night's work, {name}. Not a cloud in it."],
+  menuBg: OBS_MENU_BG, // the dome at night: real meteor showers, Polaris, the Milky Way (watch/menubg.js)
+  secrets: DARK_SKY, // "🌌 Dark Sky": 20 finds (watch/darksky.js)
 };
