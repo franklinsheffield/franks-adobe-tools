@@ -58,6 +58,8 @@ import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
 import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
+import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
+import { cabinetHtml } from "./curios.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
@@ -232,7 +234,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; }
+  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -383,6 +385,7 @@ function choose(sys) {
 async function reveal(sys, options, question = "") {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question; markCard(state.prog);
+  { const mw = CU.event("ask", question); if (mw) setTimeout(() => mood.bubble(mw, 4600, "🪄"), 300); }
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
   document.body.classList.add("trance"); mood.clear(); refreshEnergy(); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
   clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
@@ -753,7 +756,7 @@ function turnTo(change, back = false, n = 3) {
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
   document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
-  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "diary" ? diaryPages(p) : codexPages(p, sys);
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
   bookCodes(p, L, R);
@@ -908,8 +911,12 @@ function secretPages(p) {
   const right = pageHead("ᚱ The margin cipher", "Three margins, three words, one phrase") + `<div class="bk-cipher">${CIPHER.map((c) => `<span>${c.n} · ${toRunes(c.w)}</span>`).join("")}</div>`
     + (solved ? `<p class="bk-note">✓ Broken: <b>${CIPHER.map((c) => c.w).join(" ")}</b>.</p>` : `<div class="bk-speak"><input id="bk-cipher" type="text" autocomplete="off" placeholder="Write the phrase in letters" aria-label="The phrase from the margins"><button type="button" class="c small" id="bk-speak">Speak it</button></div><p class="bk-note" id="bk-cipher-r">Each rune stands for one letter. A few letters share a rune.</p>`)
     + `<h4>Secret bindings</h4>${secretBooks.length ? `<div class="choices">${secretBooks.map((b) => `<button type="button" class="c small${p.book === b.id ? " on" : ""}" data-wb="${b.id}">${p.book === b.id ? "✓ " : ""}${esc(b.name)}</button>`).join("")}</div>` : `<p class="bk-empty">Four bindings are never sold. They are earned inside this book.</p>`}
-    <p class="bk-note">🌙 Calendar pages seen: ${cal}</p>` + codebreakerHtml(p);
+    <p class="bk-note">🌙 Calendar pages seen: ${cal}</p><button type="button" class="c small cu-open" data-secret-go="cabinet">🏺 Open the Cabinet of Curiosities</button>` + codebreakerHtml(p);
   return [left + collectHtml(p, esc, { codes: [CODES.filter((c) => cdBroken(p, c.id)).length, CODES.length], labels: Object.fromEntries(available(MODULES).map((m) => [m.key, m.label])) }), right];
+}
+function cabinetPages(p) {
+  const [L, R] = cabinetHtml(p, esc);
+  return [pageHead("🏺 The Cabinet of Curiosities", "Things hidden all over the Chamber") + L, R + `<button type="button" class="bk-back" data-secret-go="secrets">◂ Close the Cabinet</button>`];
 }
 function diaryPages(p) {
   const D = diary(p, state.name), half = Math.ceil(D.length / 2), page = (xs) => `<ol class="bk-diary">${xs.map(([t, x]) => `<li><time>${esc(t)}</time><p>${esc(x)}</p></li>`).join("")}</ol>`;
@@ -988,7 +995,7 @@ function doEmote(id, by = null) {
   const f = $("familiar"); if (f) { f.classList.remove("react"); void f.offsetWidth; f.classList.add("react"); }
 }
 function sendEmote(id) {
-  if (Date.now() - EMO.last < 1500 || !emoteSlots(state.prog).includes(id)) return; EMO.last = Date.now(); doEmote(id);
+  if (Date.now() - EMO.last < 1500 || !emoteSlots(state.prog).includes(id)) return; EMO.last = Date.now(); doEmote(id); CU.event("emote-out", id);
   const u = useEmote(state.prog, id); if (u.dayBonus) { showStats(); } saveProgress();
   if (u.levelUp || u.dayBonus || u.unlocked.length) setTimeout(() => mood.bubble(u.unlocked.length ? `New emote: ${u.unlocked[0].e} ${u.unlocked[0].name}! Find it in your emotes.` : u.dayBonus ? `Emote of the day! +💎 ${u.dayBonus}` : `${emoteAny(id).name} reached ${u.levelUp}!`, 3000, u.unlocked.length ? u.unlocked[0].e : u.dayBonus ? "⭐" : "🏅"), 2300);
   const L = EMO.lobby; if (!L) return; const m = { emote: id, by: state.name, byId: L.me && L.me.id };
@@ -1009,6 +1016,8 @@ function sendEmote(id) {
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !wheel.hidden) { close(); btn.focus(); } });
 })();
 /** Equip or take off an emote from the creator's emote grid. */
+CU.init({ state, mood, save: saveProgress, stats: showStats, chime, logEvent, modal, esc, reduced });
+if (PREVIEW) window.__curTest = CU.test;
 function slotTap(id) {
   const r = toggleSlot(state.prog, id), e = emoteAny(id); if (!r || !e) return;
   if (r === "full") return mood.bubble(`All ${EMO_SLOTS} slots are full. Take one off first.`, 2600, "🔁");
@@ -1021,7 +1030,7 @@ function joinLobby() {
   joinTable("lobby", state).then((L) => { EMO.lobby = L;
     L.on("msg", ({ from, m }) => { if (!m || !emoteAny(m.emote)) return;
       if (L.isHost() && from !== L.me.id && !m.fwd) L.to("*", { ...m, fwd: true });
-      if (m.byId && L.me && m.byId === L.me.id) return; doEmote(m.emote, String(m.by || L.nameOf(from)).slice(0, 32)); });
+      if (m.byId && L.me && m.byId === L.me.id) return; CU.event("emote-in", m.emote); doEmote(m.emote, String(m.by || L.nameOf(from)).slice(0, 32)); });
     L.on("close", () => { EMO.lobby = null; }); }).catch(() => { /* not in a call */ });
 }
 // ---- palm eyes: the lines on the Oracle's palms open now and then, and with big moods ----
@@ -1096,7 +1105,7 @@ addEventListener("keydown", unlockVoice, { capture: true });
 const SPEECH = [["slow", "🐢", "Slow speech"], ["normal", "🗣️", "Normal speech"], ["fast", "🐇", "Fast speech"], ["off", "🔇", "Speech off: words appear at once, no voice"]];
 function speechMode() { try { const v = localStorage.getItem("oracle-speech"); if (SPEECH.some(([k]) => k === v)) return v; } catch { /* blocked */ } return isMuted() ? "off" : "normal"; }
 function showSpeech() { const m = speechMode(); $("speech-ctl").innerHTML = SPEECH.map(([k, e, l]) => `<button type="button" class="${k === m ? "on" : ""}" data-sp="${k}" aria-pressed="${k === m}" title="${l}" aria-label="${l}">${e}</button>`).join("");
-  $("speech-ctl").querySelectorAll("[data-sp]").forEach((b) => (b.onclick = () => { try { localStorage.setItem("oracle-speech", b.dataset.sp); } catch { /* blocked */ } setMuted(b.dataset.sp === "off"); showSpeech(); if (say.finish && b.dataset.sp === "off") say.finish(); })); }
+  $("speech-ctl").querySelectorAll("[data-sp]").forEach((b) => (b.onclick = () => { try { localStorage.setItem("oracle-speech", b.dataset.sp); } catch { /* blocked */ } setMuted(b.dataset.sp === "off"); if (b.dataset.sp === "off") CU.event("mute"); showSpeech(); if (say.finish && b.dataset.sp === "off") say.finish(); })); }
 showSpeech();
 
 // ---- start ----
@@ -1121,7 +1130,7 @@ showSpeech();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); paintScene(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
+  const enter = () => { unlockVoice(); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
   if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();

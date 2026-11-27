@@ -17,6 +17,9 @@ const EARNED = [
   { id: "applause", e: "👏", name: "Applause", mood: "cheer", say: "Bravo! Encore!", how: "Use emotes 30 times", test: (p) => total(p) >= 30, fx: { p: ["👏", "🎉"], m: "burst" } },
   { id: "keeper", e: "🗝️", name: "Keeper's sigil", mood: "smug", say: "Every secret, kept.", how: "Find all 7 secrets in Your Grimoire", test: (p) => (p.gs || []).length >= 7, fx: { p: ["🗝️", "✦", "🕯️"], m: "orbit" } },
   { id: "archivist", e: "🏛️", name: "Archivist's flourish", mood: "cheer", say: "The whole Codex. Every page.", how: "Finish the whole Codex", test: (p) => !!(p.coll && p.coll.codex), fx: { p: ["📜", "✨", "🏛️"], m: "rise" } },
+  { id: "knot", e: "🪢", name: "Conjurer's knot", mood: "wink", say: "Tied, untied, and tied again.", how: "A hidden emote combo (see the Cabinet of Curiosities)", test: (p) => (p.cur || []).includes("combo"), fx: { p: ["🪢", "✨"], m: "swirl" } },
+  { id: "curator", e: "🔍", name: "Curator's lens", mood: "curious", say: "Fascinating. Put it in a drawer.", how: "Find 10 curiosities", test: (p) => (p.cur || []).length >= 10, fx: { p: ["🔍", "🏺", "✦"], m: "orbit" } },
+  { id: "wonder", e: "🏺", name: "Wonder", mood: "wow", say: "Every drawer full. Every corner looked into.", how: "Fill the whole Cabinet of Curiosities", test: (p) => !!(p.curM && p.curM.all), fx: { p: ["🏺", "🌙", "✨", "🪐"], m: "burst" } },
   { id: "crownbow", e: "👑", name: "Royal bow", mood: "smug", say: "You may rise.", how: "Win the Star Crown", test: (p) => hasCrown(p), fx: { p: ["👑", "✨"], m: "rise" } },
 ];
 /** One per robe, in the robe's own element. */
