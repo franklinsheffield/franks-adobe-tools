@@ -1,6 +1,7 @@
 // /magicdeck: the Science is Magic deck. 44 original cards, each a reflection plus a real science fact.
 import { DECK, SUITS, SPREADS } from "./data.js";
 import { analyse } from "./insight.js";
+import { explainOf } from "./explain.js";
 import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, GOLD, TEAL, FOOTER, cut, wrap } from "../../card.js";
 
@@ -82,6 +83,14 @@ export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
   return [main, synth];
 }
 
+/** "🔬 Card explainers": the science behind each drawn card's fact, and how it connects to the card's meaning. */
+export function explainEmbed(cast, sp) {
+  return { title: "🔬 Card explainers", color: TEAL, description: "The science behind each card, and how it links to the card's meaning.",
+    fields: cast.map((d, k) => { const c = d.card, x = explainOf(c.n) || { sci: c.fact, link: "" };
+      return { name: `${sp.positions[k][0]}: ${c.n}`, value: cut(`${x.sci}${x.link ? `\n*Why it fits:* ${x.link}` : ""}`) }; }),
+    footer: FOOTER };
+}
+
 export async function run(o = {}, ctx = {}) {
   const key = SPREADS[o.spread] ? o.spread : "three", question = (o.question || "").trim();
   const cast = deal(SPREADS[key].positions.length, ctx.rand);
@@ -89,6 +98,6 @@ export async function run(o = {}, ctx = {}) {
   const defs = `<linearGradient id="md-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241a5c"/><stop offset="1" stop-color="#0f0a26"/></linearGradient>`;
   const png = await cardPng({ title: "Science is Magic deck", subtitle: `${SPREADS[key].name} · dealt for ${who}`, tag: "44 cards · each with a real science fact", body: body(cast, SPREADS[key], question), defs, H: key === "one" ? 760 : 720 });
   const ins = analyse(cast, SPREADS[key], who);
-  return { embeds: withInsight(readingEmbeds(cast, key, question, { who }), ins), analysis: ins.analysis, files: [{ name: "magicdeck.png", data: png }], ephemeral: !!o.private,
-    reading: { spread: key, cards: cast.map((d) => ({ name: d.card.n })) }, headline: cast.map((d) => d.card.n).join(", ") };
+  return { embeds: [...withInsight(readingEmbeds(cast, key, question, { who }), ins), explainEmbed(cast, SPREADS[key])], analysis: ins.analysis, files: [{ name: "magicdeck.png", data: png }], ephemeral: !!o.private,
+    reading: { spread: key, cards: cast.map((d) => ({ name: d.card.n, explain: explainOf(d.card.n) })) }, headline: cast.map((d) => d.card.n).join(", ") };
 }
