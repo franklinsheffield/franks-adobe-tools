@@ -32,6 +32,7 @@ import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
 import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
+import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { initMood, moodForOutcome, moodForTone, flickFor } from "./mood.js";
 
 const $ = (id) => document.getElementById(id);
@@ -94,22 +95,46 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 // The Oracle talks: letters appear at speaking pace (pausing on punctuation), each few letters a retro blip,
 // and the creature's eye and face pulse while it speaks.
 let typing = null;
-const mood = initMood($("teller"), { reduced, name: () => state.name });
+const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: () => refreshEnergy() });
+// Everything the store sells reacts to her: robe effects, the crystal ball, avatar extras and the vibe speed up when
+// she is excited or talking and slow when she is low (candles and colours follow in chamber.css via body[data-mood]).
+const ENERGY = { joy: 2, cheer: 3, love: 1.7, laugh: 2.3, wow: 3, curious: 1.4, angry: 3.6, think: 0.8, sad: 0.45, sulk: 0.5, sleepy: 0.3 };
+const FX_LAYERS = ["fx-back", "fx-robe", "fx-front", "orb-fx", "av-back", "av-front", "vfx-o", "vfx-t"];
+function refreshEnergy() {
+  const b = document.body.classList, rate = b.contains("trance") ? 2.6 : ENERGY[mood.mood()] || (b.contains("talking") ? 1.35 : 1);
+  for (const id of FX_LAYERS) { const g = $(id); try { g && g.getAnimations && g.getAnimations({ subtree: true }).forEach((a) => { a.playbackRate = rate; }); } catch {} }
+  $("teller").classList.toggle("fx-hot", rate >= 1.7); $("teller").classList.toggle("fx-cold", rate < 0.7);
+}
+/** A flourish when a look is put on or tried: the robe swirls, the ball flares, candles relight, the cloth ripples. */
+function flourish(kind) {
+  if (reduced) return;
+  const cls = { outfit: "fl-robe", avatar: "fl-avatar", orb: "orb-flare", flame: "fl-flame", cloth: "fl-cloth", vibe: "fl-vibe", persona: "fl-avatar" }[kind]; if (!cls) return;
+  const el = kind === "flame" || kind === "cloth" ? $("table-pane") : kind === "vibe" ? document.body : $("teller");
+  el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 1100);
+  if (kind === "outfit" || kind === "cloth" || kind === "vibe") whoosh(); else if (kind === "flame") ignite(); else if (kind === "orb") emoteSfx("orb");
+}
+// Blow out a candle on the table: it smokes, she notices, and it relights itself.
+$("table").addEventListener("click", (e) => {
+  const c = e.target.closest?.(".t-candle"); if (!c || c.classList.contains("out")) return;
+  c.classList.add("out"); puff(); mood.emote("wow", { quiet: true, say: pickLine(["Hey! I need those to see.", "Who blew that out? …It was you.", "Ooo, spooky. Relight it.", "A draught from the beyond. Or from {name}."], {}) });
+  setTimeout(() => { if (c.isConnected) { c.classList.remove("out"); c.classList.add("relit"); ignite(); setTimeout(() => c.classList.remove("relit"), 700); } }, 3200);
+});
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 function say(text, done) {
   clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
   if (mood.mood() === "sleepy") mood.clear();
-  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking"); teller.classList.remove("syl"); };
+  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
+  const pros = prosody(plain);
   say.finish = null;
   if (reduced) { el.textContent = plain; stop(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
   say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); done && done(); };
-  let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking");
+  let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking"); refreshEnergy();
   const step = () => {
     const ch = plain[i++]; el.textContent = plain.slice(0, i);
     mood.flick(flickFor(ch));
-    if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch); teller.classList.toggle("syl"); } }
+    if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch, { ...pros[i - 1], wordEnd: !/[\p{L}\p{N}]/u.test(plain[i + 1] || " ") }); teller.classList.toggle("syl"); document.body.classList.toggle("syl"); } }
     if (i >= plain.length) { say.finish = null; blip("o", { final: true }); stop(); done && done(); return; }
     typing = setTimeout(step, PAUSE[ch] || (ch === " " ? 34 : 26));
   };
@@ -218,7 +243,7 @@ async function reveal(sys, options, question = "") {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question;
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
-  document.body.classList.add("trance"); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
+  document.body.classList.add("trance"); mood.clear(); refreshEnergy(); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
   clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
   trance(3);
   let r, err;
@@ -227,7 +252,7 @@ async function reveal(sys, options, question = "") {
     if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
     [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
-  document.body.classList.remove("trance"); cap(sys.emoji + " " + sys.label);
+  document.body.classList.remove("trance"); refreshEnergy(); cap(sys.emoji + " " + sys.label);
   if (err) {
     table.rest(sys.key);
     mood.emote("sad");
@@ -348,7 +373,7 @@ const owns = (id) => state.prog.unlocked.includes(id) || (state.prog.owned || []
 const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
-  state.prog[u.kind] = id; saveProgress(); applyLook();
+  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (changed) flourish(u.kind);
 }
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
@@ -384,6 +409,7 @@ function applyLook(over = {}) {
   root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
   if (applyLook.vibe !== vibe.id) { applyLook.vibe = vibe.id; $("vfx-o").innerHTML = vibeFx(vibe.id, "o"); $("vfx-t").innerHTML = vibeFx(vibe.id, "t"); }
   const v = item(p.voice); setVoiceStyle(v ? v.v : null);
+  refreshEnergy();
 }
 
 // ---- the Essence store ----
@@ -434,7 +460,7 @@ function showStore(tab = "outfit", opener = null) {
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
   const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
-    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; if (!off) mood.emote("curious"); showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); }));
+    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; if (!off) mood.emote("curious"); showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); if (!off) flourish(it.kind); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
   $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore.deck = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
   $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); const it = lookItem(b.dataset.w); showStore(tab, talk(it.kind, "tryon", it)); }));

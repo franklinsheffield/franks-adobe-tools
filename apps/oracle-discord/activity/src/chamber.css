@@ -779,3 +779,41 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .o-bubble{position:absolute;left:57%;top:7%;max-width:41%;padding:7px 11px;border-radius:14px 14px 14px 3px;background:#fff8ea;color:#1a0b2e;font-size:clamp(.72rem,1.25vw,.92rem);line-height:1.25;box-shadow:0 4px 14px rgba(0,0,0,.5),0 0 0 2px var(--gold,#E2B04A);pointer-events:none;transform-origin:0 100%;z-index:3}
 .o-bubble.in{animation:m-bub .28s cubic-bezier(.3,1.6,.5,1)}
 @keyframes m-bub{from{opacity:0;transform:scale(.4)}}
+
+/* ---- Reactive looks: candles, crystal ball and robe effects follow her voice and mood ---- */
+.table .t-candle{cursor:pointer}
+body.talking .t-flame{animation-duration:.2s}
+body.syl .t-flicker{opacity:1}
+body.trance .t-flame{animation-name:flame-high;animation-duration:.16s}
+body[data-mood="joy"] .t-flame,body[data-mood="cheer"] .t-flame,body[data-mood="love"] .t-flame,body[data-mood="wow"] .t-flame,body[data-mood="laugh"] .t-flame{animation-name:flame-high;animation-duration:.16s}
+body[data-mood="angry"] .t-flame{animation-name:flame-high;animation-duration:.1s;filter:hue-rotate(-32deg) saturate(2.2)}
+body[data-mood="sad"] .t-flame,body[data-mood="sulk"] .t-flame,body[data-mood="sleepy"] .t-flame{animation-name:flame-low;animation-duration:.9s}
+body[data-mood="sad"] .t-flicker,body[data-mood="sulk"] .t-flicker,body[data-mood="sleepy"] .t-flicker{opacity:.2}
+@keyframes flame-high{from{transform:scale(1.25,1.5)}to{transform:scale(1.05,1.9) skewX(5deg)}}
+@keyframes flame-low{from{transform:scale(.6,.5)}to{transform:scale(.5,.62) skewX(-3deg)}}
+.t-candle.out .t-flame,.t-candle.out .t-flicker{animation:flame-out .35s ease-in forwards}
+.t-candle.out>ellipse:first-child{opacity:.15;transition:opacity .3s}
+.t-candle.relit .t-flame{animation:flame-relit .6s ease-out}
+@keyframes flame-out{to{transform:scale(.1,2.4) translateY(-6px);opacity:0}}
+@keyframes flame-relit{0%{transform:scale(0)}50%{transform:scale(1.5,2)}100%{transform:scale(1)}}
+body[data-mood="joy"] .o-orbglow,body[data-mood="cheer"] .o-orbglow{fill:#FADE8C;opacity:.5}
+body[data-mood="love"] .o-orbglow{fill:#ff7fc8;opacity:.55}
+body[data-mood="angry"] .o-orbglow{fill:#ff3b3b;opacity:.6}
+body[data-mood="sad"] .o-orbglow,body[data-mood="sulk"] .o-orbglow{fill:#6f9dff;opacity:.3}
+body[data-mood="sleepy"] .o-orbglow{opacity:.12}
+body[data-mood="think"] .o-orbglow,body[data-mood="curious"] .o-orbglow{fill:#66E0C8;opacity:.45}
+.teller .o-orbglow{transition:fill .35s,opacity .35s}
+.teller.syl .o-orbglow{opacity:.42}
+.teller.fx-hot #fx-back,.teller.fx-hot #fx-robe,.teller.fx-hot #fx-front,.teller.fx-hot #orb-fx{filter:brightness(1.45) saturate(1.4)}
+.teller.fx-cold #fx-back,.teller.fx-cold #fx-robe,.teller.fx-cold #fx-front,.teller.fx-cold #orb-fx{filter:brightness(.6) saturate(.6)}
+.teller.fl-robe .o-body,.teller.fl-robe .o-sleeves{animation:fl-robe .8s cubic-bezier(.4,0,.2,1)}
+.teller.fl-robe #fx-back,.teller.fl-robe #fx-robe,.teller.fl-robe #fx-front{animation:fl-pop .9s ease-out}
+.teller.fl-avatar .o-face{animation:fl-face .8s ease-out}.teller.fl-avatar .o-lid{animation:m-wink .55s ease-in-out .15s}
+.table-pane.fl-flame .t-flame{animation:flame-relit .7s ease-out}
+.table-pane.fl-cloth .table>svg{animation:fl-cloth .8s ease-out}
+body.fl-vibe::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.55),transparent 70%);animation:fl-vibe .9s ease-out forwards}
+@keyframes fl-robe{0%{transform:scaleX(1)}45%{transform:scaleX(.04) scaleY(1.03)}100%{transform:scaleX(1)}}
+@keyframes fl-pop{0%{opacity:0;filter:brightness(3)}60%{opacity:1;filter:brightness(2)}100%{filter:brightness(1)}}
+@keyframes fl-face{0%{filter:brightness(3.2)}100%{filter:brightness(1)}}
+@keyframes fl-cloth{0%{transform:scale(1)}30%{transform:scale(1.035,.985)}60%{transform:scale(.99,1.012)}100%{transform:scale(1)}}
+@keyframes fl-vibe{0%{opacity:0;transform:scale(.3)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
