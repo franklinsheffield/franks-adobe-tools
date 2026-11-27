@@ -1,12 +1,13 @@
 // Oracle Chamber Activity Worker: serves the Chamber (static build in dist/) and two small APIs.
 //   POST /api/token   { code } -> { access_token }   (Discord sign-in; the client secret stays here)
+//   DELETE /api/profile  Bearer <access_token> -> { ok } (removes the saved /profile)
 //   GET  /api/profile  Bearer <access_token> -> { profile } (the member's own saved /profile, opened with ORACLE_KEY)
 //   GET/PUT /api/progress  Bearer <access_token> -> { progress }  (the Chamber game layer: codex, streak, unlocks)
 //   GET/POST /api/daily/<game>  Bearer <access_token> -> today's shared daily-challenge board (src/daily.js)
 //   POST /api/share  Bearer <access_token> { channelId, title, lines, color } -> { ok }  (a Grimoire page posted by the bot)
 //   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
 //   GET  /api/tables?game=&instance=  (WebSocket) -> the call's shared table for a game room (tables.mjs, multiplayer)
-import { loadProfile } from "../src/profiles.js";
+import { loadProfile, deleteProfile } from "../src/profiles.js";
 import { Tables, tableRoute } from "./tables.mjs";
 export { Tables };
 import { settleBoost } from "./src/boost.js";
@@ -99,6 +100,7 @@ export default {
       if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
       const me = await whoIs(token);
       if (!me || !me.id) return json({ error: "sign in first" }, 401);
+      if (req.method === "DELETE") { if (env.PROFILES) await deleteProfile(env, me.id); return json({ ok: true, profile: null }); } // "My charts" delete button
       return json({ profile: await loadProfile(env, me.id) });
     }
     if (path === "/api/progress") {

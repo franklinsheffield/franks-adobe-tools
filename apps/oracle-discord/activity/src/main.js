@@ -66,6 +66,7 @@ import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./m
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
+import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
@@ -757,7 +758,7 @@ function openBook(sec = "codex") {
   const b = bookOf(state.prog); BK.sec = sec; BK.entry = null; BK.li = null;
   const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
-    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
+    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
     <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
@@ -766,7 +767,7 @@ function openBook(sec = "codex") {
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
     if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
-  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "charts", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
     turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; BK.li = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
   bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
@@ -784,7 +785,7 @@ function turnTo(change, back = false, n = 3) {
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
   document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
-  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
   bookCodes(p, L, R);
@@ -806,6 +807,33 @@ function drawBook() {
   on("[data-wb]", (b) => wearBook(b.dataset.wb));
   on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }, false, 6));
   on("[data-seal]", () => breakSeal());
+  if (BK.sec === "charts") bindCharts();
+}
+// ---- My charts (mycharts.js): every chart's data from the saved birth details, what is stored where, and the delete controls ----
+const profKey = (pr) => JSON.stringify(pr || null);
+function chartsPages(p) {
+  const pr = state.profile, rows = storedRows(p, { hasProfile: !!pr, signedIn: !!state.token });
+  const saved = pr ? `<dl class="mc-dl"><dt>Birth date</dt><dd>${esc(pr.date || "")}</dd><dt>Birth time</dt><dd>${esc(pr.time && pr.time !== "unknown" ? pr.time : "unknown")}</dd><dt>Birth place</dt><dd>${esc(pr.place || "not saved")}</dd><dt>Birth name</dt><dd>${esc(pr.name || "not saved")}</dd>${pr.saved ? `<dt>Saved</dt><dd>${new Date(pr.saved).toLocaleDateString()}</dd>` : ""}</dl>` : `<p class="bk-empty">No birth details saved.</p>`;
+  const left = pageHead("🔭 My charts", "Your personal data: what is kept, where, and how to remove it") + saved
+    + `<div class="mc-store">${rows.map(([k, what, from, where, del]) => `<div class="mc-row"><b>${k}</b><span>${esc(what)}</span><small>From: ${esc(from)} · Kept: ${esc(where)} · Remove: ${esc(del)}</small></div>`).join("")}</div>
+    <div class="choices"><button class="c small" type="button" id="mc-del" ${pr ? "" : "disabled"}>🗑️ Delete my saved birth details</button><button class="c small" type="button" id="mc-clear">🧹 Clear this device's Journal</button></div>
+    <p class="bk-note" id="mc-msg" role="status">Nothing here is posted to the channel. Your charts are worked out on this page and never stored.</p>`;
+  const cached = BK.charts && BK.charts.key === profKey(pr) ? BK.charts.list : pr ? null : [];
+  return [left, pageHead("📐 Your chart data", "The data first. Tap a chart to open a reading of what it may mean.") + `<div id="mc-out">${chartsHtml(cached, esc)}</div>`];
+}
+function bindCharts() {
+  const pr = state.profile, k = profKey(pr), out = $("mc-out");
+  const bindRead = () => document.querySelectorAll("#book [data-mc-read]").forEach((b) => (b.onclick = () => { const sys = systemByKey(b.dataset.mcRead); if (!sys) return; closeBook(); clearReading(); choose(sys); }));
+  bindRead();
+  if (pr && !(BK.charts && BK.charts.key === k)) chartData(pr).then((list) => { BK.charts = { key: k, list }; const o = $("mc-out"); if (o && BK.sec === "charts") { o.innerHTML = chartsHtml(list, esc); bindRead(); } })
+    .catch(() => { if (out) out.innerHTML = `<p class="bk-empty">These charts could not be worked out right now.</p>`; });
+  const msg = (t) => { const m = $("mc-msg"); if (m) m.textContent = t; };
+  const twoStep = (id, ask, act) => { const b = $(id); if (!b) return; b.onclick = () => { if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = ask; msg("Tap again to confirm. This cannot be undone."); return; } act(); }; };
+  twoStep("mc-del", "⚠️ Tap again to delete", async () => {
+    if (state.token) { const r = await fetch(api("/api/profile"), { method: "DELETE", headers: { authorization: "Bearer " + state.token } }).catch(() => null); if (!r || !r.ok) { msg("The delete did not go through. Try again, or use /profile delete in Discord."); return; } }
+    state.profile = null; BK.charts = null; bookSfx("page"); drawBook(); msg(state.token ? "Deleted. Your birth details are gone from storage." : "Cleared for this visit (preview: nothing was saved)."); logEvent("data", "🗑️", "Deleted my saved birth details");
+  });
+  twoStep("mc-clear", "⚠️ Tap again to clear", () => { try { localStorage.removeItem(logKey()); localStorage.removeItem(jKey()); } catch { /* blocked */ } bookSfx("page"); drawBook(); msg("This device's Journal and saved readings are cleared."); });
 }
 const pageHead = (t, sub = "") => `<h3 class="bk-h">${t}</h3>${sub ? `<div class="bk-sub">${sub}</div>` : ""}`;
 /** One book for every House: each House's host, purse, relics, hidden finds and looks, all in the same Grimoire. */
