@@ -67,3 +67,12 @@ test("every personality has 15 idle lines; first 3 lead in order, then no repeat
     assert.equal(new Set(got).size, 15, id);
   }
 });
+
+import { registerShelf, shelf, KINDS, STORE as ALL, ensureFree as free } from "../activity/src/store.js";
+test("room shelves add a store tab, items, talk, and free items", () => {
+  registerShelf({ kind: "zz-test", label: "🧪 Test", items: [{ id: "zz-a", name: "A", price: 0 }, { id: "zz-b", name: "B", price: 30 }], talk: { open: ["o"], tryon: ["t"], buy: ["b"] } });
+  registerShelf({ kind: "zz-test", label: "dup", items: [] });
+  assert.ok(KINDS.some(([k]) => k === "zz-test")); assert.equal(KINDS.filter(([k]) => k === "zz-test").length, 1);
+  assert.equal(ALL.find((s) => s.id === "zz-b").kind, "zz-test"); assert.ok(shelf("zz-test"));
+  assert.ok(free({}).owned.includes("zz-a"));
+});
