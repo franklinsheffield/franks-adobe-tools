@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -119,4 +119,18 @@ test("Alchemist Phase 1: lab scene, flask, poses, reactions, lab emotes, stone a
   assert.equal(hostEmote(EMOTES[0]).id, EMOTES[0].id); assert.notEqual(hostEmote(EMOTES[0]).name, EMOTES[0].name);
   assert.match(hostScene(Date.now(), { motes: 0 }), /lab-hood/);
   setHost(null); assert.equal(hostScene(Date.now(), {}), null); assert.equal(hostEmote(EMOTES[0]).name, EMOTES[0].name);
+});
+
+test("Alchemist Phase 1B: 7 lab coats (white free, Magister earned), House record tasks, the Opus grant", async () => {
+  const L = await import("../activity/src/hosts/alchemist-lab.js");
+  assert.equal(L.COATS.length, 7); assert.equal(L.COATS[0].price, 0); assert.equal(L.COATS[0].id, "coat-white");
+  const mag = L.coatShop.items.find((i) => i.id === L.MAGISTER_COAT); assert.ok(mag.earned && mag.how && mag.price === undefined, "the Magister coat is never sold");
+  for (const c of L.COATS) { assert.equal(c.hood.length, 3); assert.match(L.coatOverlay(c), /hv-coat/); assert.ok(c.note.length > 20); }
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("coat"));
+  const R = Object.fromEntries(L.HOUSE_RECORDS.map((r) => [r.id, r]));
+  assert.equal(L.HOUSE_RECORDS.length, 4);
+  assert.ok(!R["bubble-and-brass"].test({}) && R["bubble-and-brass"].test({ houses: { alchemist: { day: "2026-11-27" } } }));
+  assert.ok(!R["slow-furnace"].test({ houses: { alchemist: { lv: ["alchemy-2"] } } }) && R["slow-furnace"].test({ houses: { alchemist: { lv: ["duel-3"] } } }));
+  assert.ok(!R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 99 } } }) && R["transmutation-waltz"].test({ houses: { alchemist: { rounds: 100 } } }));
+  const p = L.grantOpus({}); assert.ok(R["magnum-opus"].test(p)); assert.ok(p.owned.includes("coat-magister"));
 });

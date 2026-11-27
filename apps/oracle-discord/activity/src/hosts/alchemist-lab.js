@@ -136,3 +136,54 @@ body[data-house="alchemist"] .o-hands .o-nail{fill:var(--glove2)}body[data-house
 .lab-hb{animation:ph-rise 2s linear infinite;animation-delay:var(--d,0s)}.lab-bflame{animation:hr-flick .3s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
 .lab-glow{position:absolute;left:0;bottom:0;width:40%;height:55%;background:radial-gradient(circle at 12% 70%,rgba(255,140,60,.35),transparent 60%);mix-blend-mode:screen;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.hv-bub,.hv-burn,.hp-pencil,.hp-stream,.lab-fire,.lab-hb,.lab-bflame,.lab-cloud ellipse,[data-mood] .hv-flask{animation:none}}`;
+
+// ---- her outfit line: lab coats (robes stay the Oracle's). prog.coat; the Magister coat is earned, never sold ----
+/** style: lapel (coat with lapels and a breast pocket), apron (bib and straps), bands (reflective stripes), suit (zip and hood seam). */
+export const COATS = [
+  { id: "coat-white", name: "White lab coat", price: 0, style: "lapel", hood: ["#ffffff", "#dfe3ea", "#7d869a"], trim: "#b8c2d6", lapel: "#f4f6fa", note: "Doctors took up the white coat in the late 1800s, to look like the laboratory scientists of the day." },
+  { id: "coat-apron", name: "Copper-stained apron", price: 60, style: "apron", hood: ["#8a5a32", "#4a2c16", "#1a0d05"], trim: "#3FA08A", lapel: "#6a4022", note: "Copper stains blue-green: verdigris, the same patina that turns old copper roofs green." },
+  { id: "coat-frock", name: "Victorian lecturer's frock coat", price: 120, style: "lapel", hood: ["#3a4a7a", "#1a2340", "#070a14"], trim: "#E2B04A", lapel: "#2a3560", note: "Michael Faraday began the Royal Institution's Christmas Lectures in 1825. They still run every year." },
+  { id: "coat-pyro", name: "Fireworks maker's flame-resistant coat", price: 140, style: "bands", hood: ["#ff9a4a", "#c8401a", "#4a1206"], trim: "#e8e8ee", lapel: "#c8401a", note: "Flame-resistant workwear uses fibres such as aramid, which char instead of melting." },
+  { id: "coat-bunny", name: "Cleanroom bunny suit", price: 160, style: "suit", hood: ["#f4fbff", "#b8d8f0", "#5a7a9a"], trim: "#7AD7FF", lapel: "#dceefa", note: "Cleanroom suits keep hair and skin flakes off microchips. One speck of dust can ruin a chip." },
+  { id: "coat-hazmat", name: "Orange hazmat suit", price: 180, style: "suit", hood: ["#ffb347", "#f07a10", "#6a2a04"], trim: "#2a2a2a", lapel: "#f07a10", note: "Hazmat suits are rated A to D: A is fully sealed with its own air supply, D is ordinary work clothes." },
+  { id: "coat-magister", name: "Gold-trimmed Magister coat", earned: true, how: "Finish the Great Work (the Magnum Opus)", style: "lapel", hood: ["#5a1a2a", "#2a0a14", "#0a0205"], trim: "#FADE8C", lapel: "#3a0d1a", note: "Magister was the title of a medieval university teacher. It lives on as 'master', as in a master's degree." },
+];
+export const coatOf = (id) => COATS.find((c) => c.id === id) || COATS[0];
+/** The Magnum Opus module grants the Magister coat by adding its id to prog.owned. */
+export const MAGISTER_COAT = "coat-magister";
+export function coatOverlay(c) {
+  const L = c.lapel, T = c.trim;
+  if (c.style === "apron") return `<g class="hv-coat"><path d="M158 252 H242 L252 400 H148Z" fill="${L}" stroke="${T}" stroke-width="2"/><path d="M158 252 L132 236 M242 252 L268 236" stroke="${L}" stroke-width="6"/>
+    ${[[172, 300, 9], [228, 330, 12], [190, 372, 8], [240, 384, 6]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.7}" fill="${T}" opacity=".55"/>`).join("")}</g>`;
+  if (c.style === "bands") return `<g class="hv-coat"><path d="M200 240 L152 246 L176 322Z M200 240 L248 246 L224 322Z" fill="${L}" stroke="${T}" stroke-width="1.5"/><path d="M92 340 H308 M80 368 H320" stroke="${T}" stroke-width="7" opacity=".9"/><path d="M92 340 H308 M80 368 H320" stroke="#fff" stroke-width="2" stroke-dasharray="4 6" opacity=".7"/></g>`;
+  if (c.style === "suit") return `<g class="hv-coat"><path d="M200 240 V400" stroke="${T}" stroke-width="3"/><path d="M200 240 V400" stroke="#fff" stroke-width="1" stroke-dasharray="2 3"/><path d="M118 238 C150 262 250 262 282 238" fill="none" stroke="${T}" stroke-width="5" opacity=".8"/><rect x="194" y="244" width="12" height="10" rx="2" fill="${T}"/></g>`;
+  return `<g class="hv-coat"><path d="M200 240 L150 246 L176 330Z M200 240 L250 246 L224 330Z" fill="${L}" stroke="${T}" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="122" y="292" width="28" height="22" rx="2" fill="none" stroke="${T}" stroke-width="2"/><path d="M130 292 V280 M138 292 V276" stroke="${T}" stroke-width="3" stroke-linecap="round"/>
+    ${[344, 368].map((y) => `<circle cx="176" cy="${y}" r="3.6" fill="${T}"/><circle cx="224" cy="${y}" r="3.6" fill="${T}"/>`).join("")}</g>`;
+}
+const coatSwatch = (c) => `<svg viewBox="0 0 400 400" aria-hidden="true"><defs><linearGradient id="cs-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.hood[0]}"/><stop offset=".5" stop-color="${c.hood[1]}"/><stop offset="1" stop-color="${c.hood[2]}"/></linearGradient></defs>
+  <g transform="translate(0 -150) scale(1)"><path d="M200 230 C250 232 300 250 312 290 L340 400 H60 L88 290 C100 250 150 232 200 230Z" fill="url(#cs-g)" stroke="${c.trim}" stroke-width="3"/>${coatOverlay(c)}</g></svg>`;
+export const coatShop = {
+  kind: "coat", label: "🥼 Vell's lab coats",
+  items: COATS.map(({ id, name, note, price, earned, how }) => ({ id, name, note, ...(earned ? { earned, how } : { price }) })),
+  talk: {
+    open: ["My wardrobe: lab coats only. Robes are for oracles. I need pockets.", "Every coat here was made for real lab work. Pick one and I'll wear it at the bench.", "Coats, aprons and suits. The gold one you earn: finish the Great Work and it's yours."],
+    tryon: ["{item}. Very professional. Slightly singed.", "{item}. How do I look? Scientific?", "{item}. It fits! The sleeves even clear the flask."],
+    buy: ["{item}, on the hook. I'll wear it to the bench.", "{item}! Lab-ready. Mostly.", "{item} is yours. Pockets checked: one pencil, two mysteries."],
+  },
+  preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(coatSwatch(coatOf(id))); ctx.cap("🥼 " + coatOf(id).name); },
+};
+
+// ---- her 4 House records (Frank's own tracks; music/<id>.mp3). They join music.js TRACKS once the audio is in. ----
+const V = (p) => ((p && p.houses) || {}).alchemist || {};
+export const HOUSE_RECORDS = [
+  { id: "bubble-and-brass", title: "Bubble and Brass", icon: "🫧", label: "#C88A3A", ink: "#fff1c4", how: "task", house: "alchemist", task: "Visit the Alchemist's House", test: (p) => !!V(p).day },
+  { id: "slow-furnace", title: "Slow Furnace", icon: "🧱", label: "#7a3a22", ink: "#ffd8b0", how: "task", house: "alchemist", task: "Beat a Level 3 game in the Alchemist's House", test: (p) => (V(p).lv || []).some((k) => /-3$/.test(k)) },
+  { id: "transmutation-waltz", title: "Transmutation Waltz", icon: "⚗️", label: "#1FC7A6", ink: "#e0fff8", how: "task", house: "alchemist", task: "Run 100 experiments in the Alchemist's House", test: (p) => (V(p).rounds || 0) >= 100 },
+  { id: "magnum-opus", title: "Magnum Opus", icon: "🪨", label: "#e3173e", ink: "#ffe0e4", how: "task", house: "alchemist", task: "Finish the Great Work (the Magnum Opus)", test: (p) => !!V(p).opus },
+];
+/** The Magnum Opus module calls this when the Great Work is finished: the record and the Magister coat are both earned. */
+export function grantOpus(p) {
+  p.houses = p.houses || {}; const h = (p.houses.alchemist ||= {}); h.opus = true;
+  p.owned = p.owned || []; if (!p.owned.includes(MAGISTER_COAT)) p.owned.push(MAGISTER_COAT); return p;
+}
