@@ -2,7 +2,7 @@
 // #teller (chamber.css poses the eye, lids, brow, hood and hands for each), a puff of little symbols, a sound in
 // the current voice (voice-sfx.js emoteSfx) and, sometimes, a speech bubble. The eye also follows the pointer,
 // the Oracle reacts to being poked, and punctuation in her speech flicks her face as she talks.
-import { emoteSfx, blip } from "./voice-sfx.js";
+import { emoteSfx, blip, setVoiceMood } from "./voice-sfx.js";
 
 /** mood -> how long it holds (ms; 0 = until cleared) and the symbols that puff out around the hood. */
 export const MOODS = {
@@ -43,7 +43,7 @@ export function pokeLine(zone, count, name = "traveller", rand = Math.random) {
 
 const NS = "http://www.w3.org/2000/svg";
 /** Wire the figure up. Returns { emote, flick, bubble, sleep, wake, clear, mood() }. `onPoke(zone, count)` may return a line to say. */
-export function initMood(teller, { reduced = false, name = () => "traveller", busy = () => false, onPoke = null } = {}) {
+export function initMood(teller, { reduced = false, name = () => "traveller", busy = () => false, onPoke = null, onChange = null } = {}) {
   const svg = teller.querySelector("svg"), eye = svg.querySelector(".o-eye"), lid = eye.querySelector(".o-lid"), iris = eye.querySelector(".o-iris");
   // the brow is the dark lash line over the eye; lids are two soft shapes clipped to the eye that slide in to squint or droop
   const brow = eye.querySelector(":scope > path:last-of-type"); brow.classList.add("o-brow");
@@ -62,12 +62,13 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
     const made = glyphs.map((g, i) => { const side = i % 2 ? 1 : -1, el = document.createElement("i"); el.textContent = g;
       el.style.cssText = `--x:${(50 + side * (14 + Math.random() * 14)).toFixed(1)}%;--y:${(14 + Math.random() * 22).toFixed(1)}%;--dx:${(side * (10 + Math.random() * 30)).toFixed(0)}px;--d:${(i * 0.12).toFixed(2)}s`; return el; });
     fx.append(...made); setTimeout(() => made.forEach((n) => n.remove()), 2400); };
-  const clear = () => { clearTimeout(timer); clearInterval(zzz); zzz = null; cur = ""; delete teller.dataset.mood; };
+  const tell = () => { if (cur) document.body.dataset.mood = cur; else delete document.body.dataset.mood; setVoiceMood(cur); onChange && onChange(cur); }; // the room, the candles and the voice follow her mood
+  const clear = () => { clearTimeout(timer); clearInterval(zzz); zzz = null; cur = ""; delete teller.dataset.mood; tell(); };
   /** Show a mood. opts: { ms, quiet (no sound), fx: false (no symbols), say (bubble text) }. */
   function emote(mood, opts = {}) {
     const M = MOODS[mood]; if (!M) return;
     clear(); cur = mood; teller.dataset.mood = mood; teller.classList.remove("tracking"); teller.style.removeProperty("--lx"); teller.style.removeProperty("--ly");
-    void teller.offsetWidth; // restart the pose's animations when the same mood repeats
+    tell(); void teller.offsetWidth; // restart the pose's animations when the same mood repeats
     if (opts.fx !== false) puff(M.fx);
     if (!opts.quiet) emoteSfx(mood);
     if (opts.say) bubble(opts.say);
