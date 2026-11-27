@@ -84,7 +84,8 @@ function timeSensitive(chart, birth, zone) {
 export async function run(o, ctx = {}) {
   const timeKnown = !!(o.time && String(o.time).trim());
   const birth = parseBirth(o.date, timeKnown ? o.time : "12:00");
-  if (!o.date || !o.place) throw new Error("I need your birth date and place. Add them, or save them once with /profile set.");
+  if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
+  if (!o.place || !String(o.place).trim()) return runNoPlace(o, ctx, birth);
   const where = ctx.geocoded || await geocode(o.place, ctx.fetch || fetch);
   if (!where) throw new Error(`Couldn't find "${o.place}". Try "City, Country".`);
   const zone = timeZoneAt(where.lat, where.lon), moment = birthMoment(birth, where, timeKnown), utc = moment.utc;
@@ -101,5 +102,23 @@ export async function run(o, ctx = {}) {
     : "This is a noon chart, but your type, authority, profile, definition, cross and channels stay the same all day, so the core reading holds." });
   const ins = analyse(chart, { timeKnown, who, moment, detail: !!(o.private || o.show_birth_details || ctx.birthDetail), unsure });
   return { embeds: withInsight(embeds, ins), analysis: ins.analysis, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart, moment,
+    headline: `${chart.type} · ${chart.profile} · ${chart.authority} authority` };
+}
+
+/** No birth city: a noon chart in universal time, with everything that could differ anywhere on Earth that day flagged. */
+async function runNoPlace(o, ctx, birth) {
+  const noon = new Date(Date.UTC(birth.year, birth.month - 1, birth.day, 12, 0)), chart = bodygraph(noon);
+  const ends = [-26, 24].map((h) => bodygraph(new Date(noon.getTime() + h * 3600000))); // a calendar date spans UTC-12 to UTC+14
+  const keys = { type: "type", authority: "authority", profile: "profile", definition: "definition", cross: "incarnation cross", channels: "channels" };
+  const val = (c, k) => (k === "cross" ? c.cross.full : k === "channels" ? c.channels.map((x) => x.key).join() : c[k]);
+  const unsure = Object.keys(keys).filter((k) => ends.some((c) => val(c, k) !== val(chart, k))).map((k) => keys[k]);
+  const who = ctx.user ? `@${ctx.user}` : "you";
+  const png = await bodygraphPng(chart, { title: "Human Design", subtitle: `Personal chart for ${who} · birth city and time not given` });
+  const embeds = readingEmbeds(chart, { who });
+  embeds[0].fields.unshift({ name: "📍 Birth city not given", value: unsure.length
+    ? `This is a noon chart in universal time. Depending on where and when in the day the birth was, these could change: **${unsure.join(", ")}**. They are provisional until a birth city and time are added.`
+    : "This is a noon chart in universal time, but type, authority, profile, definition, cross and channels stay the same across that whole date anywhere on Earth, so the core reading holds." });
+  const ins = analyse(chart, { timeKnown: false, who, moment: null, detail: false, unsure });
+  return { embeds: withInsight(embeds, ins), analysis: ins.analysis, files: [{ name: "bodygraph.png", data: png }], ephemeral: !!o.private, chart, moment: null,
     headline: `${chart.type} · ${chart.profile} · ${chart.authority} authority` };
 }

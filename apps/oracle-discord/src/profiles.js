@@ -2,19 +2,26 @@
 import { seal, open } from "./seal.js";
 import { parseBirth, toIso, dmy } from "./birthplace.js";
 
-// Which option names each birth-data command uses, and which of them it needs before it can run.
-const FULL = { date: "date", time: "time", place: "place", need: ["date", "place", "time"] };
+// Which option names each birth-data command uses. Only the birthday is required (need); everything else is optional
+// (opt): asked for, never demanded. A reading without them still runs and says what is less accurate.
+const FULL = { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] };
 export const BIRTH_FIELDS = {
   humandesign: FULL,
   "astrology:chart": FULL,
-  "astrology:now": { date: "birth_date", time: "birth_time", place: "birth_place", need: ["date", "place", "time"] },
-  numerology: { date: "date", name: "name", need: ["date", "name"] },
+  "astrology:now": { date: "birth_date", time: "birth_time", place: "birth_place", need: ["date"], opt: ["time", "place"] },
+  numerology: { date: "date", name: "name", need: ["date"], opt: ["name"] },
   chinesezodiac: FULL,
-  // time and place are optional extras here (opt): asked for, never required
-  mayan: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
-  egyptian: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
-  celtic: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
+  mayan: FULL, egyptian: FULL, celtic: FULL,
 };
+const LOSS = {
+  time: "the birth time (rising sign and houses, the hour pillar, day or night birth, exact lines)",
+  place: "the birth city (time zone, true Sun time, sunrise and sunset)",
+  name: "the full birth name (Expression, Soul Urge and Personality numbers)",
+};
+/** Which optional fields are still empty for this command. A time saved as unknown counts as answered. */
+export const missingOptional = (options, f) => (f.opt || []).filter((k) => (k === "time" ? !options[f.time] && !options.time_unknown_saved : !options[f[k]] || !String(options[f[k]]).trim()));
+/** The accuracy warning shown once when someone submits with optional fields empty. */
+export const accuracyWarning = (missing) => `This reading will be less accurate without ${missing.map((k) => LOSS[k]).join(", and ")}. It still runs on the birthday alone and says what is missing.`;
 export const fieldsFor = (name, o) => BIRTH_FIELDS[o.subcommand && BIRTH_FIELDS[`${name}:${o.subcommand}`] ? `${name}:${o.subcommand}` : name];
 
 const kvKey = (userId) => "profile:" + userId;
@@ -52,14 +59,14 @@ export function fillFromProfile(options, f, profile) {
     options[f.date] = profile.date; options.from_profile = true;
     if (f.place) options[f.place] = options[f.place] || profile.place;
     if (f.time && profile.time && profile.time !== "unknown" && !options[f.time]) options[f.time] = profile.time;
-    if (f.time && profile.time === "unknown" && !options[f.time]) options.time_unknown = true;
+    if (f.time && profile.time === "unknown" && !options[f.time]) { options.time_unknown = true; options.time_unknown_saved = true; }
   }
   if (f.name && !options[f.name] && profile.name) { options[f.name] = profile.name; options.from_profile = true; }
 }
 
-/** Does this command still need the birth form? */
-export const needsForm = (options, f) => (f.need || ["date", "place", "time"]).some((k) =>
-  k === "time" ? !options[f.time] && !options.time_unknown : !options[f[k]]);
+/** Does this command still need the birth form? Yes when the birthday is missing, or when optional fields are empty
+ *  and the details were typed just now (a saved profile has been through the form already, so it is not asked again). */
+export const needsForm = (options, f) => !options[f.date] || (!options.from_profile && !options.accuracy_ok && missingOptional(options, f).length > 0);
 
 // Modal. Pending options wait in KV for 15 minutes under a short id (custom_id max 100 chars).
 export async function birthModal(env, name, options, f) {
@@ -67,12 +74,10 @@ export async function birthModal(env, name, options, f) {
   if (env.PROFILES) await env.PROFILES.put("pending:" + id, await seal({ name, options }, env.ORACLE_KEY), { expirationTtl: 900 });
   const row = (custom_id, label, placeholder, required, max_length, value) => ({ type: 1, components: [{ type: 4, custom_id, label, style: 1, placeholder, required, max_length, ...(value ? { value: String(value).slice(0, max_length) } : {}) }] });
   const rows = [row("date", "Birth date (DD/MM/YYYY)", "09/04/1990", true, 10, options[f.date] ? dmy(options[f.date]) : "")];
-  const opt = f.opt || []; // optional extras: asked for, never required
-  if (need.includes("time")) rows.push(row("time", "Birth time (leave blank if unknown)", "14:30 or 2:30 pm", false, 8, options[f.time]));
-  else if (opt.includes("time")) rows.push(row("time", "Birth time (optional, adds depth)", "14:30 or 2:30 pm", false, 8, options[f.time]));
-  if (need.includes("place")) rows.push(row("place", "Birth town or city, country", "Phoenix, USA", true, 100, options[f.place]));
-  else if (opt.includes("place")) rows.push(row("place", "Birth town or city (optional)", "Phoenix, USA", false, 100, options[f.place]));
-  if (need.includes("name")) rows.push(row("name", "Full birth name (as on your birth certificate)", "Mary Ann Smith", true, 100, options[f.name]));
+  const has = (k) => need.includes(k) || (f.opt || []).includes(k), req = (k) => need.includes(k);
+  if (has("time")) rows.push(row("time", req("time") ? "Birth time (leave blank if unknown)" : "Birth time (optional, more accurate)", "14:30 or 2:30 pm", false, 8, options[f.time]));
+  if (has("place")) rows.push(row("place", req("place") ? "Birth town or city, country" : "Birth town or city (optional, more accurate)", "Phoenix, USA", req("place"), 100, options[f.place]));
+  if (has("name")) rows.push(row("name", req("name") ? "Full birth name (as on your birth certificate)" : "Full birth name (optional, more accurate)", "Mary Ann Smith", req("name"), 100, options[f.name]));
   rows.push(row("save", "Save for next time? (yes / no)", "yes", false, 3, options.from_profile ? "yes" : ""));
   return { type: 9, data: { custom_id: "birth:" + id, title: "Your birth details", components: rows } };
 }
@@ -95,10 +100,12 @@ export async function fromModal(env, it) {
     profile.time = v.time || "unknown";
     if (v.time) { options[f.time] = v.time; delete options.time_unknown; } else { delete options[f.time]; options.time_unknown = true; options.birth_time_unknown = f.time === "birth_time"; }
   }
-  for (const k of f.opt || []) { // optional time and place: used when typed, never demanded, and a blank never wipes a saved value
-    if (v[k]) { options[f[k]] = v[k]; profile[k] = v[k]; if (k === "time") delete options.time_unknown; } else delete options[f[k]];
+  const missing = [];
+  for (const k of f.opt || []) { // optional fields: used when typed, never demanded, and a blank never wipes a saved value
+    if (v[k]) { options[f[k]] = v[k]; profile[k] = v[k]; if (k === "time") { delete options.time_unknown; delete options.birth_time_unknown; } }
+    else { delete options[f[k]]; missing.push(k); if (k === "time") { options.time_unknown = true; options.birth_time_unknown = f.time === "birth_time"; } }
   }
-  return { name, options, need, save: /^y/i.test(v.save || ""), profile };
+  return { name, options, need, save: /^y/i.test(v.save || ""), profile, missing };
 }
 
 export const profileCommand = {
@@ -115,3 +122,17 @@ export const profileCommand = {
     { type: 1, name: "delete", description: "Delete your saved birth details" },
   ],
 };
+
+/** After a form came back with optional fields empty: one warning, with "add details" and "continue anyway" buttons.
+ *  The submitted details wait in KV for 15 minutes under a short id. */
+export async function accuracyPrompt(env, m) {
+  const id = crypto.randomUUID().slice(0, 12);
+  await env.PROFILES.put("pending:" + id, await seal({ name: m.name, options: m.options, profile: m.profile, save: m.save }, env.ORACLE_KEY), { expirationTtl: 900 });
+  return { type: 4, data: { flags: 64, content: "⚠️ " + accuracyWarning(m.missing), components: [{ type: 1, components: [
+    { type: 2, style: 1, label: "Add the details", custom_id: "birthfix:" + id }, { type: 2, style: 2, label: "Continue anyway", custom_id: "birthgo:" + id }] }] } };
+}
+/** Read back what accuracyPrompt stored (kept, so "Add the details" can still be pressed after a look). */
+export async function pendingBirth(env, id) {
+  const s = env.PROFILES && await env.PROFILES.get("pending:" + id);
+  return s ? open(s, env.ORACLE_KEY) : null;
+}
