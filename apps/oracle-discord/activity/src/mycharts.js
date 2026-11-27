@@ -10,6 +10,7 @@ import { zodiacYear, fourPillars } from "../../src/modules/chinesezodiac/calenda
 import { mayaDate, SIGNS as MAYA } from "../../src/modules/mayan/calendar.js";
 import { godFor } from "../../src/modules/egyptian/index.js";
 import { treeFor, rangeOf } from "../../src/modules/celtic/index.js";
+import { birthMoment, momentRows } from "../../src/moment.js";
 
 const deg = (p) => `${Math.floor(p.deg)}°${String(Math.floor((p.deg % 1) * 60)).padStart(2, "0")}′`;
 const pil = (x) => x ? `${x.stem.hz}${x.branch.hz} ${x.stem.py} ${x.branch.py} (${x.stem.yin ? "Yin" : "Yang"} ${x.stem.el} ${x.branch.animal})` : "needs a birth time";
@@ -27,6 +28,7 @@ export async function chartData(profile, { fetchImpl = fetch, today = new Date()
   const need = () => { if (!utc) throw new Error(whereErr); };
   const noon = timeKnown ? [] : [["Birth time", "unknown: a noon chart, so time-sensitive parts may differ"]];
 
+  add("moment", "🕰️", "Birth moment", () => { need(); return momentRows(birthMoment(b, where, timeKnown), { detail: true }); });
   add("humandesign", "🧬", "Human Design", () => { need(); const c = bodygraph(utc), def = Object.keys(CENTERS).filter((k) => c.centers[k]);
     return [...noon, ["Type", c.type], ["Strategy", c.strategy], ["Authority", c.authority], ["Profile", c.profile], ["Definition", c.definition],
       ["Signature / not-self", `${c.signature[0]} / ${c.signature[1]}`],
