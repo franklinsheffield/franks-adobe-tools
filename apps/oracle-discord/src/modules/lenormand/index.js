@@ -31,21 +31,21 @@ export const SUIT_PATH = {
 const inset = (pc, x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-17" y="-26" width="34" height="46" rx="4" fill="#fffaf0" stroke="#7a5a2a" stroke-width="1.2"/><text x="0" y="-6" font-family="Cinzel" font-weight="900" font-size="15" fill="${pc[1] === "h" || pc[1] === "d" ? RED : "#1a1430"}" text-anchor="middle">${pc[0]}</text><g transform="translate(0 8) scale(.62)"><path d="${SUIT_PATH[pc[1]]}" fill="${pc[1] === "h" || pc[1] === "d" ? RED : "#1a1430"}"/></g></g>`;
 
 /** One Lenormand card face, w x h at (x, y): cream card, number medallion, playing-card inset, name. */
-function face(x, y, w, h, d, label) {
+function face(x, y, w, h, d, label, k = 0) {
   const c = d.card, cx = w / 2, small = w < 140, r = w * 0.26;
   const tone = c.tone > 0 ? "#2f8a5a" : c.tone < 0 ? "#9a3a4a" : "#6a5a8a";
   const lines = wrap(c.n.toUpperCase(), Math.max(8, Math.floor((w - 20) / 12)));
-  return `<g transform="translate(${x} ${y})">
+  return `<g transform="translate(${x} ${y})"><g class="dk-card" style="--i:${k}">
     <rect x="6" y="${h - 4}" width="${w - 12}" height="16" rx="8" fill="#000" fill-opacity="0.35" filter="url(#soft)"/>
     <rect width="${w}" height="${h}" rx="12" fill="url(#ln-face)" stroke="${PAL.gold}" stroke-width="3"/>
     <rect x="9" y="9" width="${w - 18}" height="${h - 18}" rx="8" fill="none" stroke="#7a5a2a" stroke-opacity="0.5" stroke-width="1.4" stroke-dasharray="2 4"/>
-    <circle cx="${cx}" cy="${h * 0.42}" r="${r}" fill="${tone}" fill-opacity="0.16" stroke="${tone}" stroke-width="2"/>
+    <circle class="dk-medal" cx="${cx}" cy="${h * 0.42}" r="${r}" fill="${tone}" fill-opacity="0.16" stroke="${tone}" stroke-width="2"/>
     <text x="${cx}" y="${h * 0.42 + r * 0.32}" font-family="Cinzel" font-weight="900" font-size="${(r * 0.95).toFixed(1)}" fill="${tone}" text-anchor="middle">${c.num}</text>
     ${inset(c.pc, w - (small ? 20 : 30), small ? 30 : 42, small ? 0.62 : 0.95)}
     ${lines.map((l, i) => `<text x="${cx}" y="${h - 22 - (lines.length - 1 - i) * 20}" font-family="Cinzel" font-weight="700" font-size="${Math.min(small ? 14 : 19, (w - 20) / (l.length * 0.72)).toFixed(1)}" fill="#3a2410" text-anchor="middle">${esc(l)}</text>`).join("")}
     <text x="${cx}" y="-14" font-size="${small ? 12 : 16}" letter-spacing="${small ? 1 : 2}" fill="${PAL.teal}" text-anchor="middle">${esc(label.toUpperCase())}</text>
     ${small ? "" : `<text x="${cx}" y="${h + 30}" font-size="15" fill="${PAL.mute}" text-anchor="middle">${esc(c.kw[0])}</text>`}
-  </g>`;
+  </g></g>`;
 }
 
 function layout(n) {
@@ -57,7 +57,7 @@ function body(cast, spread, question) {
   const W = 1520, L = layout(cast.length), w = L.w, h = Math.round(w * 1.45);
   let s = `<ellipse cx="${W / 2}" cy="380" rx="720" ry="330" fill="url(#halo)"/>`;
   if (question) s += `<text x="${W / 2}" y="14" font-size="22" fill="${PAL.mute}" font-style="italic" text-anchor="middle">“${esc(question.length > 90 ? question.slice(0, 88) + "…" : question)}”</text>`;
-  cast.forEach((d, k) => { const [x, y] = L.pos[k]; s += face(x, y + 60, w, h, d, L.small ? `${k + 1}` : spread.positions[k][0]); });
+  cast.forEach((d, k) => { const [x, y] = L.pos[k]; s += face(x, y + 60, w, h, d, L.small ? `${k + 1}` : spread.positions[k][0], k); });
   return s;
 }
 

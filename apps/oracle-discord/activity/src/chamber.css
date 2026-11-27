@@ -448,6 +448,30 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .k-face{opacity:0}
 .casting .k-face{animation:face .01s linear both;animation-delay:var(--d)}
 @keyframes face{to{opacity:1}}
+/* cards that land face up: a flash of the edge, gold sparks, then a slow hover */
+.k-flash,.k-spark{opacity:0}
+.casting .k-flash{animation:kflash .6s ease-out both;animation-delay:var(--d)}
+@keyframes kflash{0%{opacity:1}100%{opacity:0;transform:scale(1.35)}}
+.casting .k-spark{animation:kspark .7s ease-out both;animation-delay:var(--d)}
+@keyframes kspark{0%{opacity:1;transform:none}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(.4)}}
+.casting .k-turn{animation:turn .4s ease-in-out both,khover 3.4s ease-in-out infinite;animation-delay:var(--d),calc(var(--d) + .9s)}
+@keyframes khover{50%{transform:translateY(-2.5px)}}
+/* deck reading art (Lenormand, Science is Magic deck): cards flip in one by one, then float; emblems move */
+.art-card .dk-card,#zoom-art .dk-card{transform-box:fill-box;transform-origin:center;animation:dkin .7s cubic-bezier(.2,.9,.3,1.2) both,dkfloat 4.2s ease-in-out infinite;animation-delay:calc(.6s + var(--i) * .2s),calc(1.6s + var(--i) * .35s)}
+@keyframes dkin{0%{transform:translateY(40px) scaleX(0);opacity:0}60%{transform:scaleX(1.06);opacity:1}100%{transform:none;opacity:1}}
+@keyframes dkfloat{0%,100%{transform:none}50%{transform:translateY(-7px)}}
+.art-card [class^="dk-"]:not(.dk-card),#zoom-art [class^="dk-"]:not(.dk-card){transform-box:fill-box;transform-origin:center}
+.art-card .dk-atoms,#zoom-art .dk-atoms{animation:dkspin 9s linear infinite}
+.art-card .dk-moons,#zoom-art .dk-moons{animation:dkglow 3.6s ease-in-out infinite}
+.art-card .dk-potions,#zoom-art .dk-potions{animation:dktilt 2.8s ease-in-out infinite}
+.art-card .dk-stars,#zoom-art .dk-stars{animation:dktwinkle 2.4s ease-in-out infinite}
+.art-card .dk-halo,.art-card .dk-medal,#zoom-art .dk-halo,#zoom-art .dk-medal{animation:dkpulse 3s ease-in-out infinite}
+.art-card .dk-ring,#zoom-art .dk-ring{animation:dkspin 24s linear infinite}
+@keyframes dkspin{to{transform:rotate(360deg)}}
+@keyframes dkglow{50%{opacity:.7;transform:scale(1.07)}}
+@keyframes dktilt{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg) translateY(-2px)}}
+@keyframes dktwinkle{50%{transform:scale(1.15) rotate(18deg);opacity:.85}}
+@keyframes dkpulse{50%{transform:scale(1.08);opacity:.75}}
 /* ---- animated vibe backgrounds (fx.js VIBE_FX) ---- */
 .pane{isolation:isolate}
 .vfx{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
