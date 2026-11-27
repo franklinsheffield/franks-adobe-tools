@@ -265,3 +265,14 @@ test("Card faces: every element has a picture and a classical association", asyn
   assert.ok(of("fire").includes("Na") && of("earth").includes("Au"));
   assert.deepEqual(Object.keys(PLANET).sort(), ["Ag", "Au", "Cu", "Fe", "Hg", "Pb", "Sb", "Sn"]);
 });
+
+test("Chemistry study material: six guides, in the Study hall, covering every card and compound", async () => {
+  const { CHEM_GUIDES } = await import("../activity/src/duel/chemistry.js");
+  const { STUDY } = await import("../activity/src/study.js");
+  assert.equal(CHEM_GUIDES.length, 6);
+  const duel = STUDY.find((x) => x.room === "duel"); for (const g of CHEM_GUIDES) assert.ok(duel.guides.some((x) => x.id === g.id), g.id);
+  const all = (id) => CHEM_GUIDES.find((g) => g.id === id).sections.flatMap((s) => s.p).join(" ");
+  for (const e of ELEMENTS) assert.match(all("chem-elements"), new RegExp(`<b>${e.z} · ${e.s} · `), e.s);
+  assert.equal(CHEM_GUIDES.find((g) => g.id === "chem-compounds").sections.slice(1).reduce((n, s) => n + s.p.length, 0), COMPOUNDS.length);
+  for (const g of CHEM_GUIDES) assert.doesNotMatch(JSON.stringify(g), /undefined|\bNaN\b/, g.id);
+});

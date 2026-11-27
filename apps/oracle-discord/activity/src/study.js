@@ -11,6 +11,7 @@ import { NOTEBOOK } from "./alchemy/guide.js";
 import { HOOKS, TIPS } from "./memory/guide.js";
 import { DECKS } from "./memory/deck.js";
 import { DUEL_GUIDE } from "./duel/room.js";
+import { CHEM_GUIDES } from "./duel/chemistry.js";
 import { POOL, GENERAL, SPECIFIC } from "./seance/practices.js";
 import { GHOSTS } from "./seance/ghosts.js";
 
@@ -31,7 +32,7 @@ export const STUDY = [
     sections: NOTEBOOK.map((s) => ({ h: s.h, p: s.p.map(escT) })) }] },
   { room: "memory", emoji: "🃏", name: "Grimoire Memory", guides: DECKS.filter((d) => HOOKS[d.id]).map((d) => ({ id: d.id, emoji: d.emoji, title: `${d.name}: memory hooks`,
     sections: [{ h: "Memory hooks", p: HOOKS[d.id] }, { h: "How to remember more", p: TIPS }] })) },
-  { room: "duel", emoji: "⚛️", name: "Element Duel", guides: [{ id: "duel", emoji: "⚛️", title: "How to play Element Duel", sections: DUEL_GUIDE.map(([h, p]) => ({ h, p })) }] },
+  { room: "duel", emoji: "⚛️", name: "Element Duel", guides: [{ id: "duel", emoji: "⚛️", title: "How to play Element Duel", sections: DUEL_GUIDE.map(([h, p]) => ({ h, p })) }, ...CHEM_GUIDES] },
   { room: "seance", emoji: "🕯️", name: "Séance: Guess the Ghost", guides: [
     { id: "kinds", emoji: "🔬", title: "Kinds of science and magic", sections: [
       { h: "The answer pool (level 1)", p: POOL.map((k) => `${k.emoji} <b>${escT(k.name)}</b> (${k.field === "both" ? "a bit of both" : k.field})`) },

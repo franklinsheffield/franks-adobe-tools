@@ -102,7 +102,7 @@ export const room = {
         <div class="group">👥 Two players</div><div class="levels"><button class="c level" type="button" id="du-friend"><b>👥 Duel a friend</b><span>Live, in this Discord call: you each hold 7 atoms and take turns. Discoveries go in your Codex.</span></button></div>
         ${rivalsHtml()}
         ${dailyBtn()}
-        <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button><button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
+        <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button>${ctx.study ? `<button class="c small" type="button" id="du-chem">📚 Chemistry notes</button>` : ""}<button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
         <div class="note">Every compound is real, and its power comes from its real enthalpy of formation. Cards show each element's usual charges.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => start(LEVELS[+b.dataset.l - 1])));
@@ -112,6 +112,7 @@ export const room = {
       $("du-board").onclick = () => showBoard();
       $("du-how").onclick = () => toggle(guideHtml);
       $("du-codex").onclick = () => toggle(codexPage);
+      if ($("du-chem")) $("du-chem").onclick = () => { gen++; ctx.study("duel", () => { state.inRoom = "duel"; lobby(false); }); };
       $("du-shop").onclick = () => shop();
       $("back").onclick = leave;
     }
