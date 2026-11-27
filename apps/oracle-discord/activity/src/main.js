@@ -463,6 +463,8 @@ function applyLook(over = {}) {
   const lid = svg.querySelector(".o-lid path"); lid.setAttribute("fill", A.white);
   const pupil = svg.querySelector(".o-iris ellipse"); pupil.setAttribute("rx", A.pupil[0]); pupil.setAttribute("ry", A.pupil[1]);
   $("av-pupil").innerHTML = A.star ? STAR_PUPIL : "";
+  svg.querySelectorAll(".o-ppupil").forEach((e) => { e.setAttribute("rx", (A.pupil[0] * 0.42).toFixed(2)); e.setAttribute("ry", (A.pupil[1] * 0.42).toFixed(2)); e.setAttribute("fill", A.star ? "#fff6c8" : "#2a0420"); });
+  svg.querySelectorAll(".o-pe-white").forEach((e) => e.setAttribute("fill", A.white));
   svg.querySelectorAll("[data-skin]").forEach((e) => e.setAttribute(e.dataset.skin, A.hands.skin));
   svg.querySelectorAll(".o-hands [data-edge]").forEach((e) => e.setAttribute("stroke", A.hands.edge));
   svg.querySelectorAll(".o-hands .o-nail").forEach((e) => { e.setAttribute("fill", A.hands.nail); e.setAttribute("r", (e.dataset.r * A.hands.nailR).toFixed(1)); });
@@ -764,6 +766,16 @@ function bookExtras(p) {
   const rc = $("bk-recap"); if (rc) rc.onclick = () => { const line = recapLine(weekRecap(loadLog()), state.name); closeBook(); clearReading(); cap("🗓️ Your week"); say(line); mood.emote("think"); ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button><button class="c" type="button" id="bk-again">📖 Back to Your Grimoire</button></div>`); $("back").onclick = greet; $("bk-again").onclick = () => openBook("patterns"); };
 }
 function bookExtrasNote() { const t = $("bk-note"); if (!t) return; let tm = null; t.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { const N = lsGet(notesKey(), {}); if (t.value.trim()) N[BK.day] = t.value.slice(0, 600); else delete N[BK.day]; lsSet(notesKey(), N); }, 400); }; }
+// ---- palm eyes: the lines on the Oracle's palms open now and then, and with big moods ----
+(function palmEyes() {
+  const t = $("teller"), next = () => setTimeout(open, 5000 + Math.random() * 9000);
+  function open() {
+    if (document.hidden || reduced) return next();
+    const hands = [...t.querySelectorAll(".o-hand")], h = Math.random() < 0.25 ? hands : [hands[Math.floor(Math.random() * hands.length)]];
+    h.forEach((x) => x && x.classList.add("peek")); setTimeout(() => h.forEach((x) => x && x.classList.remove("peek")), 1400 + Math.random() * 1600); next();
+  }
+  next();
+})();
 $("grimoire-btn").onclick = () => openBook("codex");
 if (PREVIEW) window.__bookTest = (sec) => openBook(sec);
 
