@@ -51,6 +51,7 @@ for (const t of TROPHIES) if (!t.how) {
 export const SETS = [
   { id: "story", name: "Story set", ids: ["seance", "decoder", "alchemy", "timeline"], bonus: 100 },
   { id: "cards", name: "Card set", ids: ["duel", "rummy", "memory"], bonus: 100 },
+  { id: "orrery", name: "The Grand Orrery", ids: ["stars", "calendar", "rummy", "comet", "eclipse", "navigator"], bonus: 250 }, // obsprog.js OBS_GAMES: Gold on every Observatory game
 ];
 export const CASE_LEVELS = [{ at: 0, name: "Apprentice" }, { at: 8, name: "Curator" }, { at: 20, name: "Archivist" }, { at: 32, name: "Grand Keeper" }];
 
