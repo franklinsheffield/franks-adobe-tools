@@ -1,41 +1,50 @@
-// House 3: the Observatory (#🌌-observatory). Host: the Keeper of Hours, an owl-faced astronomer with a tiny orrery
-// circling her hood. She reuses the Oracle's figure rig (moods, hands, eye tracking and emotes all work) with a night-blue
-// hood, a silver owl disc round the eye and an eye coloured like a real star you choose in the store. Lines are original;
-// every fact in them is real.
+// House 3: the Observatory (#🔭-observatory). Host: Keeper Altair (he), a calm astronomer named after Altair, the
+// brightest star in Aquila. He reuses the Oracle's figure rig (moods, hands, eye tracking and emotes all work) with a
+// midnight-blue hood stitched with a star chart, a brass telescope eyepiece over the eye and a small astrolabe badge.
+// Brand brief: brand/houses/README.md (House 3). Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
-/** Star-colour eyes, each the colour of a real star of that spectral class. Iris gradient: light, mid, deep. */
-export const STAR_EYES = [
-  { id: "eye-sun", name: "The Sun (G)", price: 0, iris: ["#FFFBEA", "#FFE9A8", "#C9A24A"], note: "A G-type star, about 5,800 K at the surface. From space it looks white; our air makes it look yellow." },
-  { id: "eye-naos", name: "Naos (O)", price: 30, iris: ["#E6ECFF", "#8FA8FF", "#2F45B8"], note: "Zeta Puppis, an O-type star near 40,000 K. One of the hottest stars you can see without a telescope." },
-  { id: "eye-rigel", name: "Rigel (B)", price: 30, iris: ["#EEF3FF", "#AFC4FF", "#4A64C8"], note: "Orion's blue-white foot. B-type stars run from about 10,000 to 30,000 K." },
-  { id: "eye-vega", name: "Vega (A)", price: 40, iris: ["#FFFFFF", "#DDE6FF", "#7F92C9"], note: "Vega, about 9,600 K. For a long time it was the zero point of the star brightness scale." },
-  { id: "eye-procyon", name: "Procyon (F)", price: 40, iris: ["#FFFFFF", "#FFF6E0", "#C2AE7E"], note: "Procyon, about 6,500 K, the bright star in Canis Minor. A little hotter than the Sun." },
-  { id: "eye-arcturus", name: "Arcturus (K)", price: 40, iris: ["#FFE7C2", "#FFB25C", "#A4561A"], note: "Arcturus, an orange giant about 4,300 K. Follow the arc of the Plough's handle to find it." },
-  { id: "eye-betelgeuse", name: "Betelgeuse (M)", price: 50, iris: ["#FFD0B0", "#FF7A3A", "#8F2A0C"], note: "Orion's shoulder, a red supergiant about 3,500 K. It dimmed sharply in 2019 and 2020, then recovered." },
-  { id: "eye-crimson", name: "Hind's Crimson Star", price: 60, iris: ["#FFB8B0", "#E3262E", "#6A0410"], note: "R Leporis, a carbon star. Carbon in its outer layers soaks up blue light, so it looks deep red." },
+/** Star maps from different skies. The chosen map is stitched on Altair's hood. pts: [x, y] in a 120x40 patch; ln: index pairs. */
+export const STAR_MAPS = [
+  { id: "map-greek", name: "The Greek sky: Orion", price: 0, pts: [[22, 6], [92, 8], [50, 20], [58, 21], [66, 22], [30, 36], [96, 34]], ln: [[0, 2], [1, 4], [2, 3], [3, 4], [2, 5], [4, 6]],
+    note: "Ptolemy's Almagest (about 150 AD) listed 48 constellations. Most of the ones we use today come from it." },
+  { id: "map-chinese", name: "The Chinese sky: the Northern Dipper", price: 30, pts: [[8, 10], [26, 6], [42, 10], [56, 16], [62, 30], [88, 32], [92, 16]], ln: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 3]],
+    note: "Chinese astronomers called the Plough Beidou, the Northern Dipper, and split the sky into 28 lunar mansions." },
+  { id: "map-arabic", name: "The Arabic sky: star names", price: 30, pts: [[20, 20], [44, 12], [60, 26], [84, 14], [104, 22]], ln: [[0, 1], [1, 2], [2, 3], [3, 4]],
+    note: "Many star names are Arabic. Aldebaran means 'the follower', because it rises after the Pleiades." },
+  { id: "map-lakota", name: "The Lakota sky: the Hand", price: 40, pts: [[40, 6], [52, 10], [64, 14], [30, 34], [92, 32], [60, 30]], ln: [[0, 1], [1, 2], [0, 3], [2, 4], [5, 1]],
+    note: "Lakota star knowledge sees a hand in the stars Europeans call Orion: the belt is the wrist." },
+  { id: "map-emu", name: "The Emu in the Sky", price: 40, pts: [[12, 8], [30, 14], [50, 22], [72, 24], [96, 18], [108, 32]], ln: [[0, 1], [1, 2], [2, 3], [3, 4], [3, 5]],
+    note: "Many Aboriginal Australian peoples see an emu in the Milky Way's dark dust lanes, its head at the Coalsack." },
+  { id: "map-hawaii", name: "The Hawaiian sky: Maui's fishhook", price: 40, pts: [[14, 6], [24, 10], [34, 16], [46, 24], [60, 30], [76, 32], [90, 28], [96, 18]], ln: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]],
+    note: "In Hawaii, the stars of Scorpius are Manaiakalani, the fishhook Maui used to pull islands from the sea." },
+  { id: "map-egypt", name: "The Egyptian sky: Sah and Sopdet", price: 50, pts: [[30, 8], [46, 18], [54, 20], [62, 22], [40, 34], [98, 30]], ln: [[0, 1], [1, 2], [2, 3], [1, 4]],
+    note: "Egyptians linked Orion (Sah) with Osiris. Sirius (Sopdet) rising before dawn came near the Nile flood." },
+  { id: "map-inca", name: "The Inca sky: the llama", price: 60, pts: [[16, 30], [30, 18], [50, 14], [70, 16], [84, 24], [92, 8], [98, 10]], ln: [[0, 1], [1, 2], [2, 3], [3, 4], [3, 5]],
+    note: "The Inca saw dark shapes in the Milky Way too. Yacana, the llama, has Alpha and Beta Centauri for eyes." },
 ];
-export const starEyeOf = (id) => STAR_EYES.find((l) => l.id === id) || STAR_EYES[0];
+export const starMapOf = (id) => STAR_MAPS.find((m) => m.id === id) || STAR_MAPS[0];
 
-const starDisc = (l) => `<svg viewBox="0 0 200 200" aria-hidden="true"><defs><radialGradient id="sp-g" cx="50%" cy="50%" r="55%"><stop offset="0" stop-color="${l.iris[0]}"/><stop offset=".45" stop-color="${l.iris[1]}"/><stop offset="1" stop-color="${l.iris[2]}" stop-opacity="0"/></radialGradient></defs>
-  <rect width="200" height="200" rx="16" fill="#060a1f"/>${Array.from({ length: 22 }, (_, i) => `<circle cx="${(i * 47) % 200}" cy="${(i * 83) % 200}" r="${0.6 + (i % 3) * 0.4}" fill="#fff" opacity=".7"/>`).join("")}
-  <circle cx="100" cy="100" r="82" fill="url(#sp-g)"/><circle cx="100" cy="100" r="26" fill="${l.iris[0]}"/><path d="M100 30V170M30 100H170" stroke="${l.iris[0]}" stroke-opacity=".5" stroke-width="2"/></svg>`;
+const chartG = (m, k = 1) => `${m.ln.map(([a, b]) => `<path d="M${m.pts[a][0] * k} ${m.pts[a][1] * k}L${m.pts[b][0] * k} ${m.pts[b][1] * k}" stroke="#DCE6FF" stroke-opacity=".55" stroke-width="${0.8 * k}"/>`).join("")}${m.pts.map(([x, y], i) => `<circle class="hk-star" style="--d:${(i * 0.37).toFixed(2)}s" cx="${x * k}" cy="${y * k}" r="${1.6 * k}" fill="#DCE6FF"/>`).join("")}`;
+const mapCard = (m) => `<svg viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="16" fill="#0B1530" stroke="#2A3F6E" stroke-width="3"/>
+  ${Array.from({ length: 26 }, (_, i) => `<circle cx="${(i * 47) % 200}" cy="${(i * 83) % 200}" r="${0.5 + (i % 3) * 0.4}" fill="#fff" opacity=".5"/>`).join("")}
+  <circle cx="100" cy="100" r="88" fill="none" stroke="#E2B04A" stroke-width="1.4" stroke-dasharray="2 5"/><g transform="translate(10 60)">${chartG(m, 1.5)}</g></svg>`;
 
-/** The store shelf (department "House hosts"). prog.stareye = the star the Keeper's eye shines like. */
-export const starEyeShop = {
-  kind: "stareye", label: "✨ The Keeper's star-colour eyes",
-  items: STAR_EYES.map(({ id, name, note, price }) => ({ id, name, note, price })),
+/** The store shelf (department "House hosts"). prog.starmap = the star map stitched on Altair's hood. */
+export const starMapShop = {
+  kind: "starmap", label: "🔭 Altair's star maps",
+  items: STAR_MAPS.map(({ id, name, note, price }) => ({ id, name, note, price })),
   talk: {
-    open: ["Star colours for my eye. A star's colour tells you how hot its surface is.", "Blue stars run hottest, red stars coolest. Astronomers sort them O, B, A, F, G, K, M.", "Every eye here is a real star you can find in the sky. Pick one, then go and look for it."],
-    tryon: ["{item}. Look closely. I'm shining.", "{item}. Very becoming, astronomically speaking.", "{item}. I can see further already."],
-    buy: ["{item}, fitted. I'll try not to stare. I'm an owl, so no promises.", "{item}! Now my eye matches a corner of the sky.", "{item}. Lovely. Named, catalogued and blinking."],
+    open: ["Every culture drew its own pictures in the same stars. Pick a sky and I'll stitch it on my hood.", "Star maps from around the world. Same stars, different stories.", "People everywhere looked up and saw something. These are some of the things they saw."],
+    tryon: ["{item}. Look at that. Same stars, new picture.", "{item}. It suits the hood, I think.", "{item}. I could look at that all night. I usually do."],
+    buy: ["{item}, stitched on. Thank you, {name}.", "{item}. Now I carry that sky with me.", "{item}, in silver thread. Quietly amazing."],
   },
-  preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(starDisc(starEyeOf(id))); ctx.cap("✨ " + starEyeOf(id).name); },
+  preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(mapCard(starMapOf(id))); ctx.cap("🔭 " + starMapOf(id).name); },
 };
 
-/** Observatory relics: permanent fixtures in the Keeper's House, bought only with ☄️ comet shards. Notes are real history. */
+/** Observatory relics: permanent fixtures in Altair's House, bought only with ☄️ comet shards. Notes are real history. */
 const AU = `<linearGradient id="hrg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FADE8C"/><stop offset=".5" stop-color="#C88A3A"/><stop offset="1" stop-color="#6b3f12"/></linearGradient>`;
 export const SKY_RELICS = [
   { id: "sk-sundial", e: "🕰️", name: "Bronze sundial", price: 4, note: "The shadow's stick is a gnomon. Point it at the celestial pole and the hours come out right all year.", x: 82, y: 84, w: 9, vb: "0 0 100 90",
@@ -56,7 +65,7 @@ export const SKY_RELICS = [
     art: () => `<defs><linearGradient id="hrn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4f7a" stop-opacity=".7"/><stop offset=".45" stop-color="#4dffb0" stop-opacity=".85"/><stop offset="1" stop-color="#4dffb0" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="136" height="66" rx="8" fill="#050816" stroke="#9AA6C9" stroke-width="2"/>${Array.from({ length: 14 }, (_, i) => `<circle cx="${8 + ((i * 37) % 126)}" cy="${6 + ((i * 23) % 30)}" r=".9" fill="#fff" opacity=".8"/>`).join("")}<g class="hr-wave"><path d="M6 46q20 -40 40 -10t40 -14t48 -6v44h-128z" fill="url(#hrn)"/></g><g class="hr-wave" style="--d:1.2s"><path d="M6 54q24 -30 44 -6t44 -10t40 0v28h-128z" fill="url(#hrn)" opacity=".6"/></g><path d="M2 60h136v8h-136z" fill="#0b1033"/>` },
 ];
 
-/** The orrery music box: the Keeper's own player for the shared music pool. Same classes as the turntable (tt, tt-disc). */
+/** The orrery music box: Altair's own player for the shared music pool. Same classes as the turntable (tt, tt-disc). */
 export function orrerySvg(t, playing) {
   const disc = t ? `<g transform="translate(50 50) scale(.8)">${vinylSvg(t, 100).replace(/<svg[^>]*>|<\/svg>/g, "")}</g>` : `<circle cx="90" cy="90" r="40" fill="#26262c"/>`;
   const orbit = (r, s, col, sz, d) => `<ellipse cx="206" cy="66" rx="${r}" ry="${(r * 0.35).toFixed(1)}" fill="none" stroke="#9AA6C9" stroke-opacity=".5"/><g class="or-p" style="--s:${s}s;--d:${d}s"><circle r="${sz}" fill="${col}"><animateMotion dur="${s}s" begin="${d}s" repeatCount="indefinite" path="M${206 + r} 66 a${r} ${(r * 0.35).toFixed(1)} 0 1 1 ${-2 * r} 0 a${r} ${(r * 0.35).toFixed(1)} 0 1 1 ${2 * r} 0"/></circle></g>`;
@@ -75,11 +84,11 @@ export function orrerySvg(t, playing) {
 }
 
 export const OBSERVATORY_CSS = `
-body[data-house="observatory"] .speaker{color:#C9D4FF}
-body[data-house="observatory"] .gate-title{color:#C9D4FF}
+body[data-house="observatory"] .speaker{color:#8FB8FF;font-family:"Cormorant Garamond",Georgia,serif;letter-spacing:.22em}
+body[data-house="observatory"] .gate-title{color:#8FB8FF;font-family:"Cormorant Garamond",Georgia,serif;letter-spacing:.18em;text-transform:uppercase}
 .or.playing .or-sun{animation:hr-pulse 2.4s ease-in-out infinite;transform-origin:206px 66px}
-.h-keeper .hk-orbit{animation:hr-spin 18s linear infinite;transform-origin:200px 74px}
-.h-keeper .hk-glint{animation:hk-tw 5s ease-in-out infinite}
+.h-altair .hk-rete{animation:hr-spin 40s linear infinite}
+.h-altair .hk-glint{animation:hk-tw 5s ease-in-out infinite}.h-altair .hk-star{animation:hk-tw 3s ease-in-out infinite;animation-delay:var(--d,0s)}
 .hr-twinkle circle{animation:hk-tw 2.6s ease-in-out infinite;animation-delay:var(--d,0s)}
 .hr-wave{animation:hk-wave 6s ease-in-out infinite alternate;animation-delay:var(--d,0s);transform-origin:70px 60px}
 .hr-shadow{animation:hk-sweep 20s linear infinite}
@@ -89,68 +98,67 @@ body[data-house="observatory"] .gate-title{color:#C9D4FF}
 @keyframes hk-sweep{from{transform:rotate(0)}to{transform:rotate(180deg)}}
 .hr-spin{animation:hr-spin 24s linear infinite}@keyframes hr-spin{to{transform:rotate(360deg)}}
 .hr-glint{animation:hk-tw 3s ease-in-out infinite}@keyframes hr-pulse{50%{transform:scale(1.08)}}
-@media (prefers-reduced-motion: reduce){.or.playing .or-sun,.h-keeper .hk-orbit,.h-keeper .hk-glint,[class^="hr-"],[class*=" hr-"],.hr-twinkle circle{animation:none}}`;
+@media (prefers-reduced-motion: reduce){.or.playing .or-sun,.h-altair .hk-rete,.h-altair .hk-glint,.h-altair .hk-star,[class^="hr-"],[class*=" hr-"],.hr-twinkle circle{animation:none}}`;
 
-/** Dress the shared figure as the Keeper of Hours: night hood, silver owl disc, gold beak, orrery halo, star-colour eye. */
+/** Dress the shared figure as Keeper Altair: midnight hood with a stitched star chart, brass eyepiece, astrolabe badge. */
 function paint(svg, prog, id = "t") {
   if (!svg) return;
   const stops = (gid, cols) => svg.querySelectorAll(`#${id}-${gid} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
-  stops("face", ["#E4EAFF", "#8E9AD0", "#2A3470"]); stops("hood", ["#1e2a6a", "#0b1033", "#02040f"]); // moonlit feathers, night hood
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#C9D4FF"); });
-  const S = starEyeOf(prog && prog.stareye); stops("iris", S.iris);
+  stops("face", ["#DCE6FF", "#8FB8FF", "#2A3F6E"]); stops("hood", ["#1c2f5e", "#0B1530", "#03060f"]); stops("iris", ["#FFFFFF", "#8FB8FF", "#2A3F6E"]);
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#8FB8FF"); });
   const body = svg.querySelector(".o-body"), eye = svg.querySelector(".o-eye"); if (!body || !eye) return;
-  svg.querySelector(".h-keeper")?.remove();
-  const g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-keeper");
-  const feathers = Array.from({ length: 14 }, (_, i) => { const a = (i / 14) * Math.PI * 2, r1 = 44, r2 = 54; return `<path d="M${(200 + r1 * Math.cos(a)).toFixed(1)} ${(152 + r1 * 0.78 * Math.sin(a)).toFixed(1)}L${(200 + r2 * Math.cos(a)).toFixed(1)} ${(152 + r2 * 0.78 * Math.sin(a)).toFixed(1)}" stroke="#C9D4FF" stroke-width="2" stroke-linecap="round" opacity=".7"/>`; }).join("");
-  g.innerHTML = `<ellipse cx="200" cy="152" rx="46" ry="36" fill="none" stroke="#C9D4FF" stroke-width="5" opacity=".9"/>${feathers}
-    <path d="M150 116 Q170 100 186 118 M250 116 Q230 100 214 118" stroke="#C9D4FF" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <path d="M193 192 L207 192 L200 206 Z" fill="#E2B04A" stroke="#8C5E17" stroke-width="1"/>
-    <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="30" fill="${S.iris[1]}" opacity=".12"/>
-    <ellipse cx="200" cy="74" rx="40" ry="10" fill="none" stroke="#9AA6C9" stroke-width="1.4" stroke-dasharray="3 4" opacity=".8"/>
-    <circle cx="200" cy="74" r="6" fill="#FFE9A8"/><circle cx="200" cy="74" r="10" fill="#FFE9A8" opacity=".2"/>
-    <g class="hk-orbit"><circle cx="240" cy="74" r="3.4" fill="#66E0C8"/><circle cx="168" cy="80" r="2.4" fill="#FF7A3A"/><circle cx="214" cy="65" r="2" fill="#C9D4FF"/></g>`;
+  svg.querySelector(".h-altair")?.remove();
+  const M = starMapOf(prog && prog.starmap), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-altair");
+  const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(200 + 44 * Math.cos(a)).toFixed(1)} ${(152 + 33 * Math.sin(a)).toFixed(1)}L${(200 + 49 * Math.cos(a)).toFixed(1)} ${(152 + 37 * Math.sin(a)).toFixed(1)}" stroke="#6b3f12" stroke-width="1.4"/>`; }).join("");
+  g.innerHTML = `<ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
+    <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
+    <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
+    <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
+    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <g transform="translate(200 92)"><circle r="12" fill="#C88A3A" stroke="#6b3f12"/><circle r="8.5" fill="#0B1530"/><g class="hk-rete"><path d="M0 -8V8M-8 0H8" stroke="#E2B04A" stroke-width="1"/><circle cx="0" cy="-2" r="4.5" fill="none" stroke="#E2B04A" stroke-width="1"/></g><circle cx="0" cy="-14" r="2.6" fill="none" stroke="#C88A3A" stroke-width="1.4"/></g>
+    <g class="hk-chart" transform="translate(140 204)">${chartG(M)}</g>`;
   eye.after(g);
 }
 
-/** Swap the Oracle's name for the Keeper's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
+/** Swap the Oracle's name for Altair's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
 const RENAME = [
   [/\bThe Oracle Chamber\b/g, "The Observatory"], [/\bthe Oracle Chamber\b/g, "the Observatory"], [/\bOracle Chamber\b/g, "Observatory"],
-  [/\bTHE ORACLE\b/g, "THE KEEPER"], [/\b([Tt])he Oracle's\b/g, "$1he Keeper's"], [/\b([Tt])he Oracle\b/g, "$1he Keeper"],
+  [/\bTHE ORACLE\b/g, "KEEPER ALTAIR"], [/\b[Tt]he Oracle's\b/g, "Keeper Altair's"], [/\b[Tt]he Oracle\b/g, "Keeper Altair"],
   [/\bEnter the Chamber\b/g, "Enter the Observatory"], [/\b[Tt]he Chamber\b/g, (m) => (m[0] === "T" ? "The Observatory" : "the Observatory")],
   [/\b([Tt])he Record Player\b/g, "$1he Orrery Music Box"], [/\brecord player\b/g, "music box"], [/\bRecord player\b/g, "Music box"],
-  [/\bDraw today's card\b/g, "Tonight's sky"], [/Readings, card games and real science, with a fortune teller who talks back/g, "Constellations, star rummy and ancient calendars, with an astronomer who talks back"], [/(?<![\w/-])Oracle(?![\w-])/g, "Keeper"],
+  [/\bDraw today's card\b/g, "Tonight's sky"], [/Readings, card games and real science, with a fortune teller who talks back/g, "Real stars, real calendars and the myths people told about them, with an astronomer who talks back"], [/(?<![\w/-])Oracle(?![\w-])/g, "Altair"],
 ];
 
 const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lose] });
 
 export const observatory = {
-  id: "observatory", name: "The Keeper of Hours", house: "The Observatory", emoji: "🌌", accent: "#C9D4FF",
-  channelIds: ["1575975395692642596"], // #🌌-observatory
-  readings: false, rooms: ["stars", "rummy", "calendar"], daily: "stars",
-  voice: { type: "sine", base: 330, step: 24, vowel: 90, dur: 0.05, lp: 2600 },
+  id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
+  channelIds: ["1575975395692642596"], // #🔭-observatory
+  readings: false, rooms: ["stars", "calendar", "rummy"], daily: "stars",
+  voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.05, lp: 2600 },
   css: OBSERVATORY_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
-  shelves: [starEyeShop],
+  shelves: [starMapShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },
-  relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each night and by beating game levels here.",
-  strayIntro: "Something just dropped out of the telescope:",
+  relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
+  strayIntro: "Something just rolled out of the telescope tube:",
   lines: {
-    greet: ["Good evening, {name}. Or morning. Up here, every hour is somebody's night.", "Welcome to the Observatory, {name}. The dome is open and the sky is on time.",
-      "Ah, {name}. Mind the telescope, it's older than both of us. Well, older than you."],
-    idle: ["Sunlight takes about eight minutes to reach us. When you look at the Sun, you see it as it was a few minutes ago. Please don't look at the Sun.",
-      "Earth's axis wobbles in a slow circle about 26,000 years long. Polaris is our pole star now; in about 12,000 years it'll be Vega.",
-      "Babylonian astronomers kept records of planets on clay tablets. Some of those tablets track Venus over about 21 years.",
-      "Nearly every star you can see without a telescope is within a few thousand light-years. The Milky Way is about 100,000 across.",
-      "The dome is quiet. I'll just stare meaningfully at Saturn."],
-    joke: ["Why did the astronomer bump her head? She was star-struck. Fine, she walked into the telescope.", "I tried to tell a joke about the Moon, but it went through phases.",
-      "Astronomers never get lost. We just discover new places.", "My feathers are rated for cold nights, dew and bad puns. Mostly bad puns.",
-      "Pluto isn't a planet anymore, but it's still a planet in my heart. And a dwarf planet on paper. Both, really."],
+    greet: ["Give your eyes 20 minutes in the dark, {name}. The sky gets bigger.", "Welcome to the Observatory, {name}. Look up. Then look closer.",
+      "Good evening, {name}. The dome is open and the stars are where we left them. Roughly."],
+    idle: ["Sunlight takes about eight minutes to reach us, so we always see the Sun as it was a few minutes ago.",
+      "Earth's axis wobbles in a slow circle about 26,000 years long. In about 12,000 years Vega will be our pole star.",
+      "Babylonian astronomers recorded Venus on clay tablets. One set follows it for about 21 years.",
+      "Altair spins so fast, about once every nine hours, that it bulges at the middle. The Sun takes nearly a month.",
+      "Every culture drew its own pictures in the same stars. Ask me about the Lakota sky some time."],
+    joke: ["I'd tell you a joke about the Sun, but it's too far out. About 150 million km, to be exact.", "The Moon is drifting away from us, about 3.8 cm a year. I try not to take it personally.",
+      "Pluto has a heart. A real one: a pale heart-shaped plain that New Horizons photographed in 2015.", "Astronomers measure in light-years, which is a distance, not a time. We just like to confuse people.",
+      "A day on Venus is longer than its year. Imagine the paperwork."],
   },
   banter: {
-    stars: G("Turn the sky slowly. Constellations hate being rushed.", "Follow the bright ones first. The faint ones are shy.", "Found and drawn! The ancient sky-watchers would nod. Slowly. They were tired.", "Lost among the stars. It happens to the best navigators."),
-    rummy: G("A star from Orion? Bold. He's always showing off.", "I'm holding three of the Plough. Or am I?", "You went out first! Well played, {name}. The sky is yours tonight.", "My constellation is complete! The night favours the patient."),
-    calendar: G("The Maya counted a 260-day ritual calendar. Count with me.", "Every calendar is a way of chasing the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),
+    stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
+    calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),
+    rummy: G("A star from Orion? He's always showing off.", "I'm holding three of the Plough. Or am I?", "You went out first! The sky is yours tonight, {name}.", "My constellation is complete. The night favours the patient."),
   },
-  poke: ["Careful! The orrery's planets are fragile.", "My feathers, {name}. They're very precise.", "Poke me again and I'll name a faint star after you."],
+  poke: ["Careful, the eyepiece is brass and very old.", "Gently, {name}. I'm calibrated.", "Poke me again and I'll name a faint star after you. Unofficially."],
   perfect: ["A perfect night's work, {name}. Not a cloud in it."],
 };

@@ -1918,3 +1918,11 @@ body.cu-aligned .mr-layer [data-relic="mr-orrery"],body.cu-aligned .mr-layer .mr
 .cu-drawer.rare:not(.found) .cu-knob{box-shadow:inset 0 -2px 3px rgba(0,0,0,.35),0 0 8px rgba(255,79,179,.55)}
 .cu-open{margin-top:6px}
 @media (prefers-reduced-motion: reduce){.cu-tag,.cu-gs::before,.cu-leaf,.cu-mote,.cu-visitor{animation:none}}
+.cu-new{font-style:normal;font-size:10.5px;color:#b0306e;margin-left:4px}
+.cu-next{opacity:.75;font-style:italic}
+#familiar.cu-trick{animation:cu-flip 1.4s ease-in-out}
+@keyframes cu-flip{40%{transform:translateY(-30px) rotate(-180deg)}80%{transform:translateY(0) rotate(-360deg)}}
+.bay.cu-shine{animation:cu-shine 1.8s ease-out}
+@keyframes cu-shine{30%{filter:brightness(1.8) drop-shadow(0 0 14px #fff6c8)}}
+body.cu-8bit #stage{animation:cu-8bit 3s steps(6)}
+@keyframes cu-8bit{0%,100%{filter:none}10%,90%{filter:contrast(1.6) saturate(1.8) hue-rotate(40deg)}}

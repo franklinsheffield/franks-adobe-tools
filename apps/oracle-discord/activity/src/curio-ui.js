@@ -2,7 +2,7 @@
 // init(ctx) once, paint() after the scene repaints, enter() when the Chamber opens, and event(kind, data) from a few
 // places (a question asked, an emote sent or received, speech turned off). Everything else is watched from here:
 // the store, the Trophy Case, the record player and the door screen are found with MutationObservers.
-import { CURIOS, curioOf, curFound, curCount, findCurio, payText, magicWord, hearWord, timedNow, fullMoon, eclipseOn, meeting, SKULL_JOKES, ATTIC, BACKMASK, KNOCK, BACKROOM, GATE_STARS, TEN_EMOTE } from "./curios.js";
+import { CURIOS, liveCurios, freshWeek, WEEK_SET_PAY, timedMore, repdigit, newMoon, curioOf, curFound, curCount, findCurio, payText, magicWord, hearWord, timedNow, fullMoon, eclipseOn, meeting, SKULL_JOKES, ATTIC, BACKMASK, KNOCK, BACKROOM, GATE_STARS, TEN_EMOTE } from "./curios.js";
 
 let C = null; const queued = [];
 const $ = (id) => document.getElementById(id);
@@ -12,12 +12,14 @@ const now = () => Date.now();
 /** Pay a find and say so. Safe to call before the player's progress has loaded (it waits). */
 export function hit(id, line = "") {
   const p = P(); if (!p) { if (!queued.includes(id)) queued.push(id); return false; }
+  if (!liveCurios().some((c) => c.id === id)) return false; // not hidden yet: its week has not opened
   const r = findCurio(p, id); if (!r) { if (line) C.mood.bubble(line, 3200, curioOf(id)?.e || "✦"); return false; }
   C.save(); C.stats(); C.chime(2);
-  C.logEvent("secret", r.c.e, `Found a curiosity: ${r.c.name}`, null, [["Curiosity", `${r.c.e} ${r.c.name}`], ["The riddle", r.c.hint], ["Reward", payText(r.pay)], ["Cabinet", `${curCount(p)} of ${CURIOS.length} drawers filled`]]);
+  C.logEvent("secret", r.c.e, `Found a curiosity: ${r.c.name}`, null, [["Curiosity", `${r.c.e} ${r.c.name}`], ["The riddle", r.c.hint], ["Reward", payText(r.pay)], ["Cabinet", `${curCount(p)} of ${liveCurios().length} drawers filled`]]);
   C.mood.emote(r.c.rare ? "wow" : "joy", { quiet: true });
   C.mood.bubble(`${line ? line + " " : ""}🏺 Curiosity found: ${r.c.name} · ${payText(r.pay)}`, 4200, r.c.e);
   toast(`${r.c.e} ${r.c.name}`, r.c.rare);
+  if (r.week) setTimeout(() => { C.stats(); C.mood.bubble(`Week ${r.week} of the Cabinet, every drawer! +${payText(WEEK_SET_PAY)}`, 4200, "🗓️"); }, 4400);
   if (r.ten) setTimeout(() => { C.mood.bubble("Ten curiosities! The Curator's lens emote is yours. Equip it from your emotes.", 4200, "🔍"); C.logEvent("trophy", "🔍", "Ten curiosities found", null, [["Reward", `The ${TEN_EMOTE === "curator" ? "Curator's lens" : TEN_EMOTE} emote`]]); }, 4400);
   if (r.all) setTimeout(() => { C.stats(); C.mood.emote("cheer"); C.mood.bubble("The whole Cabinet! 💎 300, 🌙 10 and the Wonder emote. Nothing in here can hide from you now.", 5200, "🏺"); C.logEvent("trophy", "🏺", "Filled the whole Cabinet of Curiosities", null, [["Reward", "💎 300 + 🌙 10 and the Wonder emote"]]); }, 4400);
   return true;
@@ -43,7 +45,8 @@ export function paint() {
   <div class="cu-herbs">${[6, 16, 27, 35].map((x, i) => `<button type="button" class="cu-hs cu-herb" data-i="${i}" style="left:${((x - 4) / 40) * 100}%;top:${i % 2 ? 40 : 25}%" aria-label="Drying herbs" tabindex="-1"></button>`).join("")}</div>
   ${crack ? `<button type="button" class="cu-crack" aria-label="A crack in the wall"><svg viewBox="0 0 20 60" aria-hidden="true"><path d="M10 0 L7 9 L12 17 L6 27 L11 36 L8 46 L12 60" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="1.6"/><path d="M12 17 L16 21 M6 27 L2 31 M8 46 L4 49" stroke="#000" stroke-opacity=".4" stroke-width="1"/></svg></button>` : ""}`;
   L.querySelector(".cu-win").onclick = (e) => { e.stopPropagation(); if (!taps("win", 3, 2200)) return knockSfx();
-    if (fullMoon()) { sight("🐺", "wolf"); hit("wolf", "Awoooo! Something howls at the full moon outside."); }
+    if (newMoon() && liveCurios().some((c) => c.id === "newmoon") && !curFound(P() || {}, "newmoon")) { sight("🐈‍⬛", "cat"); hit("newmoon", "Two gold eyes blink on the sill. A black cat, on the darkest night."); }
+    else if (fullMoon()) { sight("🐺", "wolf"); hit("wolf", "Awoooo! Something howls at the full moon outside."); }
     else { sight("🦉", "owl"); hit("window", "Hoo! An owl was sitting on the sill the whole time."); } };
   L.querySelector(".cu-skull").onclick = (e) => { e.stopPropagation(); const p2 = P() || {}, heard = (p2.curSk = Array.isArray(p2.curSk) ? p2.curSk : []);
     const left = SKULL_JOKES.map((_, i) => i).filter((i) => !heard.includes(i)), i = left.length ? left[Math.floor(Math.random() * left.length)] : Math.floor(Math.random() * SKULL_JOKES.length);
@@ -95,6 +98,11 @@ function wireOracle() {
     let d = a - last; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; turn += d; last = a;
     if (Math.abs(turn) >= 6 * Math.PI) { last = null; T.classList.add("cu-galaxy"); setTimeout(() => T.classList.remove("cu-galaxy"), 3000); hit("spin", "A whole galaxy is swirling in the glass now. Thank you, I think."); } });
   T.addEventListener("pointerdown", (e) => { if (e.target.closest?.(".o-eye")) stareOn(); });
+  // a good shake: the pointer swept side to side across her fast, 8 turns in 1.5 s
+  let sx = null, sdir = 0, flips = []; T.addEventListener("pointermove", (e) => { if (sx === null) { sx = e.clientX; return; } const dx = e.clientX - sx; if (Math.abs(dx) < 12) return; sx = e.clientX;
+    const dir = Math.sign(dx); if (dir !== sdir) { sdir = dir; const t = now(); flips.push(t); flips = flips.filter((x) => t - x < 1500); if (flips.length >= 8) { flips = []; C.mood.emote("dizzy"); hit("shake", "Whoa, whoa! Stop shaking the Chamber. Everything's spinning."); } } });
+  // caught napping: she dozed off from waiting; the tap that wakes her counts
+  T.addEventListener("click", () => { if (C.mood.mood() === "sleepy" && !curFound(P() || {}, "nap")) setTimeout(() => hit("nap", "I was not asleep. I was… consulting the inside of my eyelid."), 1200); }, true);
   T.addEventListener("pointerup", stareOff); T.addEventListener("pointerleave", () => { stareOff(); last = null; }); T.addEventListener("pointercancel", stareOff);
 }
 
@@ -107,7 +115,19 @@ function storeTag(ui) {
     const m = C.modal("cu-back", `<div class="gift-in cu-backroom" role="dialog" aria-label="The back room"><h2>🏷️ The back room</h2><p class="note">${C.esc(BACKROOM)}</p><button type="button" class="c" id="cu-back-x">Back to the shop floor</button></div>`);
     $("cu-back-x").onclick = m.close; hit("backroom", "The tag came off. Behind it, a door."); };
 }
+function extras() {
+  document.addEventListener("click", (e) => { if (e.target.closest?.("#familiar") && taps("fam", 5, 3000)) { const f = $("familiar"); f?.classList.add("cu-trick"); setTimeout(() => f?.classList.remove("cu-trick"), 1600); hit("familiar", "A backflip! I didn't know they could do that."); } }, true);
+  const K = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"]; let ki = 0;
+  document.addEventListener("keydown", (e) => { if (e.target.closest?.("input,textarea,select")) return; const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; ki = k === K[ki] ? ki + 1 : k === K[0] ? 1 : 0;
+    if (ki === K.length) { ki = 0; document.body.classList.add("cu-8bit"); setTimeout(() => document.body.classList.remove("cu-8bit"), 3000); hit("konami", "+30 lives. Kidding. Old cheat codes still work in here, though."); } });
+}
+function polish(tc) {
+  const sh = tc.querySelector(".shelf"); if (!sh || sh.dataset.cup) return; sh.dataset.cup = 1; let x = null, dir = 0, flips = [], bay = null;
+  sh.addEventListener("pointermove", (e) => { const b = e.target.closest?.(".bay"); if (!b) { x = null; return; } if (b !== bay) { bay = b; x = e.clientX; flips = []; return; } const dx = e.clientX - x; if (Math.abs(dx) < 8) return; x = e.clientX;
+    const d = Math.sign(dx); if (d !== dir) { dir = d; const t = now(); flips.push(t); flips = flips.filter((v) => t - v < 2500); if (flips.length >= 6) { flips = []; b.classList.add("cu-shine"); setTimeout(() => b.classList.remove("cu-shine"), 1800); hit("polish", "Squeaky clean. You can see your face in it."); } } });
+}
 function trophyCase(tc) {
+  polish(tc);
   const shelf = tc.querySelector(".shelf"), brand = tc.querySelector(".tc-brand");
   const k = (e) => { if (e.target.closest(".bay,button:not(.tc-brand)")) return; if (taps("knock", 3, 2000)) { let i = 0; const next = () => { if (i < KNOCK.length) { C.mood.bubble(`🚪 ${KNOCK[i++]}`, 1400, "🚪"); setTimeout(next, 1500); } else hit("knock"); }; next(); } else knockSfx(); };
   if (shelf && !shelf.dataset.cu) { shelf.dataset.cu = 1; shelf.addEventListener("click", k); }
@@ -132,7 +152,10 @@ const EM = { seq: [], mine: null, theirs: null };
 /** kind: "ask" (question text; returns a line to say, or null), "emote-out" / "emote-in" (emote id), "mute". */
 export function event(kind, data) {
   if (!C) return null;
-  if (kind === "ask") { const w = magicWord(data); if (!w) return null; const p = P(); if (!p) return w[1]; const r = hearWord(p, w[0]); C.save();
+  if (kind === "ask") { const q = String(data || "").trim().toLowerCase();
+    if (q && /\belcaro\b/.test(q)) { setTimeout(() => hit("mirror", "Elcaro! That's me, in the mirror. Hello, me."), 900); return "Elcaro? …Oh. Oh, that's clever."; }
+    if (q && q === EM.lastQ) { EM.lastQ = q; setTimeout(() => hit("echo", "You asked that already. I heard you the first time. …the first time."), 900); } EM.lastQ = q;
+    const w = magicWord(data); if (!w) return null; const p = P(); if (!p) return w[1]; const r = hearWord(p, w[0]); C.save();
     setTimeout(() => { hit("word"); if (r.all) setTimeout(() => hit("lexicon", "Eight words, eight spells. You know all my party tricks."), 4600); }, 900); return w[1]; }
   if (kind === "emote-out") { EM.seq = [...EM.seq, [data, now()]].slice(-3); const s = EM.seq;
     if (s.length === 3 && s[0][0] === "wave" && s[1][0] === "dance" && s[2][0] === "wave" && s[2][1] - s[0][1] < 9000) { EM.seq = []; setTimeout(() => hit("combo", "Wave, dance, wave! That's the conjurer's knot. A new emote is yours."), 2400); }
@@ -150,12 +173,16 @@ function clock() {
     const ec = eclipseOn(d); if (ec && !curFound(p, "eclipse")) hit("eclipse", `Today there is a ${ec.type} ${ec.kind} eclipse somewhere on Earth.`);
     const mt = meeting(+d); document.body.classList.toggle("cu-aligned", !!mt);
     if (mt && !curFound(p, "align")) hit("align", `${mt.a} and ${mt.b} are ${mt.sep}° apart in the sky right now. The orrery hums.`); }
+  for (const [id, x] of timedMore(d)) if (!curFound(p, id)) hit(id, id === "meteor" ? `Tonight is the peak of the ${x} meteor shower. Look up after dark.` : id === "solstice" ? `Today is the ${x}. The seasons turn.` : id === "midnight" ? "Midnight! The clock strikes twelve and every candle leans in." : id === "pi" ? "3.14159… Pi time. I made a pie. It's circular reasoning." : id === "twins" ? `${x}: the day matches the month.` : "Happy New Year! A fresh calendar, every page blank.");
+  if ((p.readings || 0) >= 100 && !curFound(p, "hundred")) hit("hundred", "One hundred readings! I baked a cake. It's mostly candle.");
+  if (repdigit(p.essence) && !curFound(p, "jackpot")) hit("jackpot", `💎 ${p.essence}. Every digit matches. The Chamber goes ding-ding-ding.`);
+  const fw = freshWeek(d); if (fw && (p.curWk || 0) < fw.n) { p.curWk = fw.n; C.save(); setTimeout(() => C.mood.bubble(`I hid ${fw.items.length} new curiosities this week. The Cabinet has new drawers in Your Grimoire.`, 5200, "🏺"), 6000); }
   visitor();
 }
 export function enter() { if (!C) return; while (queued.length) hit(queued.shift()); clock(); if (!enter.t) enter.t = setInterval(clock, 60e3); }
 /** Wire everything once. ctx: { state, mood, save, stats, chime, logEvent, modal, esc, reduced }. */
 export function init(ctx) {
-  C = ctx; wireOracle(); paint();
+  C = ctx; wireOracle(); extras(); paint();
   watch("ui", storeTag); watch("tcase", trophyCase); watch("gate", gateStars);
   const g = $("gate"); if (g) new MutationObserver(() => gateStars(g)).observe(g, { attributes: true, attributeFilter: ["hidden"] });
 }
