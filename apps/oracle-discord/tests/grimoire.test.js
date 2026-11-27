@@ -199,3 +199,27 @@ test("herbarium: thumbnails are clean SVG, silhouettes get the ghost class", () 
     assert.ok(b.includes("ghost") && !a.includes("ghost"), p.id);
   }
 });
+
+// ---- Season and moon lore (folklore only) ----
+import { LORE, PARTS, loreOf, loreHtml, moonNow } from "../activity/src/grimoire/lore.js";
+
+test("lore: every plant has a known part, tales never name the plant's danger as safe advice", () => {
+  for (const p of ALL_PLANTS) {
+    assert.ok(LORE[p.id], "lore for " + p.id);
+    assert.ok(PARTS[LORE[p.id].part], "part for " + p.id);
+  }
+  assert.equal(Object.keys(LORE).length, ALL_PLANTS.length, "no stray lore ids");
+});
+
+test("lore: page line is tagged folklore, poison pages say never gather, moon match is consistent", () => {
+  const esc = (s) => String(s).replace(/</g, "&lt;");
+  for (const p of ALL_PLANTS) {
+    const poison = p.danger[0] === "poison", h = loreHtml(p, esc, Date.UTC(2026, 10, 27), poison);
+    assert.ok(h.includes("folklore") && h.includes("No good evidence"), p.id);
+    assert.equal(h.includes("never gather"), poison, p.id);
+    assert.ok(!/undefined|NaN/.test(h), p.id);
+  }
+  const day = 86400000, t0 = Date.UTC(2026, 0, 1), kinds = new Set();
+  for (let i = 0; i < 30; i++) { const at = t0 + i * day, n = moonNow(at); kinds.add(n.kind); const l = loreOf({ id: "dandelion" }, at); assert.equal(l.match, n.kind === "waning"); }
+  assert.deepEqual([...kinds].sort(), ["full", "new", "waning", "waxing"]);
+});

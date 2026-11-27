@@ -49,6 +49,9 @@ export const CSS = `
 .gr-tile b{font-weight:700}
 .gr-tile .note{color:#6b4e2e;opacity:1}.gr-tile.unfound .note{color:inherit}
 .gr-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.gr-tag{font:600 .62rem/1 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;margin-left:6px;border-radius:8px;border:1px solid currentColor;opacity:.75;vertical-align:middle}
+.gr-moonnow{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:.85em}.gr-moonnow svg{width:22px;height:22px;flex:none;animation:grmoon 4s ease-in-out infinite}
+@keyframes grmoon{50%{transform:translateY(-2px);filter:drop-shadow(0 0 4px #FADE8C)}}
 .gr-bar{height:8px;border-radius:6px;background:rgba(243,227,195,.12);overflow:hidden;margin:4px 0}.gr-bar i{display:block;height:100%;background:linear-gradient(90deg,#7fbf6a,var(--gold));transition:width .6s ease-out}
 .gr-tabs .c.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
 .gr-share{white-space:pre-wrap;font-family:inherit;font-size:.95rem;line-height:1.5;border:1px dashed var(--gold);border-radius:12px;padding:8px 12px;margin:6px 0;background:rgba(226,176,74,.08);user-select:all}
@@ -56,5 +59,5 @@ export const CSS = `
 .gr-guide details{border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:6px 0;background:var(--deep)}
 .gr-guide summary{cursor:pointer;color:var(--teal);font-weight:600}
 .gr-guide p{margin:6px 0;font-size:.92rem;line-height:1.45}
-@media (prefers-reduced-motion: reduce){.gr-spec,.gr-spec.turn,.gr-sway,.gr-stamp,.gr-sec,.gr-claim,.gr-tile,.gr-spark circle,.table.grimoire.gr-shake > svg{animation:none}.gr-fall{display:none}}
+@media (prefers-reduced-motion: reduce){.gr-spec,.gr-spec.turn,.gr-sway,.gr-stamp,.gr-sec,.gr-claim,.gr-tile,.gr-moonnow svg,.gr-spark circle,.table.grimoire.gr-shake > svg{animation:none}.gr-fall{display:none}}
 `;
