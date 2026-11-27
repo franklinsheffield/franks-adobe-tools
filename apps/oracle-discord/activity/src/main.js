@@ -41,6 +41,7 @@ import { banter } from "./banter.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
+import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
@@ -471,6 +472,9 @@ function applyLook(over = {}) {
   $("teller").dataset.hands = A.handFx || ""; $("teller").dataset.element = out.element || "";
   $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = (av.front || "") + (A.eye || "");
   // vibe: theme, fonts, background, star colours
+  { const ws = wornSet(p), pane = $("teller").parentElement; pane.dataset.set = ws ? ws.id : ""; let au = $("set-aura");
+    if (ws && (!au || au.dataset.id !== ws.id)) { if (!au) { au = document.createElement("div"); au.id = "set-aura"; au.className = "set-aura"; au.setAttribute("aria-hidden", "true"); pane.prepend(au); } au.dataset.id = ws.id; au.innerHTML = setAuraHtml(ws.id); }
+    else if (!ws && au) au.remove(); }
   root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
   if (applyLook.vibe !== vibe.id) { applyLook.vibe = vibe.id; $("vfx-o").innerHTML = vibeFx(vibe.id, "o"); $("vfx-t").innerHTML = vibeFx(vibe.id, "t"); }
   const v = item(p.voice); setVoiceStyle(v ? v.v : null);
@@ -511,21 +515,32 @@ function thumb(it) {
 const ACTIVE_KINDS = ["voice", "vibe", "persona"]; // "Active" reads better than "Wearing" for these
 /** The store: five departments, each with its shelves; `tab` is the open shelf (a kind, or "haunted"). */
 function showStore(tab = "outfit", opener = null) {
-  clearReading(); cap(trying ? "👁 Trying on: " + (lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
+  clearReading(); cap(trying ? "👁 Trying on: " + (trying.set ? `the ${LOOK_SETS.find((x) => x.id === trying.set).name} set` : lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog, depts = departments(), dept = deptOf(tab);
   say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
   const earnedOf = (k) => (k === "cloth" || k === "orb" ? UNLOCKS.filter((u) => u.kind === k).map((u) => ({ ...u, earned: true })) : []);
-  const goodsFor = (k) => [...earnedOf(k), ...goodsOf(k)];
+  const goodsFor = (k) => (k === "featured" ? [...featured(), rareOf()].filter(Boolean) : k === "sets" ? STORE.filter((x) => x.set) : k === "boxes" ? [] : [...earnedOf(k), ...goodsOf(k)]);
   const deptBtns = depts.filter((d) => d.kinds.length).map((d) => { const all = d.kinds.filter((k) => k !== "haunted").flatMap(goodsFor), have = all.filter((it) => owns(it.id)).length;
     return `<button class="dept${d.id === dept.id ? " on" : ""}" type="button" data-tab="${d.kinds[0]}" title="${esc(d.blurb)}"><b>${d.label}</b><small>${have} / ${all.length} owned</small></button>`; }).join("");
   const tabs = dept.kinds.length > 1 ? `<div class="choices tabs">${dept.kinds.map((k) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${kindLabel(k)}</button>`).join("")}</div>` : "";
-  const cards = goodsFor(tab).map((it, i) => { const k = it.kind, own = owns(it.id), on = p[k] === it.id, tri = trying && trying.id === it.id;
+  const cardOf = (it, i) => { const k = it.kind, own = owns(it.id), on = p[k] === it.id, tri = trying && trying.id === it.id;
     const act = on ? `<button class="c small" type="button" disabled>✓ ${ACTIVE_KINDS.includes(k) ? "Active" : "Wearing"}</button>`
       : own ? `<button class="c small" type="button" data-w="${it.id}">${k === "record" ? "▶ Play" : "Use"}</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
-      : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
+      : (() => { const pr = priceNow(it.id); return pr == null ? `<span class="note">Not on sale this week</span>` : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= pr ? "" : "disabled"}>${pr < it.price ? `<s>${it.price}</s> ` : ""}💎 ${pr}</button>`; })();
     const tryBtn = k === "record" ? `<button class="c small" type="button" data-listen="${it.id}">▶ Listen</button>` : k === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : k === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
-    return `<div class="shop-card${on ? " on" : ""}${tri ? " try" : ""}" style="--i:${i}">${thumb(it)}<div class="sc-body"><b>${esc(it.name)}</b>${tab === "haunted" ? `<span class="sc-tag">${kindLabel(k)}</span>` : ""}${it.note ? `<span class="note">${esc(it.note)}</span>` : ""}<div class="sc-acts">${tryBtn}${act}</div></div></div>`; }).join("");
+    return `<div class="shop-card${on ? " on" : ""}${tri ? " try" : ""}${it.rare ? " rare" : ""}" style="--i:${i}">${thumb(it)}<div class="sc-body"><b>${esc(it.name)}</b>${tab === "haunted" ? `<span class="sc-tag">${kindLabel(k)}</span>` : ""}${it.note ? `<span class="note">${esc(it.note)}</span>` : ""}<div class="sc-acts">${tryBtn}${act}</div></div></div>`; };
+  let cards;
+  if (tab === "featured") { const F = featured(), R = rareOf(), left = weekEnds() - Date.now(), d = Math.floor(left / 864e5), h = Math.floor((left % 864e5) / 36e5);
+    cards = `<div class="feat-head"><b>🗓️ This week's picks, ${Math.round(FEATURED_OFF * 100)}% off</b><span class="feat-clock">⏳ New picks in ${d}d ${h}h</span></div>${F.map(cardOf).join("")}`
+      + (R ? `<div class="feat-head rare"><b>💠 Rare find</b><span class="feat-clock">Only sold this week</span></div>${cardOf(R, 4)}` : `<div class="feat-head"><span class="note">No rare find this week. Rare items show up two weeks in three.</span></div>`); }
+  else if (tab === "sets") cards = LOOK_SETS.map((st, si) => { const pr = setProgress(p, st), items = Object.values(st.kinds).map((id) => STORE.find((x) => x.id === id)).filter(Boolean), worn = pr.worn === pr.of;
+    return `<div class="set-head${worn ? " worn" : ""}" data-set-id="${st.id}"><b>${st.e} ${esc(st.name)}</b><span class="note">${esc(st.blurb)} when all four are worn.</span><span class="set-prog">${pr.own}/${pr.of} owned</span>${pr.own === pr.of ? `<button class="c small${worn ? "" : " main"}" type="button" data-wearset="${st.id}" ${worn ? "disabled" : ""}>${worn ? "✓ Set worn" : "Wear the set"}</button>` : ""}<button class="c small" type="button" data-tryset="${st.id}">👁 Try the set</button></div>${items.map((it, i) => cardOf(it, si * 4 + i)).join("")}`; }).join("");
+  else if (tab === "boxes") cards = BOXES.map((bx, i) => { const P = boxPool();
+    return `<div class="shop-card box-card" style="--i:${i}"><span class="th th-box">${bx.e}</span><div class="sc-body"><b>${esc(bx.name)}</b><span class="note">One item from the store. A duplicate gives back ${Math.round(REFUND * 100)}% (💎 ${Math.round(bx.price * REFUND)}).</span>
+      <table class="odds">${BOX_TIERS.map((t) => `<tr><td>${t.name}</td><td>${bx.odds[t.id]}%</td><td class="note">${P[t.id].length} items${t.max === Infinity ? ", over 200" : `, up to ${t.max}`} 💎</td></tr>`).join("")}</table>
+      <div class="sc-acts"><button class="c small main" type="button" data-box="${bx.id}" ${p.essence >= bx.price ? "" : "disabled"}>Open · 💎 ${bx.price}</button></div></div></div>`; }).join("") + `<div class="note box-note">Boxes use Essence only, which you earn by playing. Nothing in the Chamber is sold for real money.</div>`;
+  else cards = goodsFor(tab).map(cardOf).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
     <div class="cx-top"><b>💎 ${p.essence} Essence</b> · readings left today: ${left === Infinity ? "unlimited" : left}
@@ -534,8 +549,9 @@ function showStore(tab = "outfit", opener = null) {
     <div class="depts">${deptBtns}</div><div class="dept-blurb">${dept.label}: ${esc(dept.blurb)}.${tab === "cardback" ? " The back you pick is dealt in tarot, Lenormand, the Science is Magic deck, Grimoire Memory, Constellation Rummy and Element Duel." : ""}</div>
     ${tabs}<div class="shop grid">${cards}</div>`);
   const talk = (kind, act, it) => pickLine(((SHOP_TALK[kind] || SHOP_TALK.outfit)[act]) || SHOP_TALK.outfit[act], { item: it ? it.name : "" });
-  $("back").onclick = () => { trying = null; applyLook(); greet(); };
-  applyLook(trying ? { [trying.kind]: trying.id } : {});
+  $("back").onclick = () => { trying = null; $("teller").parentElement.classList.remove("showroom"); applyLook(); greet(); };
+  applyLook(trying ? (trying.set ? { ...LOOK_SETS.find((x) => x.id === trying.set).kinds } : { [trying.kind]: trying.id }) : {});
+  { const pane = $("teller").parentElement, show = !!trying && ["outfit", "avatar", "set"].includes(trying.kind); pane.classList.toggle("showroom", show); }
   if (tab === "cardback") { const bid = trying && trying.kind === "cardback" ? trying.id : p.cardback;
     if (CARD_BACK[bid]) { const t = $("table"); t.className = "table cb-show"; t.innerHTML = `<div class="cb-fan">${[-2, -1, 0, 1, 2].map((r, i) => `<i style="--r:${r * 13}deg;--i:${i}">${cardBackSvg(bid)}</i>`).join("")}</div>`; } // the back, fanned out
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
@@ -550,7 +566,17 @@ function showStore(tab = "outfit", opener = null) {
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { logEvent("buy", "💎", `Bought ${it.name} for ${it.price} Essence`); trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
+  $("ui").querySelectorAll("[data-wearset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.wearset); trying = null;
+    for (const [k, id] of Object.entries(st.kinds)) if (owns(id)) state.prog[k] = id; saveProgress(); applyLook(); flourish("outfit"); mood.emote("joy"); showStore("sets", `The full ${st.name} set. ${st.blurb}. Now that is a look.`); }));
+  $("ui").querySelectorAll("[data-tryset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.tryset), off = trying && trying.set === st.id;
+    trying = off ? null : { set: st.id, kind: "set", id: st.id }; if (!off) { mood.emote("wow"); flourish("outfit"); } showStore("sets", off ? null : `The ${st.name} set, all four pieces. ${st.blurb}.`); }));
+  $("ui").querySelectorAll("[data-box]").forEach((b) => (b.onclick = () => { const bx = BOXES.find((x) => x.id === b.dataset.box), r = openBox(p, bx.id); if (!r) return;
+    saveProgress(); showStats(); checkout(); trying = null; logEvent("buy", bx.e, `Opened a ${bx.name}: ${r.item.name} (${r.tier})${r.dupe ? `, a duplicate, ${r.refund} Essence back` : ""}`);
+    const t = $("table"); t.className = "table box-show"; t.innerHTML = `<div class="box-open tier-${r.tier}"><div class="box-rays"></div><div class="box-lid">${bx.e}</div><div class="box-prize">${thumb(r.item)}<b>${esc(r.item.name)}</b><small>${esc(r.tier)}${r.dupe ? ` · duplicate · +${r.refund} 💎` : " · new!"}</small></div></div>`;
+    mood.emote(r.tier === "epic" ? "wow" : r.dupe ? "sulk" : "joy"); if (!reduced) bookSfx("cover");
+    setTimeout(() => { chime(r.tier === "common" ? 1 : 2); if (!r.dupe) burst(); }, 1100);
+    setTimeout(() => showStore("boxes", r.dupe ? `${r.item.name} again. You already own it, so ${r.refund} Essence goes back in your pocket.` : `${r.tier === "epic" ? "EPIC! " : ""}${r.item.name}! It's yours. Find it on its own shelf to put it on.`), reduced ? 0 : 3200); }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); const pr = priceNow(it.id); if (buyNow(p, it.id)) { logEvent("buy", "💎", `Bought ${it.name} for ${pr} Essence`); trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
@@ -691,6 +717,14 @@ function patternPages(p, sys) {
     <h4>When you read</h4>${Object.entries(hrs).map(([k, n]) => bar(k, n, hmax)).join("")}
     <p class="bk-note">Random draws repeat by chance. A card that comes up often is a pattern in your data, which can be read as meaningful or as luck. Your Grimoire shows both counts.</p>`;
   return [left, right];
+}
+/** The aura a full set adds behind the Oracle. */
+function setAuraHtml(id) {
+  const n = (k, f) => Array.from({ length: k }, (_, i) => f(i)).join("");
+  if (id === "deepsea") return n(14, (i) => `<i class="sa-bub" style="--x:${(i * 37) % 100}%;--d:${(i * 0.7) % 6}s;--s:${6 + (i % 4) * 4}px"></i>`) + n(3, (i) => `<i class="sa-jelly" style="--x:${15 + i * 32}%;--d:${i * 2.5}s"></i>`);
+  if (id === "clockwork") return n(4, (i) => `<i class="sa-gear" style="--x:${[8, 78, 20, 66][i]}%;--y:${[12, 18, 70, 64][i]}%;--s:${[90, 120, 70, 100][i]}px;--r:${i % 2 ? -1 : 1}"></i>`);
+  if (id === "aurora") return n(3, (i) => `<i class="sa-band" style="--d:${i * 2}s;--h:${[150, 190, 280][i]}"></i>`);
+  return "";
 }
 // ---- Grimoire extras: secrets (secrets.js), ribbons, notes, search, share ----
 const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch { return d; } };
