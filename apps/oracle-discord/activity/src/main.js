@@ -199,15 +199,15 @@ $("table").addEventListener("click", (e) => {
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 /** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
-function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
+function keepLine() { const t = (say.full || $("say").textContent).trim(); say.full = ""; if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
   clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
-  if (!keep) $("said").innerHTML = "";
+  keepLine(); const said = $("said"); while (said.children.length > 40) said.firstElementChild.remove(); // the conversation stays readable: earlier lines scroll up
   /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { box.scrollTop = box.scrollHeight; };
-  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
+  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60, follow = () => { if (atEnd) box.scrollTop = box.scrollHeight; };
+  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
   const pros = prosody(plain);
@@ -748,6 +748,11 @@ function showStore(tab = "outfit", opener = null) {
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
 $("store-btn").onclick = () => showStore();
+/** The header menu (Frank 2026-11-27): Store, Trophies, Grimoire and the sound controls fold away behind ☰. Remembered per player. */
+{ const head = document.querySelector(".box-head"), btn = $("menu-btn"), set = (on) => { head.classList.toggle("menu-open", on); btn.setAttribute("aria-expanded", String(on)); btn.textContent = on ? "✕ Close" : "☰ Menu"; try { localStorage.setItem("oracle-menu", on ? "1" : "0"); } catch {} };
+  let start = false; try { start = localStorage.getItem("oracle-menu") === "1"; } catch {} set(start);
+  btn.onclick = () => set(!head.classList.contains("menu-open"));
+  for (const id of ["store-btn", "trophy-btn", "grimoire-btn"]) $(id).addEventListener("click", () => set(false)); }
 
 function showCodex() { return openBook("codex"); }
 /** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */
