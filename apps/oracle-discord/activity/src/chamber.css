@@ -1401,3 +1401,54 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @media (max-width:700px){.music-bar input[type=range]{width:56px}.seg button{min-width:28px;padding:0 5px}}
 @media (prefers-reduced-motion: reduce){.music-bar button.playing{animation:none}}
 @media (max-width:700px){.head-btns{flex-wrap:wrap;row-gap:6px;width:100%}.head-btns .seg{flex:0 0 auto}.head-btns .music-bar{margin-left:auto}}
+/* the Oracle creator */
+.creator{grid-column:1/-1;display:flex;flex-direction:column;gap:10px}
+.cr-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.cr-row>b{min-width:96px;font-size:14px}
+.cr-opts{display:flex;flex-wrap:wrap;gap:6px}
+.cr-sw{font:inherit;font-size:12px;min-width:30px;height:30px;padding:0 8px;border-radius:999px;cursor:pointer;color:inherit;border:2px solid rgba(255,255,255,.2);background:var(--sw,rgba(255,255,255,.06));transition:transform .15s}
+.cr-sw[style*="--sw"]{width:30px;padding:0;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35)}
+.cr-sw:hover{transform:scale(1.12)}.cr-sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--gold,#E2B04A),inset 0 0 0 2px rgba(0,0,0,.35)}
+/* familiars: a companion at the Oracle's feet that reacts to her moods */
+.familiar{position:absolute;left:4%;bottom:3%;width:clamp(56px,16%,110px);aspect-ratio:1;z-index:3;pointer-events:none;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:fm-idle 4s ease-in-out infinite}
+.familiar svg{width:100%;height:100%;display:block;overflow:visible}
+.familiar svg *{transform-box:fill-box;transform-origin:center}
+.fam-cat .fm-tail{transform-origin:0% 100%;animation:fm-tail 2.4s ease-in-out infinite}
+.fam-owl .fm-head{animation:fm-owl 7s ease-in-out infinite}.fam-owl .fm-eyes{animation:fm-blink 5s infinite}
+.fam-cat .fm-eyes{animation:fm-blink 4.2s infinite}
+.fam-moth{left:auto;right:5%;bottom:auto;top:58%;animation:fm-flit 6s ease-in-out infinite}
+.fam-moth .fm-wingL{transform-origin:100% 60%;animation:fm-flapL .28s ease-in-out infinite alternate}.fam-moth .fm-wingR{transform-origin:0% 60%;animation:fm-flapR .28s ease-in-out infinite alternate}
+.fam-bot .fm-ant{transform-origin:50% 100%;animation:fm-ant 2s ease-in-out infinite}.fam-bot .fm-led{animation:fm-led 1.2s steps(2) infinite}
+.fam-toad .fm-flame{transform-origin:50% 100%;animation:fm-flick .5s ease-in-out infinite alternate}
+@keyframes fm-idle{50%{transform:translateY(-3px)}}
+@keyframes fm-tail{50%{transform:rotate(-14deg)}}
+@keyframes fm-owl{0%,40%,100%{transform:rotate(0)}48%,60%{transform:rotate(-24deg)}68%,80%{transform:rotate(18deg)}}
+@keyframes fm-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes fm-flit{0%,100%{transform:translate(0,0) rotate(-6deg)}25%{transform:translate(-18px,-24px) rotate(6deg)}50%{transform:translate(-6px,-46px) rotate(-4deg)}75%{transform:translate(10px,-20px) rotate(8deg)}}
+@keyframes fm-flapL{to{transform:scaleX(.35)}}@keyframes fm-flapR{to{transform:scaleX(.35)}}
+@keyframes fm-ant{50%{transform:rotate(14deg)}}@keyframes fm-led{50%{fill:#FF4FB3}}
+@keyframes fm-flick{to{transform:scale(.85,1.15)}}
+body[data-mood="joy"] .familiar,body[data-mood="cheer"] .familiar,body[data-mood="laugh"] .familiar,.familiar.react{animation:fm-hop .5s ease-out 3}
+body[data-mood="wow"] .familiar,body[data-mood="flinch"] .familiar{animation:fm-jump .45s ease-out}
+body[data-mood="angry"] .familiar,body[data-mood="nervous"] .familiar{animation:fm-shake .12s linear infinite}
+body[data-mood="sad"] .familiar,body[data-mood="sleepy"] .familiar{animation:none;transform:translateY(4px) scaleY(.92);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)) saturate(.6)}
+body[data-mood="love"] .familiar::after{content:"💗";position:absolute;top:-18%;right:0;font-size:20px;animation:fm-heart 1.2s ease-out infinite}
+@keyframes fm-hop{40%{transform:translateY(-22%)}}
+@keyframes fm-jump{30%{transform:translateY(-30%) scale(1.1)}}
+@keyframes fm-shake{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@keyframes fm-heart{from{transform:translateY(0);opacity:1}to{transform:translateY(-26px);opacity:0}}
+/* emote wheel */
+.emote-btn{position:absolute;right:10px;bottom:10px;z-index:6;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;border:var(--btn-bw,1px) var(--btn-bs,solid) var(--btn-bd,rgba(226,176,74,.6));background:var(--btn-bg,rgba(20,10,44,.75));box-shadow:0 4px 12px rgba(0,0,0,.45);transition:transform .2s}
+.emote-btn:hover,.emote-btn[aria-expanded="true"]{transform:scale(1.12) rotate(-8deg)}
+.emote-wheel{position:absolute;right:30px;bottom:30px;width:0;height:0;z-index:7}
+.emote-wheel[hidden]{display:none}
+.emote-wheel button{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;border:1px solid rgba(250,222,140,.6);background:rgba(20,10,44,.92);box-shadow:0 4px 12px rgba(0,0,0,.5);transform:rotate(var(--a)) translateX(-74px) rotate(calc(var(--a) * -1));animation:em-in .25s cubic-bezier(.34,1.56,.64,1) both}
+.emote-wheel button:hover{background:rgba(80,50,150,.95)}
+@keyframes em-in{from{transform:rotate(var(--a)) translateX(0) rotate(calc(var(--a) * -1)) scale(.3);opacity:0}}
+.emote-wheel{clip-path:none}
+.teller.em-wave .o-handR{animation:em-wave .4s ease-in-out 5;transform-origin:50% 100%}
+.teller.em-dance svg{animation:em-dance .6s ease-in-out 4}
+.teller.em-spook svg{animation:em-spook .1s linear 12}
+@keyframes em-wave{50%{transform:rotate(-18deg)}}
+@keyframes em-dance{25%{transform:rotate(-5deg) translateY(-4px)}75%{transform:rotate(5deg) translateY(-4px)}}
+@keyframes em-spook{50%{transform:translateX(3px)}}
+@media (prefers-reduced-motion: reduce){.familiar,.familiar *,.emote-wheel button,.teller.em-wave .o-handR,.teller.em-dance svg,.teller.em-spook svg{animation:none!important}}

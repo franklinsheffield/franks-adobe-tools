@@ -1,6 +1,7 @@
 // The store's ✨ Featured department: a weekly rotating shelf (with a rare item some weeks), full sets with a set aura,
 // and mystery boxes. Everything is bought with Essence, which is only earned by playing. Box odds are shown in full.
 import { STORE, item } from "./store.js";
+import { onSale } from "./character.js";
 
 // ---- the week ----
 /** Weeks since Monday 5 Jan 1970 (UTC), so every member sees the same shelf and it turns over Monday 00:00 UTC. */
@@ -9,7 +10,7 @@ export const weekEnds = (at = Date.now()) => Date.UTC(1970, 0, 5) + (weekOf(at) 
 export const FEATURED_OFF = 0.2;
 const hash = (n) => { let x = (n * 2654435761) >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return x >>> 0; };
 /** Items the weekly shelf may pick: sold items with a price, not rare, not a set piece. */
-const pool = () => STORE.filter((s) => s.price > 0 && !s.rare && !s.set && !s.secret);
+const pool = () => STORE.filter((s) => s.price > 0 && !s.rare && !s.set && !s.secret && !s.season);
 /** This week's 4 featured items (20% off), the same for everyone. */
 export function featured(at = Date.now()) {
   const P = pool().sort((a, b) => a.id.localeCompare(b.id)), w = weekOf(at), out = [];
@@ -23,6 +24,7 @@ export const salePrice = (it) => Math.round(it.price * (1 - FEATURED_OFF) / 5) *
 /** What an item costs right now (featured items are discounted), or null when it can't be bought this week. */
 export function priceNow(id, at = Date.now()) {
   const it = item(id); if (!it) return null;
+  if (it.season) return onSale(it, at) ? it.price : null;
   if (it.rare) return rareOf(at) && rareOf(at).id === id ? it.price : null;
   return featured(at).some((x) => x.id === id) ? salePrice(it) : it.price;
 }
@@ -51,7 +53,7 @@ export const BOXES = [
 export const REFUND = 0.5;
 const tierOf = (it) => TIERS.find((t) => it.price <= t.max).id;
 /** Everything a box can hold, by tier (sold items; no rare, secret or free items). */
-export function boxPool() { const P = { common: [], rare: [], epic: [] }; for (const it of STORE.filter((s) => s.price > 0 && !s.rare && !s.secret)) P[tierOf(it)].push(it); return P; }
+export function boxPool() { const P = { common: [], rare: [], epic: [] }; for (const it of STORE.filter((s) => s.price > 0 && !s.rare && !s.secret && !s.season)) P[tierOf(it)].push(it); return P; }
 /** Open a box: roll the tier by its shown odds, then an item in that tier. A duplicate refunds half the box. */
 export function openBox(p, boxId, rnd = Math.random) {
   const b = BOXES.find((x) => x.id === boxId); if (!b || (p.essence || 0) < b.price) return null;

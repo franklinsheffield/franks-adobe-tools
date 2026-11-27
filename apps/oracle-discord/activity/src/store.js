@@ -1,3 +1,4 @@
+import { SEASONAL } from "./character.js";
 // The Essence store: Essence is earned in the Chamber (every ✦ of a reading also gives 💎 Essence) and spent here on
 // the Oracle's clothing, alternate avatars, reading tools and voices. Cosmetic only, never real money.
 // Daily readings in the Chamber grow with rank (1, 3, 5, then unlimited) and an Essence day pass adds one more today.
@@ -122,6 +123,7 @@ export const STORE = [
   { id: "rare-moonstone", rare: true, kind: "orb", name: "Moonstone sphere", note: "Rare: milky glass with a slow blue sheen", price: 280, f: "saturate(.4) brightness(1.35) hue-rotate(170deg)" },
   { id: "rare-eclipse", rare: true, kind: "flame", name: "Eclipse candles", note: "Rare: jet-black wax and a white flame ringed in gold", price: 240, wax: ["#141218", "#050407"], flame: ["#fff", "#ffffff", "#E2B04A"], halo: "#fff3c4", detail: "sigil" },
 ];
+STORE.push(...SEASONAL);
 export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["cardback", "🃏 Card backs"], ["vibe", "✨ Vibes"]];
 
 /** The Oracle's lines in the store: one pool per product type, for opening the shelf, trying on, and buying. {item} = the item's name. */
@@ -208,14 +210,14 @@ export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
 /** The store's five departments. Each lists the shelves (kinds) inside it; room shelves that aren't named land in "Game rooms".
  *  Ghosts also shows every haunted item from other shelves (items tagged ghost: true). */
 export const DEPTS = [
-  { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "sets", "boxes"] },
-  { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["outfit", "avatar", "voice", "persona"] },
+  { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "seasonal", "sets", "boxes"] },
+  { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke, and who keeps me company", kinds: ["creator", "outfit", "avatar", "familiar", "voice", "persona"] },
   { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
 ];
-const SPECIAL = { featured: "🗓️ This week", sets: "🎽 Full sets", boxes: "📦 Mystery boxes" };
+const SPECIAL = { featured: "🗓️ This week", seasonal: "🍂 Seasonal", sets: "🎽 Full sets", boxes: "📦 Mystery boxes", creator: "🎨 Oracle creator" };
 export function departments() {
   const named = new Set(DEPTS.flatMap((d) => d.kinds));
   return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || SPECIAL[k] || KINDS.some(([x]) => x === k)) }));
@@ -223,4 +225,4 @@ export function departments() {
 export const deptOf = (kind) => departments().find((d) => d.kinds.includes(kind)) || departments()[0];
 export const kindLabel = (kind) => (SPECIAL[kind] ? SPECIAL[kind] : kind === "haunted" ? "👻 Haunted picks" : (KINDS.find(([k]) => k === kind) || [kind, kind])[1]);
 /** Items on a shelf. "haunted" gathers the ghost-themed items from every other shelf, each keeping its own kind. */
-export const goodsOf = (kind) => (kind === "haunted" ? STORE.filter((s) => s.ghost && !s.rare) : STORE.filter((s) => s.kind === kind && !s.rare));
+export const goodsOf = (kind) => (kind === "haunted" ? STORE.filter((s) => s.ghost && !s.rare && !s.season) : STORE.filter((s) => s.kind === kind && !s.rare && !s.season));

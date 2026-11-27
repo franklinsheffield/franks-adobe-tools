@@ -41,6 +41,8 @@ import { banter } from "./banter.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
+import { joinTable, canJoin } from "./net.js";
+import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
@@ -246,7 +248,7 @@ function openStudy(roomId, back) {
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
-registerShelf(recordShop); registerShelf(bookShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -443,7 +445,7 @@ function wear(id) {
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
   const c = lookItem(p.cloth) || UNLOCKS[0], o = lookItem(p.orb), fl = item(p.flame) || item("goldflame"), out = item(p.outfit) || item("midnight"), av = item(p.avatar) || item("classic");
-  const vibe = item(p.vibe) || item("chamber"), A = AVATAR_LOOK[av.id] || AVATAR_LOOK.classic;
+  const vibe = item(p.vibe) || item("chamber"), LK = lookOf(p), A = withCreator(AVATAR_LOOK[av.id] || AVATAR_LOOK.classic, LK);
   // table: cloth colours and design, candles
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   const design = c.design || EARNED_DESIGN[c.id] || "", ink = c.ink || EARNED_INK[c.id] || "#E2B04A";
@@ -458,7 +460,7 @@ function applyLook(over = {}) {
   // robe: colours, trim and its element
   const stops = (id, cols) => svg.querySelectorAll(`#${id} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
   stops("t-hood", out.hood);
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (e.closest(".o-hands")) return; e.dataset.trim = "1"; e.setAttribute("stroke", out.trim); });
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (e.closest(".o-hands")) return; e.dataset.trim = "1"; e.setAttribute("stroke", LK.trim || out.trim); });
   const fx = robeFx(out.element); $("fx-back").innerHTML = fx.back; $("fx-robe").innerHTML = fx.robe; $("fx-front").innerHTML = fx.front;
   // avatar: face, eye, pupil, hands and extras
   stops("t-face", A.face); stops("t-iris", A.iris);
@@ -473,6 +475,9 @@ function applyLook(over = {}) {
   $("teller").dataset.hands = A.handFx || ""; $("teller").dataset.element = out.element || "";
   $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = (av.front || "") + (A.eye || "");
   // vibe: theme, fonts, background, star colours
+  { const pane = $("teller").parentElement, fid = p.familiar && p.familiar !== "fam-none" ? p.familiar : ""; let fe = $("familiar");
+    if (fid) { if (!fe) { fe = document.createElement("div"); fe.id = "familiar"; fe.setAttribute("aria-hidden", "true"); pane.append(fe); } if (fe.dataset.id !== fid) { fe.dataset.id = fid; fe.className = "familiar " + fid; fe.innerHTML = familiarSvg(fid); } }
+    else if (fe) fe.remove(); }
   { const ws = wornSet(p), pane = $("teller").parentElement; pane.dataset.set = ws ? ws.id : ""; let au = $("set-aura");
     if (ws && (!au || au.dataset.id !== ws.id)) { if (!au) { au = document.createElement("div"); au.id = "set-aura"; au.className = "set-aura"; au.setAttribute("aria-hidden", "true"); pane.prepend(au); } au.dataset.id = ws.id; au.innerHTML = setAuraHtml(ws.id); }
     else if (!ws && au) au.remove(); }
@@ -520,7 +525,7 @@ function showStore(tab = "outfit", opener = null) {
   const p = state.prog, depts = departments(), dept = deptOf(tab);
   say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
   const earnedOf = (k) => (k === "cloth" || k === "orb" ? UNLOCKS.filter((u) => u.kind === k).map((u) => ({ ...u, earned: true })) : []);
-  const goodsFor = (k) => (k === "featured" ? [...featured(), rareOf()].filter(Boolean) : k === "sets" ? STORE.filter((x) => x.set) : k === "boxes" ? [] : [...earnedOf(k), ...goodsOf(k)]);
+  const goodsFor = (k) => (k === "creator" ? [] : k === "seasonal" ? SEASONAL : k === "featured" ? [...featured(), rareOf()].filter(Boolean) : k === "sets" ? STORE.filter((x) => x.set) : k === "boxes" ? [] : [...earnedOf(k), ...goodsOf(k)]);
   const deptBtns = depts.filter((d) => d.kinds.length).map((d) => { const all = d.kinds.filter((k) => k !== "haunted").flatMap(goodsFor), have = all.filter((it) => owns(it.id)).length;
     return `<button class="dept${d.id === dept.id ? " on" : ""}" type="button" data-tab="${d.kinds[0]}" title="${esc(d.blurb)}"><b>${d.label}</b><small>${have} / ${all.length} owned</small></button>`; }).join("");
   const tabs = dept.kinds.length > 1 ? `<div class="choices tabs">${dept.kinds.map((k) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${kindLabel(k)}</button>`).join("")}</div>` : "";
@@ -535,6 +540,12 @@ function showStore(tab = "outfit", opener = null) {
   if (tab === "featured") { const F = featured(), R = rareOf(), left = weekEnds() - Date.now(), d = Math.floor(left / 864e5), h = Math.floor((left % 864e5) / 36e5);
     cards = `<div class="feat-head"><b>🗓️ This week's picks, ${Math.round(FEATURED_OFF * 100)}% off</b><span class="feat-clock">⏳ New picks in ${d}d ${h}h</span></div>${F.map(cardOf).join("")}`
       + (R ? `<div class="feat-head rare"><b>💠 Rare find</b><span class="feat-clock">Only sold this week</span></div>${cardOf(R, 4)}` : `<div class="feat-head"><span class="note">No rare find this week. Rare items show up two weeks in three.</span></div>`); }
+  else if (tab === "seasonal") { const sn = seasonNow();
+    cards = SEASONS.map((se) => { const on = sn && sn.id === se.id, its = SEASONAL.filter((x) => x.season === se.id), days = Math.ceil((seasonOpens(se.id) - Date.now()) / 864e5);
+      return `<div class="feat-head${on ? " rare" : ""}"><b>${se.e} ${esc(se.name)}</b><span class="feat-clock">${on ? "On sale now" : `Returns in ${days} day${days === 1 ? "" : "s"}`}</span></div>${its.map(cardOf).join("")}`; }).join(""); }
+  else if (tab === "creator") { const L = lookOf(p);
+    cards = `<div class="creator">${Object.entries(CREATOR).map(([k, c]) => `<div class="cr-row"><b>${esc(c.label)}</b><div class="cr-opts">${c.opts.map(([v, l]) => `<button type="button" class="cr-sw${L[k] === v ? " on" : ""}${v ? "" : " auto"}" data-cr="${k}" data-v="${v}" title="${esc(l)}" aria-label="${esc(c.label)}: ${esc(l)}" aria-pressed="${L[k] === v}" style="${v && v.startsWith("#") ? `--sw:${v}` : ""}">${v && !v.startsWith("#") ? esc(l) : v ? "" : "Auto"}</button>`).join("")}</div></div>`).join("")}
+      <p class="note">Free, and on top of any avatar or robe. "Auto" uses the avatar's or robe's own colours.</p><button class="c small" type="button" data-cr-reset="1">↺ Reset to Auto</button></div>`; }
   else if (tab === "sets") cards = LOOK_SETS.map((st, si) => { const pr = setProgress(p, st), items = Object.values(st.kinds).map((id) => STORE.find((x) => x.id === id)).filter(Boolean), worn = pr.worn === pr.of;
     return `<div class="set-head${worn ? " worn" : ""}" data-set-id="${st.id}"><b>${st.e} ${esc(st.name)}</b><span class="note">${esc(st.blurb)} when all four are worn.</span><span class="set-prog">${pr.own}/${pr.of} owned</span>${pr.own === pr.of ? `<button class="c small${worn ? "" : " main"}" type="button" data-wearset="${st.id}" ${worn ? "disabled" : ""}>${worn ? "✓ Set worn" : "Wear the set"}</button>` : ""}<button class="c small" type="button" data-tryset="${st.id}">👁 Try the set</button></div>${items.map((it, i) => cardOf(it, si * 4 + i)).join("")}`; }).join("");
   else if (tab === "boxes") cards = BOXES.map((bx, i) => { const P = boxPool();
@@ -552,7 +563,7 @@ function showStore(tab = "outfit", opener = null) {
   const talk = (kind, act, it) => pickLine(((SHOP_TALK[kind] || SHOP_TALK.outfit)[act]) || SHOP_TALK.outfit[act], { item: it ? it.name : "" });
   $("back").onclick = () => { trying = null; $("teller").parentElement.classList.remove("showroom"); applyLook(); greet(); };
   applyLook(trying ? (trying.set ? { ...LOOK_SETS.find((x) => x.id === trying.set).kinds } : { [trying.kind]: trying.id }) : {});
-  { const pane = $("teller").parentElement, show = !!trying && ["outfit", "avatar", "set"].includes(trying.kind); pane.classList.toggle("showroom", show); }
+  { const pane = $("teller").parentElement, show = (!!trying && ["outfit", "avatar", "set", "familiar"].includes(trying.kind)) || tab === "creator"; pane.classList.toggle("showroom", show); }
   if (tab === "cardback") { const bid = trying && trying.kind === "cardback" ? trying.id : p.cardback;
     if (CARD_BACK[bid]) { const t = $("table"); t.className = "table cb-show"; t.innerHTML = `<div class="cb-fan">${[-2, -1, 0, 1, 2].map((r, i) => `<i style="--r:${r * 13}deg;--i:${i}">${cardBackSvg(bid)}</i>`).join("")}</div>`; } // the back, fanned out
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
@@ -567,6 +578,8 @@ function showStore(tab = "outfit", opener = null) {
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
+  $("ui").querySelectorAll("[data-cr]").forEach((b) => (b.onclick = () => { const L = (p.look ||= {}); L[b.dataset.cr] = b.dataset.v; saveProgress(); applyLook(); flourish("avatar"); mood.emote(b.dataset.cr === "iris" || b.dataset.cr === "pupil" ? "wink" : "joy", { quiet: true }); showStore("creator", "Ooh. Let me see in the glass."); }));
+  $("ui").querySelectorAll("[data-cr-reset]").forEach((b) => (b.onclick = () => { p.look = {}; saveProgress(); applyLook(); showStore("creator", "Back to my natural look. Classic."); }));
   $("ui").querySelectorAll("[data-wearset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.wearset); trying = null;
     for (const [k, id] of Object.entries(st.kinds)) if (owns(id)) state.prog[k] = id; saveProgress(); applyLook(); flourish("outfit"); mood.emote("joy"); showStore("sets", `The full ${st.name} set. ${st.blurb}. Now that is a look.`); }));
   $("ui").querySelectorAll("[data-tryset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.tryset), off = trying && trying.set === st.id;
@@ -801,6 +814,40 @@ function bookExtras(p) {
   const rc = $("bk-recap"); if (rc) rc.onclick = () => { const line = recapLine(weekRecap(loadLog()), state.name); closeBook(); clearReading(); cap("🗓️ Your week"); say(line); mood.emote("think"); ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button><button class="c" type="button" id="bk-again">📖 Back to Your Grimoire</button></div>`); $("back").onclick = greet; $("bk-again").onclick = () => openBook("patterns"); };
 }
 function bookExtrasNote() { const t = $("bk-note"); if (!t) return; let tm = null; t.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { const N = lsGet(notesKey(), {}); if (t.value.trim()) N[BK.day] = t.value.slice(0, 600); else delete N[BK.day]; lsSet(notesKey(), N); }, 400); }; }
+// ---- the emote wheel: make the Oracle wave, laugh, dance…; in a Discord call everyone in the Chamber sees it ----
+const EMO = { last: 0, lobby: null };
+function doEmote(id, by = null) {
+  const e = emoteOf(id); if (!e) return; const t = $("teller");
+  mood.emote(e.mood); mood.bubble(by ? `${by} made me ${e.name.toLowerCase()}! ${e.say}` : e.say, 2200, e.e);
+  t.classList.remove("em-wave", "em-dance", "em-spook"); void t.offsetWidth; if (["wave", "dance", "spook"].includes(id)) { t.classList.add("em-" + id); setTimeout(() => t.classList.remove("em-" + id), 2400); }
+  const f = $("familiar"); if (f) { f.classList.remove("react"); void f.offsetWidth; f.classList.add("react"); }
+}
+function sendEmote(id) {
+  if (Date.now() - EMO.last < 1500) return; EMO.last = Date.now(); doEmote(id);
+  const L = EMO.lobby; if (!L) return; const m = { emote: id, by: state.name, byId: L.me && L.me.id };
+  if (L.isHost()) L.to("*", m); else L.up(m);
+}
+(function emoteWheel() {
+  const pane = $("teller").parentElement, btn = document.createElement("button"), wheel = document.createElement("div");
+  btn.type = "button"; btn.id = "emote-btn"; btn.className = "emote-btn"; btn.textContent = "😀"; btn.title = "Emotes: make the Oracle react"; btn.setAttribute("aria-label", "Emotes"); btn.setAttribute("aria-expanded", "false");
+  wheel.id = "emote-wheel"; wheel.className = "emote-wheel"; wheel.hidden = true; wheel.setAttribute("role", "menu");
+  wheel.innerHTML = EMOTES.map((e, i) => `<button type="button" role="menuitem" style="--a:${(i / EMOTES.length) * 360 - 90}deg" data-emote="${e.id}" title="${e.name}" aria-label="${e.name}">${e.e}</button>`).join("");
+  pane.append(wheel, btn);
+  const close = () => { wheel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.onclick = (ev) => { ev.stopPropagation(); wheel.hidden = !wheel.hidden; btn.setAttribute("aria-expanded", String(!wheel.hidden)); };
+  wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); sendEmote(b.dataset.emote); }));
+  document.addEventListener("click", (ev) => { if (!wheel.hidden && !wheel.contains(ev.target)) close(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !wheel.hidden) { close(); btn.focus(); } });
+})();
+/** The Chamber lobby: one shared table per call, used only to pass emotes around. Quietly off when it can't start. */
+function joinLobby() {
+  if (EMO.lobby || !canJoin(state)) return;
+  joinTable("lobby", state).then((L) => { EMO.lobby = L;
+    L.on("msg", ({ from, m }) => { if (!m || !emoteOf(m.emote)) return;
+      if (L.isHost() && from !== L.me.id && !m.fwd) L.to("*", { ...m, fwd: true });
+      if (m.byId && L.me && m.byId === L.me.id) return; doEmote(m.emote, String(m.by || L.nameOf(from)).slice(0, 32)); });
+    L.on("close", () => { EMO.lobby = null; }); }).catch(() => { /* not in a call */ });
+}
 // ---- palm eyes: the lines on the Oracle's palms open now and then, and with big moods ----
 (function palmEyes() {
   const t = $("teller"), next = () => setTimeout(open, 5000 + Math.random() * 9000);
@@ -891,6 +938,7 @@ showSpeech();
   }
   await loadProgress();
   await checkBoost();
+  joinLobby();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
