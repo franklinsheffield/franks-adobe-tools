@@ -137,6 +137,18 @@ export const BANTER = {
     pirate: G("Steer by the stars, matey. Polaris never lies.", "A sextant, a clock and a strong stomach. All ye need.", "Ye charted it true! A navigator after me own heart!", "Wrong heading, matey. Ye'd be wrecked on the reef by dawn."),
     influencer: G("The night sky is giving dark mode. Obsessed.", "Spectrum unboxing! The lines are the details, besties.", "Logged it! Tagging the Andromeda Galaxy. 2.5 million light-years reach.", "Wrong answer, bestie. Even Pluto didn't fumble this hard."),
   },
+  comet: {
+    mystic: G("What wanders is never truly lost. Watch the blink.", "A comet is a letter from the edge of the Sun's realm.", "You caught a wanderer. The sky whispers your name.", "It slipped behind the stars. It will pass again."),
+    deadpan: G("Two pictures of dots. Spot the different dot.", "It moved. Slowly. Like everything in astronomy.", "Found it. The comet does not care, but I do. A little.", "Missed. The comet is now in a different place. Classic."),
+    drama: G("Something MOVED! In the VOID! I can't breathe!", "Messier was FOOLED by fuzz for YEARS! Not you!", "A COMET! Ring the bells! Wake the king!", "It ESCAPED! Into the darkness! Gone for 76 YEARS!"),
+    standup: G("Comets: dirty snowballs with excellent PR.", "Messier made a list of things that weren't comets. Relatable.", "You caught it! Halley would buy you a drink, if he could.", "It got away. Comets are terrible at commitment."),
+    grumpy: G("Blink. Look. Blink. That's the job. Every night.", "Don't tap the dust speck. Everyone taps the dust speck.", "Fine catch. Now do it at 4 AM in the cold.", "Wrong. Tombaugh blinked plates for months. Keep going."),
+    sports: G("Plates are blinking and the hunter is LOCKED IN!", "It's moving, it's moving, can they spot it?!", "CAUGHT IT! What a grab in the deep field!", "Just wide! The comet slips past the keeper!"),
+    conspiracy: G("Why do comets come back? Who is sending them?", "Messier's list hides 110 things. Coincidence?", "You caught it. They can't hide it from you now.", "It vanished. They always vanish when you look."),
+    bard: G("Behold the hairy star that wanders through the night!", "Two plates, two nights, and one bold traveller between.", "Thou hast the comet caught, its tail of silver spun!", "Alas, it fled to darkness, cloaked in ice and dust."),
+    pirate: G("A wanderin' star, matey! Mark where it sails!", "Blink the charts. Whatever moves be our prize.", "Caught the sky-ship by her tail! Arr!", "She slipped the net. Back to the crow's nest."),
+    influencer: G("Spot the difference, but make it SPACE.", "This comet is giving main character energy.", "Comet caught! Tagging Halley in this one.", "It ghosted us. Literally a ghost of ice."),
+  },
   flametest: {
     mystic: G("Every flame keeps a secret colour. Read it kindly.", "The fire speaks in wavelengths. Listen with your eyes.", "You read the fire's true name. It glows for you.", "The flame kept its secret this time. It will tell again."),
     deadpan: G("It's fire. It's a colour. You say the colour's name.", "Sodium again. It's always sodium. Salt gets everywhere.", "Correct. The fire is mildly impressed.", "Wrong element. The flame doesn't care. It's a flame."),
