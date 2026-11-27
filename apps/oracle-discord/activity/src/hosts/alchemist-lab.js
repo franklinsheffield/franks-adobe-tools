@@ -18,10 +18,10 @@ export function labSceneHtml(at = Date.now(), { prog = {}, motes = 14, rnd = Mat
   const d = new Date(at), h = d.getHours(), heat = athanorHeat(h), fire = mix("#6a1206", "#ffd27a", heat), hh = ((h + 11) % 12) + 1;
   const owned = (((prog.houses || {}).alchemist || {}).relics || []).includes("st-athanor"); // the relic athanor takes its place
   const jar = ([name, f, col], i) => { const x = 3 + (i % 4) * 24, y = i < 4 ? 4 : 38;
-    return `<g><title>${name} (${f})</title><rect x="${x}" y="${y + 6}" width="18" height="22" rx="3" fill="${col}" opacity=".7" stroke="#e8d6b0" stroke-opacity=".5"/><rect x="${x + 3}" y="${y + 2}" width="12" height="5" rx="1" fill="#6b4a2a"/>
+    return `<g class="mb-hot" data-tap="jar-${i}"><title>${name} (${f})</title><rect x="${x}" y="${y + 6}" width="18" height="22" rx="3" fill="${col}" opacity=".7" stroke="#e8d6b0" stroke-opacity=".5"/><rect x="${x + 3}" y="${y + 2}" width="12" height="5" rx="1" fill="#6b4a2a"/>
       <rect x="${x + 1.5}" y="${y + 13}" width="15" height="10" fill="#f3e6c6"/><text x="${x + 9}" y="${y + 17.4}" font-size="3.3" text-anchor="middle" fill="#3a2410" font-family="Georgia,serif">${name}</text><text x="${x + 9}" y="${y + 21.6}" font-size="3.6" text-anchor="middle" fill="#7a1a10" font-family="Georgia,serif">${f}</text></g>`; };
   const shelf = `<svg class="lab-jars" viewBox="0 0 100 68" aria-hidden="true">${REAGENTS.map(jar).join("")}<rect x="0" y="32" width="100" height="3" fill="#5a3a1e"/><rect x="0" y="66" width="100" height="2.5" fill="#5a3a1e"/></svg>`;
-  const hood = `<svg class="lab-hood" viewBox="0 0 80 104" aria-hidden="true"><rect x="30" y="0" width="20" height="12" fill="#5a4a3a"/><rect x="4" y="10" width="72" height="90" rx="4" fill="#2a1d14" stroke="#C88A3A" stroke-width="2"/>
+  const hood = `<svg class="lab-hood mb-hot" data-tap="hood" viewBox="0 0 80 104" aria-hidden="true"><rect x="30" y="0" width="20" height="12" fill="#5a4a3a"/><rect x="4" y="10" width="72" height="90" rx="4" fill="#2a1d14" stroke="#C88A3A" stroke-width="2"/>
     <rect x="10" y="18" width="60" height="56" fill="#9fd4f2" opacity=".12" stroke="#e8d6b0" stroke-opacity=".5"/><path d="M10 46 H70" stroke="#C88A3A" stroke-width="2"/>
     <g class="lab-hflask"><path d="M36 70 V58 L30 46 H50 L44 58 V70Z" transform="translate(0 0)" fill="#66E0C8" fill-opacity=".35" stroke="#e8d6b0" stroke-width="1"/><circle class="lab-hb" cx="39" cy="66" r="1.2" fill="#C9FFF2"/><circle class="lab-hb" style="--d:.7s" cx="42" cy="64" r="1" fill="#C9FFF2"/></g>
     <g class="lab-cloud"><ellipse cx="26" cy="34" rx="16" ry="10" fill="#8a8580"/><ellipse cx="44" cy="28" rx="18" ry="12" fill="#a29c96"/><ellipse cx="56" cy="40" rx="14" ry="10" fill="#7a7570"/><ellipse cx="38" cy="50" rx="22" ry="12" fill="#6a6560"/></g>
@@ -127,7 +127,7 @@ body[data-house="alchemist"] .o-hands .o-nail{fill:var(--glove2)}body[data-house
 .teller.hv-sooty .hv-soot{opacity:1;animation:hv-wipe 3.2s ease-in both}@keyframes hv-wipe{0%,55%{opacity:1}100%{opacity:0}}
 .lab-hood{position:absolute;left:3%;top:4%;width:clamp(56px,15%,104px);opacity:.92;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))}
 .lab-cloud{opacity:0;transition:opacity 1.2s}.scene.clouded .lab-cloud{opacity:.95}.scene.clouded .lab-cloud ellipse{animation:lab-roil 2s ease-in-out infinite alternate}@keyframes lab-roil{to{transform:translate(2px,-2px)}}
-.lab-jars{position:absolute;right:2%;top:40%;width:clamp(78px,22%,150px);opacity:.85}
+.scene .mb-hot{pointer-events:auto;cursor:pointer}.lab-jars{position:absolute;right:2%;top:40%;width:clamp(78px,22%,150px);opacity:.85}
 .lab-athanor{position:absolute;left:3%;top:52%;width:clamp(40px,11%,78px);opacity:.92}
 .lab-fire{animation:hr-flick .45s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
 .lab-bench{position:absolute;left:0;right:0;bottom:0;height:7%;background:linear-gradient(#6a3e1e,#2e1a0c);border-top:2px solid #C88A3A;opacity:.85}
@@ -136,3 +136,75 @@ body[data-house="alchemist"] .o-hands .o-nail{fill:var(--glove2)}body[data-house
 .lab-hb{animation:ph-rise 2s linear infinite;animation-delay:var(--d,0s)}.lab-bflame{animation:hr-flick .3s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
 .lab-glow{position:absolute;left:0;bottom:0;width:40%;height:55%;background:radial-gradient(circle at 12% 70%,rgba(255,140,60,.35),transparent 60%);mix-blend-mode:screen;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.hv-bub,.hv-burn,.hp-pencil,.hp-stream,.lab-fire,.lab-hb,.lab-bflame,.lab-cloud ellipse,[data-mood] .hv-flask{animation:none}}`;
+
+// ---- her outfit line: lab coats (robes stay the Oracle's). prog.coat; the Magister coat is earned, never sold ----
+/** style: lapel (coat with lapels and a breast pocket), apron (bib and straps), bands (reflective stripes), suit (zip and hood seam). */
+export const COATS = [
+  { id: "coat-white", name: "White lab coat", price: 0, style: "lapel", hood: ["#ffffff", "#dfe3ea", "#7d869a"], trim: "#b8c2d6", lapel: "#f4f6fa", note: "Doctors took up the white coat in the late 1800s, to look like the laboratory scientists of the day." },
+  { id: "coat-apron", name: "Copper-stained apron", price: 60, style: "apron", hood: ["#8a5a32", "#4a2c16", "#1a0d05"], trim: "#3FA08A", lapel: "#6a4022", note: "Copper stains blue-green: verdigris, the same patina that turns old copper roofs green." },
+  { id: "coat-frock", name: "Victorian lecturer's frock coat", price: 120, style: "lapel", hood: ["#3a4a7a", "#1a2340", "#070a14"], trim: "#E2B04A", lapel: "#2a3560", note: "Michael Faraday began the Royal Institution's Christmas Lectures in 1825. They still run every year." },
+  { id: "coat-pyro", name: "Fireworks maker's flame-resistant coat", price: 140, style: "bands", hood: ["#ff9a4a", "#c8401a", "#4a1206"], trim: "#e8e8ee", lapel: "#c8401a", note: "Flame-resistant workwear uses fibres such as aramid, which char instead of melting." },
+  { id: "coat-bunny", name: "Cleanroom bunny suit", price: 160, style: "suit", hood: ["#f4fbff", "#b8d8f0", "#5a7a9a"], trim: "#7AD7FF", lapel: "#dceefa", note: "Cleanroom suits keep hair and skin flakes off microchips. One speck of dust can ruin a chip." },
+  { id: "coat-hazmat", name: "Orange hazmat suit", price: 180, style: "suit", hood: ["#ffb347", "#f07a10", "#6a2a04"], trim: "#2a2a2a", lapel: "#f07a10", note: "Hazmat suits are rated A to D: A is fully sealed with its own air supply, D is ordinary work clothes." },
+  { id: "coat-magister", name: "Gold-trimmed Magister coat", earned: true, how: "Finish the Great Work (the Magnum Opus)", style: "lapel", hood: ["#5a1a2a", "#2a0a14", "#0a0205"], trim: "#FADE8C", lapel: "#3a0d1a", note: "Magister was the title of a medieval university teacher. It lives on as 'master', as in a master's degree." },
+];
+export const coatOf = (id) => COATS.find((c) => c.id === id) || COATS[0];
+/** The Magnum Opus module grants the Magister coat by adding its id to prog.owned. */
+export const MAGISTER_COAT = "coat-magister";
+export function coatOverlay(c) {
+  const L = c.lapel, T = c.trim;
+  if (c.style === "apron") return `<g class="hv-coat"><path d="M158 252 H242 L252 400 H148Z" fill="${L}" stroke="${T}" stroke-width="2"/><path d="M158 252 L132 236 M242 252 L268 236" stroke="${L}" stroke-width="6"/>
+    ${[[172, 300, 9], [228, 330, 12], [190, 372, 8], [240, 384, 6]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.7}" fill="${T}" opacity=".55"/>`).join("")}</g>`;
+  if (c.style === "bands") return `<g class="hv-coat"><path d="M200 240 L152 246 L176 322Z M200 240 L248 246 L224 322Z" fill="${L}" stroke="${T}" stroke-width="1.5"/><path d="M92 340 H308 M80 368 H320" stroke="${T}" stroke-width="7" opacity=".9"/><path d="M92 340 H308 M80 368 H320" stroke="#fff" stroke-width="2" stroke-dasharray="4 6" opacity=".7"/></g>`;
+  if (c.style === "suit") return `<g class="hv-coat"><path d="M200 240 V400" stroke="${T}" stroke-width="3"/><path d="M200 240 V400" stroke="#fff" stroke-width="1" stroke-dasharray="2 3"/><path d="M118 238 C150 262 250 262 282 238" fill="none" stroke="${T}" stroke-width="5" opacity=".8"/><rect x="194" y="244" width="12" height="10" rx="2" fill="${T}"/></g>`;
+  return `<g class="hv-coat"><path d="M200 240 L150 246 L176 330Z M200 240 L250 246 L224 330Z" fill="${L}" stroke="${T}" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="122" y="292" width="28" height="22" rx="2" fill="none" stroke="${T}" stroke-width="2"/><path d="M130 292 V280 M138 292 V276" stroke="${T}" stroke-width="3" stroke-linecap="round"/>
+    ${[344, 368].map((y) => `<circle cx="176" cy="${y}" r="3.6" fill="${T}"/><circle cx="224" cy="${y}" r="3.6" fill="${T}"/>`).join("")}</g>`;
+}
+const coatSwatch = (c) => `<svg viewBox="0 0 400 400" aria-hidden="true"><defs><linearGradient id="cs-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.hood[0]}"/><stop offset=".5" stop-color="${c.hood[1]}"/><stop offset="1" stop-color="${c.hood[2]}"/></linearGradient></defs>
+  <g transform="translate(0 -150) scale(1)"><path d="M200 230 C250 232 300 250 312 290 L340 400 H60 L88 290 C100 250 150 232 200 230Z" fill="url(#cs-g)" stroke="${c.trim}" stroke-width="3"/>${coatOverlay(c)}</g></svg>`;
+export const coatShop = {
+  kind: "coat", label: "🥼 Vell's lab coats",
+  items: COATS.map(({ id, name, note, price, earned, how }) => ({ id, name, note, ...(earned ? { earned, how } : { price }) })),
+  talk: {
+    open: ["My wardrobe: lab coats only. Robes are for oracles. I need pockets.", "Every coat here was made for real lab work. Pick one and I'll wear it at the bench.", "Coats, aprons and suits. The gold one you earn: finish the Great Work and it's yours."],
+    tryon: ["{item}. Very professional. Slightly singed.", "{item}. How do I look? Scientific?", "{item}. It fits! The sleeves even clear the flask."],
+    buy: ["{item}, on the hook. I'll wear it to the bench.", "{item}! Lab-ready. Mostly.", "{item} is yours. Pockets checked: one pencil, two mysteries."],
+  },
+  preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(coatSwatch(coatOf(id))); ctx.cap("🥼 " + coatOf(id).name); },
+};
+
+// ---- her 4 House records (Frank's own tracks; music/<id>.mp3). They join music.js TRACKS once the audio is in. ----
+const V = (p) => ((p && p.houses) || {}).alchemist || {};
+export const HOUSE_RECORDS = [
+  { id: "bubble-and-brass", title: "Bubble and Brass", icon: "🫧", label: "#C88A3A", ink: "#fff1c4", how: "task", house: "alchemist", task: "Visit the Alchemist's House", test: (p) => !!V(p).day },
+  { id: "slow-furnace", title: "Slow Furnace", icon: "🧱", label: "#7a3a22", ink: "#ffd8b0", how: "task", house: "alchemist", task: "Beat a Level 3 game in the Alchemist's House", test: (p) => (V(p).lv || []).some((k) => /-3$/.test(k)) },
+  { id: "transmutation-waltz", title: "Transmutation Waltz", icon: "⚗️", label: "#1FC7A6", ink: "#e0fff8", how: "task", house: "alchemist", task: "Run 100 experiments in the Alchemist's House", test: (p) => (V(p).rounds || 0) >= 100 },
+  { id: "magnum-opus", title: "Magnum Opus", icon: "🪨", label: "#e3173e", ink: "#ffe0e4", how: "task", house: "alchemist", task: "Finish the Great Work (the Magnum Opus)", test: (p) => !!V(p).opus },
+];
+/** The Magnum Opus module calls this when the Great Work is finished: the record and the Magister coat are both earned. */
+export function grantOpus(p) {
+  p.houses = p.houses || {}; const h = (p.houses.alchemist ||= {}); h.opus = true;
+  p.owned = p.owned || []; if (!p.owned.includes(MAGISTER_COAT)) p.owned.push(MAGISTER_COAT); return p;
+}
+
+// ---- her own hands: a resting pose (cupping the flask), and her versions of the 3 gestures ----
+// Pieces live inside each hand (left-hand coordinates; the right hand is the left one mirrored), shown only while
+// the gesture plays: snap = a spark off her gloved fingers, point = a glass pipette, swat = a puff of steam.
+export const handPieces = (side) => (side === "R"
+  ? `<g class="hg hg-spark">${[[0, -14], [12, -6], [-12, -6], [8, 8], [-8, 8]].map(([dx, dy], i) => `<path style="--d:${i * 0.03}s" d="M${162 + dx} ${252 + dy} l2 -6 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2z" fill="#FADE8C" stroke="#fff" stroke-width=".6"/>`).join("")}</g>
+    <g class="hg hg-pipette"><path d="M160 300 L170 222" stroke="#e8f4ff" stroke-opacity=".9" stroke-width="5" stroke-linecap="round"/><path d="M168 240 L170 222" stroke="var(--liq,#66E0C8)" stroke-width="3"/><ellipse cx="159" cy="304" rx="7" ry="9" fill="#e3173e"/></g>`
+  : "") + `<g class="hg hg-steam">${[[150, 250, 9], [142, 236, 11], [154, 222, 8]].map(([x, y, r], i) => `<circle style="--d:${i * 0.08}s" cx="${x}" cy="${y}" r="${r}" fill="#e8eef4"/>`).join("")}</g>`;
+export const VELL_HANDS_CSS = `
+body[data-house="alchemist"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-hand{animation:v-cradle 4.2s ease-in-out infinite}
+body[data-house="alchemist"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-handR{animation-delay:-2.1s}
+body[data-house="alchemist"] .teller:not([data-mood]) .o-hand .o-f{animation:v-grip 4.2s ease-in-out infinite}
+body[data-house="alchemist"] .teller:not([data-mood]) .o-hand .o-thumb{animation:none!important;transform:rotate(-18deg)}
+@keyframes v-cradle{0%,100%{transform:translate(16px,12px) rotate(10deg)}50%{transform:translate(18px,8px) rotate(12deg)}}
+@keyframes v-grip{0%,100%{transform:rotate(30deg)}50%{transform:rotate(24deg)}}
+.hg{opacity:0;pointer-events:none}
+body[data-house="alchemist"] [data-gesture="snap"] .hg-spark{opacity:1}body[data-house="alchemist"] [data-gesture="snap"] .hg-spark path{animation:hv-spk .5s ease-out both;animation-delay:calc(.2s + var(--d));transform-origin:162px 252px;transform-box:view-box}
+body[data-house="alchemist"] [data-gesture="point"] .hg-pipette{opacity:1;transition:opacity .2s .15s}
+body[data-house="alchemist"] [data-gesture="swatL"] .o-handL .hg-steam,body[data-house="alchemist"] [data-gesture="swatR"] .o-handR .hg-steam{opacity:1}
+body[data-house="alchemist"] [data-gesture^="swat"] .hg-steam circle{animation:hv-puff .45s ease-out both;animation-delay:var(--d);transform-box:fill-box;transform-origin:50% 50%}
+@media (prefers-reduced-motion: reduce){body[data-house="alchemist"] .teller .o-hand,body[data-house="alchemist"] .teller .o-f{animation:none!important}}`;

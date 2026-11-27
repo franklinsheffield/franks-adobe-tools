@@ -2,7 +2,8 @@
 // She reuses the Oracle's figure rig (so moods, hands, eye tracking and emotes all work) with a copper mask, a brass
 // goggle over the eye and a lens you choose in the store. Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
-import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS } from "./alchemist-lab.js";
+import { LAB_SECRETS, labBgHtml, LAB_BG_CSS } from "./alchemist-secrets.js";
+import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS, coatOf, coatOverlay, coatShop, handPieces, VELL_HANDS_CSS } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -100,8 +101,8 @@ body[data-house="alchemist"] .gate-title{color:#E89A55;font-family:"IM Fell Engl
 function paint(svg, prog, id = "t") {
   if (!svg) return;
   const stops = (gid, cols) => svg.querySelectorAll(`#${id}-${gid} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
-  stops("face", ["#F6C9A0", "#C8743A", "#5E2D10"]); stops("hood", ["#6a3c1c", "#2b170b", "#0d0603"]); // copper mask, leather hood
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#C88A3A"); });
+  stops("face", ["#F6C9A0", "#C8743A", "#5E2D10"]); const C = prog && prog.coat ? coatOf(prog.coat) : null; stops("hood", C ? C.hood : ["#6a3c1c", "#2b170b", "#0d0603"]); // copper mask; leather hood, or her lab coat
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", C ? C.trim : "#C88A3A"); });
   const L = lensOf(prog && prog.lens); stops("iris", L.iris);
   const body = svg.querySelector(".o-body"), eye = svg.querySelector(".o-eye"); if (!body || !eye) return;
   svg.querySelector(".h-vell")?.remove();
@@ -114,10 +115,12 @@ function paint(svg, prog, id = "t") {
     <path d="M168 136 A38 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <g transform="translate(200 92)"><circle r="11" fill="#C88A3A" stroke="#7a4f12"/>${Array.from({ length: 8 }, (_, i) => `<rect x="-2.4" y="-15" width="4.8" height="6" fill="#C88A3A" transform="rotate(${i * 45})"/>`).join("")}<circle r="4" fill="#3b2414"/></g>`;
   eye.after(g);
+  svg.querySelector(".hv-coat")?.remove(); if (C && body.children[4]) body.children[4].insertAdjacentHTML("afterend", coatOverlay(C)); // under the face, over the robe
   // the flask stands where the crystal ball was (the ball's own parts are hidden by LAB_CSS); pose props ride in her hands
   const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands");
   if (ball) { ball.querySelector(".hv-flask")?.remove(); ball.insertAdjacentHTML("beforeend", flaskSvg(id)); }
   if (hands) { hands.querySelector(".hv-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
+  for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", handPieces(side)); } } // her own gestures
 }
 
 /** Swap the Oracle's name for Vell's in any line or menu. Rank names (Oracle-touched) and /oracle stay. */
@@ -134,13 +137,13 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const alchemist = {
   id: "alchemist", name: "Magister Vell", house: "The Alchemist's House", emoji: "⚗️", accent: "#E89A55",
   channelIds: ["1575967994633396544"], // #⚗️-laboratory
-  readings: false, rooms: ["alchemy", "duel", "grimoire"], daily: "alchemy",
+  readings: false, rooms: ["alchemy", "duel", "grimoire", "flametest", "minerals"], daily: "alchemy",
   // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass",
     sting: { type: "triangle", glide: 1.5, notes: [[392, 0, 0.09], [494, 0.08, 0.09], [587, 0.16, 0.09], [784, 0.24, 0.22, 0.35]] } }, // door sting: three bubbles pop, then a bright brass note
-  css: ALCHEMIST_CSS + LAB_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: ALCHEMIST_CSS + LAB_CSS + VELL_HANDS_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, secrets: LAB_SECRETS, menuBg: { css: LAB_BG_CSS, html: labBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Brass Phonograph", deck: phonographSvg },
-  shelves: [lensShop],
+  shelves: [lensShop, coatShop],
   token: { id: "stone", emoji: "🪨", icon: STONE_ICON, name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
   relics: LAB_RELICS, relicLabel: "🪨 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
   strayIntro: "Something just fell out of the flask:",
@@ -159,6 +162,8 @@ export const alchemist = {
   banter: {
     alchemy: G("Stir gently. The flask doesn't mind, but I do.", "Smell that? That's either sulfur or progress.", "It worked! Write it in the lab book before you forget!", "No reaction. Very scientific of it. Try again."),
     duel: G("Careful, I've balanced more equations than you've had breakfasts.", "A noble gas! Lovely. Unreactive, but lovely.", "Beaten! My compounds came apart. Well played, {name}.", "My reaction wins! Don't worry, it was exothermic. You'll warm up."),
+    flametest: G("Watch the colour. A Bunsen flame barely glows, so the metal's colour shows.", "Bunsen and Kirchhoff found caesium in 1860 by two blue lines in its light.", "Named it by its colour! Bunsen would be proud.", "Wrong metal. Sodium's yellow sneaks into everything, even the best chemists' flames."),
+    minerals: G("Streak it on the tile. Haematite looks black but streaks red-brown.", "Quartz scratches glass. It's a 7 on Mohs' 1812 scale.", "Specimen named! It goes in the cabinet, label first.", "Not that one. Pyrite fooled plenty of miners: fool's gold."),
     grimoire: G("Leaves first, then flowers. Plants keep their best clues at the edges.", "Plenty of medicines started out in a herb garden.", "Named it! Press it in the book, carefully.", "Not that one. Plants are tricky, and some look-alikes are poisonous."),
   },
   poke: ["Mind the goggles! They're brass, not glass.", "Hands off the bench, {name}. It's hot.", "Poke me again and it goes in the lab book."],
