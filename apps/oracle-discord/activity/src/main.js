@@ -244,8 +244,8 @@ function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
   state.prog[u.kind] = id; saveProgress(); applyLook();
 }
-function applyLook() {
-  const p = state.prog, svg = $("teller").querySelector("svg");
+function applyLook(over = {}) {
+  const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg");
   const c = lookItem(p.cloth) || UNLOCKS[0], o = lookItem(p.orb), fl = item(p.flame), out = item(p.outfit) || item("midnight"), av = item(p.avatar) || item("classic");
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   document.documentElement.style.setProperty("--orb-filter", o ? o.f : "none");
@@ -260,8 +260,9 @@ function applyLook() {
 }
 
 // ---- the Essence store ----
+let trying = null; // a store item being tried on: { kind, id }
 function showStore(tab = "outfit") {
-  clearReading(); cap("💎 The Essence store"); table.idle();
+  clearReading(); cap(trying ? "👁 Trying on: " + (lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog;
   say(p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket.");
   const tabs = KINDS.map(([k, label]) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${label}</button>`).join("");
@@ -271,19 +272,24 @@ function showStore(tab = "outfit") {
       : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
       : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
-    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}</span>${tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : ""}${act}</div>`; }).join("");
+    const tri = trying && trying.id === it.id;
+    const tryBtn = tab === "voice" || on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
+    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}</span>${tryBtn}${tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : ""}${act}</div>`; }).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
     <div class="cx-top"><b>💎 ${p.essence} Essence</b> · readings left today: ${left === Infinity ? "unlimited" : left}
       ${left === Infinity ? "" : `<button class="c small" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading today (💎 ${DAY_PASS})</button>`}</div>
     <div class="note">Daily readings by rank: ${DAILY.filter((d, i) => i < 4).map((d) => `${d.rank} ${d.n === Infinity ? "unlimited" : d.n}`).join(" · ")}. The /oracle commands in chat are always unlimited.</div>
     <div class="choices tabs">${tabs}</div><div class="shop">${rows}</div>`);
-  $("back").onclick = greet;
+  $("back").onclick = () => { trying = null; applyLook(); greet(); };
+  applyLook(trying ? { [trying.kind]: trying.id } : {});
+  $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
+    trying = trying && trying.id === it.id ? null : { kind: it.kind, id: it.id }; showStore(tab); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); chime(1); showStats(); showStore(tab); } };
   $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => showStore(b.dataset.tab)));
-  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { wear(b.dataset.w); showStore(tab); }));
+  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); showStore(tab); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); sampleVoice(); setTimeout(() => setVoiceStyle(cur ? cur.v : null), 700); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { if (buy(p, b.dataset.buy)) { chime(2); wear(b.dataset.buy); saveProgress(); showStats(); showStore(tab); } }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { if (buy(p, b.dataset.buy)) { trying = null; chime(2); wear(b.dataset.buy); saveProgress(); showStats(); showStore(tab); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
