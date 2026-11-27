@@ -7,6 +7,10 @@ export const CSS = `
 .pz-lines{display:flex;flex-direction:column;gap:6px}
 .pz-l{margin:0;font-size:1rem;line-height:1.35;font-style:italic}.pz-l.pz-empty{opacity:.45;text-align:center}
 .pz-l.new{animation:pz-write 1.8s steps(28) both,pz-glow 2.4s ease-out 1.8s both}
+.pz-l.pz-narr{font-style:normal;font-size:.82rem;opacity:.75}.pz-l.pz-ghost{color:color-mix(in srgb,var(--ink) 70%,#3a7fa0)}
+.pz-l.pz-truth{font-style:normal;font-size:.86rem;border-left:3px solid rgba(0,0,0,.25);padding-left:6px}.pz-l.pz-truth.new{animation:pz-in .6s ease-out 4.6s both}.pz-l.pz-narr.new{animation:none}
+.pz-real{padding:8px 10px;border:1px solid var(--gold);border-radius:10px;margin:6px 0;background:rgba(226,176,74,.08);animation:pz-in .5s ease-out both}.pz-real ul{margin:4px 0 0;padding-left:18px}.pz-real li{margin:2px 0}
+.pz-who{padding:8px 10px;border:1px dashed #b8f0ff;border-radius:10px;animation:pz-in .5s ease-out both}
 .pz-ask{margin-top:10px;padding:6px 8px;border:1px dashed rgba(0,0,0,.3);border-radius:8px;font-size:.92rem;animation:pz-in .5s ease-out both}
 .pz-pl{position:absolute;width:44px;bottom:14px;left:6%;animation:pz-glide 1.8s ease-in-out both;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))}
 .pz-book.done{animation:pz-open .6s both,pz-done 1.6s ease-in-out .6s 2 alternate}
@@ -34,6 +38,6 @@ body.pz-possessed .speech,body.pz-possessed #say{text-shadow:0 0 8px rgba(184,24
 @keyframes pz-in{from{transform:translateY(-8px);opacity:0}}
 @keyframes pz-pulse{to{opacity:.5}}
 @keyframes pz-shudder{from{transform:translate(-1px,0) rotate(-.6deg)}to{transform:translate(1px,-1px) rotate(.6deg)}}
-@media (prefers-reduced-motion:reduce){.pz-book,.pz-l.new,.pz-pl,.pz-wisp,.pz-cards .c,.pz-ask,.pz-win,.pz-clock{animation:none!important}body.pz-possessed #teller{animation:none}.pz-pl{display:none}}
+@media (prefers-reduced-motion:reduce){.pz-book,.pz-l.new,.pz-pl,.pz-wisp,.pz-cards .c,.pz-ask,.pz-win,.pz-clock,.pz-real,.pz-who{animation:none!important}body.pz-possessed #teller{animation:none}.pz-pl{display:none}}
 @media (max-width:520px){.pz-cards{grid-template-columns:1fr}}
 `;

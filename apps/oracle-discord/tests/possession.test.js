@@ -100,10 +100,67 @@ test("shelf: inks and pages, free ones owned, buying costs Essence, the page sho
   assert.equal(buyOrUse(p, "pz-gold"), "poor"); p.essence = 500; assert.equal(buyOrUse(p, "pz-gold"), "bought"); assert.equal(p.essence, 360); assert.equal(lookOf(p).ink, "pz-gold");
   assert.equal(buyOrUse(p, "pz-irongall"), "used"); assert.equal(lookOf(p).ink, "pz-irongall");
   const html = bookHtml({ look: lookOf(p), title: "<b>", lines: ["one", "two"], fresh: true, esc: (s) => String(s).replace(/</g, "&lt;") });
-  assert.ok(html.includes("pz-l new") && html.includes("&lt;b>") && html.includes("pz-pl"));
+  assert.ok(html.includes("pz-ghost new") && html.includes("&lt;b>") && html.includes("pz-pl"));
 });
 
 test("wired in: trophy, banter, books, and on every House's room list", () => {
   assert.ok(TROPHIES.some((t) => t.id === "possession")); assert.ok(BANTER.possession); assert.ok(ROOM_BOOKS.possession);
   for (const h of HOSTS) assert.ok(h.rooms === "all" || h.rooms.includes("possession"), h.id);
+});
+
+/* ---------- True tales (story-builder mode) ---------- */
+import { TRUE_TALES, trueBeatsFor, trueTalesFor, TRUE_LEVELS } from "../activity/src/possession/true.js";
+import { journalRows } from "../activity/src/possession/room.js";
+
+test("every House has a true tale: 6 beats (3/5/6 by level), facts fit a channel line, answers pass the filter", () => {
+  for (const h of HOSTS) { assert.ok(trueTalesFor(h.id).length >= 1, h.id); for (const k of ["pick", "snap", "real"]) assert.ok(EMCEE[h.id][k].length >= 2, h.id + k); }
+  assert.ok(emcee("pick", { names: "Ada" }, () => 0, "parlour").includes("Ada"));
+  for (const tales of Object.values(TRUE_TALES)) for (const t of tales) {
+    assert.equal(t.beats.length, 6, t.id); assert.ok(t.real.length >= 4);
+    for (const [L, n] of [[1, 3], [2, 5], [3, 6]]) { assert.equal(trueBeatsFor(t, L).length, n, t.id + L); assert.ok(TRUE_LEVELS[L - 1].what.startsWith(String(n))); }
+    for (const b of t.beats) { assert.ok(b.narr && b.truth && b.ask && b.frame.includes("{a}"), t.id); assert.ok(b.truth.length <= 136, b.truth); assert.ok(b.fall.length >= 3);
+      for (const f of b.fall) assert.ok(check(f).ok, f); }
+    for (const r of t.real) assert.ok(r.length <= 140, r);
+  }
+});
+
+test("true tale with friends: writers rotate fairly, one writer speaks straight away, two writers get a vote", () => {
+  const t = TRUE_TALES.observatory[0], r = rng(9), st = S.startTale(t, trueBeatsFor(t, 3), M("a", "b", "c"), { mode: "true", rand: r });
+  assert.equal(st.title, t.name); assert.equal(st.writers.length, 1);
+  const seen = {};
+  for (let i = 0; i < 6; i++) {
+    const w = st.writers[0]; seen[w] = (seen[w] || 0) + 1;
+    const other = st.seats.find((id) => id !== w); assert.equal(S.submit(st, other, "a moon"), null, "only the possessed may write");
+    assert.equal(S.submit(st, w, "a space potato").r, "ok"); assert.ok(S.allWritten(st));
+    S.openVote(st, r); assert.equal(st.choices.length, 1); assert.ok(S.allVoted(st), "one answer: no vote needed");
+    const L = S.reveal(st, r); assert.deepEqual(L.by, [w]); assert.equal(L.truth, t.beats[i].truth); assert.equal(st.story.at(-1).narr, t.beats[i].narr);
+    S.next(st, [], r);
+  }
+  assert.ok(st.over); assert.deepEqual(Object.values(seen).sort(), [2, 2, 2], "everyone possessed the host twice");
+  assert.ok(S.reward(st, "a", 3).perfect, "every line you wrote was spoken");
+  // 4 players: two writers per beat, a late joiner waits their fair turn
+  const st2 = S.startTale(t, trueBeatsFor(t, 3), M("a", "b", "c", "d"), { mode: "true", rand: r }); assert.equal(st2.writers.length, 2);
+  const [w1, w2] = st2.writers; S.submit(st2, w1, "a teapot"); S.submit(st2, w2, "a tiny hat"); S.openVote(st2, r);
+  assert.equal(st2.choices.length, 2); assert.ok(!S.allVoted(st2));
+  const voter = st2.seats.find((id) => !st2.writers.includes(id)); assert.equal(S.vote(st2, voter, st2.choices.find((c) => c.by.includes(w2)).key), "ok");
+  S.reveal(st2, r); assert.deepEqual(st2.last.by, [w2]);
+  S.next(st2, M("a", "b", "c", "d", "e"), r); assert.ok(st2.seats.includes("e")); assert.ok(st2.turns.e >= 0);
+  // nobody possessed answers: the House line is spoken
+  S.openVote(st2, r); assert.equal(st2.choices.length, 1); assert.ok(st2.choices[0].house); S.reveal(st2, r); assert.ok(st2.last.house);
+});
+
+test("a finished true tale shares with its facts and journals with what really happened", () => {
+  const t = TRUE_TALES.parlour[0], st = S.startTale(t, trueBeatsFor(t, 2), M("me"), { mode: "true" });
+  while (!st.over) { S.submit(st, "me", "a very small drummer"); S.openVote(st); S.reveal(st); S.next(st); }
+  const tt = S.taleText(st), saved = { title: tt.title, lines: tt.lines, truths: tt.truths, real: t.real, authors: ["Ada"], host: "Madame Rook" };
+  assert.equal(tt.lines.length, 5); assert.ok(tt.truths.every(Boolean));
+  const L = shareLines(saved); assert.ok(L.length <= 14 && L.every((l) => l.length <= 140)); assert.ok(L.some((l) => l.startsWith("📜")));
+  const [title, rows] = journalRows(saved, "Possessed the host 5 times"); assert.equal(title, "Possession: The Rappings at Hydesville");
+  assert.ok(rows.length <= 14 && rows.every(([k, v]) => k.length <= 60 && v.length <= 600)); assert.ok(rows.some(([k]) => k === "What really happened"));
+  assert.ok(plainText(saved).includes("What really happened:"));
+});
+
+test("a shorter true tale still narrates the skipped beats", () => {
+  const t = TRUE_TALES.alchemist[0], short = trueBeatsFor(t, 1);
+  assert.ok(short.some((b) => b.narr.includes("phosphorus, Greek for 'light-bearer'")));
 });
