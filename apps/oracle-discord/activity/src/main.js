@@ -112,7 +112,8 @@ function greet() {
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
   say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
-  ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast").map(btn).join("")}
+  ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast" && !s.row).map(btn).join("")}
+    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
     <div class="group">Investigate &amp; learn</div>${ROOMS.map((r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
