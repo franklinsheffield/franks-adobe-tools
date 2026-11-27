@@ -91,13 +91,16 @@ function tableHtml(g, o = {}) {
       <div class="cr-fan">${m.cards.map((c, i) => face(c.hip, { mini: true, labels: true, cls: (c.by === "me" ? "by-me" : "by-or") + (m.id === o.grew && i === m.cards.length - 1 ? " cr-new" : "") })).join("")}</div>
       <span class="cr-mh">${m.type === "con" ? CONS[m.key].emoji + " " + esc(CONS[m.key].name) : "🌈 Class " + m.key}${m.type === "con" && m.cards.length === 4 ? " ✓" : ""}</span></div>`).join("")
     : `<div class="cr-hint">Sets you and the Oracle lay down are dealt onto the cloth here.</div>`;
-  return `<div class="cr-wrap ${b}">${clothSvg()}${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
+  const surface = o.surface === "cloth" ? clothSvg() : `<div class="cr-mat">${back()}<span class="cr-matshade"></span></div>`;
+  return `<div class="cr-wrap ${b}">${surface}${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
 }
 
 const CSS = `
 .table.rummy{pointer-events:auto;background:#0b0618;overflow:hidden}
 .cr-wrap{position:absolute;inset:0;display:grid;grid-template-rows:auto auto 1fr;gap:4px;padding:12px 12px 24px}
-.cr-cloth{position:absolute;inset:0;width:100%;height:100%;z-index:0}.cr-wrap>*:not(.cr-cloth){position:relative;z-index:1}
+.cr-cloth{position:absolute;inset:0;width:100%;height:100%;z-index:0}.cr-wrap>*:not(.cr-cloth):not(.cr-mat){position:relative;z-index:1}
+.cr-mat{position:absolute;inset:6px;z-index:0;border-radius:14px;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.6)}.cr-mat .cr-back{position:absolute;inset:0;width:100%;height:100%;border-radius:14px;border-width:3px;font-size:7rem}.cr-mat .cr-back i{inset:10px;border-radius:10px;border-width:2px}
+.cr-matshade{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 55%,rgba(0,0,0,.35),rgba(0,0,0,.05) 60%,rgba(0,0,0,.45))}
 .cr-clothfx *{transform-box:fill-box;transform-origin:center}
 .cr-opp{display:flex;align-items:center;justify-content:center;gap:10px;min-height:40px}
 .cr-ofan{display:flex;padding-left:12px}.cr-ofan .cr-back{width:26px;height:36px;margin-left:-12px;border-radius:4px;transform:translateY(var(--y,0)) rotate(var(--r,0));box-shadow:0 2px 4px rgba(0,0,0,.6)}
@@ -188,7 +191,7 @@ export const rummy = {
     const guideBtn = `<button class="c" type="button" id="cr-guide">📖 Study guide</button>`;
     const wireGuide = () => { const b = $("cr-guide"); if (!b) return; b.onclick = () => { const rb = $("reading-body"), on = !rb.querySelector(".cr-guide"); rb.innerHTML = on ? guideHtml() : "";
       b.textContent = on ? "📖 Close study guide" : "📖 Study guide"; if (on) rb.querySelector(".cr-guide").scrollIntoView({ behavior: "smooth", block: "start" }); }; };
-    const paint = (o = {}) => { tableEl.className = "table rummy"; tableEl.innerHTML = tableHtml(g, { back: backId(), ...o });
+    const paint = (o = {}) => { tableEl.className = "table rummy"; tableEl.innerHTML = tableHtml(g, { back: backId(), surface: prog().surface || "back", ...o });
       tableEl.querySelectorAll("[data-draw]").forEach((b) => (b.onclick = () => myDraw(b.dataset.draw))); };
     const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? Math.min(ms, 150) : ms));
 
@@ -228,8 +231,9 @@ export const rummy = {
       const tip = !mine ? (g.over ? "" : "The Oracle is playing…") : g.phase === "draw" ? "Draw a card: from the deck, or take the top discard. Drag cards to rearrange your hand." :
         sel.length === 0 ? "Tap cards to pick them, drag to rearrange. 3 or 4 of one constellation make a set" + (L.colour ? "; so do 3+ of one colour class from different constellations." : ".") + " Then discard one to end your turn." :
         sel.length === 1 ? "One card: add it to a set on the table, or discard it." : sel.length === 2 ? "Pick at least 3 cards for a set." : (L.labels && !setType(g, sel) ? "These don't make a set yet." : "Lay them down!");
-      ui(`<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${g.over ? "" : `<button class="c small" type="button" id="cr-sort">⇅ Sort</button>`}${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
+      ui(`<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${g.over ? "" : `<button class="c small" type="button" id="cr-sort">⇅ Sort</button>`}<button class="c small" type="button" id="cr-surf">${prog().surface === "cloth" ? "🃏 Card-back table" : "🧵 Cloth table"}</button>${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
       wireHand();
+      $("cr-surf").onclick = () => { prog().surface = prog().surface === "cloth" ? "back" : "cloth"; saveProgress(); flickSfx(); paint(); hand(); };
       if ($("cr-sort")) $("cr-sort").onclick = () => { const order = Object.keys(CONS); flickSfx();
         g.hands.me.sort((a, b) => L.labels ? order.indexOf(CARD[a].con) - order.indexOf(CARD[b].con) || CARD[a].mag - CARD[b].mag : "BAFKM".indexOf(CARD[a].cls) - "BAFKM".indexOf(CARD[b].cls) || CARD[a].mag - CARD[b].mag); hand(); };
       if ($("cr-deck")) $("cr-deck").onclick = () => myDraw("deck");
