@@ -58,13 +58,13 @@ const L1 = [
       explain: "In The Gallic War (book 6), Caesar says the Gauls count time by nights, so a day begins at nightfall. That is why the fire festivals start the evening before: Samhain on 31 October, Bealtaine on 30 April. English still says ‘fortnight’ (fourteen nights)." }; } },
   { id: "celt-fest", title: "The four fire festivals", gen(rng) {
     const f = pickOf(rng)(E.FESTIVALS);
-    return { kind: "choice", answer: f.name, choices: four(rng, f.name, E.FESTIVALS.map((x) => x.name)),
+    return { scene: "fire", kind: "choice", answer: f.name, choices: four(rng, f.name, E.FESTIVALS.map((x) => x.name)),
       q: `Which Irish festival marks ${f.marks}?`,
       hints: [`It falls on 1 ${E.MONTHS[f.month - 1]}.`, `It sits halfway between ${f.between}.`],
       explain: `${f.name}, 1 ${E.MONTHS[f.month - 1]}. The four festivals are named in early medieval Irish texts. They are ‘cross-quarter days’, about halfway between ${f.between}.` }; } },
   { id: "moon-solar", title: "When can the Sun go dark?", gen(rng) {
     const solar = rng() < 0.5, ans = solar ? "New moon" : "Full moon";
-    return { kind: "choice", answer: ans, choices: four(rng, ans, ["New moon", "Full moon", "First quarter", "Last quarter"]),
+    return { scene: solar ? "solar" : "lunar", kind: "choice", answer: ans, choices: four(rng, ans, ["New moon", "Full moon", "First quarter", "Last quarter"]),
       q: solar ? "A solar eclipse can only happen at which phase of the Moon?" : "A lunar eclipse can only happen at which phase of the Moon?",
       hints: [solar ? "The Moon has to pass between the Sun and the Earth." : "The Earth has to be between the Sun and the Moon.", solar ? "It's the phase when we can't see the Moon at all." : "The Moon is opposite the Sun in the sky."],
       explain: solar ? "Only at new moon is the Moon between us and the Sun, so only then can it hide the Sun. Most new moons miss, because the Moon's orbit is tilted about 5° to the Earth's." : "Only at full moon is the Moon behind the Earth, where the Earth's shadow falls. Most full moons miss the shadow, because the Moon's orbit is tilted about 5°." }; } },
@@ -112,13 +112,13 @@ const L2 = [
       explain: "Osiris, Horus (the Elder), Set, Isis and Nephthys. Plutarch tells the myth: Nut was forbidden to give birth on any day of the year, so Thoth won five extra days from the Moon, and her children were born on them." }; } },
   { id: "fest-eve", title: "Light the fire on time", gen(rng, today) {
     const nf = E.nextFestival(today + 1), eve = nf.jdn - 1;
-    return { kind: "choice", answer: E.fmt(eve), choices: dateChoices(rng, eve, [1, -7, 7]), desk: today, after: eve,
+    return { scene: "fire", kind: "choice", answer: E.fmt(eve), choices: dateChoices(rng, eve, [1, -7, 7]), desk: today, after: eve,
       q: `The next fire festival is ${nf.f.name}, kept on 1 ${E.MONTHS[nf.f.month - 1]}. Counting days from nightfall, as the Gauls did, on what date do the fires begin at sunset?`,
       hints: ["A day that starts at nightfall begins the evening before.", "It's the last day of the previous month."],
       explain: `Sunset on ${E.fmt(eve, true)}. That's why Halloween, All Hallows' Eve, falls on the night before 1 November, Samhain.` }; } },
   { id: "cross-quarter", title: "The Sun's own festival", gen(rng, today) {
     const nf = E.nextFestival(today + 1), astro = E.sunAt(nf.f.lon, nf.jdn - 40);
-    return { kind: "choice", answer: E.fmt(astro), choices: dateChoices(rng, astro, [nf.jdn - astro, -14, 14]), desk: today, after: astro,
+    return { scene: "fire", kind: "choice", answer: E.fmt(astro), choices: dateChoices(rng, astro, [nf.jdn - astro, -14, 14]), desk: today, after: astro,
       q: `${nf.f.name} is kept on 1 ${E.MONTHS[nf.f.month - 1]}. But the true midpoint between ${nf.f.between} is when the Sun reaches ${nf.f.lon}° along the ecliptic. When is that, this time?`,
       hints: ["The astronomical midpoint lands a few days after the calendar date.", `It is in ${E.MONTHS[E.dateOf(astro).month - 1]}.`],
       explain: `The Sun reaches ${nf.f.lon}° on ${E.fmt(astro, true)} (UT). Calendar and sky drift apart by several days because the seasons aren't equal in length: the Earth moves faster near the Sun in January.` }; } },
@@ -133,19 +133,19 @@ const where = (e) => (e.type === "solar" ? ` (greatest at ${Math.round(Math.abs(
 const L3 = [
   { id: "saros-solar", title: "The Saros: a solar eclipse returns", gen(rng) {
     const e = pickOf(rng)(pool().solar), n = E.sarosAfter(e);
-    return { kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [-30, 354, -11]), desk: e.jdn, after: n.jdn,
+    return { scene: "solar", kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [-30, 354, -11]), desk: e.jdn, after: n.jdn,
       q: `${an(e.kind).replace(/^a/, "A")} solar eclipse peaked on ${E.fmt(e.jdn)}${where(e)}. One Saros is 223 lunar months: 6,585⅓ days, about 18 years 11 days 8 hours. When is the next eclipse of this Saros series?`,
       hints: ["Add 18 years, then 10 to 12 more days depending on how many leap days fall in between.", `It's in ${E.MONTHS[E.dateOf(n.jdn).month - 1]} ${E.dateOf(n.jdn).year}.`],
       explain: `${E.fmt(n.jdn, true)}: ${an(n.kind)} eclipse${where(n)}. The extra 8 hours let the Earth turn about a third further, so the shadow lands roughly 120° of longitude to the west. After 223 months the Sun, Moon and the Moon's orbit nodes are almost exactly lined up again.` }; } },
   { id: "saros-lunar", title: "The Saros: a lunar eclipse returns", gen(rng) {
     const e = pickOf(rng)(pool().lunar), n = E.sarosAfter(e);
-    return { kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [-30, 30, -354]), desk: e.jdn, after: n.jdn,
+    return { scene: "lunar", kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [-30, 30, -354]), desk: e.jdn, after: n.jdn,
       q: `${an(e.kind).replace(/^a/, "A")} lunar eclipse peaked on ${E.fmt(e.jdn)}. Use the Saros (6,585⅓ days, about 18 years 11 days) to predict its next eclipse.`,
       hints: ["Add 18 years and about 11 days.", `It's in ${E.dateOf(n.jdn).year}.`],
       explain: `${E.fmt(n.jdn, true)}: ${an(n.kind)} lunar eclipse. Babylonian astronomers were predicting lunar eclipses with this 223-month pattern by the 6th century BCE. The name ‘Saros’ came much later, from Edmond Halley in 1691.` }; } },
   { id: "half-year", title: "The next eclipse season", gen(rng) {
     const all = pool().solar, i = int(rng, 0, all.length - 2), e = all[i], n = all[i + 1], gap = n.jdn - e.jdn;
-    return { kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [e.jdn + 30 - n.jdn, e.jdn + 354 - n.jdn, gap === 177 || gap === 178 ? -29 : 29, -88, 60]), desk: e.jdn, after: n.jdn,
+    return { scene: "solar", kind: "choice", answer: E.fmt(n.jdn), choices: dateChoices(rng, n.jdn, [e.jdn + 30 - n.jdn, e.jdn + 354 - n.jdn, gap === 177 || gap === 178 ? -29 : 29, -88, 60]), desk: e.jdn, after: n.jdn,
       q: `A solar eclipse happened on ${E.fmt(e.jdn)}. Eclipses come in seasons, when the new or full moon falls near a node of the Moon's tilted orbit. When is the next solar eclipse?`,
       hints: ["Eclipse seasons are about 173 days apart, and eclipses happen at new moons, so count in whole lunar months of 29½ days.", "Usually 6 lunar months (177 days), sometimes 5 (148 days) or 1 (29 days)."],
       explain: `${E.fmt(n.jdn, true)}, ${gap} days later (${Math.round(gap / E.SYNODIC)} lunar months): ${an(n.kind)} eclipse. The Maya eclipse table in the Dresden Codex uses exactly these steps, mostly 177 days with an occasional 148.` }; } },
@@ -157,7 +157,7 @@ const L3 = [
     const all = pool().solar, pairs = [];
     for (const s of all) { const l = E.nextLunar(s.jdn - 16, false); if (Math.abs(l.jdn - s.jdn) <= 16) pairs.push([s, l]); }
     const [s, l] = pickOf(rng)(pairs), ans = E.fmt(l.jdn);
-    return { kind: "choice", answer: ans, choices: dateChoices(rng, l.jdn, [2 * (s.jdn - l.jdn), 177, 29, -29]), desk: s.jdn, after: l.jdn,
+    return { scene: "lunar", kind: "choice", answer: ans, choices: dateChoices(rng, l.jdn, [2 * (s.jdn - l.jdn), 177, 29, -29]), desk: s.jdn, after: l.jdn,
       q: `A solar eclipse peaked on ${E.fmt(s.jdn)}, at new moon. In the same eclipse season there was also a lunar eclipse (some only penumbral, a faint darkening). When was it?`,
       hints: ["A lunar eclipse needs a full moon: half a lunar month away from the new moon.", "About two weeks before or after."],
       explain: `${E.fmt(l.jdn, true)}: ${an(l.kind)} lunar eclipse, ${Math.abs(l.jdn - s.jdn)} days ${l.jdn > s.jdn ? "after" : "before"}. While the Sun sits near a node, both the new moon and the full moon around it can line up.` }; } },
@@ -169,7 +169,7 @@ const L3 = [
       explain: "Three Saros is about 19,756 days with almost no leftover hours, so the Earth faces the same way again. The Antikythera mechanism, a Greek gear computer from the 2nd or 1st century BCE found in a shipwreck in 1901, had dials for both the Saros and the exeligmos." }; } },
   { id: "next-real", title: "The next eclipse on Earth", gen(rng, today) {
     const e = E.nextEclipse(today, true), n = E.nextEclipse(e.jdn + 1, true);
-    return { kind: "choice", answer: E.fmt(e.jdn), choices: four(rng, E.fmt(e.jdn), [E.fmt(n.jdn), E.fmt(e.jdn + 29), E.fmt(e.jdn + 177), E.fmt(e.jdn + 60), E.fmt(e.jdn + 14)]), desk: today, after: e.jdn,
+    return { scene: e.type, kind: "choice", answer: E.fmt(e.jdn), choices: four(rng, E.fmt(e.jdn), [E.fmt(n.jdn), E.fmt(e.jdn + 29), E.fmt(e.jdn + 177), E.fmt(e.jdn + 60), E.fmt(e.jdn + 14)]), desk: today, after: e.jdn,
       q: `From today, ${E.fmt(today)}, when is the next eclipse anywhere on Earth (solar, or a lunar eclipse with the Moon in the Earth's dark shadow)? Use what you know: seasons about 173 days apart, pairs two weeks apart.`,
       hints: [`It's a ${e.type} eclipse.`, `It's in ${E.MONTHS[E.dateOf(e.jdn).month - 1]} ${E.dateOf(e.jdn).year}.`],
       explain: `${E.fmt(e.jdn, true)}: ${an(e.kind)} ${e.type} eclipse${where(e)}. After it: ${an(n.kind)} ${n.type} eclipse on ${E.fmt(n.jdn, true)}. These dates come from the same orbital maths astronomers use, worked out live.` }; } },
