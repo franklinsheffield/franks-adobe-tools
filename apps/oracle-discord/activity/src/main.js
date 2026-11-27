@@ -1,5 +1,7 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS } from "./music.js";
+import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
@@ -187,7 +189,7 @@ function idleTick() {
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
 
 function greet() {
-  state.inRoom = null; idle.on = true; idleReset();
+  state.inRoom = null; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
@@ -223,7 +225,8 @@ function openStudy(roomId, back) {
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
-for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
+registerShelf(recordShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -234,7 +237,7 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
-  state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000;
+  state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back) });
 }
@@ -302,7 +305,7 @@ async function reveal(sys, options, question = "") {
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
-  useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
+  useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name);
   const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" }, { text: joke(sys.key), after: "laugh" }];
   if (pid() === "standup") setTimeout(rimshot, 400);
@@ -408,6 +411,7 @@ const owns = (id) => state.prog.unlocked.includes(id) || (state.prog.owned || []
 const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
+  if (u.kind === "record") { const t = trackOf(id), L = musicOf(state.prog).list; if (t && !L.includes(t.id)) togglePlaylist(state.prog, t.id); saveProgress(); player.refresh(); player.play(t.id); return; }
   const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (changed) flourish(u.kind);
 }
 function applyLook(over = {}) {
@@ -457,6 +461,7 @@ function thumb(it) {
   if (k === "cardback") return it.id === "cb-deck" ? `<span class="th">🂠</span>` : `<span class="th th-card">${cardBackSvg(it.id)}</span>`;
   if (k === "outfit" && it.hood) return `<span class="th th-robe" style="--a:${it.hood[0]};--b:${it.hood[1]};--t:${it.trim}"></span>`;
   if (k === "cloth" && it.c) return `<span class="th th-cloth" style="--a:${it.c[0]};--b:${it.c[2]};--t:${it.ink || EARNED_INK[it.id] || "#E2B04A"}"></span>`;
+  if (k === "record") return `<span class="th th-rec">${vinylSvg(trackOf(it.id), 46)}</span>`;
   if (k === "ghost") return `<span class="th th-ghost"><svg viewBox="110 0 180 210" aria-hidden="true"><defs><linearGradient id="sc-sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#c9c4e6" stop-opacity=".75"/></linearGradient></defs><g class="sc-gb sg-${it.id}">${ghostBody(it.id)}</g></svg></span>`;
   if (k === "orb") return `<span class="th th-orb" style="filter:${it.f || "none"}"></span>`;
   if (k === "flame" && it.wax) return `<span class="th th-flame" style="--w:${it.wax[0]};--f:${it.flame[1]};--h:${it.halo}"></span>`;
@@ -476,10 +481,10 @@ function showStore(tab = "outfit", opener = null) {
   const tabs = dept.kinds.length > 1 ? `<div class="choices tabs">${dept.kinds.map((k) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${kindLabel(k)}</button>`).join("")}</div>` : "";
   const cards = goodsFor(tab).map((it, i) => { const k = it.kind, own = owns(it.id), on = p[k] === it.id, tri = trying && trying.id === it.id;
     const act = on ? `<button class="c small" type="button" disabled>✓ ${ACTIVE_KINDS.includes(k) ? "Active" : "Wearing"}</button>`
-      : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
+      : own ? `<button class="c small" type="button" data-w="${it.id}">${k === "record" ? "▶ Play" : "Use"}</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
       : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
-    const tryBtn = k === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : k === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
+    const tryBtn = k === "record" ? `<button class="c small" type="button" data-listen="${it.id}">▶ Listen</button>` : k === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : k === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
     return `<div class="shop-card${on ? " on" : ""}${tri ? " try" : ""}" style="--i:${i}">${thumb(it)}<div class="sc-body"><b>${esc(it.name)}</b>${tab === "haunted" ? `<span class="sc-tag">${kindLabel(k)}</span>` : ""}${it.note ? `<span class="note">${esc(it.note)}</span>` : ""}<div class="sc-acts">${tryBtn}${act}</div></div></div>`; }).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
@@ -500,6 +505,7 @@ function showStore(tab = "outfit", opener = null) {
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
   $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore.deck = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
   $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); const it = lookItem(b.dataset.w); showStore(tab, talk(it.kind, "tryon", it)); }));
+  $("ui").querySelectorAll("[data-listen]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.listen); player.preview(b.dataset.listen); say(talk("record", "tryon", it)); }));
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
@@ -612,7 +618,7 @@ showVoice();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); };
+  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); };
   $("enter").onclick = enter; $("enter").focus();
 })();
 
@@ -624,7 +630,9 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
-  try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); } }
+  try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
+  if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
+  setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
   if (!n) return;
   if (n.pay) award(0, n.pay); saveProgress(); showStats();
@@ -657,7 +665,9 @@ function nextCollect() {
   const done = (open) => { checkout(); el.classList.add("out"); setTimeout(() => { el.hidden = true; el.innerHTML = ""; if (open) openCase(); else nextCollect(); }, reduced ? 0 : 350); };
   $("tc-ok").onclick = () => done(false); $("tc-case").onclick = () => { tq.length = 0; done(true); };
 }
-function openCase(focus = null) {
+let caseView = "trophies";
+function openCase(focus = null, view = null) {
+  if (view) caseView = view; if (caseView === "music") return openRecords();
   const p = state.prog, el = $("tcase"), pts = points(p), lv = caseLevel(p), nextLv = CASE_LEVELS.find((l) => l.at > pts);
   const got = TROPHIES.filter((t) => tierOf(p, t.id) > 0).length;
   const bay = (t) => { const n = tierOf(p, t.id), T = TIERS[n], pinned = (p.showcase || []).includes(t.id);
@@ -673,16 +683,56 @@ function openCase(focus = null) {
   el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The Trophy Case">
     <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
       <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
-      <button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
+      ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
     <div class="tsets">${sets}</div>
     <div class="note">Bronze, Silver and Gold come from finishing Levels 1, 2 and 3. Prismatic needs a perfect round on every level. Each tier pays its Essence once.</div></div>`;
-  el.hidden = false; el.scrollTop = 0;
+  el.hidden = false; el.scrollTop = 0; wireCaseTabs();
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
   el.querySelectorAll("[data-tr]").forEach((b) => (b.onclick = () => { chime(1); openCase(b.dataset.tr); }));
   if ($("td-pin")) $("td-pin").onclick = () => { togglePin(p, focus); saveProgress(); showStats(); openCase(focus); };
 }
-$("trophy-btn").onclick = () => openCase();
+$("trophy-btn").onclick = () => openCase(null, "trophies");
+const caseTabs = () => `<div class="tc-views" role="tablist"><button class="c small${caseView === "trophies" ? " on" : ""}" type="button" role="tab" aria-selected="${caseView === "trophies"}" data-cv="trophies">🏆 Trophies</button><button class="c small${caseView === "music" ? " on" : ""}" type="button" role="tab" aria-selected="${caseView === "music"}" data-cv="music">🎵 Record player</button></div>`;
+function wireCaseTabs() { $("tcase").querySelectorAll("[data-cv]").forEach((b) => (b.onclick = () => { chime(1); openCase(null, b.dataset.cv); })); }
+
+// ---- music (music.js data, player.js audio + record player): always-there 🎵 button, the record player in the Trophy Case ----
+const player = createPlayer({ getProg: () => state.prog, save: saveProgress, onChange: () => musicUi() });
+const musicDeps = () => ({ getProg: () => state.prog, save: saveProgress, onOpenStore: () => { $("tcase").hidden = true; $("tcase").innerHTML = ""; showStore("record"); }, redraw: musicUi });
+/** The record player view of the Trophy Case. */
+function openRecords() {
+  const el = $("tcase"), p = state.prog;
+  el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The record player">
+    <header><div class="tc-brand"><span class="tc-sig">♫</span><div><h2>The Record Player</h2><small>Science is Magic · Oracle Chamber</small></div></div>${caseTabs()}
+      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc)}</div>`;
+  const wasHidden = el.hidden; el.hidden = false; if (wasHidden) el.scrollTop = 0; wireCaseTabs(); wireMusic(el, player, musicDeps());
+  $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
+}
+/** Redraw whatever music UI is open, and the header button. */
+function musicUi() {
+  const s = musicOf(state.prog), mb = $("music-btn");
+  mb.textContent = s.on ? (player.playing ? "🎵 Music ♪" : "🎵 Music") : "🔇 Music"; mb.classList.toggle("on", player.playing);
+  if (!$("tcase").hidden && caseView === "music" && $("tcase").querySelector(".rp")) { const y = $("tcase").scrollTop; openRecords(); $("tcase").scrollTop = y; }
+  if (!$("music-pop").hidden) drawMusicPop();
+}
+function drawMusicPop() {
+  const pop = $("music-pop"), s = musicOf(state.prog), t = player.current;
+  pop.innerHTML = `<div class="mp-now">${vinylSvg(t, 44, player.playing ? "spin" : "")}<div><small>${player.inBattle ? "⚔ Battle music" : s.on ? (player.playing ? "Now playing" : "Paused") : "Music is off"}</small><b>${t ? esc(t.title) : "No record on"}</b></div></div>
+    <div class="rp-btns"><button class="c small" type="button" data-mu="prev" aria-label="Previous record">⏮</button><button class="c small main" type="button" data-mu="toggle" aria-label="${player.playing ? "Pause" : "Play"}">${player.playing ? "⏸" : "▶"}</button><button class="c small" type="button" data-mu="next" aria-label="Next record">⏭</button></div>
+    ${musicSwitchHtml(s)}<button class="c small" type="button" id="mp-open">🎛️ Open the record player</button>`;
+  wireMusic(pop, player, musicDeps());
+  $("mp-open").onclick = () => { pop.hidden = true; $("music-btn").setAttribute("aria-expanded", "false"); openCase(null, "music"); };
+}
+$("music-btn").onclick = (e) => { e.stopPropagation(); const pop = $("music-pop"), open = pop.hidden; pop.hidden = !open; $("music-btn").setAttribute("aria-expanded", String(open));
+  if (open) { const r = $("music-btn").getBoundingClientRect(); pop.style.top = Math.min(innerHeight - 250, r.bottom + 6) + "px"; pop.style.right = Math.max(8, innerWidth - r.right) + "px"; drawMusicPop(); } };
+document.addEventListener("click", (e) => { const pop = $("music-pop"); if (!pop.hidden && !pop.contains(e.target) && e.target !== $("music-btn")) { pop.hidden = true; $("music-btn").setAttribute("aria-expanded", "false"); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("music-pop").hidden) { $("music-pop").hidden = true; $("music-btn").focus(); } });
+setInterval(() => { const tm = document.querySelector(".rp-time"); if (tm && player.current) { const { t, d } = player.position, f = (x) => (isFinite(x) && x > 0 ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}` : "0:00"); tm.textContent = `${f(t)} / ${f(d)}`; } }, 1000);
+/** Check the record tasks; announce any record unlocked just now. */
+function musicNews(silent = false) {
+  const fresh = checkUnlocks(state.prog); if (!fresh.length) return; saveProgress(); player.refresh(); if (silent) return;
+  chime(2); const t = fresh[0]; mood.bubble(`New record: ${t.title}! ${fresh.length > 1 ? `And ${fresh.length - 1} more. ` : ""}Find it in the record player.`, 4200, "🎵");
+}
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tcase").hidden && $("tcollect").hidden) $("tcase-x").click(); });
 if (PREVIEW) window.__trophyTest = (id = "seance", level = 1, perfect = false) => trophy(id, level, { won: true, perfect });
