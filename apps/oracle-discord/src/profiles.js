@@ -10,9 +10,10 @@ export const BIRTH_FIELDS = {
   "astrology:now": { date: "birth_date", time: "birth_time", place: "birth_place", need: ["date", "place", "time"] },
   numerology: { date: "date", name: "name", need: ["date", "name"] },
   chinesezodiac: FULL,
-  mayan: { date: "date", need: ["date"] },
-  egyptian: { date: "date", need: ["date"] },
-  celtic: { date: "date", need: ["date"] },
+  // time and place are optional extras here (opt): asked for, never required
+  mayan: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
+  egyptian: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
+  celtic: { date: "date", time: "time", place: "place", need: ["date"], opt: ["time", "place"] },
 };
 export const fieldsFor = (name, o) => BIRTH_FIELDS[o.subcommand && BIRTH_FIELDS[`${name}:${o.subcommand}`] ? `${name}:${o.subcommand}` : name];
 
@@ -66,8 +67,11 @@ export async function birthModal(env, name, options, f) {
   if (env.PROFILES) await env.PROFILES.put("pending:" + id, await seal({ name, options }, env.ORACLE_KEY), { expirationTtl: 900 });
   const row = (custom_id, label, placeholder, required, max_length, value) => ({ type: 1, components: [{ type: 4, custom_id, label, style: 1, placeholder, required, max_length, ...(value ? { value: String(value).slice(0, max_length) } : {}) }] });
   const rows = [row("date", "Birth date (DD/MM/YYYY)", "09/04/1990", true, 10, options[f.date] ? dmy(options[f.date]) : "")];
+  const opt = f.opt || []; // optional extras: asked for, never required
   if (need.includes("time")) rows.push(row("time", "Birth time (leave blank if unknown)", "14:30 or 2:30 pm", false, 8, options[f.time]));
+  else if (opt.includes("time")) rows.push(row("time", "Birth time (optional, adds depth)", "14:30 or 2:30 pm", false, 8, options[f.time]));
   if (need.includes("place")) rows.push(row("place", "Birth town or city, country", "Phoenix, USA", true, 100, options[f.place]));
+  else if (opt.includes("place")) rows.push(row("place", "Birth town or city (optional)", "Phoenix, USA", false, 100, options[f.place]));
   if (need.includes("name")) rows.push(row("name", "Full birth name (as on your birth certificate)", "Mary Ann Smith", true, 100, options[f.name]));
   rows.push(row("save", "Save for next time? (yes / no)", "yes", false, 3, options.from_profile ? "yes" : ""));
   return { type: 9, data: { custom_id: "birth:" + id, title: "Your birth details", components: rows } };
@@ -90,6 +94,9 @@ export async function fromModal(env, it) {
   if (need.includes("time")) {
     profile.time = v.time || "unknown";
     if (v.time) { options[f.time] = v.time; delete options.time_unknown; } else { delete options[f.time]; options.time_unknown = true; options.birth_time_unknown = f.time === "birth_time"; }
+  }
+  for (const k of f.opt || []) { // optional time and place: used when typed, never demanded, and a blank never wipes a saved value
+    if (v[k]) { options[f[k]] = v[k]; profile[k] = v[k]; if (k === "time") delete options.time_unknown; } else delete options[f[k]];
   }
   return { name, options, need, save: /^y/i.test(v.save || ""), profile };
 }
