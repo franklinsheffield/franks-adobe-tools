@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "cipherdesk"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -163,7 +163,7 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "seance", "timeline"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
-  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "decoder", "memory"]);
+  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "decoder", "memory"]);
   const voices = HOSTS.map((h) => `${h.voice?.type}${h.voice?.base}`).filter((v) => v !== "undefinedundefined"); assert.equal(new Set(voices).size, voices.length, "each House sounds different");
   assert.equal(new Set(HOSTS.map((h) => h.accent)).size, HOSTS.length, "each House has its own accent");
   setHost(null);
@@ -204,4 +204,36 @@ test("Observatory Phase 1: dome scene with the real Moon, astrolabe, poses, reac
   assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("obscoat"));
   assert.ok(D.grantRoyal({}).owned.includes(D.ROYAL_COAT));
   assert.equal(observatory.scene, D.domeSceneHtml); assert.equal(observatory.emotes, D.SKY_EMOTES); assert.ok(observatory.shelves.includes(D.obsCoatShop));
+});
+
+test("Scriptorium Phase 1: writing room by daylight, codex, poses, reactions, scribe emotes, habits", async () => {
+  const D = await import("../activity/src/hosts/scriptorium-desk.js");
+  const { scriptorium } = await import("../activity/src/hosts/scriptorium.js");
+  const { EMOTES } = await import("../activity/src/character.js");
+  assert.equal(D.daylight(12), 1); assert.equal(D.daylight(2), 0);
+  const night = D.deskSceneHtml(new Date(2026, 10, 27, 23).getTime(), { motes: 0 }), noon = D.deskSceneHtml(new Date(2026, 10, 27, 12).getTime(), { motes: 0 });
+  assert.match(night, /sc desk night/); assert.ok(!/sc desk night/.test(noon));
+  for (const t of ["candle", "bell", "book", "inkwell"]) assert.match(noon, new RegExp(`data-tap="${t}"`), t);
+  assert.equal(Object.keys(D.POSES).length, 8); assert.equal(new Set(Object.values(D.POSES)).size, 8);
+  assert.match(D.codexSvg("t"), /wc-leaf/);
+  assert.deepEqual(Object.keys(D.DESK_EMOTES).sort(), EMOTES.map((e) => e.id).sort());
+  for (const k of ["poke-eye", "poke-orb", "perfect", "lose"]) assert.ok(D.REACT[k], k);
+  assert.equal(D.HABITS.length, 7); assert.equal(D.HABITS[0].price, 0);
+  const m = D.habitShop.items.find((i) => i.id === D.MANTLE); assert.ok(m.earned && m.how && m.price === undefined, "never sold");
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("habit"));
+  assert.ok(D.grantMantle({}).owned.includes(D.MANTLE));
+  assert.equal(scriptorium.scene, D.deskSceneHtml); assert.equal(scriptorium.emotes, D.DESK_EMOTES); assert.ok(scriptorium.shelves.includes(D.habitShop));
+});
+
+test("book pokes: after some lost rounds the host recommends a real book from the server's library, in their own voice", async () => {
+  const L = await import("../activity/src/library.js");
+  for (const h of HOSTS) assert.ok(L.POKES[h.id] && L.POKES[h.id].length >= 2, h.id + " has its own pokes");
+  for (const [room, ids] of Object.entries(L.ROOM_BOOKS)) { assert.ok(TROPHIES.some((t) => t.id === room), room); for (const b of ids) assert.ok(L.BOOKS[b] && L.FORUMS[L.BOOKS[b].forum], b); }
+  for (const h of HOSTS) for (const r of h.rooms === "all" ? [] : h.rooms) assert.ok(L.ROOM_BOOKS[r], r + " has subject books");
+  L._resetPoke();
+  assert.equal(L.bookPoke("alchemist", "flametest", "Frank", { rand: () => 0.9, now: 1e6 }), null, "most lost rounds: no poke");
+  const s = L.bookPoke("alchemist", "flametest", "Frank", { rand: () => 0, now: 1e6 });
+  assert.match(s, /Sherman's The Chemistry of Food and Nutrition/); assert.match(s, /#📚・apothecary/);
+  assert.equal(L.bookPoke("alchemist", "flametest", "Frank", { rand: () => 0, now: 1e6 + 60000 }), null, "not twice within 3 minutes");
+  assert.ok(L.bookPoke("observatory", "comet", "Frank", { rand: () => 0, now: 1e6 + 200000 }).includes("arcana"));
 });
