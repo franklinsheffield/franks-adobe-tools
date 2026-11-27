@@ -173,6 +173,18 @@ export const BANTER = {
     pirate: G("Be it gold, or be it fool's gold? Many a pirate wept.", "Heavy for its size, like a chest o' doubloons.", "Ye named the rock! Stow it in the treasure drawer!", "Arr, that be the wrong rock. Back in the hold with it."),
     influencer: G("Rock unboxing! It's... a rock! Stay with me!", "This streak is giving earth tones. Very on trend.", "Named it! Mineral of the day, tagged and filed.", "Wrong guess, bestie. The rock's playing hard to get."),
   },
+  bench: {
+    mystic: G("Matter wants to change. You only show it the door.", "Every mixture is a question asked of the universe.", "A new substance is born. The world is one thing larger.", "No change today. Even stillness is an answer."),
+    deadpan: G("Put thing in pot. Heat pot. That's chemistry.", "Three ingredients. One operation. Infinite smells.", "New substance. Congratulations. Don't eat it.", "Nothing happened. Very restful."),
+    drama: G("The crucible GLOWS! Something is BECOMING!", "Will it fizz? Will it explode? I can't LOOK!", "A DISCOVERY! Write it in the stars! Or a notebook!", "Nothing?! After all that STIRRING?!"),
+    standup: G("Chemistry: cooking where you can't lick the spoon.", "I mixed vinegar and chalk once. Got fizz. And a mess.", "A discovery! Nobel committee, call me. Call anyone.", "Nothing happened. Like my last diet."),
+    grumpy: G("Label your jars. I'm not guessing which is acid.", "Smelt it properly. None of this lukewarm nonsense.", "Fine. A real product. Clean the crucible.", "Wasted good charcoal on that. Try again."),
+    sports: G("Into the crucible! The heat is RISING!", "Bold combination from the chemist! Will it pay off?", "DISCOVERY! A brand-new product on the board!", "No reaction! The elements hold the line!"),
+    conspiracy: G("Lead into gold is impossible, they SAY.", "Why do acids come in such tiny bottles? Control.", "New compound. Patent it before THEY do.", "Nothing happened? Or nothing they'll ADMIT happened."),
+    bard: G("Into the fire go salt and stone, to wed anew!", "Stir, grind and burn, and let the elements speak!", "A new thing made! Let poets weigh its worth!", "The flask lies still, its secret yet unsung."),
+    pirate: G("Mixin' powders! Careful, that one's for the cannons.", "Smelt it hot, like the sun on the Spanish Main!", "A new treasure from the pot! Into the chest!", "Arr, nothin'. Just smoke and a smell o' bilge."),
+    influencer: G("Experiment vlog! Rate this combo one to ten!", "This crucible is giving cottagecore alchemist.", "New discovery unlocked! Adding it to my highlights.", "Flop era. Deleting that one from the grid."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */
