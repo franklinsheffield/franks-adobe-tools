@@ -136,7 +136,7 @@ export const GHOSTS = [
       "I discovered two elements, and named one after my homeland.",
       "I was the first person to win two Nobel Prizes.",
     ],
-    bio: "Marie Curie discovered polonium and radium and won Nobel Prizes in both physics and chemistry. Around 1905 she and Pierre attended séances with the medium Eusapia Palladino, curious whether any new force was at work. Palladino was later caught cheating.",
+    bio: "Marie Curie discovered polonium and radium and won Nobel Prizes in both physics and chemistry. Around 1905 she and Pierre attended séances with the medium Eusapia Palladino, curious whether any new force was at work. Palladino was caught cheating more than once, at Cambridge in 1895 and in New York in 1910.",
     link: "A real scientist stays curious about strange claims, and then tests them.",
   },
   {
@@ -147,7 +147,7 @@ export const GHOSTS = [
       "In my lectures I let high-frequency current pass through my body to light lamps in my hands.",
       "In my Colorado Springs lab I made artificial lightning many metres long.",
       "The alternating current in your wall socket owes a lot to me.",
-      "A unit of magnetic field strength is named after me.",
+      "A unit used to measure magnetic fields is named after me.",
     ],
     bio: "Nikola Tesla developed the AC motor and power systems that run the modern world. He loved a dramatic demonstration, with giant sparks and glowing lamps, which made his science look like sorcery. That's why he counts as both: a real scientist with a showman's act.",
     link: "Any sufficiently dramatic demo looks like magic.",
