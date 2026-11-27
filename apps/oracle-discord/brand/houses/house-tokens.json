@@ -160,5 +160,54 @@
       "shelf": "Inks and pigments (free: iron-gall ink; vermilion, ultramarine, malachite, orpiment, Tyrian purple)",
       "crest": "crests/scriptorium-crest.svg"
     }
+  },
+  "labs": {
+    "pixel-scape": {
+      "status": "live app; game layer in design",
+      "name": "Pixel Scape",
+      "kind": "a Science is Magic Lab (not a House)",
+      "host": "PX-10, a survey drone",
+      "emoji": "🌍",
+      "channel": "#🌍-pixel-scape-play",
+      "tagline": "Any place on Earth. Built together.",
+      "positioning": "Build any real place on Earth in 3D, together, from real elevation and satellite data",
+      "colors": {
+        "background": "#05040C",
+        "surface": "#0B0A18",
+        "accent": "#5CF2FF",
+        "highlight": "#8FD8FF",
+        "success": "#3DFF8B",
+        "busy": "#FFC23D",
+        "error": "#FF3D6E"
+      },
+      "displayFont": "Night Machine (installed); web fallback VT323",
+      "sound": {
+        "style": "chiptune",
+        "ping": "sonar ping",
+        "done": "four-note rising arpeggio",
+        "badge": "short fanfare",
+        "sting": "sonar ping, then the arpeggio"
+      },
+      "game": {
+        "weeklyTheme": "The Weekly Build",
+        "challenge": "Expedition",
+        "room": "Survey Party",
+        "postedRender": "Field Report (5 pts showcase, +10 Hierophant pick)",
+        "titles": [
+          "Scout",
+          "Surveyor",
+          "Cartographer",
+          "Worldwright"
+        ],
+        "badges": [
+          "Summit (over 3,000 m)",
+          "Coastline",
+          "Home Town",
+          "First Remix",
+          "Full Party (8 builders)"
+        ]
+      },
+      "crest": "crests/pixel-scape-crest.svg"
+    }
   }
 }

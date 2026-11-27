@@ -56,3 +56,30 @@ All display faces are already bundled in `activity/src/fonts/` or `assets/`. Lea
 - **Visual:** vellum pages, red initials, gold leaf on one letter, quills, wax seals, ruled lines. Emblem: crossed quill over a wax seal.
 - **Sound:** quill scratch, page turn, wax-seal thump, small bell on a match; sting: quill scratch, then the seal.
 - **Shelf:** inks and pigments, one real fact each. Free starter: iron-gall ink; then vermilion, ultramarine, malachite green, orpiment yellow, Tyrian purple.
+
+## Pixel Scape: a Science is Magic Lab (not a House)
+
+Pixel Scape (`apps/pixel-scape-discord`, `apps/worlds-brew-app`) is branded the same way, but as a Lab: a place to build, not a House to visit. Its crest is a square map tile (`crests/pixel-scape-crest.svg`) instead of the door arch. Values are under `labs.pixel-scape` in `house-tokens.json`.
+
+- **Host:** PX-10, a small survey drone named after the app code. Voice of the bot, start screen and tips.
+- **Positioning line:** Build any real place on Earth in 3D, together, from real elevation and satellite data.
+- **Tagline:** Any place on Earth. Built together.
+- **Voice:** a field instrument. Numbers first ("10.0 × 10.0 km, 1,135 to 3,753 m, built in 14 s"), always credit the data, invite people in ("Three builders in the room. Tap a name to follow."), one dry joke per finished build ("Survey complete. No mountains were harmed."), never a joke on a failure.
+- **Colours (Night Arcade, already in the Lab Suite):** Void `#05040C`, Panel `#0B0A18`, accent Press Cyan `#5CF2FF`, Glow Ice `#8FD8FF`, success and points Ready Green `#3DFF8B`, in progress Busy Amber `#FFC23D`, error and sealed Alert Rose `#FF3D6E`.
+- **Type:** Night Machine for display and labels (installed, not bundled); web and Discord fallback VT323. System sans for body, monospace for stats.
+- **Visual:** pixel grid over contour lines, satellite tiles, scanlines, LED status lights, before/after renders. Emoji 🌍 (🗺️ for builds).
+- **Sound:** chiptune. Sonar ping for pings and "survey started", LED click on buttons, four-note rising arpeggio on build done, short fanfare on a badge.
+
+### Game language (for the gamification design)
+
+Pixel Scape points feed the Scholar's Path, so it has titles and badges, not a second rank ladder.
+
+| Element | Brand name | Notes |
+|---|---|---|
+| Weekly theme (`web/theme.js`) | The Weekly Build | Already in posted render captions |
+| Real-place challenge | Expedition | A named real place to build and explore |
+| Shared room | Survey Party | Up to 8 builders |
+| Posted render | Field Report | 5 pts in #🖼-showcase, +10 if a Hierophant picks it |
+| Remix | Remix | Already built |
+| Builder titles | Scout → Surveyor → Cartographer → Worldwright | Shown in the Activity only |
+| Badges | Summit (place over 3,000 m), Coastline, Home Town, First Remix, Full Party (8 builders) | One-time sigils |
