@@ -24,6 +24,7 @@ const HELP = req("./help-app.js");   // hover help text for the app's own contro
 const SC = req("./scaletools.js");
 const SF = req("../engine/surface.js");
 const MODELS = req("../engine/models.js");
+const SKIN = req("../engine/skin.js");
 const GB = req("../geo/build.js"), GB2 = req("../geo/buildings.js");
 
 const WEB = !!window.__psWeb;   // the browser / Discord build (web/): no Photoshop bridge there
@@ -246,6 +247,8 @@ vpwrap.addEventListener("drop", async (e) => {
   const key = e.dataTransfer.getData("text/wb-asset") || dragKey; dragKey = null;
   if (key) { addThing(key, at); return; }
   if (dragKit) { const m = dragKit; dragKit = null; addKitModel(m, at); return; }
+  const link = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+  if (link && /\/models\/editor\?/.test(link)) { addSkinnedModel(link.split(/\s+/)[0], at); return; }   // a skin editor link dragged from the browser
   if (dragLib) { const it = dragLib, h = vp.pick(e.clientX, e.clientY); dragLib = null; applyLibItem(it, h ? h.obj : null, it.kind === "Terrains" && !(h && h.obj.type === "terrain") ? at : null); return; }
   const shaderFiles = Array.from(e.dataTransfer.files || []).filter((f) => /\.(glsl|frag|fs|shader)$/i.test(f.name) && f.path);
   if (shaderFiles.length) {   // shader files dropped from Finder / Explorer: into the library, and onto the object under the pointer
@@ -306,7 +309,8 @@ function rebakeShader() {
 }
 
 // ---- files
-async function importModelData(name, buf, at) {
+// skin = { recipe, textures } from a web-pipeline-kit skin link (engine/skin.js): baked into the glTF before reading
+async function importModelData(name, buf, at, skin) {
   try {
     await MeshoptDecoder.ready;   // the 3D library's files are meshopt-compressed (gltf-transform)
     // JPEG / WebP textures inside .glb / .gltf: decode them here (the model reader only reads PNG by itself)
@@ -314,7 +318,9 @@ async function importModelData(name, buf, at) {
     for (const im of MODELS.gltfImages(name, buf)) if (im.mime !== "image/png") {
       try { const p = await decodeImage("tex", im.bytes.buffer.slice(im.bytes.byteOffset, im.bytes.byteOffset + im.bytes.byteLength), 2048); decoded[im.index] = { w: p.w, h: p.h, rgba: p.d }; } catch (e) { /* unreadable: material colour */ }
     }
-    const m = ED.parseModel(name, buf, { decoded, meshopt: MeshoptDecoder }), o = ED.addMesh(st.scene, m, "Matte");
+    const opt = { decoded, meshopt: MeshoptDecoder };
+    if (skin) opt.editJson = SKIN.editJson(skin.recipe, skin.textures, decoded);
+    const m = ED.parseModel(name, buf, opt), o = ED.addMesh(st.scene, m, skin ? SKIN.preset(skin.recipe, "Matte") : "Matte");
     // one colour texture: also show it at full detail as a UV surface layer (the per-triangle colours stay underneath)
     if (m.texture) { o.layers = [SF.layer({ name: "Model texture", img: { w: m.texture.w, h: m.texture.h, d: m.texture.d, name }, wrap: "UV" })]; delete m.texture; }
     if (at) CT.placeAt(st.scene, o, at.x, at.z, true); select(o); commit(); changed("val"); setStatus("Imported " + name + " (" + m.tris.toLocaleString() + " triangles)");
@@ -333,6 +339,27 @@ async function addKitModel(m, at) {
     const o = await importModelData(m.name.replace(/[^\w\- ()]+/g, "").trim().slice(0, 60) + ".glb", buf, at);
     if (o) setStatus("Added " + m.name + " from the 3D library" + (m.attribution ? ". Credit: " + KIT.credit(m) : " (" + m.license + ")"));
   } catch (err) { setStatus("3D library: " + String(err.message || err), true); }
+  finally { kitBusy = false; }
+}
+// a skin link from the web-pipeline-kit skin editor: the library model, re-coloured and re-textured as the link says
+async function addSkinnedModel(link, at) {
+  const recipe = SKIN.parseSkinLink(link);
+  if (!recipe) { setStatus("That isn't a skin link. Copy it from the skin editor's address bar (…/models/editor?s=…).", true); return null; }
+  if (kitBusy) { setStatus("Still downloading the last model...", true); return null; }
+  kitBusy = true;
+  try {
+    const m = await KIT.byId(recipe.m); if (!m) throw new Error("model " + recipe.m + " is not in the 3D library list");
+    setStatus("Downloading " + m.name + " (" + KIT.size(m.bytes) + ") and its skin...");
+    const ids = SKIN.textureIds(recipe), textures = {};
+    const [buf] = await Promise.all([
+      KIT.download(m, (got, total) => setStatus("Downloading " + m.name + ": " + Math.round((100 * got) / total) + "%")),
+      ...ids.map(async (id) => { try { const b = await KIT.downloadTexture(SKIN.texturePath(id)); const p = await decodeImage("tex", b, 1024); textures[id] = { w: p.w, h: p.h, rgba: p.d }; } catch (e) { /* that surface keeps its colour */ } }),
+    ]);
+    const o = await importModelData(m.name.replace(/[^\w\- ()]+/g, "").trim().slice(0, 60) + " (skin).glb", buf, at, { recipe, textures });
+    if (o) { const missing = ids.filter((id) => !textures[id]).length;
+      setStatus("Added " + m.name + " with its skin" + (missing ? " (" + missing + " texture(s) unreachable, kept their colour)" : "") + (m.attribution ? ". Credit: " + KIT.credit(m) : " (" + m.license + ")")); }
+    return o;
+  } catch (err) { setStatus("Skin link: " + String(err.message || err), true); return null; }
   finally { kitBusy = false; }
 }
 async function importModel() {
@@ -529,7 +556,12 @@ function buildLibrary(ui) {
   kitCat.addEventListener("change", () => drawKit(false));
   refs.drawKit = drawKit;
   kitQ.style.width = "100%"; kitQ.style.boxSizing = "border-box"; kitCat.style.width = "100%";
-  lib.appendChild(card("3D library", [kitQ, kitCat, kitCount, kitGrid, kitMore]));
+  // a skin link from the web-pipeline-kit skin editor (paste, then Add; dropping the link on the view works too)
+  const skinQ = el("input", { type: "text", class: "num wide", placeholder: "Paste a skin link...", title: "A link from the 3D library's skin editor (web-pipeline-kit.vercel.app/models/editor?s=...): adds that model with its colours and textures" });
+  const skinGo = btn("Add skinned", async () => { if (await addSkinnedModel(skinQ.value, null)) skinQ.value = ""; }, "Add the model from the skin link, with its skin");
+  skinQ.addEventListener("keydown", (e) => { if (e.key === "Enter") skinGo.click(); });
+  skinQ.style.width = "100%"; skinQ.style.boxSizing = "border-box";
+  lib.appendChild(card("3D library", [kitQ, kitCat, kitCount, kitGrid, kitMore, el("div", { class: "hint", text: "Skinned in the web skin editor? Paste its link here." }), skinQ, skinGo]));
   setTimeout(() => drawKit(false), 0);
   // your own library: Textures / Terrains / Shaders (Documents/Pixel Scape/Library)
   const myGrid = el("div", { class: "wbtiles wbmylib" }), myCount = el("div", { class: "hint" });

@@ -2,7 +2,7 @@
 // code for an access token. The client secret stays here, never in the page.
 //   POST /api/token  { code } -> { access_token }, or 403 { error: "locked" } when the member lacks an access role.
 //   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs; same role gate)
-//   GET  /api/lib/index.json, /api/lib/file/<group>/<id>.glb, /api/lib/thumb/<path>.webp -> Frank's 3D library for the
+//   GET  /api/lib/index.json, /api/lib/file/<group>/<id>.glb, /api/lib/thumb/<path>.webp, /api/lib/tex/<id>/color.webp -> Frank's 3D library for the
 //        app's "3D library" card (the Activity frame can only reach this origin). Files: the public assets repo; thumbs:
 //        the web-pipeline-kit site; the list: kit-models.json in the web build (data/models-index.json).
 import { Rooms } from "./rooms.mjs";
@@ -29,6 +29,7 @@ export const LIB = { files: "https://raw.githubusercontent.com/franklinsheffield
 // only the library's own paths are proxied (this is not an open proxy)
 export function libTarget(path) {
   let m = /^\/api\/lib\/file\/((?:things|places|characters|scans)\/[\w.-]+\.glb)$/.exec(path); if (m && !m[1].includes("..")) return { url: LIB.files + m[1], type: "model/gltf-binary" };
+  m = /^\/api\/lib\/tex\/([\w-]+\/color\.webp)$/.exec(path); if (m && !m[1].includes("..")) return { url: LIB.files.replace(/models\/$/, "textures/") + m[1], type: "image/webp" };   // skin links: library texture colour maps
   m = /^\/api\/lib\/thumb(\/(?:library\/thumbs\/models|models\/thumbs)\/[\w.-]+\.webp)$/.exec(path); if (m && !m[1].includes("..")) return { url: LIB.site + m[1], type: "image/webp" };
   return null;
 }
