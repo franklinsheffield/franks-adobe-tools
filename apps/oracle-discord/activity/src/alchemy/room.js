@@ -29,7 +29,7 @@ export const alchemy = {
     const draw = (s = {}) => { tableEl.className = "table alchemy"; tableEl.innerHTML = sceneSvg({ look: lookOf(P()), ...s }); };
     const stats = () => { const n = solvedCount(P()), t = titleOf(n), nx = nextTitle(n);
       return `<div class="cx-top"><b>⚗️ ${esc(t.name)}</b> · ${n} / ${ALL.length} works done · ${lab().elements.length} elements found${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
-    const flameBar = (run, L) => `<div class="cx-top">Level ${L.n} · 🔥 ${"●".repeat(run.flames)}${"○".repeat(FLAMES - run.flames)} · worth ${Math.round(run.flames * PER_FLAME * L.mult)}${L.n === 3 && run.stage !== "done" ? ` + ${NAME_PTS * L.mult} for naming the find` : ""}</div>`;
+    const flameBar = (run, L) => `<div class="cx-top">Level ${L.n} · 🔥 ${"●".repeat(run.flames)}${"○".repeat(FLAMES - run.flames)} · worth ${Math.round(run.flames * PER_FLAME * L.mult)}${L.n >= 3 && run.stage !== "done" ? ` + ${NAME_PTS * L.mult} for naming the find` : ""}</div>`;
     const spark = () => { const tp = $("table-pane"); if (tp) { tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); } };
 
     // ---- lobby ----
@@ -96,11 +96,11 @@ export const alchemy = {
       return `<div class="note al-fb">🔍 Last try: ${bits.join(" · ")}.</div>`;
     }
     function bench(L, x, run, sel, op, line, fx = {}) {
-      const intro = L.n === 3 ? `${x.who}, ${x.when}` : "From the old books";
+      const intro = L.n >= 3 ? `${x.who}, ${x.when}` : "From the old books";
       if (!line && !run.tries && !run.hints.length) clearReading();
-      cap(`⚗️ Level ${L.n} · ${L.n === 3 ? x.who : "a recipe"}`); draw({ flames: run.flames, shelf: x.shelf, chips: sel, liquid: sel.length ? REAGENTS[sel[sel.length - 1]].c : null, ...fx });
-      say(line || (L.n === 3 ? `It is ${x.when}. You are ${x.who}. Your task: ${x.goal.toLowerCase()}.` : `The recipe: ${x.goal.toLowerCase()}. Pick the reagents and the operation.`));
-      ui(`${flameBar(run, L)}<div class="clues"><div class="clue"><b>${L.n === 3 ? "🧑‍🔬" : "📜"} ${esc(intro)}</b><span>${esc(x.goal)}</span></div>${hintText(x, run)}</div>${feedback(run.last)}
+      cap(`⚗️ Level ${L.n} · ${L.n >= 3 ? x.who : "a recipe"}`); draw({ flames: run.flames, shelf: x.shelf, chips: sel, liquid: sel.length ? REAGENTS[sel[sel.length - 1]].c : null, ...fx });
+      say(line || (L.n >= 3 ? `It is ${x.when}. You are ${x.who}. Your task: ${x.goal.toLowerCase()}.` : `The recipe: ${x.goal.toLowerCase()}. Pick the reagents and the operation.`));
+      ui(`${flameBar(run, L)}<div class="clues"><div class="clue"><b>${L.n >= 3 ? "🧑‍🔬" : "📜"} ${esc(intro)}</b><span>${esc(x.goal)}</span></div>${hintText(x, run)}</div>${feedback(run.last)}
         <div class="group">Reagents (choose up to 3)</div><div class="al-shelf">${x.shelf.map((id) => reagentBtn(id, sel.includes(id))).join("")}</div>
         <div class="group">Operation</div><div class="al-ops">${opsFor(L).map((k) => `<button class="c al-op${op === k ? " on" : ""}" type="button" data-op="${k}" title="${esc(OPS[k].what)}" aria-pressed="${op === k}">${OPS[k].emoji} ${esc(OPS[k].name)}</button>`).join("")}</div>
         <div class="choices"><button class="c main" type="button" id="al-go" ${sel.length && op ? "" : "disabled"}>⚗️ Transmute</button>${run.flames > 1 ? `<button class="c" type="button" id="al-hint">📓 Notebook hint (🔥 1)</button>` : ""}<button class="c small" type="button" id="al-leave">Leave the bench</button></div>`);
@@ -149,7 +149,7 @@ export const alchemy = {
       sfx.transmute(); spark(); cap(`✨ ${x.product}`);
       draw({ flames: run.flames, shelf: x.shelf, chips: x.make, liquid: x.colour, glow: true, label: x.product,
         react: { from: x.make.map((i) => REAGENTS[i].c), to: x.colour, fx: x.fx, fxc: x.fxc } }); sfx.react(x.fx);
-      if (L.n === 3) return talkThrough([`It works! ${x.story}`], () => askFind(L, x, run));
+      if (L.n >= 3) return talkThrough([`It works! ${x.story}`], () => askFind(L, x, run));
       talkThrough([`It works! ${x.product}.`, x.story, x.science], () => finish(L, x, run));
     }
     function askFind(L, x, run) {
@@ -266,7 +266,7 @@ export function periodicHtml(p, esc) {
   const got = labOf(p).elements, cells = [];
   const real = (per, grp) => per === 1 ? grp === 1 || grp === 18 : per <= 3 ? grp <= 2 || grp >= 13 : true;
   const at = Object.fromEntries(Object.entries(ELEMENTS).map(([s, [per, grp]]) => [per + ":" + grp, s]));
-  for (let per = 1; per <= 6; per++) for (let grp = 1; grp <= 18; grp++) {
+  for (let per = 1; per <= 7; per++) for (let grp = 1; grp <= 18; grp++) {
     const s = at[per + ":" + grp];
     cells.push(s ? `<span class="al-el${got.includes(s) ? " on" : ""}" style="grid-row:${per};grid-column:${grp}" title="${esc(s)} · element ${ELEMENTS[s][2]}">${s}<small>${ELEMENTS[s][2]}</small></span>`
       : real(per, grp) ? `<span class="al-el blank" style="grid-row:${per};grid-column:${grp}"></span>` : "");
