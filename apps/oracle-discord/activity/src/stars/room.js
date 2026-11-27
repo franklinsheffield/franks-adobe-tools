@@ -8,7 +8,8 @@
 import { STARS, FAINT, MILKY_WAY, LINES } from "./sky.gen.js";
 import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
-import { LEVELS, DECK, ALL, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
+import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock } from "./tonight.js";
+import { LEVELS, TONIGHT, DECK, ALL, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
   pickFable, quizChoices, answer, settle, drawPts, quizPts, startView, figureEdges, figureStars, figureCentre, toScreen, toSky, pan, zoom, onScreen,
   nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
 
@@ -30,13 +31,26 @@ const bvColour = (bv) => bv < 0 ? "#a9c4ff" : bv < 0.3 ? "#e8eeff" : bv < 0.6 ? 
 /** One sky on a canvas: view, looks, drawing state and effects. Used by the room and the store's try-on. */
 class Sky {
   constructor(host, o) {
-    this.host = host; this.o = o; this.view = o.view; this.t0 = performance.now(); this.fx = []; this.alive = true;
+    this.host = host; this.o = o; this.view = o.view; this.t0 = performance.now(); this.fx = []; this.alive = true; this.setFrame(o.horizon);
     host.innerHTML = `<canvas class="sl-cv"></canvas>${o.controls ? `<div class="sl-ctl"><button type="button" data-z="0.8" aria-label="Zoom in">＋</button><button type="button" data-z="1.25" aria-label="Zoom out">－</button></div><div class="sl-arrow" hidden>➤</div><div class="sl-ballw"><canvas class="sl-ball" aria-label="Sky ball: drag to turn the sky"></canvas><span>drag to turn</span></div>` : ""}${o.timer ? `<div class="sl-time"><i></i><b></b></div>` : ""}`;
     this.cv = host.querySelector("canvas"); this.cv.sky = this; this.cx = this.cv.getContext("2d");
     this.mw = document.createElement("canvas"); this.ball = host.querySelector(".sl-ball"); if (this.ball) this.ballInput();
     const loop = () => { if (!this.alive || !this.cv.isConnected) { this.alive = false; return; } this.draw(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
+  /** The frame the sky is drawn in: RA/Dec, or with { place, at } the horizon frame [360 − azimuth, altitude] for tonight's sky. */
+  setFrame(hz) {
+    this.conv = hz ? frame(hz.place, hz.at) : (ra, de) => [ra, de]; this.hz = hz || null;
+    const cv = (s) => [...this.conv(s[0], s[1]), ...s.slice(2)];
+    this.S = hz ? STARS.map(cv) : STARS; this.F = hz ? FAINT.map(cv) : FAINT;
+    this.L = hz ? Object.fromEntries(Object.entries(LINES).map(([k, ls]) => [k, ls.map((l) => l.map(([r, d]) => this.conv(r, d)))])) : LINES;
+    this.MW = hz ? MILKY_WAY.map((rings) => rings.map((ring) => ring.map(([r, d]) => this.conv(r, d)))) : MILKY_WAY;
+    this.byHip = new Map(this.S.map((x) => [x[4], x])); this.gKey = null;
+  }
+  /** A star (by HIP) in the display frame. */
+  star(h) { return this.byHip.get(h); }
+  /** A figure's centre in the display frame. */
+  centre(g) { return this.conv(...figureCentre(g)); }
   size() { const r = this.cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     this.w = Math.max(50, r.width); this.h = Math.max(50, r.height);
     if (this.cv.width !== Math.round(this.w * dpr)) { this.cv.width = Math.round(this.w * dpr); this.cv.height = Math.round(this.h * dpr); }
@@ -51,7 +65,7 @@ class Sky {
     if (m.width !== w || m.height !== h) { m.width = w; m.height = h; }
     const c = m.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h); c.setTransform(s, 0, 0, s, 0, 0);
     const keep = this.cx; this.cx = c;
-    MILKY_WAY.forEach((rings, i) => { c.beginPath(); for (const ring of rings) { this.path([...ring, ring[0]]); c.closePath(); } c.fillStyle = `rgba(196,206,255,${(0.05 + i * 0.025) * alpha})`; c.fill("evenodd"); });
+    this.MW.forEach((rings, i) => { c.beginPath(); for (const ring of rings) { this.path([...ring, ring[0]]); c.closePath(); } c.fillStyle = `rgba(196,206,255,${(0.05 + i * 0.025) * alpha})`; c.fill("evenodd"); });
     this.cx = keep;
     const k = this.cx; k.save(); try { k.filter = `blur(${Math.max(2, 9 - (this.view.fov || 45) / 10)}px)`; } catch {} k.drawImage(m, 0, 0, this.w, this.h); k.restore();
   }
@@ -65,13 +79,13 @@ class Sky {
       for (let d = -60; d <= 60; d += 30) this.path(Array.from({ length: 73 }, (_, i) => [i * 5, d]));
       for (let r = 0; r < 360; r += 30) this.path(Array.from({ length: 35 }, (_, i) => [r, -85 + i * 5]));
       c.strokeStyle = P.grid; c.lineWidth = 0.8; c.stroke(); }
-    if (o.figures) { c.beginPath(); for (const ls of Object.values(LINES)) for (const l of ls) this.path(l); c.strokeStyle = P.line; c.lineWidth = 1; c.stroke(); }
+    if (o.figures) { c.beginPath(); for (const ls of Object.values(this.L)) for (const l of ls) this.path(l); c.strokeStyle = P.line; c.lineWidth = 1; c.stroke(); }
     // stars
     const tw = o.photo || o.theme === "st-twinkle";
-    if (o.photo) for (const s of FAINT) { const p = toScreen(v, this.w, this.h, s[0], s[1]); if (!p.front || p.X < -5 || p.Y < -5 || p.X > this.w + 5 || p.Y > this.h + 5) continue;
+    if (o.photo) for (const s of this.F) { const p = toScreen(v, this.w, this.h, s[0], s[1]); if (!p.front || p.X < -5 || p.Y < -5 || p.X > this.w + 5 || p.Y > this.h + 5) continue;
       c.globalAlpha = Math.max(0.15, Math.min(0.8, (6.6 - s[2]) / 3)); c.fillStyle = bvColour(s[3]); c.fillRect(p.X - 0.6, p.Y - 0.6, 1.2, 1.2); }
     c.globalAlpha = 1;
-    this.vis = onScreen(v, this.w, this.h, STARS);
+    this.vis = onScreen(v, this.w, this.h, this.S); if (this.hz) this.vis = this.vis.filter((p) => p.s[1] > 0);
     const zf = Math.max(0.8, Math.min(1.5, 45 / (v.fov || 45)));
     for (const { s, X, Y } of this.vis) {
       let r = Math.max(0.7, 3.4 - 0.6 * s[2]) * zf, a = 1;
@@ -82,6 +96,7 @@ class Sky {
       c.globalAlpha = a; c.fillStyle = col; c.beginPath(); c.arc(X, Y, r, 0, 7); c.fill();
     }
     c.globalAlpha = 1;
+    if (this.hz) this.drawGround(c, P);
     if (run) this.drawRun(c, P, t);
     if (this.ball) this.drawBall(P);
     if (o.timer) this.drawTimer(now);
@@ -106,22 +121,38 @@ class Sky {
     // arrow toward the target when asked for a hint and it's off screen
     const ar = this.host.querySelector(".sl-arrow");
     if (ar) { const show = o.arrowUntil && now < o.arrowUntil && o.g;
-      if (show) { const [ra, de] = figureCentre(o.g), p = toScreen(v, this.w, this.h, ra, de), off = !p.front || p.X < 0 || p.Y < 0 || p.X > this.w || p.Y > this.h;
+      if (show) { const [ra, de] = this.centre(o.g), p = toScreen(v, this.w, this.h, ra, de), off = !p.front || p.X < 0 || p.Y < 0 || p.X > this.w || p.Y > this.h;
         if (off) { const sky = toSky(v, this.w, this.h, this.w / 2, this.h / 2); let ang;
           if (p.front) ang = Math.atan2(p.Y - this.h / 2, p.X - this.w / 2); else { let dra = ra - sky[0]; if (dra > 180) dra -= 360; if (dra < -180) dra += 360; ang = Math.atan2(-(de - sky[1]), -dra); }
           const R = Math.min(this.w, this.h) / 2 - 26; ar.hidden = false; ar.style.left = `${this.w / 2 + Math.cos(ang) * R - 12}px`; ar.style.top = `${this.h / 2 + Math.sin(ang) * R - 12}px`; ar.style.transform = `rotate(${ang}rad)`;
         } else ar.hidden = true; } else ar.hidden = true; }
   }
   drawRun(c, P, t) {
-    const o = this.o, run = o.run, g = o.g, v = this.view, scr = (h) => { const s = starByHip(h); return toScreen(v, this.w, this.h, s[0], s[1]); };
+    const o = this.o, run = o.run, g = o.g, v = this.view, scr = (h) => { const s = this.star(h); return toScreen(v, this.w, this.h, s[0], s[1]); };
     c.save(); c.shadowColor = P.gold; c.shadowBlur = 8; c.strokeStyle = P.gold; c.lineWidth = run.done ? 2.6 + 0.6 * Math.sin(t * 3) : 2.2; c.beginPath();
     for (const k of run.drawn) { const [a, b] = k.split("-").map(Number), A = scr(a), B = scr(b); if (!A.front || !B.front) continue; c.moveTo(A.X, A.Y); c.lineTo(B.X, B.Y); }
     c.stroke(); c.restore();
     if (o.sel) { const A = scr(o.sel); if (A.front) { c.strokeStyle = P.gold; c.lineWidth = 1.5; c.beginPath(); c.arc(A.X, A.Y, 9 + 2 * Math.sin(t * 6), 0, 7); c.stroke();
       if (o.rubber) { c.setLineDash([4, 5]); c.beginPath(); c.moveTo(A.X, A.Y); c.lineTo(o.rubber[0], o.rubber[1]); c.stroke(); c.setLineDash([]); } } }
-    if (run.done && o.label) { const [ra, de] = figureCentre(g), p = toScreen(v, this.w, this.h, ra, de); c.font = "600 14px Cinzel, Georgia, serif"; c.textAlign = "center";
+    if (run.done && o.label) { const [ra, de] = this.centre(g), p = toScreen(v, this.w, this.h, ra, de); c.font = "600 14px Cinzel, Georgia, serif"; c.textAlign = "center";
       const w = c.measureText(o.label).width + 20, y = Math.min(this.h - 30, p.Y + 40); c.fillStyle = "rgba(11,8,32,.82)"; c.strokeStyle = P.gold; c.lineWidth = 1;
       c.beginPath(); c.roundRect ? c.roundRect(p.X - w / 2, y - 16, w, 24, 6) : c.rect(p.X - w / 2, y - 16, w, 24); c.fill(); c.stroke(); c.fillStyle = P.gold; c.fillText(o.label, p.X, y + 1); }
+  }
+  /** Tonight's sky: the ground below the horizon (a soft low-resolution mask, cached per view), the horizon line and compass points. */
+  drawGround(c, P) {
+    const v = this.view, key = [v.ra, v.dec, v.fov, this.w, this.h].map((x) => Math.round(x * 10)).join(), s = 6, m = (this.gm ||= document.createElement("canvas"));
+    if (key !== this.gKey) { this.gKey = key; const w = Math.ceil(this.w / s), h = Math.ceil(this.h / s); m.width = w; m.height = h;
+      const mc = m.getContext("2d"), im = mc.createImageData(w, h), red = this.o.theme === "st-redlight";
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const alt = toSky(v, this.w, this.h, x * s + s / 2, y * s + s / 2)[1], i = (y * w + x) * 4;
+        if (alt < 0) { const k = Math.min(1, -alt / 6); im.data[i] = red ? 26 : 10; im.data[i + 1] = red ? 4 : 16; im.data[i + 2] = red ? 4 : 14; im.data[i + 3] = Math.round(255 * (0.75 + 0.22 * k)); }
+        else if (alt < 8) { const k = 1 - alt / 8; im.data[i] = red ? 90 : 40; im.data[i + 1] = red ? 20 : 52; im.data[i + 2] = red ? 20 : 90; im.data[i + 3] = Math.round(70 * k * k); } }
+      mc.putImageData(im, 0, 0); }
+    c.save(); c.imageSmoothingEnabled = true; c.drawImage(m, 0, 0, m.width * s, m.height * s); c.restore();
+    c.beginPath(); this.path(Array.from({ length: 121 }, (_, i) => [i * 3, 0])); c.strokeStyle = P.gold; c.globalAlpha = 0.55; c.lineWidth = 1.2; c.stroke(); c.globalAlpha = 1;
+    c.font = "700 13px Cinzel, Georgia, serif"; c.textAlign = "center"; c.textBaseline = "middle";
+    for (const [txt, az] of [["N", 0], ["NE", 45], ["E", 90], ["SE", 135], ["S", 180], ["SW", 225], ["W", 270], ["NW", 315]]) {
+      const p = toScreen(v, this.w, this.h, (360 - az) % 360, -3); if (!p.front || p.X < 10 || p.X > this.w - 10 || p.Y < 10 || p.Y > this.h - 10) continue;
+      c.fillStyle = txt.length === 1 ? P.gold : "rgba(250,222,140,.6)"; c.fillText(txt, p.X, p.Y); }
   }
   /** The perspective ball: the celestial sphere seen from outside, turned to match the view. */
   drawBall(P) {
@@ -137,7 +168,9 @@ class Sky {
       for (const [r, d] of pts) { const q = pt(r, d); if (q.z < 0) { pen = false; continue; } if (pen) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y); pen = true; } c.stroke(); };
     for (let d = -60; d <= 60; d += 30) line(Array.from({ length: 73 }, (_, i) => [i * 5, d]), d ? "rgba(140,170,255,.35)" : "rgba(250,222,140,.7)", d ? 0.8 : 1.2);
     for (let r = 0; r < 360; r += 30) line(Array.from({ length: 37 }, (_, i) => [r, -90 + i * 5]), "rgba(140,170,255,.3)", 0.8);
-    for (const [txt, de] of [["N", 90], ["S", -90]]) { const q = pt(0, de); if (q.z > 0.05) { c.fillStyle = "#FADE8C"; c.font = "700 10px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(txt, q.x, q.y); } }
+    const marks = this.hz ? [["Z", 0, 90], ["N", 0, 0], ["E", 270, 0], ["S", 180, 0], ["W", 90, 0]] : [["N", 0, 90], ["S", 0, -90]];
+    if (this.hz) for (let d = -5; d >= -85; d -= 10) line(Array.from({ length: 73 }, (_, i) => [i * 5, d]), "rgba(20,30,24,.9)", 7);
+    for (const [txt, ra, de] of marks) { const q = pt(ra, de); if (q.z > 0.05) { c.fillStyle = "#FADE8C"; c.font = "700 10px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(txt, q.x, q.y); } }
     const f = Math.min(0.9, Math.tan(((v.fov || 45) * R0) / 2)) * R; c.strokeStyle = P.gold; c.lineWidth = 1.4; c.strokeRect(cx - f * 0.66, cx - f * 0.5, f * 1.32, f);
     c.strokeStyle = "rgba(250,222,140,.8)"; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cx, R, 0, 7); c.stroke();
     const hl = c.createRadialGradient(cx - R * 0.4, cx - R * 0.45, 0, cx - R * 0.4, cx - R * 0.45, R * 0.6); hl.addColorStop(0, "rgba(255,255,255,.25)"); hl.addColorStop(1, "rgba(255,255,255,0)");
@@ -148,12 +181,14 @@ class Sky {
     const b = this.ball; let last = null, vel = [0, 0], tLast = 0;
     b.addEventListener("pointerdown", (e) => { e.stopPropagation(); b.setPointerCapture(e.pointerId); last = [e.clientX, e.clientY]; vel = [0, 0]; tLast = performance.now(); this.spinning = false; });
     b.addEventListener("pointermove", (e) => { if (!last) return; const dx = e.clientX - last[0], dy = e.clientY - last[1], now = performance.now();
-      this.view = spin(this.view, dx, dy); vel = [(dx / Math.max(8, now - tLast)) * 16, (dy / Math.max(8, now - tLast)) * 16]; last = [e.clientX, e.clientY]; tLast = now; });
+      this.view = this.keepUp(spin(this.view, dx, dy)); vel = [(dx / Math.max(8, now - tLast)) * 16, (dy / Math.max(8, now - tLast)) * 16]; last = [e.clientX, e.clientY]; tLast = now; });
     const up = () => { if (!last) return; last = null; if (reducedMotion() || Math.hypot(...vel) < 1.5) return;
-      this.spinning = true; const step = () => { if (!this.spinning || !this.alive) return; vel = [vel[0] * 0.9, vel[1] * 0.9]; this.view = spin(this.view, vel[0], vel[1]);
+      this.spinning = true; const step = () => { if (!this.spinning || !this.alive) return; vel = [vel[0] * 0.9, vel[1] * 0.9]; this.view = this.keepUp(spin(this.view, vel[0], vel[1]));
         if (Math.hypot(...vel) > 0.2) requestAnimationFrame(step); else this.spinning = false; }; step(); };
     b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up);
   }
+  /** In tonight's sky the view can't dive below the horizon. */
+  keepUp(v) { return this.hz ? { ...v, dec: Math.max(-4, v.dec) } : v; }
   /** The countdown bar along the top of the sky. */
   drawTimer(now) {
     const T = this.o.timer, el = this.host.querySelector(".sl-time"); if (!el) return;
@@ -211,6 +246,7 @@ const CSS = `
 .sl-lant{display:inline-block;animation:sl-flick 1.3s ease-in-out infinite}@keyframes sl-flick{0%,100%{transform:scale(1)}40%{transform:scale(1.15)}}
 .sl-shake{animation:sl-shake .45s ease-in-out}@keyframes sl-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .sl-facts{display:grid;gap:4px;margin:6px 0;font-size:.85rem}.sl-facts span{border:1px solid var(--line,#3a2f6a);border-radius:8px;padding:5px 8px;background:rgba(22,16,48,.6)}
+.sl-up{display:flex;flex-wrap:wrap;gap:6px}.sl-up span{flex:0 1 auto}
 .sl-fable{font-style:italic;color:var(--muted,#b9b2cc);font-size:.85rem;margin:4px 0}
 @media (prefers-reduced-motion: reduce){.sl-time.low,.sl-arrow,.sl-lant,.sl-shake{animation:none}}
 `;
@@ -265,17 +301,48 @@ export const stars = {
         : foundCount(state.prog) >= ALL.length ? `You've drawn the whole sky, ${state.name}. Draw again any time: there are more fables to hear.` : `Clear skies tonight, ${state.name}. Which sky shall we open?`);
       const lvl = (L) => { const n = foundCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
-      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
+      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
         <div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
         <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; search(L, nextTarget(state.prog, L, prog().last)); }));
-      $("back").onclick = greet; wireGuide();
+      $("sl-tonight").onclick = () => tonight(); $("back").onclick = greet; wireGuide();
     }
 
-    function search(L, g) {
+    // ---- tonight's real sky ----
+    const placeNow = () => prog().place || placeForZone(zone());
+    const pointsOf = (g) => figureStars(g).map((h) => { const s = starByHip(h); return [s[0], s[1]]; });
+    const upNow = (tn) => { const up = upTonight(DECK, pointsOf, tn.place, tn.at); return up.length ? up : upTonight(DECK, pointsOf, tn.place, tn.at, 12); };
+    const aim = (place) => ({ ra: place.lat >= 0 ? 180 : 0, dec: 38, fov: 70 }); // face the equator: south from the north, north from the south
+    function tonight(tn) {
+      clearReading(); cap("🌙 Tonight's sky"); const place = (tn && tn.place) || placeNow(), night = nightOf(place);
+      tn = { place, at: tn && tn.at >= night.start && tn.at <= night.end ? tn.at : night.at, night };
+      const sky = mount({ view: aim(place), figures: true, controls: true, horizon: tn }); sky.input(() => {}, () => {});
+      const ups = () => upNow(tn), mins = Math.max(15, Math.round((night.end - night.start) / 6e4));
+      const list = () => { const up = ups(); return up.length ? up.slice(0, 12).map((u) => `<span>${u.g.emoji} ${esc(u.g.name)} <i class="note">${Math.round(u.alt)}° up, ${compass(u.az)}</i></span>`).join("") : `<span class="note">Nothing from the deck is high enough right now. Try a later hour.</span>`; };
+      say(night.bright ? `From ${place.name} the sky never gets fully dark this time of year, so I'll show you the darkest hour. These are up then.` : `This is the real sky over ${place.name} tonight, ${state.name}. Turn with the ball, slide the hour, and I'll ask you for one you could step outside and see.`);
+      ui(`${stats()}<div class="cx-top">🌙 Tonight from <select id="sl-place" aria-label="Your place">${(prog().place && !PLACES.some((p) => p.name === prog().place.name) ? [prog().place] : []).concat(PLACES).map((p) => `<option${p.name === place.name ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select> at <b id="sl-at">${esc(clock(tn.at, place))}</b></div>
+        <input type="range" id="sl-hour" min="0" max="${mins}" step="15" value="${Math.round((tn.at - night.start) / 6e4)}" aria-label="Hour of the night" style="width:100%">
+        <div class="note">Dusk ${esc(clock(night.start, place))} to dawn ${esc(clock(night.end, place))}, ${esc(place.name)} time.</div>
+        <div class="sl-facts sl-up" id="sl-up">${list()}</div>
+        <div class="choices"><button class="c main" type="button" id="sl-find">🔭 Ask me for one</button><button class="c" type="button" id="sl-geo">📍 Use my location</button>${guideBtn}<button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
+      const refresh = () => { sky.setFrame(tn); $("sl-at").textContent = clock(tn.at, place); $("sl-up").innerHTML = list(); };
+      $("sl-hour").oninput = (e) => { tn.at = night.start + +e.target.value * 6e4; refresh(); };
+      $("sl-place").onchange = (e) => { const p = PLACES.find((x) => x.name === e.target.value) || prog().place; prog().place = p; saveProgress(); tonight({ place: p }); };
+      $("sl-geo").onclick = () => { const b = $("sl-geo"); if (!navigator.geolocation) { b.textContent = "📍 Not available here"; return; } b.textContent = "📍 Asking…";
+        navigator.geolocation.getCurrentPosition((pos) => { const p = { name: "Your location", lat: +pos.coords.latitude.toFixed(2), lon: +pos.coords.longitude.toFixed(2), tz: zone() }; prog().place = p; saveProgress(); tonight({ place: p }); },
+          () => { b.textContent = "📍 Not shared: pick a city"; }, { timeout: 8000, maximumAge: 36e5 }); };
+      $("sl-find").onclick = () => { const up = ups(); if (!up.length) return say("Nothing I can ask for is up at that hour. Slide to later in the night.");
+        const open = up.filter((u) => !prog().found[keyOf(TONIGHT, u.g)] && u.g.id !== prog().last), pool = (open.length ? open : up).slice(0, 6);
+        search(TONIGHT, pick(pool).g, tn); };
+      $("sl-leave").onclick = () => lobby(false); wireGuide();
+    }
+
+    function search(L, g, tn) {
       const run = start(g, L), fi = pickFable(state.prog, g), fable = g.fables[fi];
       const total = timeFor(g, L), timer = { total, end: performance.now() + total * 1000 + 1300, paused: null };
-      const sky = mount({ view: startView(g, run.seed), figures: L.guide === "lines", photo: L.n === 3, run, g, dome: true, controls: true, timer });
+      const where = tn && upNow(tn).find((u) => u.g.id === g.id);
+      const view0 = tn ? { ra: (360 - (where ? where.az : 0) + 140 + (run.seed % 80)) % 360, dec: 22, fov: 60 } : startView(g, run.seed);
+      const sky = mount({ view: view0, figures: L.guide === "lines", photo: L.n === 3 || !!tn, run, g, dome: true, controls: true, timer, horizon: tn });
       const stopClock = () => { if (timer.paused == null) timer.paused = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(tick); };
       let warned = false;
       const tick = setInterval(() => { if (!sky.alive) return clearInterval(tick); if (timer.paused != null) return;
@@ -286,18 +353,18 @@ export const stars = {
       let told = 0;
       const status = (extra) => {
         const st = starsFor(run.mistakes);
-        ui(`<div class="cx-top">Level ${L.n} · lines ${run.drawn.length} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
+        ui(`<div class="cx-top">${L.tonight ? "🌙 Tonight" : `Level ${L.n}`} · lines ${run.drawn.length} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
           <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Turn the sky with the ball (bottom left). Tap a star, then the next star of the figure, or drag from star to star. Beat the clock.</div></div>
           <div class="sl-fable">📜 Your reward: a sealed story from ${esc(fable.c)}. Finish the figure to unseal it.</div>${extra || ""}
           <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a mistake)</button>${guideBtn}<button class="c small" type="button" id="sl-reveal">Show me</button><button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
-        $("sl-hint").onclick = () => { const [ra, de] = figureCentre(g), p = toScreen(sky.view, sky.w, sky.h, ra, de), inView = p.front && p.X > 0 && p.Y > 0 && p.X < sky.w && p.Y < sky.h;
+        $("sl-hint").onclick = () => { const [ra, de] = sky.centre(g), p = toScreen(sky.view, sky.w, sky.h, ra, de), inView = p.front && p.X > 0 && p.Y > 0 && p.X < sky.w && p.Y < sky.h;
           shimmer();
           if (!inView || !run.drawn.length && sep(ra, de, sky.view.ra, sky.view.dec) > (sky.view.fov || 45) * 0.8) { run.mistakes++; run.hints++; sky.o.arrowUntil = performance.now() + 5000;
             status(); say(pick(["Follow the golden arrow.", "That way, traveller. The arrow knows.", "Not here. Follow my arrow across the sky."])); return; }
-          const e = hintEdge(run, g); if (!e) return; const A = starByHip(e[0]), B = starByHip(e[1]);
+          const e = hintEdge(run, g); if (!e) return; const A = sky.star(e[0]), B = sky.star(e[1]);
           sky.fx.push({ kind: "hint", a: [A[0], A[1]], b: [B[0], B[1]], at: performance.now(), dur: 3500 }); status(); };
         $("sl-reveal").onclick = () => { stopClock(); reveal(); };
-        $("sl-leave").onclick = () => { stopClock(); lobby(false); }; wireGuide();
+        $("sl-leave").onclick = () => { stopClock(); if (tn) tonight(tn); else lobby(false); }; wireGuide();
       };
       const tell = () => { const half = run.drawn.length * 2 >= run.total;
         if (!told) { told = 1; say(`${pick(["You've found it.", "Yes, there it is.", "Good eyes."])} Keep going. A story from ${fable.c} waits for you at the end.`); }
@@ -318,17 +385,18 @@ export const stars = {
           // after a line, the end star stays selected to chain the next one; tapping a star that doesn't continue it just starts afresh there
           const k = edgeKey(sky.o.sel, s[4]), fits = figureEdges(g).some(([x, y]) => edgeKey(x, y) === k);
           if (sky.o.chain && !fits) { sky.o.sel = s[4]; sky.o.chain = false; ping(s[2]); return; }
-          sky.o.chain = false; return line(starByHip(sky.o.sel), s); }
+          sky.o.chain = false; return line(sky.star(sky.o.sel), s); }
         if (sky.o.sel === s[4]) { if (sky.o.chain) sky.o.chain = false; else sky.o.sel = null; return; }
         sky.o.sel = s[4]; sky.o.chain = false; ping(s[2]);
       }, (a, b) => line(a, b));
-      say(`${pick(["The dome opens. Look up.", "Let your eyes adjust to the dark…", "Clear skies. Here is your task."])} Find ${g.name} somewhere in this sky, and draw it for me. ${g.find}`);
+      say(tn && where ? `${pick(["Step outside with me.", "Let your eyes adjust to the dark…", "Here is tonight's sky."])} At ${clock(tn.at, tn.place)} over ${tn.place.name}, ${g.name} is ${Math.round(where.alt)}° up in the ${compass(where.az)}. Find it and draw it for me. ${g.find}`
+        : `${pick(["The dome opens. Look up.", "Let your eyes adjust to the dark…", "Clear skies. Here is your task."])} Find ${g.name} somewhere in this sky, and draw it for me. ${g.find}`);
       status();
 
-      function centreOn(done) { const [ra, dec] = figureCentre(g), span = Math.max(...figureStars(g).map((h) => { const s = starByHip(h); return sep(s[0], s[1], ra, dec); }));
-        sky.glide({ ra, dec, fov: Math.max(16, Math.min(60, span * 1.5)) }, 1100, done); }
+      function centreOn(done) { const [ra, dec] = sky.centre(g), span = Math.max(...figureStars(g).map((h) => { const s = sky.star(h); return sep(s[0], s[1], ra, dec); }));
+        sky.glide(sky.keepUp({ ra, dec, fov: Math.max(16, Math.min(60, span * 1.5)) }), 1100, done); }
       function complete() {
-        discover(); sky.o.sel = null; sky.o.label = g.name; centreOn(() => { const [ra, de] = figureCentre(g); sky.fx.push({ kind: "spark", at2: [ra, de], at: performance.now(), dur: 1200 }); sky.meteor(); });
+        discover(); sky.o.sel = null; sky.o.label = g.name; centreOn(() => { const [ra, de] = sky.centre(g); sky.fx.push({ kind: "spark", at2: [ra, de], at: performance.now(), dur: 1200 }); sky.meteor(); });
         cap(`${g.emoji} ${g.name}`);
         run.lore = true;
         const pages = [`Drawn! Your reward, as promised: a story from ${fable.c}, “${fable.t}”.`, fable.parts.join(" "), "And now, what astronomers know.", ...g.science];
@@ -350,21 +418,23 @@ export const stars = {
       }
       function facts(gaveUp) {
         const [ra, de] = figureCentre(g);
-        $("reading-body").innerHTML = `<div class="sl-facts"><span>🗓️ Best seen in the evening: around <b>${bestMonth(ra)}</b></span><span>🌍 ${esc(seenFrom(de))}</span><span>✳️ IAU constellation: <b>${esc(conName(g.con))}</b></span><span>📜 ${run.lore ? `Fable: ${esc(fable.c)}, “${esc(fable.t)}”` : "Fable: sealed until you draw it"}</span></div>`;
-        if (gaveUp) { run.revealed = true; return finish(L, g, run, null, run.lost ? "Time to study. The guide has every shape and story clue; then try again." : "Try it again when you're ready, or study first."); }
+        const rs = tn && riseSet(ra, de, tn.place, tn.at), at = (ms) => esc(clock(ms, tn.place));
+        const tonightFact = !rs ? "" : rs.always ? `<span>🌙 From ${esc(tn.place.name)} it never sets: it circles the pole all night</span>` : rs.never ? "" : `<span>🌙 Tonight from ${esc(tn.place.name)}: rises ${at(rs.rise)}, highest ${at(rs.transit)}, sets ${at(rs.set)}</span>`;
+        $("reading-body").innerHTML = `<div class="sl-facts">${tonightFact}<span>🗓️ Best seen in the evening: around <b>${bestMonth(ra)}</b></span><span>🌍 ${esc(seenFrom(de))}</span><span>✳️ IAU constellation: <b>${esc(conName(g.con))}</b></span><span>📜 ${run.lore ? `Fable: ${esc(fable.c)}, “${esc(fable.t)}”` : "Fable: sealed until you draw it"}</span></div>`;
+        if (gaveUp) { run.revealed = true; return finish(L, g, run, null, tn, run.lost ? "Time to study. The guide has every shape and story clue; then try again." : "Try it again when you're ready, or study first."); }
         say(`One question before you go. ${g.quiz.q}`);
         const cs = quizChoices(g);
         ui(`<div class="choices col">${cs.map((c, i) => `<button class="c" type="button" data-q="${i}">${esc(c)}</button>`).join("")}</div><div class="note">+${Math.round(5 * L.mult)} for the right answer.</div>`);
         $("ui").querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { const ok = answer(run, g, cs[+b.dataset.q]); verdict(ok);
-          finish(L, g, run, fi, ok ? `Correct: ${g.quiz.a}.` : `Not quite. The answer is: ${g.quiz.a}.`); }));
+          finish(L, g, run, fi, tn, ok ? `Correct: ${g.quiz.a}.` : `Not quite. The answer is: ${g.quiz.a}.`); }));
       }
     }
 
-    function finish(L, g, run, fi, line) {
+    function finish(L, g, run, fi, tn, line) {
       if (run.revealed) run.done = false;
       const before = foundCount(state.prog), r = settle(state.prog, run, fi);
       const aw = award(r.xp, r.essence); saveProgress(); showStats();
-      ctx.trophy?.("stars", L.n, { won: !!run.done, perfect: !!run.done && starsFor(run.mistakes) === 3 }); // Trophy Case (trophies.js)
+      ctx.trophy?.("stars", L.tonight ? 2 : L.n, { won: !!run.done, perfect: !!run.done && starsFor(run.mistakes) === 3 }); // Trophy Case (trophies.js)
       const t = titleOf(foundCount(state.prog)), titled = titleOf(before).name !== t.name;
       say(line);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
@@ -373,9 +443,10 @@ export const stars = {
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🔭 Star title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
         <div class="choices">${run.done ? "" : `<button class="c main" type="button" id="sl-study">📖 Study Star Lore</button>`}<button class="c${run.done ? " main" : ""}" type="button" id="sl-go">🔭 Next constellation</button><button class="c" type="button" id="sl-again">↻ ${run.done ? "Draw it again (another fable)" : "Try this one again"}</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp) chime(2);
-      $("sl-go").onclick = () => search(L, nextTarget(state.prog, L, g.id));
-      $("sl-again").onclick = () => search(L, g);
-      $("sl-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      $("sl-go").onclick = () => { if (!tn) return search(L, nextTarget(state.prog, L, g.id));
+        const up = upNow(tn).filter((u) => u.g.id !== g.id), open = up.filter((u) => !prog().found[keyOf(L, u.g)]); search(L, pick((open.length ? open : up).length ? (open.length ? open : up) : [{ g }]).g, tn); };
+      $("sl-again").onclick = () => search(L, g, tn);
+      $("sl-lobby").onclick = () => (tn ? tonight(tn) : lobby(false)); $("back").onclick = greet;
       if ($("sl-study")) $("sl-study").onclick = () => (ctx.study ? ctx.study("stars", () => lobby(false)) : toggleGuide());
     }
 

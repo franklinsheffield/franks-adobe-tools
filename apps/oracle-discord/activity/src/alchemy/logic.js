@@ -4,19 +4,20 @@
 // answer costs a flame). Levels 2-3: choose the reagents and the operation, then Transmute; a failed mix or a hint
 // from the notebook costs a flame. Level 3 then asks what the experiment really found (one try, bonus points).
 // Points scale ×1 / ×1.5 / ×2. First success pays ✦ and 💎; replays pay only the improvement on your best.
-import { SYMBOLS, RECIPES, DISCOVERIES, OPS_ALCH, HAZARDS } from "./lab.js";
+import { SYMBOLS, RECIPES, DISCOVERIES, MODERN, OPS_ALCH, HAZARDS } from "./lab.js";
 
 export const LEVELS = [
   { n: 1, name: "Apprentice", what: "Read the symbols", deck: SYMBOLS, mult: 1 },
   { n: 2, name: "Journeyman", what: "Follow the old recipes", deck: RECIPES, mult: 1.5 },
   { n: 3, name: "Adept", what: "Alchemy becomes chemistry", deck: DISCOVERIES, mult: 2 },
+  { n: 4, name: "Chemist", what: "Modern chemistry, 1803 to 1909", deck: MODERN, mult: 2.5 },
 ];
 export const ALL = LEVELS.flatMap((L) => L.deck.map((x) => ({ L, x })));
 export const keyOf = (L, x) => L.n + ":" + x.id;
 export const TITLES = [{ at: 0, name: "Puffer" }, { at: 5, name: "Apprentice" }, { at: 12, name: "Journeyman" }, { at: 21, name: "Adept" }, { at: ALL.length, name: "Chymist" }];
 export const FLAMES = 4;
 export const PER_FLAME = 5, NAME_PTS = 10;
-export const opsFor = (L) => (L.n === 3 ? [...OPS_ALCH, "electrolyse"] : OPS_ALCH);
+export const opsFor = (L) => (L.n === 4 ? [...OPS_ALCH, "electrolyse", "spectro"] : L.n === 3 ? [...OPS_ALCH, "electrolyse"] : OPS_ALCH);
 
 export const room = (p) => {
   const r = ((p.rooms ||= {}).alchemy ||= { plays: 0, solved: {}, elements: [], last: null });
@@ -71,7 +72,7 @@ export function transmute(run, x, ings, op) {
   const hz = hazardOf(ings, op);
   if (hz && !run.saved && (run.guard || []).includes(hz.kind)) { run.saved = hz.id; run.last = null; spend(run); return "saved"; }
   if (hz) { run.boom = hz.id; run.flames = 0; run.done = true; run.won = false; return "boom"; } const j = judge(x, ings, op); run.last = j;
-  if (j.ok) { if (run.level === 3) run.stage = "name"; else { run.done = run.won = true; } return "right"; }
+  if (j.ok) { if (run.level >= 3) run.stage = "name"; else { run.done = run.won = true; } return "right"; }
   spend(run); return run.done ? "out" : "wrong";
 }
 /** The notebook's next hint for a flame: first the hint line, then each reagent, then the operation. Keeps one flame. */
@@ -104,7 +105,7 @@ export function settle(p, run, x) {
 }
 
 // ---- free play: an open bench with every reagent and no target ----
-export const FINDS = [...RECIPES, ...DISCOVERIES];
+export const FINDS = [...RECIPES, ...DISCOVERIES, ...MODERN];
 export const FIND_PTS = 5;
 /** What a free mix makes: { hazard } | { find } | { nothing: true }. Hazards are checked first, as at the bench. */
 export function experiment(ings, op) {
@@ -137,7 +138,7 @@ const prevDay = (k) => dayKey(new Date(Date.parse(k + "T12:00:00Z") - 864e5));
 /** Today's experiment, picked from the date alone so every member gets the same one. */
 export function dailyOf(k = dayKey()) {
   const n = [...k].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % FINDS.length, x = FINDS[n];
-  return { L: LEVELS[RECIPES.includes(x) ? 1 : 2], x };
+  return { L: LEVELS.find((L) => L.deck.includes(x)), x };
 }
 export const DAILY_BASE = 10, DAILY_STEP = 5, DAILY_MAX = 7;
 /** Settle a finished daily run. Only the first win of the day counts: { bonus, streak } or null. */
@@ -147,3 +148,12 @@ export function logDaily(p, k, won) {
   d.streak = d.last === prevDay(k) ? d.streak + 1 : 1; d.last = k; d.best = Math.max(d.best, d.streak);
   return { bonus: DAILY_BASE + DAILY_STEP * (Math.min(d.streak, DAILY_MAX) - 1), streak: d.streak };
 }
+
+// ---- head-to-head race (in a Discord call, over the Chamber's shared tables, net.js) ----
+export const RACE_POOL = [...RECIPES, ...DISCOVERIES, ...MODERN];
+export const RACE_WIN = 15;
+/** Rank race results: finished first, then most flames left, then fastest. An explosion or a give-up ranks last. */
+export function raceRank(rows) {
+  return [...rows].sort((a, b) => (b.won - a.won) || (a.won ? b.flames - a.flames : 0) || (a.boom - b.boom) || (a.ms - b.ms)).map((r, i) => ({ ...r, place: i + 1 }));
+}
+export const raceLevel = (x) => LEVELS.find((L) => L.deck.includes(x));

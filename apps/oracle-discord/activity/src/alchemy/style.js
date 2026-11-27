@@ -76,6 +76,7 @@ export const CSS = `
 button.al-find{font:inherit;color:inherit;text-align:left;cursor:pointer}button.al-find:hover{box-shadow:0 0 10px rgba(250,222,140,.45)}
 .al-seal{border:1px solid #E2B04A;border-radius:8px;padding:6px 10px;background:linear-gradient(90deg,rgba(226,176,74,.25),rgba(226,176,74,.05));animation:al-in .6s ease-out both}
 .c.level.al-daily{border-color:#7fd1ff}.c.level.al-daily.done{opacity:.7}
+.al-race h3{margin:4px 0;font-family:var(--display);color:#FADE8C}.al-race ol{list-style:none;padding:0;margin:6px 0}.al-race li{padding:6px 10px;border:1px solid rgba(226,176,74,.3);border-radius:8px;margin:4px 0}.al-race li.me{border-color:#E2B04A;background:rgba(226,176,74,.12)}
 @media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}.table.alchemy :is(.al-shard,.al-flash,.al-ring){display:none}.table.alchemy .al-soot{opacity:.7}.table.alchemy .al-vessel.gone{opacity:0}.table.alchemy .al-cloud{opacity:.5}.table.alchemy .al-skull{opacity:.95}.table.alchemy .al-tint{opacity:.22}}
 .al-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:4px 0 6px}
 .c.al-jar{display:flex;align-items:center;gap:8px;text-align:left;border-radius:10px;padding:6px 10px}

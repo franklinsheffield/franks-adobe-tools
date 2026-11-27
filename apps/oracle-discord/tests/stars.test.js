@@ -25,7 +25,7 @@ test("star data: 88 figures, bright stars where they belong, faint stars and the
 });
 
 test("every figure in the deck can be drawn from real stars", () => {
-  assert.equal(DECK.length, 16);
+  assert.equal(DECK.length, 30);
   for (const c of DECK) {
     const e = figureEdges(c);
     assert.ok(e.length >= 2, c.id);
@@ -40,7 +40,7 @@ test("every figure in the deck can be drawn from real stars", () => {
   assert.deepEqual(figureStars(g("cru")).map((h) => STAR_NAMES[h]).sort(), ["Acrux", "Gacrux", "Imai", "Mimosa"]);
   assert.ok(figureStars(g("ori")).some((h) => STAR_NAMES[h] === "Betelgeuse") && figureStars(g("ori")).some((h) => STAR_NAMES[h] === "Rigel"));
   assert.ok(figureStars(g("lyr")).some((h) => STAR_NAMES[h] === "Vega"));
-  assert.equal(ALL.length, 48); assert.equal(new Set(ALL.map(({ L, g }) => keyOf(L, g))).size, 48);
+  assert.equal(ALL.length, 90); assert.equal(new Set(ALL.map(({ L, g }) => keyOf(L, g))).size, 90);
   assert.ok(FABLE_COUNT >= 35);
 });
 
@@ -143,7 +143,7 @@ test("sky ball turns the sky; the clock fits the figure", () => {
   assert.ok(spin(v, 0, 10).dec > v.dec, "dragging down brings the north");
   assert.equal(spin({ ra: 355, dec: 0 }, 10, 0).ra, 7);
   assert.equal(spin(v, 0, 500).dec, 89); assert.equal(spin(v, 0, -500).dec, -89);
-  for (const L of LEVELS) for (const c of DECK) { const t = timeFor(c, L); assert.ok(t >= 60 && t <= 200, `${c.id} L${L.n}: ${t}`); }
+  for (const L of LEVELS) for (const c of DECK) { const t = timeFor(c, L); assert.ok(t >= 60 && t <= 220, `${c.id} L${L.n}: ${t}`); }
   assert.ok(timeFor(g("sco"), LEVELS[0]) > timeFor(g("cru"), LEVELS[0]), "bigger figures get more time");
   assert.ok(timeFor(g("ori"), LEVELS[2]) < timeFor(g("ori"), LEVELS[0]), "higher levels are tighter");
 });

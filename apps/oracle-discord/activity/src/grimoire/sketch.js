@@ -235,6 +235,9 @@ ${leafIcons}
 ${revealed && poison ? `<g class="gr-stamp" transform="translate(84 236) rotate(-12)"><rect x="-52" y="-15" width="104" height="30" rx="4" fill="none" stroke="#b3122a" stroke-width="2.5"/><text y="7" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="17" fill="#b3122a" letter-spacing="2">☠ POISON</text></g>` : ""}
 </svg>`;
 }
+/** A small herbarium tile: the specimen alone, no page. found = false draws it as a silhouette. */
+export const thumbSvg = (p, found = true) => `<svg viewBox="70 0 260 300" aria-hidden="true" class="gr-thumb${found ? "" : " ghost"}">${placed(p)}</svg>`;
+
 /** Two pages side by side for "Spot the look-alike": left and right are plants; poison marks which ones get a stamp. */
 export function twinSvg(left, right, { revealed = false, theme = null, poison = [false, false], picked = -1, right: rightSide = -1, turn = false, sparkle = false } = {}) {
   const page = (p, i) => pageSvg(p, { leaves: 0, max: 0, revealed, no: i ? "B" : "A", theme, poison: revealed && poison[i], turn, sparkle: sparkle && i === rightSide })

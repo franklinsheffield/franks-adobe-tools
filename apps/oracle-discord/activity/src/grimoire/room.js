@@ -4,8 +4,11 @@
 // its folklore, what science says and a safety note. For learning only: never medical advice.
 // Mounted via ROOMS (main.js): room.open(ctx), codexHtml, shop.
 import { DANGER, EVIDENCE } from "./plants.js";
-import { LEVELS, ALL, LEAVES, keyOf, perLeaf, safetyPts, claimPts, room as grim, solvedCount, titleOf, nextTitle, plantById, nextPlant, start, moreClue, usePick, whichPlant, choices, guessName, guessSafety, guessClaim, settle } from "./logic.js";
-import { pageSvg, twinSvg } from "./sketch.js";
+import { LEVELS, ALL, LEAVES, keyOf, perLeaf, safetyPts, claimPts, room as grim, solvedCount, titleOf, nextTitle, plantById, nextPlant, start, moreClue, usePick, whichPlant, choices, guessName, guessSafety, guessClaim, settle, scoreOf } from "./logic.js";
+import { pageSvg, twinSvg, thumbSvg } from "./sketch.js";
+import { gardens, claimGardenPrizes, GARDEN_PRIZE } from "./herbarium.js";
+import { dailyState, finishDaily, postDaily, boardOf, boardHtml, todayKey, dayNumber } from "../daily.js";
+import { DAILY_ID, dailyPick, dailyBonus, dailyDetail, shareLine } from "./daily.js";
 import { TWINS, twinPlants, spottedCount, nextTwin, layTwin, pickTwin, settleTwin } from "./twins.js";
 import { GUIDES, NOT_ADVICE, POISON_HELP } from "./guide.js";
 import { shop, themeOf } from "./shop.js";
@@ -80,34 +83,65 @@ export const room = {
         : solvedCount(state.prog) >= ALL.length ? `Every page filled, ${state.name}. A Master Herbalist. Press any plant again to beat your score.` : `Which garden shall we walk today, ${state.name}?`);
       const lvl = (L) => { const n = solvedCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"🌿".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${L.deck.length} identified · points ×${L.mult}</span></button>`; };
-      const known = ALL.filter(({ L, p }) => prog().solved[keyOf(L, p)]);
-      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
+      if (prog().dailyDeal === todayKey() && !dailyState(state.prog, DAILY_ID).played) { // dealt earlier and left: that run counts as 0
+        finishDaily(state.prog, DAILY_ID, { score: 0, won: false, detail: "left early" }); saveProgress(); }
+      const ds = dailyState(state.prog, DAILY_ID), dp = dailyPick();
+      ui(`${stats()}<div class="choices"><button class="c ${ds.played ? "" : "main "}gr-daily" type="button" id="gr-daily">📅 ${ds.played ? `Today's board · ${ds.today.score} pts` : `Daily specimen #${dayNumber()} · Level ${dp.L.n}`} <span class="note">· the same plant for the whole server${ds.streak ? ` · 🔥 ${ds.streak} day${ds.streak === 1 ? "" : "s"}` : ""}</span></button></div><div class="levels">${LEVELS.map(lvl).join("")}</div>
+        <div class="choices"><button class="c main" type="button" id="gr-herbarium">📖 Your herbarium <span class="note">· ${gardens(state.prog).map((g) => `${g.done ? "🏆" : "🌿"} ${g.got}/${g.total}`).join(" · ")}</span></button></div>
         <div class="choices"><button class="c main" type="button" id="gr-twins">⚠️ Spot the look-alike <span class="note">· safe plant or deadly double? · ${spottedCount(state.prog)} / ${TWINS.length} spotted</span></button></div>
         <div class="choices">${LEVELS.map((L) => `<button class="c small" type="button" data-g="${L.n}" data-label="📖 Study guide: ${esc(L.name)}">📖 Study guide: ${esc(L.name)}</button>`).join("")}</div>
         <div class="note">5 leaves per plant. The first clue is free; each extra clue and each wrong typed name costs a leaf; a wrong pick from four costs 3. Typing the name scores double. For learning only: never eat or use a plant because of a game.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
-        ${known.length ? `<div class="group">Your grimoire</div><div class="choices">${known.map(({ L, p }) => `<button class="c small" type="button" data-k="${p.id}">${p.emoji} ${esc(p.name)} <span class="note">· L${L.n} · best ${prog().solved[keyOf(L, p)]}</span></button>`).join("")}</div>` : ""}`);
+`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; identify(L, nextPlant(state.prog, L, prog().last)); }));
       $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => toggleGuide(+b.dataset.g, b)));
-      $("back").onclick = greet; $("gr-twins").onclick = () => twins(nextTwin(state.prog, prog().lastTwin));
-      $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => study(plantById(b.dataset.k))));
+      $("back").onclick = greet; $("gr-daily").onclick = () => (dailyState(state.prog, DAILY_ID).played ? dailyBoard() : dailyStart());
+      $("gr-twins").onclick = () => twins(nextTwin(state.prog, prog().lastTwin));
+      $("gr-herbarium").onclick = () => herbarium();
+    }
+
+    // ---- Herbarium: every page in the book, found plants in colour, the rest as silhouettes ----
+    let herbTab = 1;
+    /** Pay any full-garden prizes not yet paid. Returns the HTML lines to show (empty when nothing new). */
+    function gardenPrizes() {
+      const won = claimGardenPrizes(state.prog); if (!won.length) return "";
+      for (const w of won) award(0, w.essence); saveProgress(); showStats(); chime(2); SFX.sparkle();
+      return won.map((w) => `<div class="up">🏆 Garden complete: <b>${esc(w.L.name)}</b> · +${w.essence} 💎</div>`).join("");
+    }
+    function herbarium(tab = herbTab, fresh = true) {
+      herbTab = tab; const prize = gardenPrizes(), gs = gardens(state.prog), g = gs[tab - 1], solved = prog().solved;
+      if (fresh) { clearReading(); cap("📖 Your herbarium"); draw(null, null, false); SFX.page();
+        const all = gs.reduce((a, x) => a + x.got, 0);
+        say(all ? `${all} of ${ALL.length} pages pressed, ${state.name}. Tap a page to read it again. Fill a whole garden for a prize.` : `An empty herbarium, ${state.name}. Every plant you name gets pressed into a page here.`); }
+      const bar = (x) => `<button class="c${x.L.n === tab ? " on" : ""}" type="button" data-t="${x.L.n}">${x.done ? "🏆" : "🌿".repeat(x.L.n)} ${esc(x.L.name)} <span class="note">· ${x.got}/${x.total}</span></button>`;
+      const tile = (p) => { const n = String(NUM.get(p.id)).padStart(2, "0"), k = keyOf(g.L, p);
+        return solved[k] ? `<button class="gr-tile" type="button" data-k="${p.id}" title="${esc(p.name)}">${thumbSvg(p)}<span>Nº ${n}</span><b>${esc(p.name)}</b><span class="note">best ${solved[k]}</span></button>`
+          : `<div class="gr-tile unfound" aria-label="Specimen ${n}, not yet found">${thumbSvg(p, false)}<span>Nº ${n}</span><b>?</b></div>`; };
+      ui(`${prize ? `<div class="reward">${prize}</div>` : ""}<div class="gr-tabs">${gs.map(bar).join("")}</div>
+        <div class="cx-top">${esc(g.L.name)} · ${g.got} / ${g.total} pressed · ${g.paid ? "🏆 prize claimed" : `fill it for ${GARDEN_PRIZE[g.L.n]} 💎`}</div>
+        <div class="gr-bar"><i style="width:${Math.round((100 * g.got) / g.total)}%"></i></div>
+        <div class="gr-herb">${g.L.deck.map(tile).join("")}</div>
+        <div class="choices"><button class="c" type="button" id="gr-lobby">📜 Choose a garden</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      $("ui").querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => { SFX.page(); herbarium(+b.dataset.t, false); }));
+      $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => study(plantById(b.dataset.k), true)));
+      $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
 
     /** Read a page you've already earned. */
-    function study(p) {
+    function study(p, fromBook = false) {
       const L = LEVELS.find((x) => x.deck.includes(p));
       draw(p, null, true, { turn: true }); SFX.page(); cap(`${p.emoji} ${p.name}`); say(`${p.name}, from your grimoire. ${p.latin}.`); showPage(p);
-      ui(`<div class="choices"><button class="c main" type="button" id="gr-again">🌿 Identify it again</button><button class="c" type="button" id="gr-lobby">📜 Choose a garden</button></div>`);
-      $("gr-again").onclick = () => identify(L, p); $("gr-lobby").onclick = () => lobby(false);
+      ui(`<div class="choices"><button class="c main" type="button" id="gr-again">🌿 Identify it again</button>${fromBook ? `<button class="c" type="button" id="gr-book">📖 Back to the herbarium</button>` : ""}<button class="c" type="button" id="gr-lobby">📜 Choose a garden</button></div>`);
+      $("gr-again").onclick = () => identify(L, p); $("gr-lobby").onclick = () => lobby(false); if ($("gr-book")) $("gr-book").onclick = () => herbarium();
     }
 
     const clueList = (p, run) => `<div class="clues">${p.clues.slice(0, run.shown).map((c, i) => `<div class="clue"><b>🍃 Clue ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
     const leafBar = (L, run) => `<div class="cx-top">Level ${L.n} · 🍃 ${"●".repeat(run.leaves)}${"○".repeat(LEAVES - run.leaves)} · ${run.leaves} lea${run.leaves === 1 ? "f" : "ves"} left · naming it now scores ${perLeaf(run.mode, L) * run.leaves}${run.mode === "pick" ? " (multiple choice)" : ""}</div>`;
 
-    function identify(L, p) {
-      const run = start(p, L);
+    function identify(L, p, daily = false) {
+      const run = start(p, L); run.daily = daily;
       clearReading(); cap(`🌿 Level ${L.n} · Specimen Nº ${String(NUM.get(p.id)).padStart(2, "0")}`); shown = LEAVES; draw(p, run, false, { turn: true }); SFX.page();
-      talkThrough([pick(["I open the grimoire. A pressed plant, its label smudged.", "A specimen slides out from between the pages.", "The book falls open at an unlabelled page."]) + " " + INTRO[L.n], `First clue: “${p.clues[0]}”`], () => name(L, p, run));
+      talkThrough([pick(["I open the grimoire. A pressed plant, its label smudged.", "A specimen slides out from between the pages.", "The book falls open at an unlabelled page."]) + " " + (daily ? `Today's daily specimen, the same for everyone in the server. Only this first try counts. ` : "") + INTRO[L.n], `First clue: “${p.clues[0]}”`], () => name(L, p, run));
     }
 
     function name(L, p, run, line, fx = {}) {
@@ -122,6 +156,7 @@ export const room = {
       if ($("gr-more")) $("gr-more").onclick = () => { if (moreClue(run, p)) { SFX.quill(); name(L, p, run, `Next clue: “${p.clues[run.shown - 1]}”`); } };
       if ($("gr-pick")) $("gr-pick").onclick = () => { usePick(run); name(L, p, run, "Very well. It's one of these four. Choose carefully: a wrong pick costs three leaves."); };
       $("gr-leave").onclick = () => lobby(false);
+      if (run.daily) $("gr-leave").textContent = "Give up today's specimen";
       const answer = (who) => { const r = guessName(run, p, who);
         if (r === "right") return named(L, p, run, true);
         if (r === "out") return named(L, p, run, false);
@@ -168,13 +203,46 @@ export const room = {
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
       if (run.won) bits.push(`score ${r.score}${r.first ? " · new page in your grimoire" : r.best ? " · new best" : ` · best stays ${prog().solved[keyOf(L, p)]}`}${run.mode === "type" ? " · typed it!" : ""}`);
       else bits.push("not named this time");
+      if (run.daily) return dailyFinish(L, p, run, r, aw, titled, t);
+      const prize = gardenPrizes();
       const up = LEVELS[L.n] && solvedCount(state.prog, L) === 3 && run.won && r.first ? `<div class="up">🔓 Ready for Level ${L.n + 1}: ${esc(LEVELS[L.n].name)}</div>` : "";
-      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🌿 Grimoire title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
+      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🌿 Grimoire title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}${prize}</div>
         <div class="choices"><button class="c main" type="button" id="gr-go">🌿 Another Level ${L.n} plant</button>${run.won ? "" : `<button class="c" type="button" id="gr-again">↻ Try this plant again</button>`}<button class="c" type="button" id="gr-lobby">📜 Choose a garden</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (run.won && (r.first || r.best)) SFX.sparkle(); if (titled || aw.rankUp) chime(2);
       $("gr-go").onclick = () => identify(L, nextPlant(state.prog, L, p.id));
       if ($("gr-again")) $("gr-again").onclick = () => identify(L, p);
       $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+    }
+
+    // ---- Daily specimen: one plant for the whole server each day (shared ../daily.js board) ----
+    function dailyStart() {
+      const { L, p } = dailyPick(); prog().dailyDeal = todayKey(); saveProgress(); identify(L, p, true);
+    }
+    function dailyFinish(L, p, run, r, aw, titled, t) {
+      const score = scoreOf(run), res = finishDaily(state.prog, DAILY_ID, { score, won: run.won, detail: dailyDetail(run) });
+      let bonus = 0; if (res.first) { bonus = dailyBonus(res.streak); award(0, bonus); postDaily(state, DAILY_ID, { score, won: run.won, detail: dailyDetail(run) }); }
+      saveProgress(); showStats(); if (res.first && res.streak > 1) chime(2);
+      ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence + bonus ? ` · +${r.essence + bonus} 💎` : ""}</b> · daily score ${score}${bonus ? ` · streak bonus ${bonus} 💎` : ""}</div>
+          <div class="up">🔥 Daily streak: <b>${res.streak} day${res.streak === 1 ? "" : "s"}</b> · best ${res.best}</div>${gardenPrizes()}${titled ? `<div class="up">🌿 Grimoire title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
+        <pre class="gr-share" id="gr-share">${esc(shareLine(run, res.streak))}</pre>
+        <div class="choices"><button class="c main" type="button" id="gr-copy">📋 Copy my result</button><button class="c" type="button" id="gr-board">🏆 Today's board</button><button class="c" type="button" id="gr-lobby">📜 Choose a garden</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      say(`${run.won ? `Today's specimen was ${p.name}.` : `Today's specimen was ${p.name}. Tomorrow brings another.`} Copy your result to share it without spoiling the plant for anyone else.`);
+      $("gr-copy").onclick = () => copyShare(run, res.streak); $("gr-board").onclick = dailyBoard;
+      $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+    }
+    function copyShare(run, streak) {
+      const txt = shareLine(run, streak), done = (ok) => { $("gr-copy").textContent = ok ? "✓ Copied" : "Select the text above to copy"; if (ok) SFX.quill(); };
+      try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch { done(false); }
+    }
+    async function dailyBoard() {
+      const ds = dailyState(state.prog, DAILY_ID), { L, p } = dailyPick();
+      clearReading(); cap(`📅 Daily specimen #${dayNumber()}`); draw(p, null, true, { turn: true }); SFX.page();
+      say(`Today's specimen was ${p.name}. Your score: ${ds.today ? ds.today.score : 0}. A new plant arrives at midnight UTC.`);
+      ui(`<div class="cx-top">📅 Daily specimen #${dayNumber()} · 🔥 ${ds.streak} day streak · best ${ds.best}</div><div id="gr-boardbox"><div class="note">Reading the board…</div></div>
+        <div class="choices"><button class="c" type="button" id="gr-page">📖 Read its page</button><button class="c" type="button" id="gr-lobby">📜 Choose a garden</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      $("gr-page").onclick = () => showPage(p); $("gr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      const board = await boardOf(state, DAILY_ID);
+      if ($("gr-boardbox")) $("gr-boardbox").innerHTML = boardHtml(board, esc, { unit: "pts", local: ds.today });
     }
 
     /** Spot the look-alike: a safe plant and its deadly double, side by side. Which one is safe? */
