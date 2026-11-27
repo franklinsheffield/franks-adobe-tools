@@ -414,3 +414,7 @@ export const LEVELS = [
 import { MORE, EXTRA } from "./lore2.js";
 DECK.push(...MORE);
 for (const [id, fs] of Object.entries(EXTRA)) DECK.find((g) => g.id === id).fables.push(...fs);
+
+// More voices (lore3.js): at least two non-Greek stories per constellation.
+import { MORE_VOICES } from "./lore3.js";
+for (const [id, fs] of Object.entries(MORE_VOICES)) DECK.find((g) => g.id === id).fables.push(...fs);
