@@ -127,7 +127,7 @@ export function guideHtml() {
 
 // ---- the store shelf ----
 export const shop = {
-  kind: KIND, label: "🃏 Star cards", items: BACKS,
+  kind: KIND, label: "🌌 Star cards", items: BACKS,
   talk: {
     open: ["Card backs for Constellation Rummy. The stars are on the front; the style is on the back.", "Deal in style, darling. Even the heavens judge a deck by its cover."],
     tryon: ["The {item}. Shuffle it and see.", "Ooh, {item}. The Oracle may cheat less against such a pretty deck."],
