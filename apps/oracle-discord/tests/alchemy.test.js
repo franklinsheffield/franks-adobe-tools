@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert";
-import { SYMBOLS, RECIPES, DISCOVERIES, REAGENTS, OPS, ELEMENTS } from "../activity/src/alchemy/lab.js";
+import { SYMBOLS, RECIPES, DISCOVERIES, MODERN, REAGENTS, OPS, ELEMENTS } from "../activity/src/alchemy/lab.js";
 import { GLYPH } from "../activity/src/alchemy/glyphs.js";
 import { NOTEBOOK } from "../activity/src/alchemy/guide.js";
 import { SHOP, DEFAULT_LOOK, buyOrUse, lookOf, owns } from "../activity/src/alchemy/shop.js";
@@ -28,7 +28,7 @@ const side = (s) => s.split(" + ").map(atoms).reduce((a, b) => { for (const [e, 
 
 test("every equation in the Lab balances", () => {
   let n = 0;
-  for (const x of [...RECIPES, ...DISCOVERIES]) {
+  for (const x of [...RECIPES, ...DISCOVERIES, ...MODERN]) {
     if (x.noBalance) continue;
     const [l, r] = x.eq.split(" → "); assert.ok(r, x.id);
     assert.deepStrictEqual(side(l), side(r), `${x.id}: ${x.eq}`); n++;
@@ -43,7 +43,7 @@ test("content is complete and consistent", () => {
     for (const k of ["name", "modern", "fact"]) assert.ok(s[k], s.id + " " + k);
     const nm = s.name.toLowerCase().split(" ")[0]; for (const c of s.clues) assert.ok(!c.toLowerCase().includes(nm), `${s.id} clue gives it away`);
   }
-  for (const x of [...RECIPES, ...DISCOVERIES]) {
+  for (const x of [...RECIPES, ...DISCOVERIES, ...MODERN]) {
     assert.ok(OPS[x.op], x.id); assert.equal(new Set(x.shelf).size, 6, x.id + " shelf of 6");
     for (const i of x.shelf) assert.ok(REAGENTS[i], `${x.id} reagent ${i}`);
     for (const i of x.make) assert.ok(x.shelf.includes(i), `${x.id} needs ${i} on the shelf`);
@@ -51,7 +51,7 @@ test("content is complete and consistent", () => {
     for (const e of x.el) assert.ok(ELEMENTS[e], `${x.id} element ${e}`);
   }
   for (const s of SYMBOLS) for (const e of s.el) assert.ok(ELEMENTS[e], `${s.id} element ${e}`);
-  for (const d of DISCOVERIES) { const a = d.answer.toLowerCase().split(/[ :]/)[0];
+  for (const d of [...DISCOVERIES, ...MODERN]) { const a = d.answer.toLowerCase().split(/[ :]/)[0];
     for (const k of ["goal", "hint", "product", "story"]) assert.ok(!d[k].toLowerCase().includes(a), `${d.id} ${k} gives the answer away`);
     assert.equal(d.options.length, 4); assert.ok(d.options.includes(d.answer), d.id); assert.ok(d.who && d.when); }
   for (const x of RECIPES) assert.notEqual(x.op, "electrolyse", "no electricity in old recipes");
@@ -128,7 +128,7 @@ test("deadly gases and real-life hazards: kinds, gas scene, and safety gear that
 test("free play: every product can be made from the full shelf, hazards first, first finds pay once", async () => {
   const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
   const { experiment, logPlay, gridOf, FINDS, FIND_PTS } = await import("../activity/src/alchemy/logic.js");
-  assert.equal(FINDS.length, RECIPES.length + DISCOVERIES.length);
+  assert.equal(FINDS.length, RECIPES.length + DISCOVERIES.length + MODERN.length);
   for (const x of FINDS) assert.equal(experiment(x.make, x.op).find?.id, x.id, x.id);
   assert.equal(experiment(["vitriol", "water"], "dissolve").hazard.id, "acidwater");
   assert.ok(experiment(["gold", "salt"], "heat").nothing); assert.equal(experiment([], "heat"), null);
@@ -138,6 +138,45 @@ test("free play: every product can be made from the full shelf, hazards first, f
   logPlay(p, experiment(["mercury"], "distil")); logPlay(p, experiment(["mercury"], "distil"));
   const g = gridOf(p); assert.equal(g.total, FINDS.length + HAZARDS.length); assert.equal(g.got, 2);
   assert.ok(gridOf({}).got === 0);
+});
+test("daily experiment is the same for everyone each day; streaks grow and cap; seal pays once", async () => {
+  const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
+  const { dailyOf, logDaily, dayKey, FINDS, DAILY_BASE, DAILY_STEP, DAILY_MAX, sealOf } = await import("../activity/src/alchemy/logic.js");
+  assert.equal(dailyOf("2026-11-27").x.id, dailyOf("2026-11-27").x.id);
+  const seen = new Set(); for (let d = 1; d <= 28; d++) { const k = `2026-02-${String(d).padStart(2, "0")}`, dd = dailyOf(k); assert.ok(FINDS.includes(dd.x)); assert.ok(dd.L.deck.includes(dd.x)); seen.add(dd.x.id); }
+  assert.ok(seen.size >= 8, "varied picks");
+  assert.equal(dayKey(new Date("2026-11-27T23:00:00Z")), "2026-11-27");
+  const p = {};
+  assert.equal(logDaily(p, "2026-11-01", false), null);
+  assert.deepStrictEqual(logDaily(p, "2026-11-01", true), { bonus: DAILY_BASE, streak: 1 });
+  assert.equal(logDaily(p, "2026-11-01", true), null, "once a day");
+  assert.equal(logDaily(p, "2026-11-02", true).streak, 2);
+  assert.equal(logDaily(p, "2026-11-04", true).streak, 1, "a missed day resets");
+  for (let d = 5; d <= 14; d++) logDaily(p, `2026-11-${String(d).padStart(2, "0")}`, true);
+  assert.equal(logDaily(p, "2026-11-15", true).bonus, DAILY_BASE + DAILY_STEP * (DAILY_MAX - 1), "bonus caps");
+  assert.ok(room(p).daily.best >= 11);
+  const q = { rooms: { alchemy: { accidents: HAZARDS.slice(1).map((h) => h.id) } } };
+  assert.equal(sealOf(q), false); q.rooms.alchemy.accidents.push(HAZARDS[0].id); assert.equal(sealOf(q), true); assert.equal(sealOf(q), false);
+});
+test("level 4: modern chemistry is real, ordered by date, uses the spectroscope, and names the find", () => {
+  assert.equal(LEVELS[3].deck, MODERN); assert.ok(MODERN.length >= 8);
+  const years = MODERN.map((x) => +x.when.match(/\d{4}/)[0]); assert.deepStrictEqual(years, [...years].sort((a, b) => a - b));
+  assert.ok(opsFor(LEVELS[3]).includes("spectro") && !opsFor(LEVELS[2]).includes("spectro"));
+  assert.ok(MODERN.some((x) => x.op === "spectro"));
+  assert.deepStrictEqual(ELEMENTS.Ga, [4, 13, 31]); assert.deepStrictEqual(ELEMENTS.Cs, [6, 1, 55]); assert.deepStrictEqual(ELEMENTS.Ra, [7, 2, 88]); assert.deepStrictEqual(ELEMENTS.Os, [6, 8, 76]);
+  const L = LEVELS[3], x = MODERN.find((m) => m.id === "haber"), run = start(x, L);
+  assert.equal(transmute(run, x, ["nitrogen", "hydrogengas", "air"], "heat"), "boom", "hydrogen and air explode");
+  const r2 = start(x, L); assert.equal(transmute(r2, x, ["hydrogengas", "nitrogen", "osmium"], "heat"), "right"); assert.equal(r2.stage, "name");
+  assert.equal(nameIt(r2, x, "Ammonia"), true); assert.equal(scoreOf(r2), Math.round(4 * 5 * 2.5 + 10 * 2.5));
+});
+test("race: ranking puts finishers first by flames then time, explosions last; pool spans levels 2-4", async () => {
+  const { raceRank, RACE_POOL, raceLevel } = await import("../activity/src/alchemy/logic.js");
+  const rows = raceRank([
+    { id: "a", won: false, flames: 0, ms: 5000, boom: true }, { id: "b", won: true, flames: 2, ms: 9000, boom: false },
+    { id: "c", won: true, flames: 3, ms: 20000, boom: false }, { id: "d", won: true, flames: 2, ms: 7000, boom: false }, { id: "e", won: false, flames: 0, ms: 3000, boom: false }]);
+  assert.deepStrictEqual(rows.map((r) => r.id), ["c", "d", "b", "e", "a"]); assert.deepStrictEqual(rows.map((r) => r.place), [1, 2, 3, 4, 5]);
+  assert.equal(RACE_POOL.length, RECIPES.length + DISCOVERIES.length + MODERN.length);
+  for (const x of RACE_POOL) assert.ok(raceLevel(x).n >= 2, x.id);
 });
 test("apothecary: free items owned, buying spends Essence and puts it on the bench", () => {
   const p = { essence: 70, owned: [] };
@@ -162,10 +201,10 @@ test("every recipe and discovery has its own reaction animation", async () => {
 test("hazards: real dangerous mixes explode and end the experiment; no correct recipe is a hazard; each is reachable", async () => {
   const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
   const { hazardOf } = await import("../activity/src/alchemy/logic.js");
-  for (const x of [...RECIPES, ...DISCOVERIES]) assert.equal(hazardOf(x.make, x.op), null, `${x.id}'s own recipe explodes`);
+  for (const x of [...RECIPES, ...DISCOVERIES, ...MODERN]) assert.equal(hazardOf(x.make, x.op), null, `${x.id}'s own recipe explodes`);
   for (const h of HAZARDS) {
     assert.ok(h.what && h.lesson && h.name, h.id);
-    const reach = [...RECIPES, ...DISCOVERIES].some((x) => { const ok = [...h.all, ...(h.any ? [h.any.find((i) => x.shelf.includes(i)) || h.any[0]] : [])];
+    const reach = [...RECIPES, ...DISCOVERIES, ...MODERN].some((x) => { const ok = [...h.all, ...(h.any ? [h.any.find((i) => x.shelf.includes(i)) || h.any[0]] : [])];
       return ok.every((i) => x.shelf.includes(i)) && ok.length <= 3 && hazardOf(ok, (h.ops || ["dissolve"])[0])?.id === h.id; });
     assert.ok(reach, `${h.id} can't happen on any shelf`);
   }

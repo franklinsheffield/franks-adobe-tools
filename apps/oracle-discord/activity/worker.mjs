@@ -4,7 +4,10 @@
 //   GET/PUT /api/progress  Bearer <access_token> -> { progress }  (the Chamber game layer: codex, streak, unlocks)
 //   GET/POST /api/daily/<game>  Bearer <access_token> -> today's shared daily-challenge board (src/daily.js)
 //   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
+//   GET  /api/tables?game=&instance=  (WebSocket) -> the call's shared table for a game room (tables.mjs, multiplayer)
 import { loadProfile } from "../src/profiles.js";
+import { Tables, tableRoute } from "./tables.mjs";
+export { Tables };
 import { settleBoost } from "./src/boost.js";
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -23,7 +26,7 @@ export async function whoIs(token, fetchImpl = fetch) {
 }
 
 /** Daily boards: KV "daily:<game>:<day>" = { e: { [userId]: { n, s, w, d, t } } }. First score per player per day counts. */
-export const DAILY_MAX = 2000;
+const DAILY_MAX = 2000; // not exported: a Worker module may only export handlers and classes
 export function boardView(doc, meId, day) {
   const all = Object.entries((doc && doc.e) || {}).map(([id, x]) => ({ id, ...x })).sort((a, b) => b.s - a.s || a.t - b.t);
   const row = (x) => ({ name: x.n, score: x.s, won: !!x.w, detail: x.d || "", me: x.id === meId });
@@ -110,7 +113,8 @@ export default {
       const { guildId } = await req.json().catch(() => ({}));
       return json(await boostCheck(env, me.id, guildId));
     }
-    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, profiles: !!env.PROFILES });
+    if (path === "/api/tables") return tableRoute(req, env, url);
+    if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, profiles: !!env.PROFILES, tables: !!env.TABLES });
     return env.ASSETS.fetch(req);
   },
 };

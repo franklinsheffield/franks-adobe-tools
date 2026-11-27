@@ -2,12 +2,14 @@ import test from "node:test";
 import assert from "node:assert";
 import { FIELDS } from "../activity/src/seance/ghosts.js";
 import { POOL } from "../activity/src/seance/practices.js";
+import { SKEPTICS, CASES } from "../activity/src/seance/debunk.js";
+import { guessMethod, hintsFor, buyHint, HINT_COST, related } from "../activity/src/seance/logic.js";
 import { LEVELS, ALL, TITLES, CANDLES, PICK_COST, optionById, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, solvedCount, room, nextGhost, keyOf } from "../activity/src/seance/logic.js";
 import { fresh, merge, activity } from "../activity/src/game.js";
 
 test("Séance decks: three levels, 5 real clues each, no clue gives the answer away", () => {
-  assert.equal(LEVELS.length, 3);
-  for (const L of LEVELS) {
+  assert.equal(LEVELS.length, 4);
+  for (const L of LEVELS.slice(0, 3)) {
     assert.ok(L.deck.length >= 12, "level " + L.n);
     assert.equal(new Set(L.deck.map((g) => g.id)).size, L.deck.length);
     for (const f of Object.keys(FIELDS)) assert.ok(L.deck.some((g) => g.field === f), `level ${L.n} has ${f}`);
@@ -90,4 +92,63 @@ test("Séance shelf: candle flames from real flame tests, one free", async () =>
   for (const it of shop.items) { assert.ok(it.id.startsWith("sc-") && CANDLE_LOOK[it.id], it.id); assert.ok(it.name && it.note, it.id); }
   assert.equal(candleLook("nope"), CANDLE_LOOK[DEFAULT_CANDLE]);
   for (const k of ["open", "tryon", "buy"]) assert.ok(shop.talk[k].length);
+});
+
+test("Level 4 Debunk: cases, skeptics, method step, no clue names the skeptic", () => {
+  const L4 = LEVELS[3]; assert.ok(L4.debunk && L4.deck === CASES && L4.pool === SKEPTICS);
+  assert.ok(CASES.length >= 10);
+  for (const c of CASES) {
+    assert.equal(c.clues.length, 4, c.id); assert.equal(c.options.length, 4); assert.ok(c.options[c.answer], c.id);
+    const sk = SKEPTICS.find((x) => x.id === c.answers[0]); assert.ok(sk, c.id);
+    for (const a of sk.aliases.filter((a) => a.length > 4)) for (const t of c.clues) assert.ok(!t.toLowerCase().includes(a), `${c.id} names ${a}`);
+    for (const a of sk.aliases) assert.equal(whoIs(a, L4, c)?.id, sk.id, a);
+    const ch = choices(c, L4); assert.equal(ch.length, 4); assert.equal(ch.filter((x) => x.id === sk.id).length, 1);
+  }
+  const c = CASES.find((x) => x.id === "margery"), run = start(c, L4), p = fresh();
+  assert.equal(guessMethod(run, c, c.answer), true); assert.equal(guessMethod(run, c, 0), null, "one try");
+  assert.equal(guessName(run, c, whoIs("Houdini", L4, c)), "right");
+  assert.equal(settle(p, run).score, Math.round(5 * 2.5) + Math.round(3 * 2.5) * 5);
+});
+
+test("hints cost Essence, once each; journal links a related ghost", () => {
+  const p = { ...fresh(), essence: HINT_COST + 5 };
+  for (const L of LEVELS) for (const g of L.deck) {
+    const hs = hintsFor(L, g); assert.ok(hs.length >= 2, g.id); assert.equal(new Set(hs.map((h) => h.id)).size, hs.length, g.id);
+    const r = related(L, g); assert.ok(r.g && r.L.deck.includes(r.g) && r.g !== g, "related " + g.id);
+  }
+  const L = LEVELS[2], g = L.deck[0], run = start(g, L);
+  assert.equal(buyHint(p, run, "letter"), "ok"); assert.equal(p.essence, 5);
+  assert.equal(buyHint(p, run, "letter"), "had"); assert.equal(buyHint(p, run, "when"), "poor");
+  const n = hintsFor(LEVELS[0], LEVELS[0].deck[0]).find((h) => h.id === "narrow"); assert.ok(n.text.includes(POOL.find((x) => x.id === LEVELS[0].deck[0].answers[0]).name));
+});
+
+test("Daily Ghost: same pick for a seed, rotates levels, share line has no spoilers", async () => {
+  const { dailyPick, shareLine } = await import("../activity/src/seance/logic.js");
+  const a = dailyPick(12345), b = dailyPick(12345); assert.equal(a.g.id, b.g.id); assert.equal(a.L.n, b.L.n);
+  assert.equal(new Set([0, 1, 2, 3].map((i) => dailyPick(1000 + i).L.n)).size, 4);
+  const run = { candles: 3, won: true, mode: "type", fieldRight: true, hints: [] }, line = shareLine(run, a.L, 331);
+  assert.ok(line.includes("#331") && line.includes("🕯️🕯️🕯️💨💨")); assert.ok(!line.toLowerCase().includes(a.g.name.toLowerCase()));
+});
+
+test("Group séance: votes, shared clues need half the circle, first right name wins, wrong names snuff shared candles", async () => {
+  const { groupStart, groupAct, groupReward, majority } = await import("../activity/src/seance/group.js");
+  const L = LEVELS[2], g = L.deck.find((x) => x.id === "faraday"), ms = [{ id: "a", name: "Ann" }, { id: "b", name: "Bo" }, { id: "c", name: "Cy" }];
+  const st = groupStart(L, g);
+  assert.equal(groupAct(st, "a", { a: "guess", text: "Faraday" }, ms, "a"), null, "vote first");
+  assert.equal(groupAct(st, "a", { a: "vote", f: "magic" }, ms, "a"), "vote");
+  assert.equal(groupAct(st, "b", { a: "vote", f: "science" }, ms, "a"), "vote");
+  assert.equal(groupAct(st, "b", { a: "close" }, ms, "a"), null, "only the host closes the vote");
+  assert.equal(groupAct(st, "c", { a: "vote", f: "science" }, ms, "a"), "field"); assert.equal(st.field, "science"); assert.ok(st.fieldRight);
+  assert.equal(majority({ a: "magic", b: "science" }, "a"), "magic", "a tie goes to the host");
+  assert.equal(groupAct(st, "a", { a: "ask" }, ms, "a"), "ask"); assert.equal(st.shown, 1);
+  assert.equal(groupAct(st, "b", { a: "ask" }, ms, "a"), "clue"); assert.equal(st.shown, 2); assert.equal(st.candles, CANDLES - 1);
+  assert.equal(groupAct(st, "b", { a: "guess", text: "zzqqx" }, ms, "a"), "unknown"); assert.equal(st.candles, CANDLES - 1, "unknown names are free");
+  assert.equal(groupAct(st, "b", { a: "guess", text: "Tesla" }, ms, "a"), "wrong"); assert.equal(st.candles, CANDLES - 2);
+  assert.equal(groupAct(st, "c", { a: "guess", text: "faraday" }, ms, "a"), "right"); assert.equal(st.winner, "c"); assert.equal(st.winnerName, "Cy");
+  assert.equal(groupAct(st, "a", { a: "guess", text: "faraday" }, ms, "a"), null, "round over");
+  const w = groupReward(st, "c"), o = groupReward(st, "a"); assert.ok(w.won && w.run.won && w.bonus > 0); assert.equal(o.essence, Math.round(5 * L.mult));
+  const p = fresh(); assert.equal(settle(p, w.run).score, Math.round(5 * L.mult) + Math.round(3 * L.mult) * 3);
+  const s2 = groupStart(L, g); groupAct(s2, "a", { a: "vote", f: "magic" }, ms.slice(0, 1), "a");
+  for (let i = 0; i < 4; i++) groupAct(s2, "a", { a: "guess", text: "Newton" }, ms.slice(0, 1), "a");
+  assert.equal(groupAct(s2, "a", { a: "guess", text: "Newton" }, ms.slice(0, 1), "a"), "out"); assert.ok(s2.over && !s2.winner);
 });

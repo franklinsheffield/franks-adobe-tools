@@ -8,17 +8,26 @@ export { LEVELS, pts };
 
 export const OUT_BONUS = 5, L3_MISS = 1;
 /** Small seeded random generator so games and tests can be replayed. */
-export function rng(seed = Date.now()) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+export function rng(seed = Date.now()) { let a = seed >>> 0; const f = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; f.state = () => a; return f; }
 export function shuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-/** A fresh game at a level. g.hands.me / g.hands.or hold HIP numbers. */
-export function newGame(L, seed = Date.now()) {
-  const r = rng(seed), deck = shuffle(Object.values(CARD).filter((c) => L.cons.includes(c.con)).map((c) => c.hip), r);
-  const g = { level: L.n, seed, r, deck, discard: [], hands: { me: [], or: [] }, melds: [], turn: "me", phase: "draw", took: null, misses: 0, nights: 1, over: false, out: null, nextId: 1 };
-  for (let i = 0; i < L.hand; i++) { g.hands.me.push(deck.pop()); g.hands.or.push(deck.pop()); }
+/** A fresh game at a level. o.seats = seat ids in turn order (default ["me", "or"]: you and the Oracle); o.persona = { seatId: persona key }
+ *  for Oracle seats. g.hands[seat] hold HIP numbers. With 3 or 4 seats more constellations join the deck so everyone gets a full hand. */
+export function newGame(L, seed = Date.now(), o = {}) {
+  const seats = o.seats || ["me", "or"], need = seats.length * L.hand + 10, cons = [...L.cons];
+  for (const c of LEVELS[LEVELS.length - 1].cons) if (cons.length * 4 < need && !cons.includes(c)) cons.push(c);
+  const r = rng(seed), deck = shuffle(Object.values(CARD).filter((c) => cons.includes(c.con)).map((c) => c.hip), r);
+  const g = { level: L.n, seed, r, deck, discard: [], seats, cons, persona: o.persona || {}, hands: Object.fromEntries(seats.map((s) => [s, []])), melds: [], turn: seats[0], phase: "draw",
+    took: null, miss: {}, nights: 1, over: false, out: null, nextId: 1 };
+  for (let i = 0; i < L.hand; i++) for (const s of seats) g.hands[s].push(deck.pop());
   g.discard.push(deck.pop());
   return g;
 }
+/** The seat after this one. */
+export const nextSeat = (g, who) => g.seats[(g.seats.indexOf(who) + 1) % g.seats.length];
+/** For saving or sending a game: plain JSON (the random generator becomes its state). */
+export const freeze = (g) => ({ ...g, r: undefined, rs: g.r ? g.r.state() : g.rs });
+export const thaw = (x) => ({ ...x, r: rng(x.rs) });
 export const levelOf = (g) => LEVELS[g.level - 1];
 export const top = (g) => g.discard[g.discard.length - 1] ?? null;
 
@@ -55,7 +64,7 @@ function restock(g) { if (g.nights >= 2 || g.discard.length < 2) return; const k
 export function layDown(g, who, hips) {
   if (g.over || g.turn !== who || g.phase !== "play") return null;
   const t = setType(g, hips);
-  if (!t) { if (who === "me" && !levelOf(g).labels) g.misses++; return null; }
+  if (!t) { if (!levelOf(g).labels) g.miss[who] = (g.miss[who] || 0) + 1; return null; }
   if (!take(g, who, hips)) return null;
   const m = { id: g.nextId++, ...t, owner: who, cards: hips.map((hip) => ({ hip, by: who })) };
   g.melds.push(m); checkOut(g, who); return m;
@@ -63,7 +72,7 @@ export function layDown(g, who, hips) {
 export function layOff(g, who, hip, meldId) {
   if (g.over || g.turn !== who || g.phase !== "play") return null;
   const m = g.melds.find((x) => x.id === meldId);
-  if (!m || !fits(g, hip, m)) { if (who === "me" && !levelOf(g).labels) g.misses++; return null; }
+  if (!m || !fits(g, hip, m)) { if (!levelOf(g).labels) g.miss[who] = (g.miss[who] || 0) + 1; return null; }
   if (!take(g, who, [hip])) return null;
   m.cards.push({ hip, by: who }); checkOut(g, who); return m;
 }
@@ -73,27 +82,39 @@ export function discard(g, who, hip) {
   if (hip === g.took && g.hands[who].length > 1) return false;
   if (!take(g, who, [hip])) return false;
   g.discard.push(hip); g.took = null; checkOut(g, who);
-  if (!g.over) { if (!g.deck.length && g.nights >= 2) g.over = true; else { g.turn = who === "me" ? "or" : "me"; g.phase = "draw"; } }
+  if (!g.over) { if (!g.deck.length && g.nights >= 2) g.over = true; else { g.turn = nextSeat(g, who); g.phase = "draw"; } }
   return true;
 }
 
-/** Points for each side. melded = cards each laid down (credited to whoever played the card). */
-export function tally(g) {
+/** Points for each seat. melded = cards each laid down (credited to whoever played the card). you = whose view:
+ *  me = your line, or = the best other seat, win = you beat every other seat, place = 1 for first. */
+export function tally(g, you = "me") {
   const side = (who) => { const melded = g.melds.flatMap((m) => m.cards).filter((c) => c.by === who).reduce((s, c) => s + pts(c.hip), 0);
-    const hand = g.hands[who].reduce((s, h) => s + pts(h), 0), bonus = g.out === who ? OUT_BONUS : 0, miss = who === "me" ? g.misses * L3_MISS : 0;
+    const hand = g.hands[who].reduce((s, h) => s + pts(h), 0), bonus = g.out === who ? OUT_BONUS : 0, miss = (g.miss[who] || 0) * L3_MISS;
     return { melded, hand, bonus, miss, total: melded - hand + bonus - miss }; };
-  const me = side("me"), or = side("or");
-  return { me, or, win: me.total > or.total, tie: me.total === or.total };
+  const by = Object.fromEntries(g.seats.map((s) => [s, side(s)])), me = by[you];
+  const rest = g.seats.filter((s) => s !== you), best = rest.reduce((a, s) => (by[s].total > by[a].total ? s : a), rest[0]), or = by[best];
+  const place = 1 + rest.filter((s) => by[s].total > me.total).length;
+  return { by, me, or, best, win: rest.every((s) => me.total > by[s].total), tie: me.total === or.total, place };
 }
 
 // ---- the Oracle's play ----
+// Oracle opponents. Each plays a different style and has its own lines (room.js) and a first-win Essence prize.
+export const PERSONAS = {
+  seer: { key: "seer", name: "The Oracle", emoji: "🔮", style: "Plays a steady, balanced game.", prize: 0 },
+  magpie: { key: "magpie", name: "Magpie", emoji: "🐦‍⬛", style: "Grabs almost every discard and adds to every set it can.", prize: 15 },
+  hoarder: { key: "hoarder", name: "Hoarder", emoji: "💰", style: "Keeps the brightest stars and throws away the dim ones.", prize: 15 },
+  trickster: { key: "trickster", name: "Trickster", emoji: "🃏", style: "Hides its sets until it can go out at once, and throws bait.", prize: 20 },
+};
+export const personaOf = (g, who) => PERSONAS[g.persona?.[who]] || PERSONAS.seer;
+
 /** How much the Oracle wants to keep a card: partners in hand, and whether it fits the table. */
-function keep(g, hand, hip) {
+function keep(g, hand, hip, P = PERSONAS.seer) {
   const c = CARD[hip], L = levelOf(g); let v = 0;
   const same = hand.filter((h) => h !== hip && CARD[h].con === c.con).length; v += same * 2;
   if (L.colour) v += 0.6 * new Set(hand.filter((h) => h !== hip && CARD[h].cls === c.cls && CARD[h].con !== c.con).map((h) => CARD[h].con)).size;
   if (fitsAny(g, hip)) v += 5;
-  return v - pts(hip) * 0.15; // with ties, throw away the bright (costly) one
+  return v + pts(hip) * (P.key === "hoarder" ? 0.8 : -0.15); // with ties, throw away the bright (costly) one; the Hoarder keeps it
 }
 /** Best sets in a hand: whole constellations first, then colour sets from what's left. */
 export function findSets(g, hand) {
@@ -106,22 +127,38 @@ export function findSets(g, hand) {
   }
   return out;
 }
-/** The Oracle's turn as steps (a generator, so the room can animate each one). Each yield: { t, ... } */
-export function* oracleTurn(g) {
-  const L = levelOf(g), r = g.r, hand = g.hands.or, t = top(g);
-  const wantTop = t != null && (fitsAny(g, t) || hand.filter((h) => CARD[h].con === CARD[t].con).length >= 2 ||
+/** An Oracle seat's turn as steps (a generator, so the room can animate each one). Each yield: { t, who, ... } */
+export function* oracleTurn(g, who = "or") {
+  const L = levelOf(g), r = g.r, hand = g.hands[who], t = top(g), P = personaOf(g, who);
+  const partners = t != null ? hand.filter((h) => CARD[h].con === CARD[t].con).length : 0;
+  const wantTop = t != null && (fitsAny(g, t) || partners >= 2 ||
     (L.colour && new Set(hand.filter((h) => CARD[h].cls === CARD[t].cls && CARD[h].con !== CARD[t].con).map((h) => CARD[h].con)).size >= 2));
-  const from = wantTop && r() < L.skill + 0.1 ? "discard" : "deck";
-  const got = draw(g, "or", from); yield { t: "draw", from, hip: got };
+  let from = wantTop && r() < L.skill + 0.1 ? "discard" : "deck";
+  if (t != null && P.key === "magpie" && (wantTop || partners >= 1) && r() < 0.95) from = "discard";
+  if (t != null && P.key === "hoarder" && pts(t) >= 2 && r() < 0.8) from = "discard";
+  const got = draw(g, who, from); yield { t: "draw", who, from, hip: got };
   if (g.over) return;
-  for (const set of findSets(g, hand)) { const m = layDown(g, "or", set); if (m) { yield { t: "meld", meld: m }; if (g.over) return; } }
-  let again = true;
+  const sets = findSets(g, hand);
+  // the Trickster keeps its sets hidden until it can go out in one go, or the night is nearly over, or someone is close to going out
+  let hold = false;
+  if (P.key === "trickster" && sets.length) {
+    const used = new Set(sets.flat()), loose = hand.filter((h) => !used.has(h) && !fitsAny(g, h)).length;
+    const late = g.deck.length < 8 || g.seats.some((s) => s !== who && g.hands[s].length <= 3);
+    hold = loose > 1 && !late;
+  }
+  if (!hold) for (const set of sets) { const m = layDown(g, who, set); if (m) { yield { t: "meld", who, meld: m }; if (g.over) return; } }
+  let again = !hold || P.key !== "trickster";
   while (again && hand.length > 1) { again = false;
-    for (const h of [...hand]) { const m = fitsAny(g, h); if (m && hand.length > 1) { layOff(g, "or", h, m.id); yield { t: "layoff", hip: h, meld: m }; again = true; if (g.over) return; } } }
+    for (const h of [...hand]) { const m = fitsAny(g, h); if (m && hand.length > 1) { layOff(g, who, h, m.id); yield { t: "layoff", who, hip: h, meld: m }; again = true; if (g.over) return; } } }
   const options = hand.filter((h) => h !== g.took || hand.length === 1);
-  let pick = options.reduce((a, h) => (keep(g, hand, h) < keep(g, hand, a) ? h : a), options[0]);
+  let pick = options.reduce((a, h) => (keep(g, hand, h, P) < keep(g, hand, a, P) ? h : a), options[0]);
   if (r() > L.skill) pick = options[Math.floor(r() * options.length)];
-  discard(g, "or", pick); yield { t: "discard", hip: pick };
+  let bait = false;
+  if (P.key === "trickster" && r() < 0.3) { // bait: throw away one of a pair, as if it didn't want that constellation
+    const pair = options.find((h) => hand.filter((x) => x !== h && CARD[x].con === CARD[h].con).length === 1 && !fitsAny(g, h));
+    if (pair != null) { pick = pair; bait = true; }
+  }
+  discard(g, who, pick); yield { t: "discard", who, hip: pick, bait };
 }
 
 // ---- progress and rewards ----
@@ -130,18 +167,20 @@ export const TITLES = [{ at: 0, name: "Star Dealer" }, { at: 3, name: "Sky Shuff
 export const winsOf = (p) => Object.values(room(p).wins).reduce((s, n) => s + n, 0);
 export const titleOf = (n) => TITLES.reduce((a, t) => (n >= t.at ? t : a), TITLES[0]);
 export const nextTitle = (n) => TITLES.find((t) => t.at > n) || null;
-/** Record a finished game. Returns { xp, essence, win, firstWin, best, newCons, newFull } */
-export function settle(p, g) {
-  const L = levelOf(g), x = room(p), s = tally(g), k = String(L.n);
+/** Record a finished game for seat you. Returns { xp, essence, win, firstWin, best, newCons, newFull, beat } (beat = a persona beaten for the first time). */
+export function settle(p, g, you = "me") {
+  const L = levelOf(g), x = room(p), s = tally(g, you), k = String(L.n);
   x.plays++; x.games[k] = (x.games[k] || 0) + 1;
   const firstWin = s.win && !x.wins[k]; if (s.win) x.wins[k] = (x.wins[k] || 0) + 1;
   const best = s.me.total > (x.best[k] ?? -Infinity); if (best) x.best[k] = s.me.total;
-  const mine = g.melds.filter((m) => m.type === "con" && m.cards.some((c) => c.by === "me"));
+  const mine = g.melds.filter((m) => m.type === "con" && m.cards.some((c) => c.by === you));
   const newCons = [...new Set(mine.map((m) => m.key))].filter((c) => !x.cons[c]); for (const c of newCons) x.cons[c] = true;
-  const newFull = mine.filter((m) => m.cards.length === 4 && m.owner === "me").map((m) => m.key).filter((c) => !x.full[c]); for (const c of newFull) x.full[c] = true;
+  const newFull = mine.filter((m) => m.cards.length === 4 && m.owner === you).map((m) => m.key).filter((c) => !x.full[c]); for (const c of newFull) x.full[c] = true;
   const xp = Math.round(Math.max(3, s.me.total) * L.mult);
-  const essence = (s.win ? 4 * L.n : 0) + (firstWin ? 10 : 0) + 3 * newFull.length;
-  return { xp, essence, win: s.win, tie: s.tie, firstWin, best, newCons, newFull, score: s };
+  x.beat ||= {}; let beat = null;
+  if (s.win) for (const o of g.seats) { const P = g.persona?.[o] && PERSONAS[g.persona[o]]; if (P && P.prize && !x.beat[P.key]) { x.beat[P.key] = true; beat = beat || P; } }
+  const essence = (s.win ? 4 * L.n : 0) + (firstWin ? 10 : 0) + 3 * newFull.length + (beat ? beat.prize : 0);
+  return { xp, essence, win: s.win, tie: s.tie, firstWin, best, newCons, newFull, score: s, beat };
 }
 
 // ---- card backs: chosen on the Essence store's Cards shelf (cardbacks.js), shared by every deck in the Chamber ----

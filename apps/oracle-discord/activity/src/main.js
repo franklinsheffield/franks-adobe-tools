@@ -623,6 +623,7 @@ showVoice();
     try {
       const d = await startDiscord();
       if (d.user) { state.name = d.user.global_name || d.user.username; state.userId = d.user.id; state.token = d.token; state.guildId = d.guildId; }
+      state.instance = d.sdk && d.sdk.instanceId; // the call: multiplayer tables (net.js) are per call
       if (d.token) {
         const p = await fetch(api("/api/profile"), { headers: { authorization: "Bearer " + d.token } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
         if (p && p.profile) state.profile = p.profile;
