@@ -125,3 +125,25 @@ export function logPlay(p, res) {
 /** The Discoveries grid: every product and every accident, found or not. */
 export const gridOf = (p) => { const r = room(p), f = r.found || [], a = r.accidents || [];
   return { finds: FINDS.map((x) => ({ x, on: f.includes(x.id) })), hazards: HAZARDS.map((h) => ({ h, on: a.includes(h.id) })), total: FINDS.length + HAZARDS.length, got: f.length + a.filter((id) => HAZARDS.some((h) => h.id === id)).length }; };
+
+// ---- the gold seal: every accident learned ----
+export const SEAL_PTS = 50;
+/** True the first time every hazard is in your accidents (then pays SEAL_PTS ✦ and 💎 once). */
+export function sealOf(p) { const r = room(p); if (r.seal || !HAZARDS.every((h) => (r.accidents || []).includes(h.id))) return false; r.seal = true; return true; }
+
+// ---- the Daily Experiment: one recipe or discovery a day, the same for everyone ----
+export const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+const prevDay = (k) => dayKey(new Date(Date.parse(k + "T12:00:00Z") - 864e5));
+/** Today's experiment, picked from the date alone so every member gets the same one. */
+export function dailyOf(k = dayKey()) {
+  const n = [...k].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % FINDS.length, x = FINDS[n];
+  return { L: LEVELS[RECIPES.includes(x) ? 1 : 2], x };
+}
+export const DAILY_BASE = 10, DAILY_STEP = 5, DAILY_MAX = 7;
+/** Settle a finished daily run. Only the first win of the day counts: { bonus, streak } or null. */
+export function logDaily(p, k, won) {
+  const r = room(p), d = (r.daily ||= { last: null, streak: 0, best: 0 });
+  if (!won || d.last === k) return null;
+  d.streak = d.last === prevDay(k) ? d.streak + 1 : 1; d.last = k; d.best = Math.max(d.best, d.streak);
+  return { bonus: DAILY_BASE + DAILY_STEP * (Math.min(d.streak, DAILY_MAX) - 1), streak: d.streak };
+}
