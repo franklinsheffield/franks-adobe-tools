@@ -161,6 +161,18 @@ export const BANTER = {
     pirate: G("Shoot the star, matey, and mark it true!", "Greenwich time in the box, our noon in the sky. Arr.", "Land ho! Drop anchor and break out the grog!", "Lost, blast it! Back to dead reckonin'!"),
     influencer: G("Analogue navigation is so aesthetic right now.", "This sextant is giving vintage explorer vibes.", "Landfall! Pinning this voyage to my travel board!", "Lost at sea. Not the content I wanted."),
   },
+  messier: {
+    mystic: G("Every fuzzy patch is a door left ajar in the dark.", "A hundred and ten lanterns, hung by one patient man.", "Another light written in the book. The sky remembers.", "It slipped behind the veil. It will wait for you."),
+    deadpan: G("It is fuzzy. Most things in this list are fuzzy.", "Messier wanted comets. He catalogued their impostors.", "Correct. One more smudge accounted for.", "Wrong smudge. The sky has many."),
+    drama: G("A GALAXY! Millions of light years in ONE glance!", "Is it a cluster? A cloud? The SUSPENSE!", "LOGGED! Messier himself would weep with joy!", "Mistaken! The catalogue mourns its missing page!"),
+    standup: G("Messier's list: a guide to things that are not comets.", "Imagine being famous for your list of disappointments.", "Logged! Charles would put you on the payroll.", "Missed. Even Messier logged a double star by mistake."),
+    grumpy: G("Patience. Your eyes need half an hour to adapt to the dark.", "In my day we had a candle and a lens. Look closer.", "Fine. Now log the other hundred.", "Wrong. Put the kettle on and look again."),
+    sports: G("Eyepiece in, focus turning, what have we got?", "It's a marathon, folks, all 110 in one night!", "INTO THE BOOK! The crowd goes wild!", "Off target! Reset and go again!"),
+    conspiracy: G("110 objects. Why did they stop at 110? Ask.", "M102 might be a duplicate. Nobody will say for sure.", "Logged. Now they know what you know.", "Wrong. Or the catalogue was edited. Things go missing."),
+    bard: G("Through glass I spy a cloud of distant suns.", "A smudge of light, a city made of stars.", "Into the book it goes, a verse among the stars!", "Alas, the patch hath fled into the night."),
+    pirate: G("A fuzzy treasure off the starboard bow!", "Mark it in the logbook, matey. Messier's orders.", "Logged! Another jewel for the chest!", "Lost it in the fog, blast it!"),
+    influencer: G("Deep sky is the aesthetic of the season, honestly.", "This galaxy has no filter and it's still perfect.", "Logged! Collecting galaxies like vintage finds.", "Missed it. Not a vibe, we go again."),
+  },
   comet: {
     mystic: G("What wanders is never truly lost. Watch the blink.", "A comet is a letter from the edge of the Sun's realm.", "You caught a wanderer. The sky whispers your name.", "It slipped behind the stars. It will pass again."),
     deadpan: G("Two pictures of dots. Spot the different dot.", "It moved. Slowly. Like everything in astronomy.", "Found it. The comet does not care, but I do. A little.", "Missed. The comet is now in a different place. Classic."),

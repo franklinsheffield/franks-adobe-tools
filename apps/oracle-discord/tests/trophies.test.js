@@ -25,7 +25,7 @@ test("trophies: tiers, one-time payouts, prismatic, sets, oracle readings, showc
 
 test("trophies: every game room reports to the Trophy Case", async () => {
   const { readFileSync } = await import("node:fs");
-  for (const r of ["seance", "decoder", "alchemy", "timeline", "stars", "calendar", "grimoire", "duel", "memory", "rummy", "watch", "comet", "eclipse", "navigator"])
+  for (const r of ["seance", "decoder", "alchemy", "timeline", "stars", "calendar", "grimoire", "duel", "memory", "rummy", "watch", "comet", "eclipse", "navigator", "messier"])
     assert.match(readFileSync(new URL(`../activity/src/${r}/room.js`, import.meta.url), "utf8"), new RegExp(`trophy\\?\\.\\("${r}"`), r);
 });
 
