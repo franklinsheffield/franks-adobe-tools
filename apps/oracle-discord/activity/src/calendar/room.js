@@ -7,6 +7,7 @@ import { LEVELS, ALL, keyOf } from "./puzzles.js";
 import { STARS, room as cal, starsOf, doneCount, titleOf, nextTitle, isOpen, nextPuzzle, start, useHint, check, settle, SHOP, lookOf } from "./logic.js";
 import { GUIDES, GUIDE_ORDER } from "./guide.js";
 import { CSS } from "./style.js";
+import * as S from "./sfx.js";
 
 const escH = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -40,10 +41,11 @@ const fxLayer = (fx, L) => {
 };
 
 /** The desk for day j. `from` (a JDN) lets the gears turn from that day to this one. */
-export function deskSvg(j, look, from = j) {
+export function deskSvg(j, look, from = j, scene = null) {
   const L = look, m = E.maya(j), e = E.egyptCivil(j), c = E.copticOf(j), nf = E.nextFestival(j), sun = E.sunLon(j), ph = E.moonPhase(j);
   const days = (x) => x - E.GMT, rot = (x) => ({ small: -days(x) * (360 / 13), big: days(x) * 18 });
-  const r0 = Math.abs(j - from) <= 40 ? rot(from) : rot(j), r1 = rot(j), spin = L.fx === "spin" ? " cal-spin" : "";
+  const mode = j === from ? "enter" : Math.abs(j - from) <= 40 ? "turn" : "whirl", dir = j >= from ? 1 : -1, r1 = rot(j);
+  const r0 = mode === "turn" ? rot(from) : mode === "whirl" ? { small: r1.small + 720 * dir, big: r1.big - 1080 * dir } : r1, spin = L.fx === "spin" ? " cal-spin" : "";
   // Tzolk'in: the 13 gear and the 20 gear mesh at x≈106. Tone k sits at angle (k-1)·360/13 offset so tone 1 starts at the contact point.
   const sCx = 238, bCx = 388, cy = 128, sR = 67, bR = 83, cy2 = 292;
   // tone label n+1 sits at toneAt(n); the gear's rotation brings today's tone to angle 0 (the contact point)
@@ -55,39 +57,60 @@ export function deskSvg(j, look, from = j) {
   const eCx = 130, d2a = (d) => (d / 365) * 360 - 90;
   const months = Array.from({ length: 13 }, (_, i) => { const a0 = d2a(i * 30) + 0.6, a1 = d2a(Math.min(365, i * 30 + (i === 12 ? 5 : 30))) - 0.6;
     return `<path d="${arc(eCx, cy2, 62, a0, a1)}" stroke="${SEASON_C[E.EGY_SEASON[i]]}" stroke-width="15" fill="none" opacity="${i === e.month ? 1 : 0.55}"/>`; }).join("");
-  const needle = d2a(e.doy + 0.5), needle0 = d2a(E.egyptCivil(from).doy + 0.5);
+  const needle = d2a(e.doy + 0.5), needle0 = mode === "whirl" ? needle - 360 * dir : d2a(E.egyptCivil(from).doy + 0.5);
   // Celtic: wheel of the year by the Sun's ecliptic longitude (June solstice at the top)
-  const kCx = 385, ca = (lon) => -lon, sun0 = E.sunLon(from);
+  const kCx = 385, ca = (lon) => -lon, sun0 = mode === "whirl" ? sun + 360 * dir : E.sunLon(from);
   const ticks = [0, 90, 180, 270].map((l) => { const [x0, y0] = pt(kCx, cy2, 52, ca(l)), [x1, y1] = pt(kCx, cy2, 68, ca(l)); return `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${L.gear2}" stroke-width="2"/>`; }).join("");
   const fests = E.FESTIVALS.map((f) => { const [x, y] = pt(kCx, cy2, 60, ca(f.lon)), [tx, ty] = pt(kCx, cy2, 82, ca(f.lon)), on = nf && nf.f.id === f.id;
     return `<circle cx="${x}" cy="${y}" r="${on ? 6 : 4}" fill="${on ? L.ring : L.gear}"/><text x="${tx}" y="${(+ty + 3).toFixed(1)}" font-size="10" text-anchor="middle" fill="${L.text}" opacity=".85">${escH(f.name.split(" ")[0])}</text>`; }).join("");
   const [sx, sy] = pt(kCx, cy2, 60, 0);
   const row = (x, y0, lines) => lines.map((t, i) => `<text x="${x}" y="${y0 + i * 19}" font-size="${i === 0 ? 12 : 11.5}" text-anchor="middle" fill="${i === 0 ? L.ring : L.text}" ${i === 1 ? 'font-weight="700"' : ""}>${escH(t)}</text>`).join("");
   const ndays = nf ? nf.jdn - j : 0;
-  return `<svg class="cal-desk" viewBox="0 0 520 470" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The calendars on ${escH(E.fmt(j, true))}">
-<defs><radialGradient id="cal-bg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="${L.bg[0]}"/><stop offset="1" stop-color="${L.bg[1]}"/></radialGradient></defs>
+  return `<svg class="cal-desk ${mode}" viewBox="0 0 520 470" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The calendars on ${escH(E.fmt(j, true))}">
+<defs><radialGradient id="cal-corona"><stop offset=".55" stop-color="#fff6d8" stop-opacity=".9"/><stop offset="1" stop-color="#9ad7ff" stop-opacity="0"/></radialGradient><radialGradient id="cal-flame" cx="50%" cy="80%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#FADE8C"/><stop offset="1" stop-color="#ff5a1f"/></radialGradient><radialGradient id="cal-bg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="${L.bg[0]}"/><stop offset="1" stop-color="${L.bg[1]}"/></radialGradient></defs>
 <rect x="-400" y="-300" width="1320" height="900" fill="${L.bg[1]}"/><rect width="520" height="470" fill="url(#cal-bg)"/>${fxLayer(L.fx, L)}
 <text x="260" y="28" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="18" text-anchor="middle" fill="${L.text}" letter-spacing="1">${escH(E.fmt(j, true))}</text>
-<g class="cal-g" style="transform:rotate(${r0.small}deg);transform-origin:${sCx}px ${cy}px" data-to="${r1.small}"><g class="cal-inner${spin}" style="transform-origin:${sCx}px ${cy}px"><path d="${gearPath(sCx, cy, sR, 13, 9)}" fill="${L.gear}" stroke="${L.gear2}" stroke-width="1.5"/><circle cx="${sCx}" cy="${cy}" r="30" fill="${L.gear2}"/>${tl}</g></g>
+<g class="cal-dial d1"><g class="cal-g" style="transform:rotate(${r0.small}deg);transform-origin:${sCx}px ${cy}px" data-to="${r1.small}"><g class="cal-inner${spin}" style="transform-origin:${sCx}px ${cy}px"><path d="${gearPath(sCx, cy, sR, 13, 9)}" fill="${L.gear}" stroke="${L.gear2}" stroke-width="1.5"/><circle cx="${sCx}" cy="${cy}" r="30" fill="${L.gear2}"/>${tl}</g></g>
 <g class="cal-g" style="transform:rotate(${r0.big}deg);transform-origin:${bCx}px ${cy}px" data-to="${r1.big}"><g class="cal-inner${spin} rev" style="transform-origin:${bCx}px ${cy}px"><path d="${gearPath(bCx, cy, bR, 20, 9)}" fill="${L.gear}" stroke="${L.gear2}" stroke-width="1.5"/><circle cx="${bCx}" cy="${cy}" r="40" fill="${L.gear2}"/>${sl}</g></g>
-<rect x="${sCx + sR - 42}" y="${cy - 17}" width="84" height="34" rx="7" fill="none" stroke="${L.ring}" stroke-width="2.5"/>
-<g>${months}<circle cx="${eCx}" cy="${cy2}" r="50" fill="${L.bg[1]}" opacity=".7"/>
+</g><rect class="cal-win" x="${sCx + sR - 42}" y="${cy - 17}" width="84" height="34" rx="7" fill="none" stroke="${L.ring}" stroke-width="2.5"/>
+<g class="cal-dial d2">${months}<circle cx="${eCx}" cy="${cy2}" r="50" fill="${L.bg[1]}" opacity=".7"/>
 <line class="cal-g" x1="${eCx}" y1="${cy2}" x2="${eCx + 70}" y2="${cy2}" stroke="${L.ring}" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(${needle0}deg);transform-origin:${eCx}px ${cy2}px" data-to="${needle}"/>
 <circle cx="${eCx}" cy="${cy2}" r="6" fill="${L.ring}"/><text x="${eCx}" y="${cy2 - 24}" font-size="11" text-anchor="middle" fill="${L.text}">${escH(e.season)}</text></g>
-<g><circle cx="${kCx}" cy="${cy2}" r="68" fill="none" stroke="${L.gear}" stroke-width="2.5" opacity=".8"/><circle cx="${kCx}" cy="${cy2}" r="52" fill="none" stroke="${L.gear2}" stroke-width="1"/>${ticks}${fests}
+<g class="cal-dial d3"><circle cx="${kCx}" cy="${cy2}" r="68" fill="none" stroke="${L.gear}" stroke-width="2.5" opacity=".8"/><circle cx="${kCx}" cy="${cy2}" r="52" fill="none" stroke="${L.gear2}" stroke-width="1"/>${ticks}${fests}
 <g class="cal-g" style="transform:rotate(${ca(sun0)}deg);transform-origin:${kCx}px ${cy2}px" data-to="${ca(sun)}"><circle cx="${sx}" cy="${sy}" r="9" fill="#FADE8C" stroke="#fff" stroke-width="1.2"/></g>
-${moonSvg(kCx, cy2, 20, ph, L)}</g>
+${moonSvg(kCx, cy2, 20, ph, L)}</g>${sceneSvg(scene, L, { sCx, sR, cy, kCx, cy2 })}
 ${row(76, 98, ["Maya", m.tz, `Haab' ${m.haabName}`, `Long Count ${m.lc}`])}
 ${row(130, 402, ["Egypt (civil year)", e.short, `Season: ${e.season}`, `Coptic: ${c.text}`])}
 ${row(385, 402, ["Celtic year", nf ? `${nf.f.name.split(" ")[0]} ${ndays ? `in ${ndays} day${ndays === 1 ? "" : "s"}` : "today"}` : "", `Sun at ${Math.round(sun)}°`, PHASE(ph)])}
 </svg>`;
 }
 
-/** Draw the desk on the table and let the gears turn from `from` to `j`. */
-function drawDesk(el, j, look, from) {
-  el.className = "table calendar"; el.innerHTML = `<div class="cal-wrap">${deskSvg(j, look, from)}</div>`;
-  requestAnimationFrame(() => requestAnimationFrame(() => el.querySelectorAll(".cal-g[data-to]").forEach((g) => { g.style.transform = `rotate(${g.dataset.to}deg)`; })));
+/** Animated overlays on the desk: a burst at the gears' window, a solar or lunar eclipse, or bonfire flames. */
+function sceneSvg(scene, L, g) {
+  if (!scene) return "";
+  if (scene === "right") return `<g class="cal-burst" style="transform-origin:${g.sCx + g.sR}px ${g.cy}px"><circle cx="${g.sCx + g.sR}" cy="${g.cy}" r="30" fill="none" stroke="${L.ring}" stroke-width="4"/>${Array.from({ length: 10 }, (_, i) => { const a = i * 36, [x, y] = pt(g.sCx + g.sR, g.cy, 70, a); return `<path class="cal-spark" style="--x:${(x - g.sCx - g.sR).toFixed(0)}px;--y:${(y - g.cy).toFixed(0)}px;animation-delay:${(i % 3) * 0.05}s" d="M${g.sCx + g.sR} ${g.cy - 7} L${g.sCx + g.sR + 2} ${g.cy - 2} L${g.sCx + g.sR + 7} ${g.cy} L${g.sCx + g.sR + 2} ${g.cy + 2} L${g.sCx + g.sR} ${g.cy + 7} L${g.sCx + g.sR - 2} ${g.cy + 2} L${g.sCx + g.sR - 7} ${g.cy} L${g.sCx + g.sR - 2} ${g.cy - 2}Z" fill="#FADE8C"/>`; }).join("")}</g>`;
+  if (scene === "solar") return `<g class="cal-ecl"><rect x="-400" y="-300" width="1320" height="900" class="cal-dark" fill="#000"/><g transform="translate(260 235)">
+    <circle r="92" fill="url(#cal-corona)" class="cal-corona"/><circle r="56" fill="#FFE9A8"/><circle r="56" fill="#FFF7D6" opacity=".6"/>
+    <circle r="57" fill="#05030c" class="cal-moon-slide"/><text y="118" font-family="Cinzel, Georgia, serif" font-size="15" text-anchor="middle" fill="#FADE8C" class="cal-ecl-t">Solar eclipse</text></g></g>`;
+  if (scene === "lunar") return `<g class="cal-ecl"><rect x="-400" y="-300" width="1320" height="900" class="cal-dark" fill="#000"/><g transform="translate(260 235)">
+    <circle r="78" fill="#b8402a" opacity=".18" class="cal-corona"/><circle r="56" fill="#efeae0" class="cal-blood"/><circle r="70" fill="#000" opacity=".55" class="cal-umbra"/>
+    <text y="118" font-family="Cinzel, Georgia, serif" font-size="15" text-anchor="middle" fill="#FADE8C" class="cal-ecl-t">Lunar eclipse</text></g></g>`;
+  if (scene === "fire") return `<g class="cal-fire">${[-46, -16, 16, 46].map((dx, i) => `<path class="cal-flame" style="animation-delay:${i * 0.13}s;transform-origin:${g.kCx + dx}px ${g.cy2 + 86}px" d="M${g.kCx + dx} ${g.cy2 + 40} C${g.kCx + dx + 14} ${g.cy2 + 62} ${g.kCx + dx + 12} ${g.cy2 + 80} ${g.kCx + dx} ${g.cy2 + 86} C${g.kCx + dx - 12} ${g.cy2 + 80} ${g.kCx + dx - 14} ${g.cy2 + 62} ${g.kCx + dx} ${g.cy2 + 40}Z" fill="url(#cal-flame)"/>`).join("")}</g>`;
+  return "";
 }
+
+/** Draw the desk on the table and let the gears turn from `from` to `j` (with their ratchet sound). */
+function drawDesk(el, j, look, from, scene = null, quiet = false) {
+  el.className = "table calendar"; el.innerHTML = `<div class="cal-wrap">${deskSvg(j, look, from, scene)}</div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => el.querySelectorAll(".cal-g[data-to]").forEach((g) => { g.style.transform = `rotate(${g.dataset.to}deg)`; })));
+  if (quiet) return;
+  const d = Math.abs(j - from);
+  if (d > 40) S.whirl(2.2); else if (d > 0) S.gears(d, 1.3); else S.clunk();
+  if (scene === "solar" || scene === "lunar") setTimeout(S.eclipse, d > 40 ? 1600 : 900);
+  if (scene === "fire") setTimeout(S.fire, d > 40 ? 1600 : 900);
+}
+/** Shake the desk (a wrong answer). */
+function shake(el) { const w = el && el.querySelector(".cal-wrap"); if (!w) return; w.classList.remove("shake"); void w.offsetWidth; w.classList.add("shake"); }
 
 // ---------------- study guides ----------------
 export function guideHtml(k) {
@@ -104,14 +127,14 @@ export const room = { id: "calendar", label: "Calendar Keeper", emoji: "🗓️"
       tryon: ["The {item}. Watch the gears turn.", "Picture your calendars on the {item}. Very scholarly."],
       buy: ["The {item} is yours. The days will look better on it.", "Sold! May the {item} keep perfect time."],
     },
-    preview(id, ctx) { drawDesk(ctx.tableEl, E.todayJdn(), lookOf({}, id), E.todayJdn() - 6); ctx.cap && ctx.cap("🗓️ " + (SHOP.find((s) => s.id === id) || SHOP[0]).name); },
+    preview(id, ctx) { drawDesk(ctx.tableEl, E.todayJdn(), lookOf({}, id), E.todayJdn() - 6, null); S.gears(6, 1.3); ctx.cap && ctx.cap("🗓️ " + (SHOP.find((s) => s.id === id) || SHOP[0]).name); },
   } };
 
 let C = null;
 const $ = (id) => document.getElementById(id);
 const look = () => lookOf(C.state.prog);
 let shown = null; // JDN on the desk
-const desk = (j, from = shown ?? j) => { drawDesk(C.tableEl || $("table"), j, look(), from); shown = j; };
+const desk = (j, from = shown ?? j, scene = null) => { drawDesk(C.tableEl || $("table"), j, look(), from, scene); shown = j; };
 const starRow = (n, of = STARS) => `<span class="cal-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}<i>${"★".repeat(of - n)}</i></span>`;
 const save = () => { try { C.saveProgress(); } catch {} };
 const onEnter = (id, fn) => { const el = $(id); if (el) el.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); fn(); } }; };
@@ -124,7 +147,7 @@ const guideRow = () => `<div class="group">Study guides</div><div class="choices
 function wireGuides() {
   $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => {
     const rb = $("reading-body"), k = b.dataset.g, on = !(rb.querySelector(".cal-guide") && rb.dataset.g === k);
-    rb.innerHTML = on ? guideHtml(k) : ""; rb.dataset.g = on ? k : "";
+    rb.innerHTML = on ? guideHtml(k) : ""; rb.dataset.g = on ? k : ""; S.page();
     if (on) rb.querySelector(".cal-guide").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
 }
@@ -202,7 +225,7 @@ function ask(L, p, run, line) {
     if (r === "right") return solved(L, p, run);
     if (r === "out") return outOf(L, p, run);
     if (label != null) (run.tried ||= []).push(label);
-    C.chime(0); ask(L, p, run, pick(WRONG) + (run.stars === 1 ? " One star left." : ""));
+    S.wrong(); shake(C.tableEl || $("table")); ask(L, p, run, pick(WRONG) + (run.stars === 1 ? " One star left." : ""));
   };
   $("ui").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => { const c = g.choices[+b.dataset.c]; answer(c, c); }));
   const go = () => {
@@ -211,15 +234,16 @@ function ask(L, p, run, line) {
     else if (g.kind === "egy") { const m = +$("cal-m").value, d = +$("cal-dd").value; if (m === 12 && d > 5) { C.say("There are only five epagomenal days."); return; } answer({ month: m, day: d }); }
   };
   if ($("cal-ans")) { $("cal-ans").onclick = go; onEnter("cal-n", go); setTimeout(() => $("cal-n") && $("cal-n").focus(), 50); }
-  if ($("cal-hint")) $("cal-hint").onclick = () => { const h = useHint(run); if (h) { C.chime(1); ask(L, p, run, h); } };
+  if ($("cal-hint")) $("cal-hint").onclick = () => { const h = useHint(run); if (h) { S.hint(); ask(L, p, run, h); } };
   $("cal-leave").onclick = () => lobby(false); wireGuides();
 }
 function solved(L, p, run) {
-  C.chime(2); if (run.g.after != null) desk(run.g.after);
+  S.right();
+  if (run.g.after != null && run.g.after !== shown) desk(run.g.after, shown, run.g.scene || "right"); else desk(shown, shown, run.g.scene || "right");
   C.talkThrough([`${pick(RIGHT)} ${ansText(run.g)}.`, run.g.explain], () => finish(L, p, run));
 }
 function outOf(L, p, run) {
-  if (run.g.after != null) desk(run.g.after);
+  S.wrong(); if (run.g.after != null) desk(run.g.after, shown, run.g.scene || null);
   C.talkThrough([`Out of stars. The Keeper turns the wheels for you: the answer is ${ansText(run.g)}.`, run.g.explain], () => finish(L, p, run));
 }
 function finish(L, p, run) {
@@ -227,10 +251,11 @@ function finish(L, p, run) {
   save(); C.showStats();
   const t = titleOf(r.total), titled = t.name !== before, nextL = LEVELS[L.n], unlocked = nextL && r.first && doneCount(prog, L) === 4;
   C.say(run.won ? pick(["Logged in the Keeper's book.", "Another day well counted.", "The calendars thank you."]) : "We'll count that one again another day.");
-  C.ui(`<div class="reward"><div>${starRow(r.stars)} <b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>${r.first ? " · first solve" : r.best ? " · new best" : run.won ? ` · best stays ${cal(prog).stars[run.key]} ★` : ""}</div>
+  C.ui(`<div class="reward"><div><span class="cal-pop">${starRow(r.stars)}</span> <b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>${r.first ? " · first solve" : r.best ? " · new best" : run.won ? ` · best stays ${cal(prog).stars[run.key]} ★` : ""}</div>
     ${titled ? `<div class="up">🗓️ Keeper title: <b>${C.esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${C.esc(aw.rankUp)}</b></div>` : ""}${unlocked ? `<div class="up">🔓 Level ${nextL.n} is open: ${C.esc(nextL.what)}</div>` : ""}</div>
     <div class="choices"><button class="c main" type="button" id="cal-next">🗓️ Next Level ${L.n} puzzle</button><button class="c" type="button" id="cal-again">↻ Play this one again</button><button class="c" type="button" id="cal-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-  if (titled || aw.rankUp || unlocked) C.chime(2);
+  if (r.stars) setTimeout(() => S.stars(r.stars), 150);
+  if (titled || aw.rankUp || unlocked) setTimeout(S.fanfare, 700);
   $("cal-next").onclick = () => play(L, nextPuzzle(prog, L, p.id)); $("cal-again").onclick = () => play(L, p);
   $("cal-lobby").onclick = () => lobby(false); $("back").onclick = C.greet;
 }
