@@ -31,3 +31,8 @@ test("Patterns count the most drawn and when the member reads", () => {
   const h = hoursOf([{ k: "reading", at: new Date(2026, 0, 1, 8).getTime() }, { k: "reading", at: new Date(2026, 0, 1, 23).getTime() }, { k: "save", at: new Date(2026, 0, 1, 14).getTime() }]);
   assert.deepEqual(h, { Night: 1, Morning: 1, Afternoon: 0, Evening: 0 });
 });
+
+test("the store try-on draws the binding opening on a sample spread", async () => {
+  const { bookPreviewHtml } = await import("../activity/src/book.js");
+  for (const b of BOOKS) { const h = bookPreviewHtml(b); assert.ok(h.includes(`data-page="${b.page}"`) && h.includes("bkp-cover") && h.includes("The Codex") && h.includes("Today"), b.id); }
+});

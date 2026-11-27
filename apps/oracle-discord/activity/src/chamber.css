@@ -1228,3 +1228,28 @@ body.slam .table{animation:g-tshake .4s ease-out}
 [data-vibe="v-lenormand"]{--btn-bg:#1f3a24;--btn-bd:#fbf1da;--btn-bs:dashed;--btn-r:8px;--btn-hover:#e9c27a;--box-bd:#e9c27a;--box-bs:dashed;--box-bw:2px;--box-r:10px;--box-bg:rgba(22,44,26,.95);--box-top:rgba(22,44,26,.98);--box-rule:#3a5a3e}
 [data-vibe="v-magicdeck"]{--btn-bg:rgba(10,30,48,.92);--btn-bd:#66E0C8;--btn-bs:dashed;--btn-r:6px;--btn-hover:#ff8fc8;--btn-hsh:0 0 12px rgba(255,143,200,.4);--box-bd:#66E0C8;--box-bs:dashed;--box-r:8px;--box-bg:rgba(8,24,40,.95);--box-top:rgba(8,24,40,.98);--box-rule:#1f4a5a}
 [data-vibe="v-tarot"]{--btn-bg:linear-gradient(180deg,#3a1440,#1e0a24);--btn-bd:#f0c565;--btn-bs:double;--btn-bw:3px;--btn-r:4px;--btn-hover:#fff1c9;--box-bd:#f0c565;--box-bs:double;--box-bw:4px;--box-r:6px;--box-bg:rgba(30,10,36,.95);--box-top:rgba(30,10,36,.98);--box-rule:#5a2a5e}
+/* the Grimoire book try-on, in the table box */
+.table.bkp-show{background:radial-gradient(circle at 50% 60%,var(--cloth1,#5a2a8a),var(--cloth3,#170a2e) 85%);display:flex;align-items:center;justify-content:center;perspective:1400px}
+.bk-stage.bkp{position:absolute;inset:0;width:auto;height:auto;display:flex;align-items:center;justify-content:center;perspective:1400px}
+.bkp-book{position:relative;width:min(86%,560px);aspect-ratio:10/7;transform-style:preserve-3d;animation:bkp-in .6s cubic-bezier(.2,.9,.3,1.1) both}
+.bkp-pages{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;padding:2.2%;border-radius:8px;background:linear-gradient(var(--cv1),var(--cv2));box-shadow:0 18px 40px rgba(0,0,0,.7),inset 0 0 0 2px var(--foil)}
+.bk-stage.bkp[data-fx="holo"] .bkp-pages{background:linear-gradient(120deg,#ff4fb3,#ffd27a,#66E0C8,#3d8bff,#ff4fb3);background-size:300% 300%;animation:bk-holo 8s linear infinite}
+.bkp-pg{overflow:hidden;padding:8% 7%;color:var(--ink);font-size:clamp(9px,1.6vw,13px);line-height:1.35;background:linear-gradient(90deg,var(--pg2),var(--pg1) 12%,var(--pg1) 88%,var(--pg2));opacity:0;animation:bkp-fade .4s 1.1s forwards}
+.bkp-pg:first-child{border-radius:6px 0 0 6px}.bkp-pg:nth-child(2){border-radius:0 6px 6px 0}
+.bk-stage.bkp[data-page="grid"] .bkp-pg{background-image:linear-gradient(rgba(15,107,99,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(15,107,99,.12) 1px,transparent 1px);background-size:14px 14px;background-color:var(--pg1)}
+.bkp-pg h4{margin:0 0 8px;font-family:var(--display,Cinzel,serif);color:var(--ink2);font-size:1.15em}
+.bkp-tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bkp-tile{padding:6px 4px;text-align:center;border:1px solid color-mix(in srgb,var(--ink2) 55%,transparent);border-radius:5px;background:color-mix(in srgb,var(--pg1) 70%,#fff 30%);opacity:0;animation:bkp-pop .35s calc(1.3s + var(--i) * 90ms) cubic-bezier(.34,1.56,.64,1) forwards}
+.bkp-tile.lock{color:transparent;text-shadow:0 0 6px var(--ink2);font-weight:700;background:color-mix(in srgb,var(--ink2) 18%,transparent)}
+.bkp-tile.lock::before{content:"?";color:var(--ink2)}
+.bkp-line{display:flex;gap:8px;padding:5px 0;border-bottom:1px dotted color-mix(in srgb,var(--ink2) 50%,transparent);opacity:0;animation:bkp-pop .35s calc(1.5s + var(--i) * 120ms) forwards}
+.bkp-line i{font-style:normal;color:var(--ink2);min-width:4.6em;font-family:var(--display,serif);font-size:.85em}
+.bkp-cover{position:absolute;top:0;bottom:0;left:50%;width:50%;transform-origin:left center;transform-style:preserve-3d;backface-visibility:hidden;animation:bkp-open 1.1s .45s cubic-bezier(.5,.05,.2,1) forwards;z-index:3}
+.bkp-cover svg{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6))}
+.bkp-leaf{position:absolute;top:2.2%;bottom:2.2%;left:50%;width:47.8%;transform-origin:left center;background:linear-gradient(90deg,var(--pg2),var(--pg1));border-radius:0 6px 6px 0;opacity:0;box-shadow:-6px 0 14px rgba(0,0,0,.3);animation:bkp-turn 4.5s 2.6s ease-in-out infinite;z-index:2}
+@keyframes bkp-in{from{transform:translateY(12%) scale(.9);opacity:0}to{transform:none;opacity:1}}
+@keyframes bkp-open{to{transform:rotateY(-180deg);opacity:0}}
+@keyframes bkp-fade{to{opacity:1}}
+@keyframes bkp-pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes bkp-turn{0%,55%{opacity:0;transform:rotateY(0)}60%{opacity:1;transform:rotateY(0)}85%{opacity:1;transform:rotateY(-180deg)}90%,100%{opacity:0;transform:rotateY(-180deg)}}
+@media (prefers-reduced-motion: reduce){.bkp-book,.bkp-cover,.bkp-pg,.bkp-tile,.bkp-line,.bkp-leaf{animation:none;opacity:1}.bkp-cover{display:none}.bkp-leaf{display:none}}
