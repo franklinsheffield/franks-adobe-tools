@@ -1,7 +1,10 @@
-// Possession: a party room of the Oracle Chamber that works in every House. The players "possess" the host: each beat
-// the host asks a question, everyone types an answer (word filter: ../party/filter.js), everyone votes, and the winning
-// answer comes out of the host's mouth as their next line, in the House's own voice. The lines build a tale (myth, ghost
-// story, lab disaster…) that ends with a title, goes into your Story book, and can be posted to the channel.
+// Possession: a party room of the Oracle Chamber that works in every House. The players "possess" the host.
+// True tales (main mode, true.js): the host narrates a real story from its House's subject; at key beats a few players
+// (rotating) are picked to possess the host and answer a guiding question; their answer comes out of the host's mouth,
+// then the host snaps back to the facts. The tale ends with a "What really happened" card.
+// Made-up tales (tales.js): everyone writes every line, everyone votes, the tale ends with a title.
+// Every typed answer goes through the word filter (../party/filter.js). At the end every player, writer or audience, is
+// invited to save the tale to their Grimoire Journal; it also goes into the Story book and can be posted to the channel.
 // Rules in ../party/story.js; House prompt sets + emcee lines in tales.js. In a Discord call everyone who opens
 // Possession shares one table (net.js joinTable; the host's client runs it). The table host can strike any card and skip.
 // Alone, you write every line yourself (or ask the spirits for a suggestion).
@@ -10,6 +13,7 @@ import { WHY, MAX_LEN } from "../party/filter.js";
 import * as sfx from "../party/sfx.js";
 import * as pz from "./sfx.js";
 import { talesFor, taleById, beatsFor, LEVELS, emcee } from "./tales.js";
+import { trueTalesFor, trueTaleById, trueBeatsFor, TRUE_LEVELS } from "./true.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, lookOf, buyOrUse, room } from "./shop.js";
 import { bookHtml } from "./scene.js";
 import { CSS } from "./style.js";
@@ -28,20 +32,28 @@ export function keepTale(p, tale) {
 /** A tale as lines for the channel post (sharePage takes at most 14 lines of 140 characters). */
 export function shareLines(t) {
   const credit = `Told by ${t.host || "the Oracle"}${t.authors && t.authors.length ? `, possessed by ${t.authors.join(", ")}` : ""}`;
-  return [...t.lines.slice(0, 11).map((l) => l.slice(0, 140)), "", credit.slice(0, 140)];
+  const body = t.truths && t.truths.some(Boolean) ? t.lines.flatMap((l, k) => [`👻 ${l}`, t.truths[k] ? `📜 ${t.truths[k]}` : null].filter(Boolean)) : t.lines;
+  return [...body.slice(0, 12).map((l) => l.slice(0, 140)), credit.slice(0, 140)];
 }
-export const plainText = (t) => `${t.title}\n\n${t.lines.join("\n")}\n\n${shareLines(t).slice(-1)[0]}`;
+export const plainText = (t) => `${t.title}\n\n${t.lines.map((l, k) => (t.truths && t.truths[k] ? `${l}\n  (Really: ${t.truths[k]})` : l)).join("\n")}${t.real && t.real.length ? `\n\nWhat really happened:\n${t.real.map((r) => "- " + r).join("\n")}` : ""}\n\n${shareLines(t).slice(-1)[0]}`;
+/** The Grimoire Journal entry for a finished tale: [title, detail rows] (book.js addLog keeps 14 rows of 600 characters). */
+export function journalRows(t, part) {
+  const rows = [["Told by", t.host || "the Oracle"], ["Possessed by", (t.authors || []).join(", ") || "the House itself"], ["Your part", part]];
+  t.lines.slice(0, 8).forEach((l, k) => rows.push([`Line ${k + 1}`, t.truths && t.truths[k] ? `${l} (Really: ${t.truths[k]})` : l]));
+  if (t.real && t.real.length) rows.push(["What really happened", t.real.join(" ")]);
+  return [`Possession: ${t.title}`, rows.slice(0, 14)];
+}
 
 export const possession = {
   id: "possession", label: "Possession", emoji: "👻",
-  blurb: "Possess the host: type their next line, vote, and tell a tale together",
+  blurb: "Hear a true story and take turns possessing the host at key moments, then the facts snap back",
   shop: { kind: "possession", label: "👻 Story book", items: SHOP.map(({ id, name, note, price }) => ({ id, name, note, price })), talk: SHELF_TALK,
     preview(id, { tableEl, cap }) { const it = shopItem(id); if (!it) return; styleOnce(); tableEl.className = "table possession";
       tableEl.innerHTML = bookHtml({ look: { ink: "pz-irongall", page: "pz-parchment", [it.slot]: id }, title: "A sample page", lines: ["Long ago, in a land of fog, there lived a goatherd with one sandal.", "One moonless night, our hero stole the Moon's spare key."], fresh: true }); cap && cap("👁 " + it.name); } },
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, award, tableEl, greet, chime } = ctx;
     styleOnce(); clearReading?.();
-    let T = null, G = null, V_ = null, long = false, level = 2, taleId = null, tick = null, until = 0, rewarded = false, lastPhase = "", gone = false, helped = false;
+    let T = null, G = null, V_ = null, long = false, level = 2, taleId = null, mode = "true", journaled = false, tick = null, until = 0, rewarded = false, lastPhase = "", gone = false, helped = false;
     const P = () => state.prog;
     const solo = !canJoin(state), me = () => (T ? T.me.id : "me");
     const members = () => (T ? T.members : [{ id: "me", name: state.name }]);
@@ -65,8 +77,9 @@ export const possession = {
     function hostAct(from, a) {
       if (!a) return;
       if (a.a === "start") { if (from !== me()) return;
-        const tales = talesFor(H().id), tale = taleById(a.tale) && tales.some((t) => t.id === a.tale) ? taleById(a.tale) : pick(tales);
-        G = S.startTale(tale, beatsFor(tale, a.level || level, H().id), members(), { long, level: a.level || level, house: H().id }); rewarded = false; helped = false;
+        const tm = a.mode === "made" ? "made" : "true", tales = tm === "true" ? trueTalesFor(H().id) : talesFor(H().id), byId = tm === "true" ? trueTaleById : taleById;
+        const tale = byId(a.tale) && tales.some((t) => t.id === a.tale) ? byId(a.tale) : pick(tales), lv = a.level || level;
+        G = S.startTale(tale, tm === "true" ? trueBeatsFor(tale, lv) : beatsFor(tale, lv, H().id), members(), { long, level: lv, house: H().id, mode: tm }); rewarded = false; helped = false; journaled = false;
         setClock(); sfx.curtain(); return broadcast("start"); }
       if (!G) return;
       if (a.a === "line") { const r = S.submit(G, from, a.text); if (!r) return;
@@ -110,23 +123,28 @@ export const possession = {
     const bar = (v) => `<div class="cx-top"><b>👻 Possession</b> · ${esc(v.name)} · line ${v.i + 1} of ${v.n}${S.isFinal(v) && v.seats.length > 1 ? " · ✨ the title, double points" : ""}<span class="pz-clock" id="pz-clock"></span></div>`;
     const hostBtns = (v) => (isHost() && !v.over && !(alone() && v.phase === "write") ? `<button class="c small" type="button" id="pz-skip">⏭ ${v.phase === "reveal" ? "Next line" : "Skip ahead"}</button>` : "");
     const leaveBtn = `<button class="c small" type="button" id="pz-leave">↩ Leave Possession</button>`;
-    const bookOf = (v, o = {}) => draw({ title: v.title || "", lines: v.story.map((s) => s.line), ...o });
+    const items = (story) => story.flatMap((s, g) => (s.narr || s.truth ? [s.narr && { t: s.narr, k: "narr", g }, { t: s.line, k: "ghost", g }, s.truth && { t: s.truth, k: "truth", g }].filter(Boolean) : [{ t: s.line, k: "ghost", g }]));
+    const bookOf = (v, o = {}) => draw({ title: v.title || "", lines: items(v.story), ...o });
+    const names = (ids) => { const n = ids.map((id) => nameOf(id)); return n.length > 1 ? `${n.slice(0, -1).join(", ")} and ${n.at(-1)}` : n[0] || "someone"; };
 
     function paint(v, ev = "", left = 0) {
       V_ = v; viewLeft = left; viewAt = Date.now();
       if (!v) return lobby();
       const b = v.beats[v.i], phaseChanged = v.phase + v.i !== lastPhase; lastPhase = v.phase + v.i;
       if (v.phase === "write") {
-        bookOf(v, { ask: b.ask }); cap("👻 Possession · write the host's next line");
-        if (phaseChanged) say(`${b.title ? emcee("title") + " " : ""}${b.ask}`); // the lobby already said the opening line
-        const seated = v.seats.includes(me()), mine = v.mine;
-        ui(`${bar(v)}<div class="ft-card"><b>✒️ ${esc(b.ask)}</b><p class="note">${b.title ? "Name the tale." : `${esc(H().name)} will say: “${esc(b.frame.replace("{a}", "___"))}”`}</p></div>
-          ${!seated ? `<div class="note">You arrived mid-line, so you're in the audience. You get a seat at the next line.</div>`
+        const tru = v.mode === "true", writer = v.writers.includes(me());
+        bookOf(v, { ask: tru ? `${b.ask} (${names(v.writers)})` : b.ask }); cap(tru ? `👻 Possession · ${writer ? "you possess the host" : "someone possesses the host"}` : "👻 Possession · write the host's next line");
+        if (phaseChanged) say(tru ? `${b.narr} ${alone() ? "" : emcee("pick", { names: names(v.writers) }) + " "}${b.ask}` : `${b.title ? emcee("title") + " " : ""}${b.ask}`); // the lobby already said the opening line
+        if (phaseChanged && tru && writer && !alone()) { pz.possess(); ctx.emote?.("wow", { quiet: true }); }
+        const seated = v.seats.includes(me()) && (writer || !tru), mine = v.mine;
+        ui(`${bar(v)}<div class="ft-card"><b>✒️ ${esc(b.ask)}</b><p class="note">${b.title ? "Name the tale." : `${tru ? esc(b.narr) + "<br>" : ""}${esc(H().name)} will say: “${esc(b.frame.replace("{a}", "___"))}”`}</p></div>
+          ${tru && !writer && v.seats.includes(me()) ? `<div class="pz-who">👻 <b>${esc(names(v.writers))}</b> ${v.writers.length > 1 ? "are" : "is"} possessing ${esc(H().name)}. Your turn comes round soon.${v.writers.length > 1 ? " You'll vote on their lines." : ""}</div>`
+            : !seated ? `<div class="note">You arrived mid-line, so you're in the audience. You get a seat at the next line.</div>`
             : mine ? `<div class="note">🔒 Your line is in: <b>${esc(mine)}</b>. Waiting for the others…</div>`
             : `<div class="pz-in"><input id="pz-line" type="text" autocomplete="off" maxlength="${MAX_LEN}" placeholder="Your answer, a few words" aria-label="Your answer"><button class="c main" type="button" id="pz-go">🔒 Lock in</button></div>
                <div class="note" id="pz-note">${esc(emcee("write"))} Keep it friendly: rude words, links and @mentions are refused.</div>
                <div class="choices"><button class="c small" type="button" id="pz-hint">🎲 Ask the spirits for an idea</button></div>`}
-          ${v.seats.length > 1 ? `<div class="note">✍️ ${v.done.length} of ${v.seats.length} lines in${v.seats.length > v.done.length ? ` · waiting for ${v.seats.filter((id) => !v.done.includes(id)).map((id) => esc(nameOf(id))).join(", ")}` : ""}</div>` : ""}
+          ${v.writers.length > 1 ? `<div class="note">✍️ ${v.done.length} of ${v.writers.length} lines in${v.writers.length > v.done.length ? ` · waiting for ${v.writers.filter((id) => !v.done.includes(id)).map((id) => esc(nameOf(id))).join(", ")}` : ""}</div>` : ""}
           ${scoreChips(v)}<div class="choices">${hostBtns(v)}${leaveBtn}</div>`);
         const inp = $("pz-line");
         if (inp) { const go = () => { const t = inp.value.trim(); if (t) act({ a: "line", text: t }); };
@@ -146,11 +164,13 @@ export const possession = {
       } else if (v.phase === "reveal" || v.phase === "over") {
         const L = v.last || {};
         bookOf(v, { fresh: phaseChanged && !L.title, done: v.over });
-        if (phaseChanged && !v.over) { if (L.title) { say(`${emcee("trance")} “${L.text}”`); pz.possess(); } else possessed(L.line); if (v.i % 2 === 1) setTimeout(() => { if (!gone) ctx.banter?.("mid"); }, 5200); }
+        if (phaseChanged && !v.over) { if (L.title) { say(`${emcee("trance")} “${L.text}”`); pz.possess(); } else possessed(L.line);
+          if (L.truth) setTimeout(() => { if (!gone) { say(`${emcee("snap")} ${L.truth}`); sfx.seal(); } }, 4800); if (v.i % 2 === 1) setTimeout(() => { if (!gone) ctx.banter?.("mid"); }, 5200); }
         if (v.over) return finish(v);
         cap("👻 Possession · the host speaks");
         const by = L.by && L.by.length ? `Written by ${L.by.map((id) => esc(nameOf(id))).join(" & ")}` : "The House answered itself";
-        ui(`${bar(v)}<div class="pz-win"><b>“${esc(L.title ? L.text : L.line)}”</b><div class="note">${by}${v.seats.length > 1 ? ` · ${L.votes} vote${L.votes === 1 ? "" : "s"}` : ""}</div></div>
+        ui(`${bar(v)}<div class="pz-win"><b>“${esc(L.title ? L.text : L.line)}”</b><div class="note">${by}${(L.cards || 0) > 1 ? ` · ${L.votes} vote${L.votes === 1 ? "" : "s"}` : ""}</div></div>
+          ${L.truth ? `<div class="pz-tale"><b>📜 What actually happened</b><p>${esc(L.truth)}</p></div>` : ""}
           ${scoreChips(v)}<div class="choices">${hostBtns(v)}${leaveBtn}</div>${!isHost() ? `<div class="note">Next line in a moment…</div>` : ""}`);
       }
       wire(); clock();
@@ -159,17 +179,24 @@ export const possession = {
 
     function finish(v) {
       const players = v.seats.length, rw = S.reward(v, me(), players, { helped }), top = S.standings(v)[0];
-      const tt = S.taleText(v, nameOf), saved = { title: tt.title, lines: tt.lines, authors: players > 1 ? tt.authors : [state.name], host: H().name, house: H().id, level: v.level };
+      const tt = S.taleText(v, nameOf), tru = v.mode === "true", real = tru ? ((trueTaleById(v.tale) || {}).real || []) : [];
+      const saved = { title: tt.title, lines: tt.lines, ...(tru ? { truths: tt.truths, real } : {}), authors: players > 1 ? tt.authors : [state.name], host: H().name, house: H().id, level: v.level };
+      const part = !v.seats.includes(me()) ? "Watched from the audience" : (v.wrote[me()] || 0) ? `Possessed the host ${v.wrote[me()]} time${v.wrote[me()] === 1 ? "" : "s"}, ${rw.beats} line${rw.beats === 1 ? "" : "s"} spoken` : "Watched and voted";
       if (!rewarded) { rewarded = true; const r = room(P()); r.plays = (r.plays || 0) + 1; r.best[v.level] = Math.max(r.best[v.level] || 0, rw.score); keepTale(P(), saved);
         const aw = award(rw.xp, rw.essence); saveProgress(); showStats(); sfx.fanfare(rw.won); pz.closeBook(); if (rw.won) chime?.(rw.perfect ? 2 : 1);
         ctx.trophy?.("possession", v.level, { won: rw.won, perfect: rw.perfect }); // Trophy Case (trophies.js)
         ctx.banter?.(rw.won ? "win" : "lose");
-        setTimeout(() => { if (!gone) say(`${players > 1 && top ? emcee("win", { name: nameOf(top.id) }) : emcee("solo", { name: state.name })}${aw.rankUp ? ` You are now ${aw.rankUp}.` : ""}${Math.random() < 0.35 ? " " + emcee("slip") : ""}`); }, 4600); }
+        setTimeout(() => { if (!gone) say(`${tru ? emcee("real") + " " : ""}${players > 1 && top ? emcee("win", { name: nameOf(top.id) }) : emcee("solo", { name: state.name })}${aw.rankUp ? ` You are now ${aw.rankUp}.` : ""}${Math.random() < 0.35 ? " " + emcee("slip") : ""}`); }, 4600); }
       cap("👻 Possession · the tale is told");
       ui(`<div class="reward"><div><b>${players > 1 ? (rw.place === 1 ? "🏆 You possessed the host best!" : `You came ${["", "1st", "2nd", "3rd"][rw.place] || rw.place + "th"}`) : "📖 Your tale is told"}</b>${players > 1 ? ` · ${rw.score} points · ${rw.beats} line${rw.beats === 1 ? "" : "s"} yours` : ""} · +${rw.xp} ✦${rw.essence ? ` · +${rw.essence} 💎` : ""}</div></div>
-        ${scoreChips(v)}<div class="pz-tale"><b>${esc(tt.title)}</b>${tt.lines.map((l) => `<p>${esc(l)}</p>`).join("")}<div class="note">Saved in your 📜 Story book.</div></div>
+        ${scoreChips(v)}${real.length ? `<div class="pz-real"><b>📜 What really happened</b><ul>${real.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>` : ""}
+        <div class="pz-tale"><b>${esc(tt.title)}</b>${tt.lines.map((l) => `<p>${esc(l)}</p>`).join("")}<div class="note">Saved in your 📜 Story book.</div></div>
+        <div class="pz-who">📓 <b>Journal this tale?</b> Everyone at the table, writers and audience, can keep it in their Grimoire Journal${real.length ? ", with what really happened" : ""}.
+          <div class="choices"><button class="c main" type="button" id="pz-journal"${journaled ? " disabled" : ""}>${journaled ? "📓 In your Journal ✓" : "📓 Save to my Journal"}</button></div></div>
         <div class="choices">${shareBtns()}${isHost() ? `<button class="c main" type="button" id="pz-again">👻 Tell another</button>` : `<div class="note">The host can start another tale.</div>`}${leaveBtn}</div><div class="note" id="pz-shared"></div>`);
       wireShare(saved);
+      $("pz-journal").onclick = () => { if (journaled) return; const [t, rows] = journalRows(saved, part); ctx.logEvent?.("game", "👻", t, null, rows); journaled = true; pz.quill(5);
+        const b = $("pz-journal"); b.disabled = true; b.textContent = "📓 In your Journal ✓"; say("Written into your Grimoire Journal."); };
       if ($("pz-again")) $("pz-again").onclick = () => { G = null; lastPhase = ""; broadcast(); };
       wire();
     }
@@ -193,8 +220,8 @@ export const possession = {
     function storyBook() {
       const tales = room(P()).tales, rb = $("reading-body"); if (!rb) return;
       if (rb.querySelector(".pz-shelf")) { rb.innerHTML = ""; return; }
-      rb.innerHTML = `<div class="pz-shelf"><div class="group">📜 Story book · ${tales.length} tale${tales.length === 1 ? "" : "s"}</div>${tales.length ? tales.map((t, k) => `<div class="pz-tale"><b>${esc(t.title)}</b><div class="note">${esc(t.host || "")} · ${new Date(t.at).toLocaleDateString()}${t.authors && t.authors.length ? ` · ${esc(t.authors.join(", "))}` : ""}</div>${t.lines.map((l) => `<p>${esc(l)}</p>`).join("")}<button class="c small" type="button" data-t="${k}">📖 Open on the table</button></div>`).join("") : `<p class="note">No tales yet. Tell one!</p>`}</div>`;
-      rb.querySelectorAll("[data-t]").forEach((x) => (x.onclick = () => { const t = tales[+x.dataset.t]; if (!t) return; draw({ title: t.title, lines: t.lines, done: true }); pz.quill(4);
+      rb.innerHTML = `<div class="pz-shelf"><div class="group">📜 Story book · ${tales.length} tale${tales.length === 1 ? "" : "s"}</div>${tales.length ? tales.map((t, k) => `<div class="pz-tale"><b>${esc(t.title)}</b><div class="note">${esc(t.host || "")} · ${new Date(t.at).toLocaleDateString()}${t.authors && t.authors.length ? ` · ${esc(t.authors.join(", "))}` : ""}</div>${t.lines.map((l, j) => `<p>${esc(l)}</p>${t.truths && t.truths[j] ? `<p class="note">📜 ${esc(t.truths[j])}</p>` : ""}`).join("")}<button class="c small" type="button" data-t="${k}">📖 Open on the table</button></div>`).join("") : `<p class="note">No tales yet. Tell one!</p>`}</div>`;
+      rb.querySelectorAll("[data-t]").forEach((x) => (x.onclick = () => { const t = tales[+x.dataset.t]; if (!t) return; draw({ title: t.title, lines: t.lines.flatMap((l, g) => [{ t: l, k: "ghost", g }, ...(t.truths && t.truths[g] ? [{ t: t.truths[g], k: "truth", g }] : [])]), done: true }); pz.quill(4);
         ui(`<div class="cx-top"><b>📜 ${esc(t.title)}</b></div><div class="choices">${shareBtns()}<button class="c" type="button" id="pz-back">↩ Back</button></div><div class="note" id="pz-shared"></div>`); wireShare(t); $("pz-back").onclick = lobby; }));
       rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -215,20 +242,24 @@ export const possession = {
 
     function lobby() {
       unpossess(); draw({ title: "Possession", lines: [] }); cap("👻 Possession");
-      const tales = talesFor(H().id), r = room(P());
+      const tales = mode === "true" ? trueTalesFor(H().id) : talesFor(H().id), LV = mode === "true" ? TRUE_LEVELS : LEVELS, r = room(P());
       if (!taleId || !tales.some((t) => t.id === taleId)) taleId = tales[0].id;
       const who = members().map((m) => `<span>${esc(m.name || nameOf(m.id))}${T && m.id === T.host ? " 👑" : ""}</span>`).join("");
       say(emcee("open"));
       ui(`<div class="cx-top"><b>👻 Possession</b> · ${solo ? "solo: you write every line" : `${members().length} at the table`}</div>${T ? `<div class="chips">${who}</div>` : ""}
-        <div class="note">${esc(H().name)} asks a question; ${solo ? "you type" : "everyone types"} an answer${solo ? "" : ", everyone votes"}, and the ${solo ? "answer" : "winner"} comes out of ${esc(H().name)}'s mouth as the next line of the tale. ${solo ? "" : `Each vote your line gets: ${S.VOTE_PTS} points; the winning line: +${S.WIN_PTS}. The title counts double.`}</div>
+        <div class="note">${mode === "true"
+          ? `${esc(H().name)} tells a true story. At key moments ${solo ? "you possess" : "one to three players, taking turns, possess"} ${esc(H().name)} and answer a question; the answer comes out of ${esc(H().name)}'s mouth, then the real facts snap back. ${solo ? "" : `With several writers the others vote: ${S.VOTE_PTS} points a vote, +${S.WIN_PTS} for the line spoken.`}`
+          : `${esc(H().name)} asks a question; ${solo ? "you type" : "everyone types"} an answer${solo ? "" : ", everyone votes"}, and the ${solo ? "answer" : "winner"} comes out of ${esc(H().name)}'s mouth as the next line of the tale. ${solo ? "" : `Each vote your line gets: ${S.VOTE_PTS} points; the winning line: +${S.WIN_PTS}. The title counts double.`}`}</div>
         ${solo ? `<div class="note">Open Possession inside a Discord voice call and everyone in the call writes the tale together.</div>` : ""}
-        ${isHost() ? `<div class="group">The tale</div><div class="levels">${tales.map((t) => `<button class="c level${taleId === t.id ? " done" : ""}" type="button" data-tale="${t.id}"><b>${esc(t.name)}${taleId === t.id ? " ✓" : ""}</b><span>${esc(t.kind)}</span></button>`).join("")}</div>
-          <div class="group">How long</div><div class="levels">${LEVELS.map((L) => `<button class="c level${level === L.n ? " done" : ""}" type="button" data-l="${L.n}"><b>${"👻".repeat(L.n)} Level ${L.n} · ${esc(L.name)}${level === L.n ? " ✓" : ""}</b><span>${esc(L.what)}${r.best[L.n] ? ` · best ${r.best[L.n]}` : ""}</span></button>`).join("")}</div>` : ""}
+        ${isHost() ? `<div class="group">Which kind</div><div class="levels"><button class="c level${mode === "true" ? " done" : ""}" type="button" data-m="true"><b>📜 True tales${mode === "true" ? " ✓" : ""}</b><span>${esc(H().name)} tells a real story. Players take turns possessing the host at key moments, then the facts snap back.</span></button><button class="c level${mode === "made" ? " done" : ""}" type="button" data-m="made"><b>✨ Made-up tales${mode === "made" ? " ✓" : ""}</b><span>Everyone writes every line, everyone votes, the tale gets a title.</span></button></div>
+          <div class="group">The tale</div><div class="levels">${tales.map((t) => `<button class="c level${taleId === t.id ? " done" : ""}" type="button" data-tale="${t.id}"><b>${esc(t.name)}${taleId === t.id ? " ✓" : ""}</b><span>${esc(t.kind)}</span></button>`).join("")}</div>
+          <div class="group">How long</div><div class="levels">${LV.map((L) => `<button class="c level${level === L.n ? " done" : ""}" type="button" data-l="${L.n}"><b>${"👻".repeat(L.n)} Level ${L.n} · ${esc(L.name)}${level === L.n ? " ✓" : ""}</b><span>${esc(L.what)}${r.best[L.n] ? ` · best ${r.best[L.n]}` : ""}</span></button>`).join("")}</div>` : ""}
         <div class="choices">${isHost() ? `<button class="c main" type="button" id="pz-start">👻 Begin the tale</button>${solo ? "" : `<button class="c small" type="button" id="pz-long">${long ? "⏱ Long timers: on" : "⏱ Long timers: off"}</button>`}` : `<div class="note">Waiting for ${esc(nameOf(T.host))} to start…</div>`}
           <button class="c" type="button" id="pz-book">📜 Story book (${r.tales.length})</button><button class="c" type="button" id="pz-shop">🖋️ Story book shop</button>${leaveBtn}</div>`);
+      $("ui").querySelectorAll("[data-m]").forEach((x) => (x.onclick = () => { mode = x.dataset.m; taleId = null; pz.quill(2); lobby(); }));
       $("ui").querySelectorAll("[data-tale]").forEach((x) => (x.onclick = () => { taleId = x.dataset.tale; pz.quill(2); lobby(); }));
       $("ui").querySelectorAll("[data-l]").forEach((x) => (x.onclick = () => { level = +x.dataset.l; pz.quill(2); lobby(); }));
-      if ($("pz-start")) $("pz-start").onclick = () => { closeBook(); hostAct(me(), { a: "start", tale: taleId, level }); };
+      if ($("pz-start")) $("pz-start").onclick = () => { closeBook(); hostAct(me(), { a: "start", tale: taleId, level, mode }); };
       if ($("pz-long")) $("pz-long").onclick = () => { long = !long; lobby(); };
       $("pz-book").onclick = storyBook; $("pz-shop").onclick = shop;
       wire();

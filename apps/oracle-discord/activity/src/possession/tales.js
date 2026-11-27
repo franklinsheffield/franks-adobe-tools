@@ -195,3 +195,24 @@ export function emcee(kind, vars = {}, rand = Math.random, houseId = (host() || 
   const E = EMCEE[houseId] || EMCEE.oracle, pool = E[kind] || EMCEE.oracle[kind] || [""];
   return pool[Math.floor(rand() * pool.length)].replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ""));
 }
+
+/* True tales (true.js) add three more kinds of line: "pick" names who possesses the host ({names}), "snap" brings the
+   host back to the facts, "real" opens the What really happened card. */
+const MORE = {
+  oracle: { pick: ["{names}… the crystal chooses you. Possess me.", "I feel a presence. It's {names}. Of course it is."],
+    snap: ["…Ahem. The crystal clears. What really happened:", "…Where was I? Ah. The truth:"],
+    real: ["And that is what really happened. Myth and fact, side by side.", "The true tale, from the crystal's own records."] },
+  alchemist: { pick: ["{names}, step up to the flask. You're possessing me now.", "The fumes choose {names}. Into my mouth with your words!"],
+    snap: ["…Ahem. The fumes clear. What actually happened:", "…Goggles back on. The real record says:"],
+    real: ["The Lab book, as it really happened.", "Pure fact, no fumes: here's the real account."] },
+  observatory: { pick: ["{names}, take the eyepiece. Possess me.", "The sky points at {names}. Your turn to speak through me."],
+    snap: ["…Ahem. Back to the log. What really happened:", "…The clouds part. The real record:"],
+    real: ["And here's the log, exactly as it happened.", "Fixed and catalogued: the true story."] },
+  parlour: { pick: ["{names}, darling… the spirit has chosen you. Possess me.", "The planchette points at {names}. Go on, take my voice."],
+    snap: ["…Ahem. Lights up, darlings. What actually happened:", "…That's enough spirits. Back to the case file:"],
+    real: ["And now, the committee's report: what really happened.", "Lights up. Here's the truth, with no cheesecloth."] },
+  scriptorium: { pick: ["{names}, take the quill. You're writing through me.", "The ink chooses {names}. Possess the page."],
+    snap: ["…Ahem. Back to the original manuscript:", "…Scratch that. The true record reads:"],
+    real: ["The original record, copied faithfully.", "Here is the chronicle as it truly happened."] },
+};
+for (const [h, m] of Object.entries(MORE)) Object.assign(EMCEE[h], m);
