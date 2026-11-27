@@ -19,6 +19,7 @@ import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as geometry } from "./geometry/room.js";
+import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
@@ -89,12 +90,15 @@ function say(text, done) {
   clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking"); teller.classList.remove("syl"); };
+  say.finish = null;
   if (reduced) { el.textContent = plain; stop(); done && done(); return; }
+  /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
+  say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); done && done(); };
   let i = 0, n = 0; el.textContent = ""; box.classList.add("typing"); document.body.classList.add("talking");
   const step = () => {
     const ch = plain[i++]; el.textContent = plain.slice(0, i);
     if (/[\p{L}\p{N}]/u.test(ch)) { if (n++ % 2 === 0) { blip(ch); teller.classList.toggle("syl"); } }
-    if (i >= plain.length) { blip("o", { final: true }); stop(); done && done(); return; }
+    if (i >= plain.length) { say.finish = null; blip("o", { final: true }); stop(); done && done(); return; }
     typing = setTimeout(step, PAUSE[ch] || (ch === " " ? 34 : 26));
   };
   step();
@@ -144,7 +148,7 @@ function greet() {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, geometry];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, geometry];
 for (const r of ROOMS) registerShelf(r.shop); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
@@ -284,14 +288,15 @@ function talkThrough(pages, done) {
     if (i >= pages.length) { removeEventListener("keydown", talkKey); talkKey = null; done(); return; }
     const page = pages[i++], last = i >= pages.length;
     ui(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
-    $("skip").onclick = () => { clearTimeout(typing); i = pages.length; next(); };
+    $("skip").onclick = () => say.finish && say.finish(); // Skip only skips the typing effect: the full text shows at once
     say(page, () => {
-      ui(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
-      $("more").onclick = next; $("skip").onclick = () => { i = pages.length; next(); };
+      ui(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
+      $("more").onclick = next;
     });
   };
   if (talkKey) removeEventListener("keydown", talkKey);
-  talkKey = (e) => { if ((e.key === " " || e.key === "Enter") && $("more") && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) { e.preventDefault(); $("more").click(); } };
+  talkKey = (e) => { if ((e.key === " " || e.key === "Enter") && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) {
+    if ($("more")) { e.preventDefault(); $("more").click(); } else if (say.finish) { e.preventDefault(); say.finish(); } } };
   addEventListener("keydown", talkKey);
   next();
 }
