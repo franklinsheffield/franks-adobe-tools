@@ -38,7 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
-import { ALL_EMOTES, emoteAny, emoteOk, owned as emotesOwned, useEmote, emoteBookHtml, emoteFxHtml } from "./emotes.js";
+import { ALL_EMOTES, emoteAny, owned as emotesOwned, useEmote, emoteBookHtml, emoteFxHtml, slots as emoteSlots, toggleSlot, SLOTS as EMO_SLOTS } from "./emotes.js";
 import { CODES, BOOK_CODES, broken as cdBroken, tryCode, spot as cdSpot, codesOn, scrapHtml, glyphLayer } from "./codes.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
@@ -612,7 +612,8 @@ function showStore(tab = "outfit", opener = null) {
       return `<div class="feat-head${on ? " rare" : ""}"><b>${se.e} ${esc(se.name)}</b><span class="feat-clock">${on ? "On sale now" : `Returns in ${days} day${days === 1 ? "" : "s"}`}</span></div>${its.map(cardOf).join("")}`; }).join(""); }
   else if (tab === "creator") { const L = lookOf(p);
     cards = `<div class="creator">${Object.entries(CREATOR).map(([k, c]) => `<div class="cr-row"><b>${esc(c.label)}</b><div class="cr-opts">${c.opts.map(([v, l]) => `<button type="button" class="cr-sw${L[k] === v ? " on" : ""}${v ? "" : " auto"}" data-cr="${k}" data-v="${v}" title="${esc(l)}" aria-label="${esc(c.label)}: ${esc(l)}" aria-pressed="${L[k] === v}" style="${v && v.startsWith("#") ? `--sw:${v}` : ""}">${v && !v.startsWith("#") ? esc(l) : v ? "" : "Auto"}</button>`).join("")}</div></div>`).join("")}
-      <p class="note">Free, and on top of any avatar or robe. "Auto" uses the avatar's or robe's own colours.</p><button class="c small" type="button" data-cr-reset="1">↺ Reset to Auto</button></div>`; }
+      <p class="note">Free, and on top of any avatar or robe. "Auto" uses the avatar's or robe's own colours.</p><button class="c small" type="button" data-cr-reset="1">↺ Reset to Auto</button></div>`
+      + emoteBookHtml(p, esc, (id) => (item(id) || {}).name || id, { modal: false }); }
   else if (tab === "sets") cards = LOOK_SETS.map((st, si) => { const pr = setProgress(p, st), items = Object.values(st.kinds).map((id) => STORE.find((x) => x.id === id)).filter(Boolean), worn = pr.worn === pr.of;
     return `<div class="set-head${worn ? " worn" : ""}" data-set-id="${st.id}"><b>${st.e} ${esc(st.name)}</b><span class="note">${esc(st.blurb)} when all four are worn.</span><span class="set-prog">${pr.own}/${pr.of} owned</span>${pr.own === pr.of ? `<button class="c small${worn ? "" : " main"}" type="button" data-wearset="${st.id}" ${worn ? "disabled" : ""}>${worn ? "✓ Set worn" : "Wear the set"}</button>` : ""}<button class="c small" type="button" data-tryset="${st.id}">👁 Try the set</button></div>${items.map((it, i) => cardOf(it, si * 4 + i)).join("")}`; }).join("");
   else if (tab === "boxes") cards = BOXES.map((bx, i) => { const P = boxPool();
@@ -646,6 +647,7 @@ function showStore(tab = "outfit", opener = null) {
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
   $("ui").querySelectorAll("[data-cr]").forEach((b) => (b.onclick = () => { const L = (p.look ||= {}); L[b.dataset.cr] = b.dataset.v; saveProgress(); applyLook(); flourish("avatar"); mood.emote(b.dataset.cr === "iris" || b.dataset.cr === "pupil" ? "wink" : "joy", { quiet: true }); showStore("creator", "Ooh. Let me see in the glass."); }));
+  $("ui").querySelectorAll("[data-slot]").forEach((b) => (b.onclick = () => slotTap(b.dataset.slot)));
   $("ui").querySelectorAll("[data-cr-reset]").forEach((b) => (b.onclick = () => { p.look = {}; saveProgress(); applyLook(); showStore("creator", "Back to my natural look. Classic."); }));
   $("ui").querySelectorAll("[data-wearset]").forEach((b) => (b.onclick = () => { const st = LOOK_SETS.find((x) => x.id === b.dataset.wearset); trying = null;
     for (const [k, id] of Object.entries(st.kinds)) if (owns(id)) state.prog[k] = id; saveProgress(); applyLook(); flourish("outfit"); mood.emote("joy"); showStore("sets", `The full ${st.name} set. ${st.blurb}. Now that is a look.`); }));
@@ -939,7 +941,7 @@ function doEmote(id, by = null) {
   const f = $("familiar"); if (f) { f.classList.remove("react"); void f.offsetWidth; f.classList.add("react"); }
 }
 function sendEmote(id) {
-  if (Date.now() - EMO.last < 1500 || !emoteOk(state.prog, emoteAny(id))) return; EMO.last = Date.now(); doEmote(id);
+  if (Date.now() - EMO.last < 1500 || !emoteSlots(state.prog).includes(id)) return; EMO.last = Date.now(); doEmote(id);
   const u = useEmote(state.prog, id); if (u.dayBonus) { showStats(); } saveProgress();
   if (u.levelUp || u.dayBonus || u.unlocked.length) setTimeout(() => mood.bubble(u.unlocked.length ? `New emote: ${u.unlocked[0].e} ${u.unlocked[0].name}! Find it in your emotes.` : u.dayBonus ? `Emote of the day! +💎 ${u.dayBonus}` : `${emoteAny(id).name} reached ${u.levelUp}!`, 3000, u.unlocked.length ? u.unlocked[0].e : u.dayBonus ? "⭐" : "🏅"), 2300);
   const L = EMO.lobby; if (!L) return; const m = { emote: id, by: state.name, byId: L.me && L.me.id };
@@ -950,19 +952,21 @@ function sendEmote(id) {
   btn.type = "button"; btn.id = "emote-btn"; btn.className = "emote-btn"; btn.textContent = "😀"; btn.title = "Emotes: make the Oracle react"; btn.setAttribute("aria-label", "Emotes"); btn.setAttribute("aria-expanded", "false");
   wheel.id = "emote-wheel"; wheel.className = "emote-wheel"; wheel.hidden = true; wheel.setAttribute("role", "menu");
   // the ring: your 7 most-used emotes, plus the emote book with all of them
-  const ring = () => { const p = state.prog, use = p.emo || {}, mine = emotesOwned(p).sort((a, b) => (use[b.id] || 0) - (use[a.id] || 0)).slice(0, 7), all = [...mine, { id: "_book", e: "📒", name: `All emotes (${emotesOwned(p).length} of ${ALL_EMOTES.length})` }];
+  const ring = () => { const p = state.prog, mine = emoteSlots(p).map(emoteAny), all = [...mine, { id: "_book", e: "🔁", name: `Swap emotes (${emotesOwned(p).length} of ${ALL_EMOTES.length} collected)` }];
     wheel.innerHTML = all.map((e, i) => `<button type="button" role="menuitem" style="--a:${(i / all.length) * 360 - 90}deg" data-emote="${e.id}" title="${e.name}" aria-label="${e.name}">${e.e}</button>`).join("");
-    wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); if (b.dataset.emote === "_book") emoteBook(); else sendEmote(b.dataset.emote); })); };
+    wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); if (b.dataset.emote === "_book") showStore("creator"); else sendEmote(b.dataset.emote); })); };
   pane.append(wheel, btn);
   const close = () => { wheel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
   btn.onclick = (ev) => { ev.stopPropagation(); if (wheel.hidden) ring(); wheel.hidden = !wheel.hidden; btn.setAttribute("aria-expanded", String(!wheel.hidden)); };
   document.addEventListener("click", (ev) => { if (!wheel.hidden && !wheel.contains(ev.target)) close(); });
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !wheel.hidden) { close(); btn.focus(); } });
 })();
-function emoteBook() {
-  const m = modal("emote-book", emoteBookHtml(state.prog, esc, (id) => (item(id) || {}).name || id));
-  $("eb-close").onclick = m.close;
-  m.el.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = () => { m.close(); sendEmote(b.dataset.emote); }));
+/** Equip or take off an emote from the creator's emote grid. */
+function slotTap(id) {
+  const r = toggleSlot(state.prog, id), e = emoteAny(id); if (!r || !e) return;
+  if (r === "full") return mood.bubble(`All ${EMO_SLOTS} slots are full. Take one off first.`, 2600, "🔁");
+  if (r === "last") return mood.bubble("Keep at least one emote. I need to express myself.", 2600, "😶");
+  saveProgress(); if (r === "on") doEmote(id); const y = $("box").scrollTop; showStore("creator"); $("box").scrollTop = y;
 }
 /** The Chamber lobby: one shared table per call, used only to pass emotes around. Quietly off when it can't start. */
 function joinLobby() {

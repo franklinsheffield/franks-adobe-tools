@@ -217,7 +217,7 @@ export const DEPTS = [
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
 ];
-const SPECIAL = { featured: "🗓️ This week", seasonal: "🍂 Seasonal", sets: "🎽 Full sets", boxes: "📦 Mystery boxes", creator: "🎨 Oracle creator" };
+const SPECIAL = { featured: "🗓️ This week", seasonal: "🍂 Seasonal", sets: "🎽 Full sets", boxes: "📦 Mystery boxes", creator: "🎨 Creator & emotes" };
 export function departments() {
   const named = new Set(DEPTS.flatMap((d) => d.kinds));
   return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || SPECIAL[k] || KINDS.some(([x]) => x === k)) }));

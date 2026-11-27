@@ -1769,3 +1769,10 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .eb-e{font-size:28px}.eb-card b{font-size:13px}.eb-card small{font-size:11px;opacity:.75;text-align:center}
 .eb-lv{position:absolute;top:4px;right:6px;font-style:normal;font-size:10px;padding:1px 5px;border-radius:8px}.eb-lv.lv1{background:#8a5a2b}.eb-lv.lv2{background:#9aa3ad;color:#111}.eb-lv.lv3{background:#E2B04A;color:#111}
 @media (prefers-reduced-motion:reduce){.efx{display:none}}
+.eb.inline{grid-column:1/-1;width:auto;max-height:none;margin-top:16px;background:rgba(18,10,40,.6)}
+.eb-card.on{border-color:#FADE8C;background:rgba(110,70,30,.55)}
+.eb-on{position:absolute;top:4px;left:6px;font-style:normal;font-size:10px;padding:1px 5px;border-radius:8px;background:#FADE8C;color:#1a1030;font-weight:700}
+.eb-slots{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 4px}
+.eb-slot{width:40px;height:40px;display:grid;place-items:center;font-size:22px;border-radius:50%;border:1px solid rgba(250,222,140,.7);background:rgba(20,10,44,.9)}
+.eb-slot.empty{opacity:.4;font-size:13px;border-style:dashed}
+.eb-slots small{flex-basis:100%;font-size:12px;opacity:.75}

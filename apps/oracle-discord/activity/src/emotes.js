@@ -61,15 +61,32 @@ export function useEmote(p, id, at = Date.now()) {
   return { level: lv, levelUp, dayBonus, unlocked: owned(p).filter((e) => !before.has(e.id)) };
 }
 
+// ---- six slots: only equipped emotes are usable; swap them in the Oracle creator ----
+export const SLOTS = 6;
+/** The equipped emotes (ids), always valid and owned; empty slots fill from the starting set. */
+export function slots(p) {
+  const mine = owned(p).map((e) => e.id), cur = (Array.isArray(p.emoSlots) ? p.emoSlots : []).filter((id, i, a) => mine.includes(id) && a.indexOf(id) === i).slice(0, SLOTS);
+  for (const id of mine) { if (cur.length >= SLOTS || Array.isArray(p.emoSlots)) break; cur.push(id); }
+  return cur;
+}
+/** Equip or unequip. Returns "on", "off", "full" (6 already equipped) or "last" (keep at least one). */
+export function toggleSlot(p, id) {
+  const cur = slots(p); if (!emoteOk(p, emoteAny(id))) return null;
+  if (cur.includes(id)) { if (cur.length <= 1) return "last"; p.emoSlots = cur.filter((x) => x !== id); return "off"; }
+  if (cur.length >= SLOTS) return "full"; p.emoSlots = [...cur, id]; return "on";
+}
+export const equipped = (p, id) => slots(p).includes(id);
+
 /** The emote book: every emote, owned ones playable, locked ones with how to get them. */
-export function emoteBookHtml(p, esc, robeName = (id) => id) {
-  const mine = owned(p), day = emoteOfDay();
-  const card = (e) => { const ok = mine.includes(e), n = (p.emo || {})[e.id] || 0, lv = levelOf(n), nx = LEVELS[lv];
-    return `<button type="button" class="eb-card${ok ? "" : " locked"}${e.id === day.id ? " today" : ""}" ${ok ? `data-emote="${e.id}"` : "disabled"} title="${esc(ok ? e.say : e.how)}">
-      <span class="eb-e" aria-hidden="true">${ok ? e.e : "🔒"}</span><b>${esc(e.name)}</b>${lv ? `<i class="eb-lv lv${lv}">${LEVELS[lv - 1].name}</i>` : ""}
+export function emoteBookHtml(p, esc, robeName = (id) => id, { modal = true } = {}) {
+  const mine = owned(p), day = emoteOfDay(), eq = slots(p);
+  const card = (e) => { const ok = mine.includes(e), on = eq.includes(e.id), n = (p.emo || {})[e.id] || 0, lv = levelOf(n), nx = LEVELS[lv];
+    return `<button type="button" class="eb-card${ok ? "" : " locked"}${on ? " on" : ""}${e.id === day.id ? " today" : ""}" ${ok ? `data-slot="${e.id}" aria-pressed="${on}"` : "disabled"} title="${esc(ok ? (on ? "Equipped. Tap to take it off." : "Tap to equip") : e.how)}">
+      <span class="eb-e" aria-hidden="true">${ok ? e.e : "🔒"}</span><b>${esc(e.name)}</b>${lv ? `<i class="eb-lv lv${lv}">${LEVELS[lv - 1].name}</i>` : ""}${on ? `<i class="eb-on">✓ ${eq.indexOf(e.id) + 1}</i>` : ""}
       <small>${ok ? (nx ? `${n}/${nx.at} to ${nx.name}` : `${n} uses · mastered`) : esc(e.robe ? `Own the ${robeName(e.robe)}` : e.how)}</small></button>`; };
   const sec = (t, xs) => `<h4>${t}</h4><div class="eb-grid">${xs.map(card).join("")}</div>`;
-  return `<div class="eb" role="dialog" aria-label="Your emotes"><div class="eb-top"><h3>😀 Your emotes <small>${mine.length} of ${ALL_EMOTES.length}</small></h3><button type="button" class="c small" id="eb-close">✕</button></div>
+  const bar = `<div class="eb-slots" aria-label="Equipped emotes">${Array.from({ length: SLOTS }, (_, i) => { const e = emoteAny(eq[i]); return `<span class="eb-slot${e ? "" : " empty"}" title="${e ? esc(e.name) : "Empty slot"}">${e ? e.e : i + 1}</span>`; }).join("")}<small>${eq.length} of ${SLOTS} equipped. Tap an emote to equip it or take it off.</small></div>`;
+  return `<div class="eb${modal ? "" : " inline"}"${modal ? ` role="dialog" aria-label="Your emotes"` : ""}><div class="eb-top"><h3>😀 Your emotes <small>${mine.length} of ${ALL_EMOTES.length} collected</small></h3>${modal ? `<button type="button" class="c small" id="eb-close">✕</button>` : ""}</div>${bar}
     <p class="eb-day">⭐ Emote of the day: <b>${day.e} ${esc(day.name)}</b>. Use it today for 💎 ${DAY_PAY}${p.emoDay === dk(Date.now()) ? " (done ✓)" : ""}. Emotes level up with use: Bronze 10, Silver 50, Gold 150.</p>
     ${sec("Starting set", START)}${sec("Earned", EARNED)}${sec("Robe signatures", ROBE)}</div>`;
 }

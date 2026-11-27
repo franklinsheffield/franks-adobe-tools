@@ -21,5 +21,11 @@ test("uses level emotes up, pay the emote of the day once, and report unlocks", 
   const a = useEmote(p, day.id, at); assert.equal(a.dayBonus, 5); assert.equal(useEmote(p, day.id, at).dayBonus, 0);
   for (let i = 0; i < 8; i++) useEmote(p, day.id, at); assert.equal(levelOf(p.emo[day.id]), 1);
   let got = []; for (let i = 0; i < 20; i++) got.push(...useEmote(p, "wave", at).unlocked.map((e) => e.id)); assert.ok(got.includes("applause"));
+});
+test("six slots: filled from owned emotes, swap in and out, never empty", async () => {
+  const { slots, toggleSlot, SLOTS } = await import("../activity/src/emotes.js");
+  const p = {}; assert.equal(slots(p).length, SLOTS); assert.equal(toggleSlot(p, "levitate"), null);
+  assert.equal(toggleSlot(p, slots(p)[0]), "off"); assert.equal(slots(p).length, 5); p.readings = 25; assert.equal(toggleSlot(p, "levitate"), "on"); assert.equal(toggleSlot(p, "spook"), "full");
+  p.emoSlots = ["wave"]; assert.equal(toggleSlot(p, "wave"), "last");
   assert.ok(emoteBookHtml(p, esc).includes("Robe signatures")); assert.ok(emoteFxHtml(ALL_EMOTES[0]).includes("efx"));
 });
