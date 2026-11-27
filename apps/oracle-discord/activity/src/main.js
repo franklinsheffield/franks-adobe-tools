@@ -46,13 +46,14 @@ import { rummy, rummyCodex } from "./rummy/room.js";
 import { watch, watchCodex } from "./watch/room.js";
 import { comet, cometCodex } from "./comet/room.js";
 import { eclipse, eclipseCodex } from "./eclipse/room.js";
+import { messier, messierCodex } from "./messier/room.js";
 import { celestialNavigator, navigatorCodex } from "./navigator/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
 import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
-import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
+import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, recordClues, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
@@ -81,6 +82,7 @@ import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
+import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
@@ -150,6 +152,7 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** What a House host needs to react on the figure: the teller, the backdrop (for the fume hood) and her gestures. */
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
+  disguiseEvent(kind, data);
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
   const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
     find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
@@ -157,6 +160,22 @@ function secretEvent(kind, data = {}) {
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
       CU.event?.("house-secret", id); return true; } };
   try { H.secrets.event(kind, data, api); } catch (e) { console.warn("secret", e); }
+}
+// ---- the one-person gimmick (hosts/disguise.js): every host is secretly the same person, and slips ----
+function disguiseEvent(kind, data) {
+  if (!state.prog) return; const r = clueEvent(kind, data, { p: state.prog, host: HOST() }); if (!r) return;
+  logEvent("secret", r.clue.e, `Dossier: ${r.clue.name}`, null, [["Clue", r.clue.name], ["Found", `${r.n} of ${CLUES.length}`], ["Reward", "💎 15"]]); saveProgress(); showStats();
+  if (r.clue.id === "quickchange" && !reduced) { document.body.classList.add("dg-quick"); setTimeout(() => document.body.classList.remove("dg-quick"), 950); }
+  const wait = kind === "home" ? (reduced ? 0 : 4200) : (reduced ? 0 : 300);
+  setTimeout(() => { mood.emote("flinch", { quiet: true }); mood.bubble(`${r.line} 🎭 Dossier clue ${r.n}/${CLUES.length}. 💎 15`, 6400, "🎭"); chime(2); }, wait);
+  if (r.all) setTimeout(() => mood.bubble(PAYOFF, 8000, "🎭"), wait + 6800);
+  trophyNews(recordClues(state.prog, r.n));
+  const b = $("hm-dossier"); if (b) b.querySelector("small").textContent = `${r.n}/${CLUES.length}`;
+}
+function openDossier() {
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🎭 The Dossier");
+  say(clueCount(state.prog) === CLUES.length ? "All right. You've got the whole file. Five Houses, one face. Please stop telling people." : "A Dossier? On me? There's nothing to find. We are five completely different people.");
+  ui(dossierHtml(state.prog, esc)); $("dg-back").onclick = greet;
 }
 document.addEventListener("click", (e) => { const t = e.target && e.target.closest && e.target.closest("[data-tap]"); if (t) secretEvent("tap", { tap: t.dataset.tap, count: tapCount(t.dataset.tap) }); });
 function openHouseSecrets() {
@@ -201,15 +220,15 @@ $("table").addEventListener("click", (e) => {
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 /** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
-function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
+function keepLine() { const t = (say.full || $("say").textContent).trim(); say.full = ""; if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
   clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
-  if (!keep) $("said").innerHTML = "";
+  keepLine(); const said = $("said"); while (said.children.length > 40) said.firstElementChild.remove(); // the conversation stays readable: earlier lines scroll up
   /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { box.scrollTop = box.scrollHeight; };
-  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
+  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60, follow = () => { if (atEnd) box.scrollTop = box.scrollHeight; };
+  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
   const pros = prosody(plain);
@@ -273,7 +292,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
+  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>` + leftBehindHtml(HOST().id); CU.paint(); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -326,6 +345,7 @@ function greet() {
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
+  if (clueCount(state.prog)) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-dossier">🎭 Dossier <small>${clueCount(state.prog)}/${CLUES.length}</small></button>`); $("hm-dossier").onclick = openDossier; }
   if (HOST().menuBg) { $("ui").classList.add("has-mbg"); $("ui").insertAdjacentHTML("afterbegin", HOST().menuBg.html(Date.now(), { prog: state.prog })); }
   secretEvent("home", { at: Date.now() });
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
@@ -368,7 +388,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -750,6 +770,11 @@ function showStore(tab = "outfit", opener = null) {
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
 $("store-btn").onclick = () => showStore();
+/** The header menu (Frank 2026-11-27): Store, Trophies, Grimoire and the sound controls fold away behind ☰. Remembered per player. */
+{ const head = document.querySelector(".box-head"), btn = $("menu-btn"), set = (on) => { head.classList.toggle("menu-open", on); btn.setAttribute("aria-expanded", String(on)); btn.textContent = on ? "✕ Close" : "☰ Menu"; try { localStorage.setItem("oracle-menu", on ? "1" : "0"); } catch {} };
+  let start = false; try { start = localStorage.getItem("oracle-menu") === "1"; } catch {} set(start);
+  btn.onclick = () => set(!head.classList.contains("menu-open"));
+  for (const id of ["store-btn", "trophy-btn", "grimoire-btn"]) $(id).addEventListener("click", () => set(false)); }
 
 function showCodex() { return openBook("codex"); }
 /** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */
