@@ -81,3 +81,44 @@ export function complete(p, id, stars) {
 export const unlocked = (p, id) => { const l = byId(id), list = levelsOf(l.script), i = list.indexOf(l); return i === 0 || !!dec(p).solved[list[i - 1].id]; };
 export const scriptStars = (p, script) => levelsOf(script).reduce((n, l) => n + (dec(p).solved[l.id] || 0), 0);
 export const totalStars = () => LEVELS.length * 3;
+
+// ---- the card game: Scribe's Hand ----
+// The inscription lies on the table as glyph cards. The player holds sound cards and plays the right one onto the next
+// glyph. The deck holds one card for every glyph plus decoys (other sounds met so far), loosely in reading order, so
+// the card you need is never far away. Drawing costs 1 ink, a wrong card costs 2, a right card refills 1 (up to the
+// well's size); run out of ink and the level is lost.
+export const HAND = 5, HAND_MAX = 7;
+export const INK_DRAW = 1, INK_MISS = 2, INK_RIGHT = 1;
+/** The ink well for a level: room for a few draws and a slip or two. */
+export const inkFor = (level) => Math.min(12, 5 + Math.ceil(target(level).length / 4));
+const rng = (seed) => { let h = [...String(seed)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) || 1; return () => ((h = (h * 1103515245 + 12345) >>> 0) / 4294967296); };
+/** Build the deck (top first). `seed` makes it repeatable for tests; the room passes a fresh one each deal. */
+export function buildDeck(level, seed = level.id) {
+  const R = rng(seed), need = target(level), pool = tiles(level).filter((v) => !need.includes(v));
+  const extra = pool.length ? pool : tiles(level);
+  const decoys = Array.from({ length: Math.min(4, Math.ceil(need.length / 2) + 2) }, () => extra[Math.floor(R() * extra.length)]);
+  const seq = [];
+  need.forEach((v) => { if (decoys.length && R() < 0.55) seq.push(decoys.pop()); seq.push(v); });
+  seq.push(...decoys);
+  for (let i = 0; i + 1 < seq.length; i++) if (R() < 0.35) [seq[i], seq[i + 1]] = [seq[i + 1], seq[i]]; // loosen the order a little
+  return seq.map((v, i) => ({ id: i, v }));
+}
+/** A fresh game state. */
+export function deal(level, seed) { const deck = buildDeck(level, seed); return { deck, hand: deck.splice(0, HAND), picks: [], ink: inkFor(level), well: inkFor(level), peeks: 0, hints: 0, misses: 0, draws: 0, lost: false }; }
+/** Play a card from the hand onto the next glyph. Returns { ok, done, lost }. Wrong cards go to the bottom of the deck. */
+export function playCard(level, g, cardId) {
+  const i = g.hand.findIndex((c) => c.id === cardId); if (i < 0 || g.lost) return { ok: false, done: false, lost: g.lost };
+  const card = g.hand[i], r = check(level, [...g.picks, card.v]);
+  if (!r.ok) { g.misses++; g.ink -= INK_MISS; g.hand.splice(i, 1); g.deck.push(card); if (g.deck.length && g.hand.length < HAND) g.hand.push(g.deck.shift()); g.lost = g.ink <= 0; return { ok: false, done: false, lost: g.lost }; }
+  g.hand.splice(i, 1); g.picks.push(card.v); g.ink = Math.min(g.well, g.ink + INK_RIGHT);
+  if (g.deck.length && g.hand.length < HAND) g.hand.push(g.deck.shift());
+  return { ok: true, done: r.done, lost: false };
+}
+/** Draw one card for 1 ink. With a full hand, the oldest card goes to the bottom of the deck first. */
+export function drawCard(level, g) {
+  if (g.lost || !g.deck.length || g.ink < INK_DRAW) return null;
+  if (g.hand.length >= HAND_MAX) g.deck.push(g.hand.shift());
+  const c = g.deck.shift(); g.hand.push(c); g.ink -= INK_DRAW; g.draws++; g.lost = g.ink <= 0 && !g.hand.some((h) => h.v === needed(level, g)); return c;
+}
+/** The sound the next glyph needs. */
+export const needed = (level, g) => target(level)[g.picks.length] ?? null;
