@@ -73,6 +73,8 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
+import { notebookPages, studyToday, claimTable, NOTEBOOK_CSS } from "./notebook.js";
+import { addTokens } from "./hosts/tokens.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
@@ -796,23 +798,25 @@ const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()
   // first open: bring in the readings saved before the Journal kept a log
   return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
 function logEvent(k, e, t, ref = null, d = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref, Date.now(), d))); } catch { /* storage full or blocked */ } }
-const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
+const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false, nb: "table" };
+const BOOK_TABS = [["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["notebook", "🧪 Lab Notebook"], ["secrets", "🗝️ Secrets"]];
 function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("close"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
 function openBook(sec = "codex") {
   const old = $("book"); if (old) old.remove();
   const b = bookOf(state.prog); BK.sec = sec; BK.entry = null; BK.li = null;
   const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
-    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
+    <div class="bk-top"><nav class="bk-tabs" role="tablist">${BOOK_TABS.map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
     <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
       <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div></div></div></div>`;
+  if (!$("nb-style")) { const st = document.createElement("style"); st.id = "nb-style"; st.textContent = NOTEBOOK_CSS; document.head.append(st); }
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
     if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
-  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "charts", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = BOOK_TABS.map((t) => t[0]), back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
     turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; BK.li = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
   bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
@@ -830,7 +834,7 @@ function turnTo(change, back = false, n = 3) {
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
   document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
-  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "notebook" ? notebookPages(p, esc, BK.nb) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
   bookCodes(p, L, R);
@@ -852,7 +856,19 @@ function drawBook() {
   on("[data-wb]", (b) => wearBook(b.dataset.wb));
   on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }, false, 6));
   on("[data-seal]", () => breakSeal());
+  on("[data-nb]", (b) => turnTo(() => { BK.nb = b.dataset.nb; }, false, 1));
+  on("[data-nb-study]", () => { if (studyToday(p)) { bookSfx("page"); chime(1); logEvent("game", "🧪", "Studied the Element of the Day in the Lab Notebook"); } payNotebook(p); drawBook(); });
+  if (BK.sec === "notebook") payNotebook(p);
   if (BK.sec === "charts") bindCharts();
+}
+/** Pay the Lab Notebook's table rewards: 💎 per full period, 🪨 and Mendeleev's seal for all 118. */
+function payNotebook(p) {
+  const out = claimTable(p); if (!out.essence && !out.stones) { saveProgress(); return; }
+  if (out.essence) award(0, out.essence);
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const per of out.rows) logEvent("trophy", "🧮", `Lab Notebook: period ${per} of the table is full (+${50} 💎)`);
+  if (out.seal) logEvent("trophy", "🏵️", "Lab Notebook: all 118 elements lit. Mendeleev's seal");
+  chime(2); saveProgress(); showStats();
 }
 // ---- My charts (mycharts.js): every chart's data from the saved birth details, what is stored where, and the delete controls ----
 const profKey = (pr) => JSON.stringify(pr || null);
