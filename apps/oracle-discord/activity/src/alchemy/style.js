@@ -34,7 +34,22 @@ export const CSS = `
 .reward .al-el.on{animation:al-flip .6s cubic-bezier(.2,1.4,.4,1) both}.reward .al-el.on:nth-child(2){animation-delay:.12s}.reward .al-el.on:nth-child(3){animation-delay:.24s}
 @keyframes al-flip{from{transform:rotateY(90deg) scale(.6);opacity:0}}
 .al-eq{animation:al-in .6s .2s ease-out both}
-@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}}
+.table.alchemy :is(.al-fume,.al-fall,.al-heap,.al-shrink,.al-xtal,.al-dripx,.al-glowpulse,.al-fizz,.al-flare,.al-film,.al-spark2,.al-crust){transform-box:fill-box;transform-origin:center}
+.table.alchemy .al-swirl{transform-box:view-box;transform-origin:200px 182px;animation:al-swirl 1.6s ease-in both}@keyframes al-swirl{0%{transform:rotate(0) scale(1.4);opacity:1}80%{opacity:.9}100%{transform:rotate(540deg) scale(.1);opacity:0}}
+.table.alchemy .al-fume{opacity:0;animation:al-fume 2.6s ease-out both}@keyframes al-fume{0%{opacity:.85;transform:translate(0,0) scale(.4)}100%{opacity:0;transform:translate(var(--dx),-100px) scale(2.6)}}
+.table.alchemy .al-crust{opacity:0;animation:al-in .8s 1.8s ease-out forwards}
+.table.alchemy .al-fall{opacity:0;animation:al-fall .9s ease-in both}@keyframes al-fall{0%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(42px)}}
+.table.alchemy .al-heap{transform-origin:50% 100%;animation:al-heap 1.4s 1.6s ease-out both}@keyframes al-heap{from{transform:scale(.1,.1)}}
+.table.alchemy .al-shrink{animation:al-shrink 2.6s .9s ease-in both}@keyframes al-shrink{0%{transform:scale(1)}100%{transform:scale(0);opacity:0}}
+.table.alchemy .al-xtal{opacity:0;animation:al-xtal .5s cubic-bezier(.2,1.6,.4,1) both}@keyframes al-xtal{from{opacity:1;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.table.alchemy .al-branch{stroke-dasharray:60;stroke-dashoffset:60;animation:al-draw 1.6s ease-out forwards}
+.table.alchemy .al-dripx{opacity:0;animation:al-dripx .6s ease-in both}@keyframes al-dripx{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(30px)}}
+.table.alchemy .al-glowpulse{opacity:0;mix-blend-mode:screen;animation:al-gp 1.4s 1.2s ease-in-out infinite alternate}@keyframes al-gp{from{opacity:.15;transform:scale(.8)}to{opacity:.6;transform:scale(1.15)}}
+.table.alchemy .al-fizz{opacity:0;animation:al-fizz 1s ease-in infinite}@keyframes al-fizz{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+.table.alchemy .al-flare{opacity:0;animation:al-flare 1.6s 1.3s ease-out both}@keyframes al-flare{0%{opacity:0;transform:scale(.2) rotate(0)}30%{opacity:1;transform:scale(2) rotate(45deg)}100%{opacity:.7;transform:scale(1.2) rotate(90deg)}}
+.table.alchemy .al-film{transform-origin:50% 50%;animation:al-film 1.6s 1.2s ease-out both}@keyframes al-film{from{transform:scaleX(0)}}
+.table.alchemy .al-spark2{opacity:0;animation:al-spark2 1s ease-out both}@keyframes al-spark2{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--x),var(--y))}}
+@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}}
 .al-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:4px 0 6px}
 .c.al-jar{display:flex;align-items:center;gap:8px;text-align:left;border-radius:10px;padding:6px 10px}
 .c.al-jar i{flex:none;width:24px;height:24px;border-radius:6px;background:var(--jc);display:grid;place-items:center;color:#160b2c;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18)}

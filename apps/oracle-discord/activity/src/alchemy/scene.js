@@ -8,10 +8,10 @@ import { FLAMES } from "./logic.js";
 const xml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const g = (id, x, y, s, col) => GLYPH[id] ? `<g transform="translate(${x} ${y}) scale(${s / 40})" style="color:${col}">${GLYPH[id]}</g>` : "";
 
-function vessel(kind, liquid, rise) {
+function vessel(kind, liquid, rise, anim = "") {
   const L = liquid || "#5a4a7a";
   const bulb = `<clipPath id="al-bulb"><circle cx="200" cy="168" r="30"/></clipPath>`;
-  const liq = `<g clip-path="url(#al-bulb)"><rect class="al-liq${rise ? " rise" : ""}" x="160" y="170" width="80" height="40" fill="${L}"/>${[[188, 2.4, 0], [196, 1.6, .5], [204, 2.8, 1.1], [211, 1.8, 1.6], [200, 2, 2]].map(([x, r, d]) => `<circle class="al-bub" cx="${x}" cy="194" r="${r}" fill="#fff" opacity=".6" style="animation-delay:-${d}s"/>`).join("")}</g>`;
+  const liq = `<g clip-path="url(#al-bulb)"><rect class="al-liq${rise ? " rise" : ""}" x="160" y="170" width="80" height="40" fill="${L}">${anim}</rect>${[[188, 2.4, 0], [196, 1.6, .5], [204, 2.8, 1.1], [211, 1.8, 1.6], [200, 2, 2]].map(([x, r, d]) => `<circle class="al-bub" cx="${x}" cy="194" r="${r}" fill="#fff" opacity=".6" style="animation-delay:-${d}s"/>`).join("")}</g>`;
   const glass = 'fill="rgba(200,230,255,.12)" stroke="#cfe6ff" stroke-width="2"';
   if (kind === "al-copper") return `<defs>${bulb}</defs><path d="M170 148 Q168 198 200 198 Q232 198 230 148 Z" fill="#b8642e" stroke="#ffb27a" stroke-width="2"/>${liq.replace('clip-path="url(#al-bulb)"', 'opacity=".0"')}
     <path d="M190 148 C190 120 220 108 246 118 L312 150" fill="none" stroke="#c8743a" stroke-width="7" stroke-linecap="round"/><path d="M174 160 H226 M172 176 H228" stroke="#7a3a14" stroke-width="1.5" opacity=".6"/>
@@ -40,7 +40,31 @@ const puffFx = () => [0, 1, 2, 3].map((i) => `<circle class="al-puff" cx="${190 
 const burstFx = (c) => `<g class="al-rays">${Array.from({ length: 12 }, (_, i) => `<path d="M200 168 L${200 + Math.cos(i * 0.5236) * 150} ${168 + Math.sin(i * 0.5236) * 150}" stroke="${c}" stroke-width="${i % 2 ? 3 : 6}" opacity=".35"/>`).join("")}</g>
   ${Array.from({ length: 10 }, (_, i) => { const a = i * 0.628; return `<path class="al-spark" d="M200 160 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 Z" fill="#fff6d0" style="--x:${(Math.cos(a) * 95).toFixed(0)}px;--y:${(Math.sin(a) * 75).toFixed(0)}px;animation-delay:${(i % 3) * 0.12}s"/>`; }).join("")}`;
 
+/** The reaction: reagent colours swirl and blend into the real product, then the product's own effect plays. */
+const REACT = {
+  fumes: (c) => [0, 1, 2, 3, 4].map((i) => `<circle class="al-fume" cx="${194 + i * 3}" cy="128" r="${8 + (i % 3) * 3}" fill="${c}" style="--dx:${(i - 2) * 16}px;animation-delay:${1.2 + i * 0.25}s"/>`).join(""),
+  sublime: (c) => REACT.fumes(c) + `<path class="al-crust" d="M176 150 Q200 136 224 150" stroke="${c}" stroke-width="5" fill="none" stroke-linecap="round"/>`,
+  powder: (c) => Array.from({ length: 14 }, (_, i) => `<circle class="al-fall" cx="${184 + (i * 7) % 32}" cy="150" r="1.8" fill="${c}" style="animation-delay:${1.1 + i * 0.07}s"/>`).join("") + `<ellipse class="al-heap" cx="200" cy="194" rx="16" ry="4" fill="${c}"/>`,
+  nugget: (c) => `<ellipse class="al-shrink" cx="200" cy="188" rx="9" ry="6" fill="${c}" stroke="#fff6c8" stroke-width="1"/>`,
+  plate: (c) => `<rect x="196" y="150" width="8" height="42" rx="2" fill="#8a8f99"><animate attributeName="fill" values="#8a8f99;#8a8f99;${c}" dur="2.4s" fill="freeze"/></rect><rect x="192" y="148" width="16" height="4" rx="1" fill="#6d727c"/>`,
+  crystals: (c) => Array.from({ length: 9 }, (_, i) => `<path class="al-xtal" d="M${182 + (i * 11) % 36} ${190 - (i % 3) * 5} l3 -5 l3 5 l-3 5 Z" fill="${c}" stroke="#fff" stroke-width=".5" style="animation-delay:${1.3 + i * 0.12}s"/>`).join(""),
+  tree: (c) => ["M200 196 V170 l-8 -8 M200 178 l9 -9 l2 -8 M200 186 l-11 -5 l-4 -8", "M190 196 l-4 -14 l-6 -4 M186 186 l6 -9", "M210 196 l5 -12 l7 -4 M213 188 l-3 -10"]
+    .map((d, i) => `<path class="al-branch" d="${d}" stroke="${c}" stroke-width="1.8" fill="none" stroke-linecap="round" style="animation-delay:${1.2 + i * 0.3}s"/>`).join(""),
+  drip: (c) => [0, 1, 2, 3].map((i) => `<circle class="al-dripx" cx="306" cy="160" r="2.4" fill="${c}" style="animation-delay:${1 + i * 0.35}s"/>`).join(""),
+  glow: (c) => `<circle class="al-glowpulse" cx="200" cy="168" r="44" fill="${c}"/>`,
+  bubbles: (c) => Array.from({ length: 12 }, (_, i) => `<circle class="al-fizz" cx="${184 + (i * 5) % 32}" cy="196" r="${1.4 + (i % 3) * 0.7}" fill="none" stroke="${c}" stroke-width="1" style="animation-delay:${1 + i * 0.11}s"/>`).join(""),
+  flare: (c) => `<path class="al-flare" d="M200 100 l6 18 l18 6 l-18 6 l-6 18 l-6 -18 l-18 -6 l18 -6 Z" fill="${c}"/>` + REACT.fumes("rgba(255,255,255,.5)"),
+  calx: (c) => `<rect class="al-film" x="172" y="168" width="56" height="5" rx="2" fill="${c}"/>`,
+  sparks: (c) => Array.from({ length: 12 }, (_, i) => { const a = i * 0.5236; return `<circle class="al-spark2" cx="200" cy="176" r="2.2" fill="${c}" style="--x:${(Math.cos(a) * 70).toFixed(0)}px;--y:${(Math.sin(a) * 50 - 20).toFixed(0)}px;animation-delay:${1.1 + (i % 4) * 0.15}s"/>`; }).join(""),
+};
+export const reactionFx = (r) => {
+  const cols = [...(r.from || []), r.to];
+  const swirl = `<g class="al-swirl">${(r.from || []).map((c, i, a) => { const ang = (i / a.length) * 6.283; return `<circle cx="${(200 + Math.cos(ang) * 18).toFixed(1)}" cy="${(182 + Math.sin(ang) * 8).toFixed(1)}" r="6" fill="${c}" stroke="#fff" stroke-opacity=".5"/>`; }).join("")}</g>`;
+  return { anim: `<animate attributeName="fill" values="${cols.join(";")}" dur="${0.5 + cols.length * 0.4}s" fill="freeze"/>`, over: swirl, after: (REACT[r.fx] || (() => ""))(r.fxc || r.to) };
+};
+
 export function sceneSvg(s) {
+  const rx = s.react ? reactionFx(s.react) : null;
   const fire = (shopItem(s.look.fire) || shopItem("al-coal")).flame;
   const lit = s.flames ?? FLAMES, xs = [170, 190, 210, 230];
   const flames = xs.map((x, i) => i < lit
@@ -65,7 +89,7 @@ ${charm(s.look.charm)}${scroll}
 <circle class="al-halo" cx="200" cy="168" r="${s.glow ? 70 : 40}" fill="url(#al-halo)" opacity="${s.glow ? 1 : 0.35}"/>
 <rect x="150" y="198" width="100" height="52" rx="4" fill="url(#al-brick)" stroke="#2a120a" stroke-width="2"/><rect x="160" y="206" width="80" height="34" rx="14" fill="#140804"/>
 ${flames}${s.snuff ? `<g class="al-dying"><path d="M${xs[lit]} 236 C${xs[lit] + 9} 224 ${xs[lit] + 6} 214 ${xs[lit]} 204 C${xs[lit] - 6} 214 ${xs[lit] - 9} 224 ${xs[lit]} 236Z" fill="url(#al-fire)"/></g>` : ""}${lit ? embers() : ""}
-${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}">${vessel(s.look.vessel, s.liquid, !!s.pour)}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}
+${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}">${vessel(s.look.vessel, s.react ? s.react.from[0] || s.liquid : s.liquid, !!s.pour, s.react ? rx.anim : "")}${s.react ? rx.over + rx.after : ""}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}
 ${chips}${label}
 </svg>`;
 }
