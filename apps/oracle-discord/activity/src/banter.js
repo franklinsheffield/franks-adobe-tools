@@ -245,6 +245,18 @@ export const BANTER = {
     pirate: G("A gig in port! Polish yer boots, matey!", "The crowd be rowdy. Give 'em the truth, plain sailin'.", "Packed to the rigging! Ye earned yer grog tonight!", "Show's sunk. We'll find another harbour."),
     influencer: G("Tour announcement! Tonight's Bill just dropped!", "Live from the venue! The vibe is immaculate!", "SOLD OUT show! Thank you all so much!", "Show cancelled. Taking a little break, besties."),
   },
+  mentalist: {
+    mystic: G("The mind is a locked room. The audience hands you the key.", "Breathe. Let them think you're listening to the beyond.", "They believe you read their thoughts. You read their habits.", "The murmur grows. Even seers have quiet nights."),
+    deadpan: G("You can't see. Except down the side of your nose.", "Seven. They always pick seven. Statistically speaking.", "Standing ovation. Minds read: none. Correct.", "Booed off. The audience read your mind instead."),
+    drama: G("The BLINDFOLD goes ON! The room holds its BREATH!", "A CUE! Did you hear the CUE? Every word is a SIGNAL!", "A STANDING OVATION! They'll talk of nothing ELSE!", "BOOED! Booed off the stage! The INDIGNITY!"),
+    standup: G("I'd read your mind, but the print is very small.", "My psychic told me I'd say this. Pray, what's the card?", "Mind reader! Also good at guessing the bill at dinner.", "Booed off. Should have seen that coming. I'm the mind reader."),
+    grumpy: G("First word carries the number. It's not hard.", "Don't guess. Count. Pray is one, Answer is two.", "Fine. The audience bought it. They usually do.", "You forgot the code. Again. It's ten words."),
+    sports: G("The mentalist steps up to the spotlight!", "Cue sent! Will the partner read it in time?", "NAILED IT! Every card called right on the night!", "Booed off! The crowd turns on the mentalist!"),
+    conspiracy: G("That 'random' volunteer? Same coat as yesterday.", "Every question is a code. Every one. Listen closely.", "They think it's a gift. It's a word list, people.", "Booed off. Somebody leaked the code word list."),
+    bard: G("Blindfolded stands the seer, and all hold still!", "A word, a sign, a number passed in plain sight!", "The hall erupts, the seer bows to the gods!", "Alas, the cue was lost upon the air!"),
+    pirate: G("Blindfolded like a prisoner walkin' the plank!", "Listen for the signal, matey: first word be the number.", "Shiver me timbers, ye read their minds clean through!", "Booed off the deck! Back to swabbin' with ye."),
+    influencer: G("Mind reading LIVE! Drop your number in the chat!", "Okay the cue word thing is actually genius.", "Standing ovation! The psychic aesthetic is SO real.", "Booed off. Honestly? Still iconic content."),
+  },
   darkseance: {
     mystic: G("The dark hides the hand, never the truth.", "Feel the circle tighten. They are watching closely.", "They saw a spirit. You saw a method. Remember the difference.", "The light found you. It always does, in the end."),
     deadpan: G("You are the ghost. The ghost has feet. Hide them.", "Spooky voice. Same voice as yours, but spooky.", "Committee fooled. Ghosts: still zero.", "Exposed. The ghost was you. As expected."),
