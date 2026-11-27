@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { HOSTS, hostFor, setHost, rename, hostLine, hostBanter, hostShelves, hasRoom } from "../activity/src/hosts/index.js";
 import { LENSES } from "../activity/src/hosts/alchemist.js";
+import { STAR_EYES } from "../activity/src/hosts/observatory.js";
 import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
@@ -34,7 +35,7 @@ test("every House is complete: name, rooms that exist, its own player, and bante
 test("each House shelf has a department and a free starter", () => {
   const named = DEPTS.flatMap((d) => d.kinds);
   for (const s of hostShelves()) { assert.ok(named.includes(s.kind), s.kind); assert.ok(s.items.some((i) => i.price === 0), s.kind); for (const m of ["open", "tryon", "buy"]) assert.ok(s.talk[m].length >= 3, s.kind + m); }
-  assert.equal(new Set(LENSES.map((l) => l.id)).size, LENSES.length);
+  assert.equal(new Set(LENSES.map((l) => l.id)).size, LENSES.length); assert.equal(new Set(STAR_EYES.map((l) => l.id)).size, STAR_EYES.length);
 });
 
 test("Magister Vell renames the Oracle in her House only, and keeps rank names and /oracle", () => {
@@ -74,3 +75,11 @@ test("House tokens: level wins, daily visit, relics, and strays sent to the righ
   addTokens(p, alch, 2); assert.equal(tokensLeft(p, alch), 15);
 });
 test("the Alchemist's House is routed from #⚗️-laboratory", () => { assert.equal(hostFor({ channelId: "1575967994633396544" }).id, "alchemist"); });
+test("the Keeper of Hours renames the Oracle in the Observatory", () => {
+  setHost(HOSTS.find((h) => h.id === "observatory"));
+  assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "THE KEEPER · The Keeper's hand · Observatory");
+  assert.equal(rename("✦ Back to the Oracle"), "✦ Back to the Keeper"); assert.equal(rename("Reach Oracle-touched, or try /oracle"), "Reach Oracle-touched, or try /oracle");
+  assert.equal(rename("Open the Record Player"), "Open the Orrery Music Box"); assert.match(hostBanter("rummy", "win", "Ada"), /Ada/);
+  assert.equal(hostFor({ search: "?house=observatory" }).id, "observatory"); setHost(null);
+});
+test("the Observatory is routed from #🌌-observatory", () => { assert.equal(hostFor({ channelId: "1575975395692642596" }).id, "observatory"); });

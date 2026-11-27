@@ -6,9 +6,10 @@
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
+import { observatory } from "./observatory.js";
 import { tokensLeft, houseRelicsHtml, TOKEN_CSS } from "./tokens.js";
 
-export const HOSTS = [oracle, alchemist];
+export const HOSTS = [oracle, alchemist, observatory];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
 
 /** Which House this launch is in: ?house=<id> (preview and local dev) wins, then the Discord channel, then the Oracle. */
