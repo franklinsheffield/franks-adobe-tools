@@ -1,11 +1,12 @@
 // Constellation Rummy: a card room of the Oracle Chamber. Collect real stars into constellation sets (and, from Level 2,
 // colour sets of one spectral class), playing against the Oracle. Laying a constellation down tells one of its myths
 // (shared with Star Lore Navigator); every card carries a real fact. Rules in engine.js, deck in deck.js.
-// Mounted via main.js ROOMS; sells card backs on the Essence store's "🌌 Star cards" shelf (store.js registerShelf). The table pane is drawn top-down on the equipped table cloth (table.js getTableDecor).
+// Mounted via main.js ROOMS; sells card backs on the Essence store's "🌌 Star cards" shelf (cardbacks.js). The table pane is drawn top-down on the equipped table cloth (table.js getTableDecor).
 import { CARD, CONS, CLASSES, FIGURE } from "./deck.js";
 import { GUIDE } from "./guide.js";
 import { LEVELS, newGame, levelOf, top, setType, fits, draw, layDown, layOff, discard, tally, oracleTurn, settle, pts, room as rummyOf,
-  winsOf, titleOf, nextTitle, KIND, BACKS, backOf } from "./engine.js";
+  winsOf, titleOf, nextTitle, backOf } from "./engine.js";
+import { cardBackSvg, CARD_BACK } from "../cardbacks.js";
 import { project, centroid } from "../stars/engine.js";
 import { getTableDecor } from "../table.js";
 import { shuffleSfx, dealSfx, flickSfx, takeSfx, discardSfx, meldSfx, layoffSfx, badSfx, oracleSfx, winSfx, loseSfx, dawnSfx } from "./sfx.js";
@@ -69,7 +70,8 @@ function face(hip, o = {}) {
   return `<${tag} ${tag === "button" ? `type="button" data-h="${hip}"` : ""} class="cr-card c-${c.cls}${o.mini ? " mini" : ""}${o.sel ? " sel" : ""}${o.cls ? " " + o.cls : ""}"
     style="--k:${CLASSES[c.cls].colour};--i:${o.i || 0}" aria-label="${esc(c.name)}, class ${c.cls}, magnitude ${c.mag}">${art(hip, o.labels === false)}</${tag}>`;
 }
-const back = (cls = "", style = "") => `<span class="cr-back ${cls}"${style ? ` style="${style}"` : ""}><i></i></span>`;
+let UNI = ""; // the card back equipped on the store's Cards shelf ("" = this deck's own midnight star)
+const back = (cls = "", style = "") => (UNI ? `<span class="cr-back cr-uni ${cls}"${style ? ` style="${style}"` : ""}>${cardBackSvg(UNI)}</span>` : `<span class="cr-back ${cls}"${style ? ` style="${style}"` : ""}><i></i></span>`);
 /** The table seen from above: the player's equipped cloth (colours from the Chamber's --cloth vars, its design and motion). */
 function clothSvg() {
   const D = getTableDecor(), ink = D.ink || "#E2B04A";
@@ -83,7 +85,7 @@ function clothSvg() {
     <rect width="400" height="300" fill="url(#cr-vign)"/><rect x="6" y="6" width="388" height="288" rx="14" fill="none" stroke="${ink}" stroke-opacity=".7" stroke-width="2"/><rect x="12" y="12" width="376" height="276" rx="10" fill="none" stroke="${ink}" stroke-opacity=".35" stroke-dasharray="2 5"/></svg>`;
 }
 function tableHtml(g, o = {}) {
-  const L = levelOf(g), t = top(g), b = "cr-b-" + (o.back || "cb-midnight"), n = g.hands.or.length;
+  const L = levelOf(g), t = top(g), b = "cr-b-own", n = g.hands.or.length;
   const opp = `<div class="cr-opp${o.thinking ? " think" : ""}"><div class="cr-ofan">${g.hands.or.map((_, i) => back(i >= n - (o.oracleGot || 0) ? "cr-new" : "", `--r:${f1((i - (n - 1) / 2) * 7)}deg;--y:${f1(Math.abs(i - (n - 1) / 2) * 1.6)}px`)).join("")}</div><span class="cr-cnt">Oracle · ${n}</span></div>`;
   const piles = `<div class="cr-piles"><button type="button" class="cr-pile" data-draw="deck" ${g.deck.length ? "" : "disabled"}>${g.deck.length ? `<span class="cr-stack">${back("", "--o:2")}${back("", "--o:1")}${back()}</span>` : `<span class="cr-empty">${g.nights < 2 ? "new night" : "dawn"}</span>`}<span class="cr-cnt">${g.deck.length} left${g.nights > 1 ? " · night 2" : ""}</span></button>
     <button type="button" class="cr-pile" data-draw="discard" ${t != null ? "" : "disabled"}>${t != null ? face(t, { mini: true, labels: L.labels, cls: o.flip ? "cr-flip" : "" }) : `<span class="cr-empty">discards</span>`}<span class="cr-cnt">discards</span></button></div>`;
@@ -143,21 +145,9 @@ const CSS = `
 .c[disabled]{opacity:.45;cursor:default}
 /* card backs (store shelf) */
 .cr-back{position:relative;display:inline-block;width:44px;height:60px;border-radius:6px;overflow:hidden;border:1.5px solid #c9a24a;background:radial-gradient(circle at 50% 45%,#24307a,#0b1040);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.cr-mat .cr-back.cr-uni svg{opacity:.5}.cr-back.cr-uni{background:#0b1040}.cr-back.cr-uni::after{content:none}
 .cr-back i{position:absolute;inset:3px;border:1px solid rgba(250,222,140,.45);border-radius:4px}
 .cr-back::after{content:"✷";position:absolute;inset:0;display:grid;place-items:center;color:#FADE8C;font-size:1.2em;text-shadow:0 0 6px #FADE8C}
-.cr-b-cb-astrolabe .cr-back{background:repeating-radial-gradient(circle at 50% 50%,#b8862f 0 2px,#6a4510 2px 5px,#d8a84a 5px 6px,#5a3a0c 6px 9px);border-color:#e6c06a}
-.cr-b-cb-astrolabe .cr-back::after{content:"";inset:12%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 40deg,#fbe3a0 40deg 44deg,transparent 44deg 160deg,#fbe3a0 160deg 164deg,transparent 164deg 280deg,#fbe3a0 280deg 284deg,transparent 0);animation:cr-spin 9s linear infinite}
-.cr-b-cb-zodiac .cr-back{background:conic-gradient(#3b1f6e 0 30deg,#21134a 30deg 60deg,#3b1f6e 60deg 90deg,#21134a 90deg 120deg,#3b1f6e 120deg 150deg,#21134a 150deg 180deg,#3b1f6e 180deg 210deg,#21134a 210deg 240deg,#3b1f6e 240deg 270deg,#21134a 270deg 300deg,#3b1f6e 300deg 330deg,#21134a 330deg);border-color:#d8b0ff}
-.cr-b-cb-zodiac .cr-back::after{content:"☉";color:#ffd56a}.cr-b-cb-zodiac .cr-back i{border-radius:50%;inset:14%;border:1.5px dotted #d8b0ff;animation:cr-spin 14s linear infinite}
-.cr-b-cb-nebula .cr-back{background:radial-gradient(circle at 30% 40%,#ff5fa8 0,transparent 40%),radial-gradient(circle at 70% 65%,#3fd0e0 0,transparent 45%),radial-gradient(circle at 50% 50%,#2a1260,#060418);background-size:180% 180%;animation:cr-drift 8s ease-in-out infinite alternate;border-color:#ff9ad0}
-.cr-b-cb-nebula .cr-back::after{content:"✦";color:#fff;font-size:.9em}
-.cr-b-cb-aurora .cr-back{background:linear-gradient(170deg,transparent 30%,rgba(80,255,170,.75) 45%,transparent 60%),linear-gradient(190deg,transparent 40%,rgba(120,120,255,.5) 55%,transparent 70%),#041226;background-size:100% 220%;animation:cr-wave 5s ease-in-out infinite alternate;border-color:#7dffc0}
-.cr-b-cb-aurora .cr-back::after{content:"";}
-.cr-b-cb-atlas .cr-back{background:radial-gradient(circle at 50% 50%,#f1e1b6,#c9a66a);border-color:#6a4318}
-.cr-b-cb-atlas .cr-back i{border-color:#7a4f22;border-style:dashed}.cr-b-cb-atlas .cr-back::after{content:"✶";color:#5a1a0a;text-shadow:none}
-.cr-b-cb-pulsar .cr-back{background:#03030c;border-color:#8fc8ff}
-.cr-b-cb-pulsar .cr-back::before{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,transparent 0 80deg,rgba(150,210,255,.85) 88deg,transparent 96deg 260deg,rgba(150,210,255,.85) 268deg,transparent 276deg);animation:cr-spin 1.6s linear infinite}
-.cr-b-cb-pulsar .cr-back::after{content:"●";color:#e6f4ff;font-size:.7em;animation:cr-pulse 1.6s ease-in-out infinite}
 @keyframes cr-spin{to{transform:rotate(360deg)}}@keyframes cr-drift{to{background-position:100% 100%}}@keyframes cr-wave{to{background-position:0 100%}}@keyframes cr-pulse{50%{opacity:.3}}
 .cr-shelf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px}.cr-shelf .cr-back{width:66px;height:92px}.cr-shelf .cr-back:nth-child(1){transform:rotate(-10deg)}.cr-shelf .cr-back:nth-child(3){transform:rotate(10deg)}
 @media (prefers-reduced-motion: reduce){.cr-deal,.cr-new,.cr-flip,.cr-shake,.cr-meld .cr-fan,.cr-burst,.cr-card .cr-sky,.cr-opp.think .cr-ofan,.cr-back,.cr-back::before,.cr-back::after,.cr-back i,.cr-clothfx *{animation:none}.cr-burst{display:none}}
@@ -170,23 +160,12 @@ export function guideHtml() {
   return `<div class="dec-guide cr-guide"><h3>📖 ${esc(GUIDE.title)}</h3>${GUIDE.sections.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(s.h)}</summary>${s.p.map((t) => `<p>${t}</p>`).join("")}</details>`).join("")}</div>`;
 }
 
-// ---- the store shelf ----
-export const shop = {
-  kind: KIND, label: "🌌 Star cards", items: BACKS,
-  talk: {
-    open: ["Card backs for Constellation Rummy. The stars are on the front; the style is on the back.", "Deal in style, darling. Even the heavens judge a deck by its cover."],
-    tryon: ["The {item}. Shuffle it and see.", "Ooh, {item}. The Oracle may cheat less against such a pretty deck."],
-    buy: ["{item}: yours. Every deal at the rummy table uses it now.", "Sold! {item}. May your sets be bright."],
-  },
-  preview(id, ctx) { styleOnce(); const t = ctx.tableEl; t.className = "table rummy"; t.innerHTML = `<div class="cr-shelf cr-b-${id}">${back()}${back()}${back()}</div>`; if (ctx.cap) ctx.cap("🃏 " + (BACKS.find((x) => x.id === id) || {}).name); },
-};
-
 export const rummy = {
-  id: "rummy", row: "cards", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle and learn their myths", shop,
+  id: "rummy", row: "cards", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle and learn their myths",
   open(ctx) {
     const { $, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
     styleOnce();
-    const prog = () => rummyOf(state.prog), backId = () => backOf(state.prog);
+    const prog = () => rummyOf(state.prog), backId = () => { const id = backOf(state.prog); UNI = CARD_BACK[id] ? id : ""; return id; };
     let g = null, sel = [], busy = false, tell = 0;
     const guideBtn = `<button class="c" type="button" id="cr-guide">📖 Study guide</button>`;
     const wireGuide = () => { const b = $("cr-guide"); if (!b) return; b.onclick = () => { const rb = $("reading-body"), on = !rb.querySelector(".cr-guide"); rb.innerHTML = on ? guideHtml() : "";

@@ -24,6 +24,7 @@ export const CSS = `
 .gm-face,.gm-back{position:absolute;inset:0;border-radius:9px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .gm-back{background:var(--gm-bg);border:1.5px solid var(--gm-edge);box-shadow:inset 0 0 0 3px rgba(0,0,0,.25),0 3px 8px rgba(0,0,0,.45)}
 .gm-back svg{width:52%;height:52%;filter:drop-shadow(0 0 4px rgba(0,0,0,.5))}
+.gm-back svg.cbk{filter:none}
 .gm-card:hover:not(.up):not(.done) .gm-back{box-shadow:inset 0 0 0 3px rgba(0,0,0,.25),0 0 12px var(--gm-edge)}
 .gm-card:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:10px}
 .gm-face{transform:rotateY(180deg);background:linear-gradient(170deg,#f4ead2,#dccba0);color:#2a1a08;border:1.5px solid #8a6a2c;box-shadow:0 3px 8px rgba(0,0,0,.45);padding:4px;text-align:center;gap:2px}

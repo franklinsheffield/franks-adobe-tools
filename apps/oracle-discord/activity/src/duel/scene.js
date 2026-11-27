@@ -2,6 +2,7 @@
 // Top: the Oracle's hand (card backs) and its Stability. Left: this round's lab condition card. Right: the bonus
 // compound. Centre: the reaction: atoms fly in, fuse into a molecule, flash, and the damage flies at the target.
 // Bottom: your Stability and discoveries. Look = { back, bench } from shop.js.
+import { CARD_BACK, cardBackSvg } from "../cardbacks.js";
 import { colourOf } from "./elements.js";
 import { BY_ID, pretty } from "./compounds.js";
 import { COND, START, GOAL } from "./logic.js";
@@ -61,6 +62,7 @@ function flyingCards(cards, up) {
 
 /** A card back pattern, drawn in a w × h box at (x, y). */
 export function backSvg(id, x, y, w, h) {
+  if (CARD_BACK[id]) return cardBackSvg(id, `x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none"`); // the store's Cards shelf dresses every deck
   const cx = x + w / 2, cy = y + h / 2, s = Math.min(w, h) / 40;
   const frame = (fill, stroke) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${4 * s}" fill="${fill}" stroke="${stroke}" stroke-width="${1.4 * s}"/>`;
   if (id === "db-lattice") return frame("#1c2a4a", "#9fc4ff") + Array.from({ length: 4 }, (_, i) => Array.from({ length: 5 }, (_, j) => `<circle cx="${x + w * (i + 0.5) / 4}" cy="${y + h * (j + 0.5) / 5}" r="${((i + j) % 2 ? 1.6 : 2.6) * s}" fill="${(i + j) % 2 ? "#3fdc6a" : "#b07cff"}"/>`).join("")).join("");
@@ -109,12 +111,12 @@ export function sceneSvg(s) {
   if (!g) {
     // lobby: a fanned hand of element cards and the deck
     const fan = ["Na", "Cl", "H", "O", "C"].map((e, i) => { const a = (i - 2) * 12; return `<g transform="rotate(${a} 200 330)" class="du-fan" style="--i:${i}"><rect x="178" y="120" width="44" height="62" rx="5" fill="#f5efe0" stroke="#e2b04a" stroke-width="1.5"/><text x="200" y="157" font-size="20" font-weight="700" text-anchor="middle" fill="${colourOf(e) === "#f4f4f4" ? "#666" : colourOf(e)}" font-family="system-ui" stroke="#000" stroke-width=".4">${e}</text></g>`; }).join("");
-    return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${wall}${backSvg(s.look.back, 40, 200, 44, 62)}${backSvg(s.look.back, 44, 204, 44, 62)}${fan}
+    return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${wall}${backSvg((s.look.uni || s.look.back), 40, 200, 44, 62)}${backSvg((s.look.uni || s.look.back), 44, 204, 44, 62)}${fan}
       <text x="200" y="52" font-size="24" text-anchor="middle" fill="${ink}" font-family="Cinzel,Georgia,serif" letter-spacing="3">ELEMENT DUEL</text>
       <text x="200" y="72" font-size="10" text-anchor="middle" fill="${ink}" opacity=".75" font-family="system-ui">Make real compounds. Out-react the Oracle.</text></svg>`;
   }
   const cond = COND[g.cond], bonus = BY_ID[g.bonus];
-  const backs = Array.from({ length: g.oracle.hand.length }, (_, i) => `<g class="du-oback" style="--i:${i}">${backSvg(s.look.back, 200 - g.oracle.hand.length * 17 + i * 34 + 2, 10, 30, 40)}</g>`).join("");
+  const backs = Array.from({ length: g.oracle.hand.length }, (_, i) => `<g class="du-oback" style="--i:${i}">${backSvg((s.look.uni || s.look.back), 200 - g.oracle.hand.length * 17 + i * 34 + 2, 10, 30, 40)}</g>`).join("");
   const condCard = `<g class="du-cond" key="${g.round}"><rect x="12" y="84" width="98" height="104" rx="8" fill="rgba(10,8,24,.82)" stroke="#e2b04a"/><text x="61" y="99" font-size="7.5" fill="#e2b04a" text-anchor="middle" font-family="Cinzel,Georgia,serif" letter-spacing="1">LAB · ROUND ${g.round}</text>
     <text x="61" y="130" font-size="26" text-anchor="middle">${cond.emoji}</text><text x="61" y="150" font-size="10" fill="#fff" text-anchor="middle" font-weight="700" font-family="system-ui">${xml(cond.name)}</text>
     <foreignObject x="16" y="153" width="90" height="34"><div xmlns="http://www.w3.org/1999/xhtml" style="font:7.5px/1.2 system-ui;color:#d8d0f0;text-align:center">${xml(cond.rule)}</div></foreignObject></g>`;

@@ -5,7 +5,7 @@
 import { DECKS, deckById, ALL_CARDS, cardByKey, WHERE } from "./deck.js";
 import { TIERS, TITLES, keyOf, room as mem, learnedCount, titleOf, nextTitle, starsOf, starsFor, deal, flip, hide, peek, settle, scoreOf } from "./engine.js";
 import { HOOKS, TIPS } from "./guide.js";
-import { shop, backOf, backStyle, backHtml, fanHtml } from "./shop.js";
+import { backOf, backStyle, backHtml, fanHtml } from "./shop.js";
 import { ensureStyle } from "./style.js";
 import { SFX } from "./sfx.js";
 import { glyphSvg } from "../alchemy/glyphs.js";
@@ -46,7 +46,6 @@ const starStr = (n, of = 3) => `<span class="gm-stars">${"★".repeat(n)}<span c
 export const room = {
   id: "memory", label: "Grimoire Memory", emoji: "🃏", row: "cards",
   blurb: "A matching card game: pair runes, glyphs and alchemy signs with their meanings",
-  shop,
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
     styleOnce();

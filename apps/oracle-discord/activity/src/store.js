@@ -2,6 +2,7 @@
 // the Oracle's clothing, alternate avatars, reading tools and voices. Cosmetic only, never real money.
 // Daily readings in the Chamber grow with rank (1, 3, 5, then unlimited) and an Essence day pass adds one more today.
 // The slash commands in chat are never limited.
+import { CARD_BACK_ITEMS, migrateBacks } from "./cardbacks.js";
 const today = (d = new Date()) => d.toLocaleDateString("en-CA");
 
 export const DAILY = [{ rank: "Seeker", n: 1 }, { rank: "Initiate", n: 3 }, { rank: "Adept", n: 5 }, { rank: "Magus", n: Infinity }, { rank: "Oracle-touched", n: Infinity }];
@@ -45,7 +46,7 @@ export const STORE = [
   // Table cloths: real occult designs on coloured cloth (looks.js CLOTH_DESIGN)
   { id: "silk", kind: "cloth", name: "Witch's pentacle", note: "Pentagram in a double circle with the five elements", price: 80, c: ["#8a1f3a", "#560f24", "#1e050c"], design: "pentacle", ink: "#FADE8C" },
   { id: "ocean", kind: "cloth", name: "Zodiac wheel", note: "The twelve signs around the Sun", price: 90, c: ["#14607a", "#0b3a4e", "#03141c"], design: "zodiac", ink: "#bff4ff" },
-  { id: "spirit", kind: "cloth", name: "Spirit board", note: "Letters, numbers, YES, NO and GOOD BYE", price: 120, c: ["#6b4a2a", "#3e2a16", "#160d05"], design: "spirit", ink: "#f3e3c3" },
+  { ghost: true, id: "spirit", kind: "cloth", name: "Spirit board", note: "Letters, numbers, YES, NO and GOOD BYE", price: 120, c: ["#6b4a2a", "#3e2a16", "#160d05"], design: "spirit", ink: "#f3e3c3" },
   { id: "alchemy", kind: "cloth", name: "Alchemist's circle", note: "Squared circle, the seven planets and four elements", price: 100, c: ["#2a5a3a", "#163a24", "#06140c"], design: "alchemy", ink: "#E2B04A" },
   { id: "metatron", kind: "cloth", name: "Metatron's cube", note: "Thirteen circles joined by every line", price: 100, c: ["#2a2a6e", "#161648", "#06061e"], design: "metatron", ink: "#c9d4ff" },
   { id: "tarot", kind: "cloth", name: "Celtic cross spread", note: "Ten card places, I to X, for a tarot reading", price: 90, c: ["#5a1a4a", "#3a0e30", "#14040f"], design: "tarot", ink: "#FADE8C" },
@@ -54,16 +55,16 @@ export const STORE = [
   { id: "void", kind: "orb", name: "Void glass", note: "A black mirror that drinks the light", price: 80, f: "grayscale(1) brightness(.55) contrast(1.6)" },
   { id: "storm", kind: "orb", name: "Storm glass", note: "Clear glass with a thunderstorm trapped inside", price: 140, f: "none" },
   { id: "galaxy", kind: "orb", name: "Pocket galaxy", note: "A spiral galaxy turning in the glass", price: 160, f: "none" },
-  { id: "ghost", kind: "orb", name: "Ghost glass", note: "Almost invisible. Something in there blinks", price: 120, f: "none" },
+  { ghost: true, id: "ghost", kind: "orb", name: "Ghost glass", note: "Almost invisible. Something in there blinks", price: 120, f: "none" },
   { id: "opal", kind: "orb", name: "Opal", note: "Milky, shifting, softly glowing", price: 100, f: "saturate(.4) brightness(1.35)" },
   // Candles: wax colour, flame colour and a detail (drips, carved sigil, brass dish, skull)
   { id: "goldflame", kind: "flame", name: "Beeswax tapers", note: "Warm gold flames on cream wax", price: 0, wax: ["#efe3cf", "#d8c8ad"], flame: ["#fff", "#FADE8C", "#ff8a3d"], halo: "#FADE8C" },
-  { id: "blueflame", kind: "flame", name: "Spirit candles", note: "White wax, ghost-blue flames and a drifting wisp", price: 50, wax: ["#f4f6ff", "#cfd6ea"], flame: ["#fff", "#9fdcff", "#2a6bff"], halo: "#9fdcff", detail: "wisp" },
+  { ghost: true, id: "blueflame", kind: "flame", name: "Spirit candles", note: "White wax, ghost-blue flames and a drifting wisp", price: 50, wax: ["#f4f6ff", "#cfd6ea"], flame: ["#fff", "#9fdcff", "#2a6bff"], halo: "#9fdcff", detail: "wisp" },
   { id: "greenflame", kind: "flame", name: "Alchemist's candles", note: "Green wax and flame on brass dishes", price: 50, wax: ["#3f8f4a", "#2a6a32"], flame: ["#fff", "#b8ff8a", "#2fae3a"], halo: "#b8ff8a", detail: "dish" },
   { id: "pinkflame", kind: "flame", name: "Third-eye candles", note: "Pink wax carved with an eye, magenta flames", price: 70, wax: ["#ff9fd0", "#e06aa8"], flame: ["#fff", "#ffb3e2", "#FF4FB3"], halo: "#ffb3e2", detail: "eye" },
   { id: "ritual", kind: "flame", name: "Black ritual candles", note: "Black wax, violet flames, carved sigils, red drips", price: 90, wax: ["#2a2230", "#120d16"], flame: ["#fff", "#d8a8ff", "#7a2aff"], halo: "#c79bff", detail: "sigil" },
   { id: "devotion", kind: "flame", name: "Red devotion candles", note: "Deep red wax with long drips and golden flames", price: 60, wax: ["#b0182e", "#7a0c1e"], flame: ["#fff", "#ffe08a", "#ff7a1a"], halo: "#ffd27a", detail: "drips" },
-  { id: "mementomori", kind: "flame", name: "Memento mori candles", note: "Bone-white candles set in little skulls", price: 140, wax: ["#f3ead8", "#d8ccb2"], flame: ["#fff", "#e8ffd0", "#8fd14f"], halo: "#d9ffb8", detail: "skull" },
+  { ghost: true, id: "mementomori", kind: "flame", name: "Memento mori candles", note: "Bone-white candles set in little skulls", price: 140, wax: ["#f3ead8", "#d8ccb2"], flame: ["#fff", "#e8ffd0", "#8fd14f"], halo: "#d9ffb8", detail: "skull" },
   // Voices: how the Oracle's talk blips sound
   { id: "classic-voice", kind: "voice", name: "Classic blips", note: "The old-school text-box voice", price: 0, v: { type: "square", base: 330, step: 28, vowel: 60, dur: 0.045, lp: 2600 } },
   { id: "whisper", kind: "voice", name: "Whisper", note: "Soft, quick and secretive", price: 60, v: { type: "triangle", base: 520, step: 30, vowel: 40, dur: 0.03, lp: 4200 } },
@@ -71,7 +72,7 @@ export const STORE = [
   { id: "bell", kind: "voice", name: "Glass bell", note: "Every word rings like crystal", price: 90, v: { type: "sine", base: 660, step: 55, vowel: 110, dur: 0.08, lp: 6000 } },
   { id: "robot", kind: "voice", name: "Lab robot", note: "Beep-boop precision", price: 120, v: { type: "square", base: 220, step: 110, vowel: 0, dur: 0.035, lp: 1800 } },
   { id: "chipmunk", kind: "voice", name: "Chipmunk oracle", note: "Tiny, fast and extremely excited", price: 70, v: { type: "square", base: 900, step: 70, vowel: 90, dur: 0.028, lp: 6000, sweep: 1.25 } },
-  { id: "ghost-voice", kind: "voice", name: "Ghostly wail", note: "Ooooo… every syllable haunts", price: 80, v: { type: "sine", base: 320, step: 22, vowel: 40, dur: 0.13, lp: 3000, vib: 6, vibDepth: 28, sweep: 1.3, gain: 0.6 } },
+  { ghost: true, id: "ghost-voice", kind: "voice", name: "Ghostly wail", note: "Ooooo… every syllable haunts", price: 80, v: { type: "sine", base: 320, step: 22, vowel: 40, dur: 0.13, lp: 3000, vib: 6, vibDepth: 28, sweep: 1.3, gain: 0.6 } },
   { id: "duck", kind: "voice", name: "Prophetic duck", note: "Quack-based divination", price: 80, v: { type: "sawtooth", base: 560, step: 30, vowel: 50, dur: 0.075, lp: 2400, band: 1400, sweep: 0.55, gain: 0.8 } },
   { id: "goblin", kind: "voice", name: "Goblin grumble", note: "Low, gravelly and a little rude", price: 80, v: { type: "sawtooth", base: 105, step: 18, vowel: 25, dur: 0.065, lp: 1200, vib: 32, vibDepth: 22 } },
   { id: "kazoo", kind: "voice", name: "Kazoo of fate", note: "Destiny, but buzzy", price: 90, v: { type: "sawtooth", base: 300, step: 26, vowel: 40, dur: 0.065, lp: 3600, band: 900, vib: 11, vibDepth: 9, gain: 0.8 } },
@@ -94,12 +95,7 @@ export const STORE = [
   { id: "v-lenormand", kind: "vibe", name: "Parlour Lenormand", note: "Lenormand: green baize, cream cards, a lace border and lamplight", price: 150, stars: ["#e9d6ae", "#7fd6a0"] },
   { id: "v-magicdeck", kind: "vibe", name: "Laboratory of Wonders", note: "Science is Magic deck: blueprint grid, orbiting atoms, bubbling glass", price: 150, stars: ["#66E0C8", "#ff8fc8"] },
   // Card backs: change the back of every deck on the table ("Each deck's own" keeps tarot, Lenormand and the Science is Magic deck distinct)
-  { id: "cb-deck", kind: "cardback", name: "Each deck's own", note: "Tarot violet, Lenormand green, Science is Magic atom", price: 0 },
-  { id: "cb-starfield", kind: "cardback", name: "Starfield", note: "Black sky, scattered white stars", price: 60 },
-  { id: "cb-moonphase", kind: "cardback", name: "Moon phases", note: "Four moons waxing down the card", price: 70 },
-  { id: "cb-circuit", kind: "cardback", name: "Circuit board", note: "Teal traces and a glowing core", price: 80 },
-  { id: "cb-rose", kind: "cardback", name: "Gilded rose", note: "Wine velvet with a five-petal rose", price: 90 },
-  { id: "cb-gilded", kind: "cardback", name: "Solid gold", note: "Gold leaf, a dark diamond. Very subtle. Not subtle", price: 160 },
+  ...CARD_BACK_ITEMS,
   { id: "v-tarot", kind: "vibe", name: "Gilded Arcana", note: "Tarot: midnight velvet, gilded borders, a fan of cards", price: 150, stars: ["#FADE8C", "#e7a0ff"] },
   { id: "v-runes", kind: "vibe", name: "Northern Lights", note: "Runes: aurora over icy fjords, carved letters", price: 150, stars: ["#c9fff0", "#7ad6ff"] },
   { id: "v-oraclebones", kind: "vibe", name: "Bronze & Bone", note: "Oracle bones: bronze vessels, bone and ember", price: 150, stars: ["#ffd9a8", "#ff8a3d"] },
@@ -112,7 +108,7 @@ export const STORE = [
   { id: "v-egyptian", kind: "vibe", name: "Valley of the Kings", note: "Egyptian: desert dusk, lapis and gold", price: 150, stars: ["#FADE8C", "#6a9cff"] },
   { id: "v-celtic", kind: "vibe", name: "Druid's Grove", note: "Celtic: mossy greens, mist and uncial script", price: 150, stars: ["#c9ffb0", "#7ad65a"] },
 ];
-export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["cardback", "🎴 Card backs"], ["vibe", "✨ Vibes"]];
+export const KINDS = [["outfit", "🧥 Robes"], ["avatar", "🎭 Avatars"], ["cloth", "🧵 Table cloths"], ["orb", "🔮 Crystal balls"], ["flame", "🕯️ Candles"], ["voice", "🗣️ Voices"], ["persona", "😂 Personalities"], ["cardback", "🃏 Card backs"], ["vibe", "✨ Vibes"]];
 
 /** The Oracle's lines in the store: one pool per product type, for opening the shelf, trying on, and buying. {item} = the item's name. */
 export const SHOP_TALK = {
@@ -156,6 +152,11 @@ export const SHOP_TALK = {
     tryon: ["The {item} back. Look at that deck sitting there, all mysterious.", "Shuffle in the {item}. Feels luckier already. It isn't. But it feels it.", "{item}! The cards are blushing. Face down, but blushing."],
     buy: ["The {item} back is yours. Every deck I deal will wear it.", "Sold! Your cards now dress in {item}.", "The {item}. Even the Coffin card looks cheerful in that."],
   },
+  haunted: {
+    open: ["The haunted shelf. Everything here goes bump in the night, tastefully.", "Ghost things, {name}. They pass through walls but still need buying.", "Boo. Sorry. Professional habit. Have a look."],
+    tryon: ["The {item}. Did the room just get colder? Lovely.", "Ooh, the {item}. Something just sighed approvingly.", "The {item}! Spooky. Elegant. Spoolegant."],
+    buy: ["The {item} is yours. It was already haunting you anyway.", "Sold! The {item} comes with one free shiver.", "The {item}. The ghosts send their regards, and a draught."],
+  },
   vibe: {
     open: ["Vibes change the whole Chamber: colours, letters and the very sky, one for every reading tradition. Feng shui for the cosmos.", "Redecorating? I adore redecorating. Last time was the Bronze Age.", "The right vibe makes every reading land harder. That's science. Magic science."],
     tryon: ["Oh, the {item}! The whole room just took a deep breath.", "I love what the {item} does to the light. And the letters. And me.", "The {item}. It's giving prophecy. It's giving atmosphere."],
@@ -170,7 +171,7 @@ function migrateIds(p) {
     if (p.voice === old) { p.voice = now; if (!p.owned.includes(now)) p.owned.push(now); }
   }
 }
-export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["cardback", "cb-deck"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); migrateBacks(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["cardback", "cb-deck"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;
@@ -184,7 +185,26 @@ export function buy(p, id) {
 export const SHELVES = [];
 export function registerShelf(shop) {
   if (!shop || !shop.kind || SHELVES.some((x) => x.kind === shop.kind)) return;
+  if (shop.kind === "cardback" || shop.kind === "rummyback") return; // card backs are one set for every deck (cardbacks.js)
   SHELVES.push(shop); for (const it of shop.items || []) STORE.push({ ...it, kind: shop.kind });
   KINDS.push([shop.kind, shop.label || shop.kind]); if (shop.talk) SHOP_TALK[shop.kind] = shop.talk;
 }
 export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
+
+/** The store's five departments. Each lists the shelves (kinds) inside it; room shelves that aren't named land in "Game rooms".
+ *  Ghosts also shows every haunted item from other shelves (items tagged ghost: true). */
+export const DEPTS = [
+  { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["outfit", "avatar", "voice", "persona"] },
+  { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table and the light", kinds: ["vibe", "cloth", "orb", "flame"] },
+  { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
+  { id: "ghosts", label: "👻 Ghosts", blurb: "Everything haunted, in one place", kinds: ["seancecandle", "haunted"] },
+  { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
+];
+export function departments() {
+  const named = new Set(DEPTS.flatMap((d) => d.kinds));
+  return DEPTS.map((d) => (d.id === "rooms" ? { ...d, kinds: KINDS.map(([k]) => k).filter((k) => !named.has(k)) } : { ...d, kinds: d.kinds.filter((k) => k === "haunted" || KINDS.some(([x]) => x === k)) }));
+}
+export const deptOf = (kind) => departments().find((d) => d.kinds.includes(kind)) || departments()[0];
+export const kindLabel = (kind) => (kind === "haunted" ? "👻 Haunted picks" : (KINDS.find(([k]) => k === kind) || [kind, kind])[1]);
+/** Items on a shelf. "haunted" gathers the ghost-themed items from every other shelf, each keeping its own kind. */
+export const goodsOf = (kind) => (kind === "haunted" ? STORE.filter((s) => s.ghost) : STORE.filter((s) => s.kind === kind));
