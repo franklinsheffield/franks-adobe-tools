@@ -2,6 +2,7 @@
 // supernatural arrives; you test it with an investigator's kit (magnifier, lights, controls, a magician, the lab,
 // the record), each tool burning one of 5 candles, then name the method really behind it. Solved cases go into your
 // casebook by method class, and each method you uncover becomes a trick to rehearse in the Workshop.
+export const allLevel3 = (p) => LEVELS[2].pool.every((id) => cfOf(p).solved.includes(id));
 import { CASES, CLASSES, LEVELS, METHODS, TOOLS, TOOL_KEYS, caseOf, method, findingOf } from "./data.js";
 import { room as cfOf, start, nextOf, useTool, accuse, scoreOf, perfect, settle, dailyOf, useful, CANDLES } from "./logic.js";
 import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
@@ -10,6 +11,7 @@ import { CSS } from "./style.js";
 import * as sfx from "../seance/sfx.js";
 import { page, coins, glass } from "../flametest/sfx.js";
 import { finishDaily, postDaily, boardOf, boardHtml, dailyState } from "../daily.js";
+import { grantDebunker } from "../hosts/parlour-room.js";
 import { host } from "../hosts/index.js";
 import { TRICKS } from "../workshop/data.js";
 
@@ -73,7 +75,9 @@ export const casefiles = {
       $("cf-leave").onclick = () => lobby(false);
     }
     function finish(run) {
-      const c = caseOf(run.id), m = method(c.method), L = run.L, r = settle(P(), run), aw = award(r.xp, r.essence); saveProgress(); showStats();
+      const c = caseOf(run.id), m = method(c.method), L = run.L, r = settle(P(), run), aw = award(r.xp, r.essence);
+      if (allLevel3(P())) grantDebunker(P()); // every Level 3 case solved: the Debunker's cloak (hosts/parlour-room.js)
+      saveProgress(); showStats();
       ctx.trophy?.("casefiles", L.n, { won: run.won, perfect: perfect(run) }); // Trophy Case (trophies.js)
       draw(c, { candles: run.candles, solved: run.won }); cap(`🗂️ ${c.name}`);
       say(run.won ? (rook() ? `${m.name}! Exposed. Write it down, darling: we'll rehearse it in the Workshop.` : `${m.name}. Case closed.`) : `It was ${m.name.toLowerCase()}. The file stays open for now.`);
