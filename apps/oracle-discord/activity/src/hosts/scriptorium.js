@@ -3,6 +3,7 @@
 // feathers, a red wax-seal badge and an eye the colour of the ink you choose. Brand brief: brand/houses/README.md (House 5).
 // Every fact in Wren's lines is real; they label modern uses and never invent meanings for symbols.
 import { vinylSvg } from "../player.js";
+import { menuBg as WREN_MENU_BG, secrets as MARGINALIA_SECRETS } from "../scriptorium/marginalia.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -142,7 +143,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
   channelIds: ["1575977195048927232"], // #🪶-scriptorium
-  readings: false, rooms: ["decoder", "memory"], daily: "decoder",
+  readings: false, rooms: ["inscriptions", "decoder", "memory"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
@@ -165,9 +166,12 @@ export const scriptorium = {
       "Ampersand comes from '& per se and'. Schoolchildren recited it at the end of the alphabet."],
   },
   banter: {
+    inscriptions: G("Read the letters first. Roman carvers ran words together.", "Trajan's Column base, AD 113: the model for capital letters.", "Read and dated! The stone speaks again, {name}.", "Not quite. Weathered stone fools everyone. Look again."),
     decoder: G("One rune read, {name}. That's how every scholar starts.", "Look at the shape first. Then the sound. Then the meaning.", "Deciphered! I'll write that in red, it deserves a rubric.", "Not quite. Scribes made mistakes too. That's why they had erasers: knives."),
     memory: G("Remember where each sign sits. Scribes memorised whole books.", "Two matching marks somewhere. Patience.", "Every pair found! Your memory is a fine library, {name}.", "Not a match. Even the best scribes reread their pages."),
   },
   poke: ["Careful, the seal is hot.", "Gently, {name}. These feathers are quills, not dusters.", "Poke me again and I'll footnote you."],
   perfect: ["Flawless, {name}. Not one blot on the page."],
+  menuBg: WREN_MENU_BG, // the illuminated page behind the menu (scriptorium/marginalia.js)
+  secrets: MARGINALIA_SECRETS, // "🪶 Marginalia": 20 finds
 };

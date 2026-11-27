@@ -24,14 +24,17 @@ import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { room as memory, memoryCodex } from "./memory/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { flametest, flametestCodex } from "./flametest/room.js";
+import { inscriptions, inscriptionsCodex } from "./inscriptions/room.js";
 import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
+import { bench, benchCodex } from "./bench/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
 import { stars as starLore, starsCodex } from "./stars/room.js";
 import { room as duel, duelCodex } from "./duel/room.js";
 import { rummy, rummyCodex } from "./rummy/room.js";
+import { watch, watchCodex } from "./watch/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
@@ -134,8 +137,8 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
-  const api = { prog: state.prog, at: Date.now(), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
-    find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
+  const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
+    find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
       setTimeout(() => mood.bubble(`${r.s.e} ${H.secrets.label.replace(/^\S+\s/, "")}: ${r.s.name}! ${line} ${payLabel(H, r.pay)}`.trim(), 5200, r.s.e), reduced ? 0 : 500);
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
       CU.event?.("house-secret", id); return true; } };
@@ -328,7 +331,7 @@ function strayCheck() {
 function openHouseRelics(note) {
   const H = HOST(); state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(H.relicLabel);
   say(typeof note === "string" ? note : H.relicBlurb); ui(relicPanelHtml(state.prog, H, esc));
-  $("ui").querySelectorAll("[data-hrelic]").forEach((b) => (b.onclick = () => { const r = buyHouseRelic(state.prog, H, b.dataset.hrelic); if (!r) return;
+  $("ui").querySelectorAll("[data-hrelic]").forEach((b) => (b.onclick = () => { const r = buyHouseRelic(state.prog, H, b.dataset.hrelic); if (!r) return; logEvent("buy", r.e, `${H.house}: placed ${r.name}`, null, [["House", H.house], ["Relic", r.name], ["Price", `${H.token.emoji} ${r.price}`]]);
     saveProgress(); showStats(); applyLook(); chime(2); mood.emote("cheer"); openHouseRelics(`${r.name}. It stays in my House now, for good. Look behind me.`); }));
   $("hr-back").onclick = greet;
 }
@@ -351,7 +354,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...casefiles, codexHtml: casefilesCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -805,15 +808,25 @@ function drawBook() {
   on("[data-seal]", () => breakSeal());
 }
 const pageHead = (t, sub = "") => `<h3 class="bk-h">${t}</h3>${sub ? `<div class="bk-sub">${sub}</div>` : ""}`;
+/** One book for every House: each House's host, purse, relics, hidden finds and looks, all in the same Grimoire. */
+function housesPage(p) {
+  const card = (h) => { const hp = ((p.houses || {})[h.id]) || {}, sec = secretsOf(h), found = sec.filter((s) => (hp.sec || []).includes(s.id)), rel = h.relics || [];
+    const tok = h.token.id === "moon" ? `🌙 ${p.tokens || 0} moon tokens` : `${tokenIcon(h.token)} ${tokensLeft(p, h)} ${esc(h.token.plural)}`;
+    const placed = h.token.id === "moon" ? "" : `<p>🏛️ ${rel.filter((r) => (hp.relics || []).includes(r.id)).length} of ${rel.length} relics placed${(hp.relics || []).length ? `: ${rel.filter((r) => (hp.relics || []).includes(r.id)).map((r) => esc(r.name)).join(", ")}` : ""}</p>`;
+    const secrets = sec.length ? `<p>🔍 ${esc(h.secrets.label)}: ${found.length} of ${sec.length}${found.length ? ` · ${found.map((s) => s.e + " " + esc(s.name)).join(", ")}` : ""}</p>` : "";
+    return `<div class="bk-house" style="border-left:3px solid ${h.accent};padding-left:8px;margin:8px 0"><h4>${h.emoji} ${esc(h.house)} <small>· ${esc(h.name)}</small></h4><p>${tok}${hp.rounds ? ` · ${hp.rounds} rounds played here` : ""}</p>${placed}${secrets}</div>`; };
+  return pageHead("🏠 The Houses", "One Grimoire for every House: your progress in each, kept in the same book") + HOSTS.map(card).join("");
+}
 function codexPages(p, sys) {
   const rk = rankOf(p.xp), nx = nextRank(p.xp);
   if (!BK.sys) BK.sys = (sys.find((s) => (p.codex[s.key] || []).length) || sys[0] || {}).key || "rooms";
   const row = (k, label, n, t) => `<button type="button" class="bk-row${BK.sys === k ? " on" : ""}" data-bs="${k}"><span>${label}</span>${t ? `<small>${n} / ${t}</small><i style="--p:${t ? Math.min(100, (n / t) * 100) : 0}%"></i>` : ""}</button>`;
   const left = pageHead("📜 The Codex", `🏅 ${esc(rk.name)} · ${p.xp} ✦${nx ? ` · ${nx.at - p.xp} ✦ to ${esc(nx.name)}` : ""} · ${p.readings} readings`)
     + `<div class="bk-list">${sys.map((s) => { const d = CODEX[s.key]; return row(s.key, `${s.emoji} ${esc(s.label)}`, (p.codex[s.key] || []).length, d ? d.total : 0); }).join("")}
-      ${row("rooms", "🎲 Game rooms")}${row("looks", "🏅 Ranks and earned looks")}${row("sealed", hasCrown(p) ? "👑 The sealed chapter" : "🔒 The sealed chapter")}</div>`;
+      ${row("rooms", "🎲 Game rooms")}${row("houses", "🏠 The Houses")}${row("looks", "🏅 Ranks and earned looks")}${row("sealed", hasCrown(p) ? "👑 The sealed chapter" : "🔒 The sealed chapter")}</div>`;
   let right = "";
   if (BK.sys === "sealed") right = sealedPage(p);
+  else if (BK.sys === "houses") right = housesPage(p);
   else if (BK.sys === "rooms") right = pageHead("🎲 Game rooms") + `<div class="bk-rooms">${ROOMS.filter((r) => r.codexHtml).map((r) => r.codexHtml(p, esc)).join("") || `<p class="bk-empty">Play a game room to fill these pages.</p>`}</div>`;
   else if (BK.sys === "looks") {
     const look = (kind) => UNLOCKS.filter((u) => u.kind === kind).map((u) => { const own = p.unlocked.includes(u.id), on = p[kind] === u.id;
