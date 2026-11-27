@@ -76,3 +76,50 @@ export function ambience(alive) {
 /** Electricity from Volta's pile: a crackling buzz. */
 export function zap() { if (!ready()) return; const t = ac.currentTime;
   tone(120, t, 0.5, { type: "sawtooth", vol: 0.12, to: 90 }); for (let k = 0; k < 6; k++) noise(t + k * 0.07, 0.03, { type: "highpass", f: 3000, vol: 0.25 }); }
+
+/** The product's own sound, after the swirl: fumes hiss, crystals tinkle, potassium crackles, phosphorus hums. */
+export function react(fx) {
+  setTimeout(() => {
+    if (!ready()) return; const t = ac.currentTime;
+    if (fx === "fumes" || fx === "sublime" || fx === "calx") noise(t, 1.4, { type: "highpass", f: 2500, to: 5000, vol: 0.16, shape: (x) => Math.sin(Math.PI * x) });
+    if (fx === "bubbles" || fx === "nugget" || fx === "plate") bubble(14);
+    if (fx === "crystals" || fx === "tree") [2637, 3136, 3520, 2794, 3951, 3322].forEach((f, k) => tone(f, t + k * 0.13, 0.5, { vol: 0.08 }));
+    if (fx === "sparks") for (let k = 0; k < 10; k++) noise(t + k * rnd(0.04, 0.1), 0.03, { type: "highpass", f: rnd(2000, 5000), vol: 0.3 });
+    if (fx === "flare") whoosh();
+    if (fx === "glow") { tone(440, t, 2.2, { vol: 0.08, attack: 0.6 }); tone(659, t + 0.2, 2, { vol: 0.06, attack: 0.6 }); tone(880, t + 0.4, 1.8, { vol: 0.04, attack: 0.6 }); }
+    if (fx === "drip") [0, 0.35, 0.7, 1.05].forEach((d) => tone(rnd(900, 1300), t + d, 0.07, { vol: 0.14, to: 2000 }));
+    if (fx === "powder") noise(t, 0.9, { type: "bandpass", f: 4000, q: 2, vol: 0.12, shape: (x) => (1 - x) * (Math.random() > 0.6 ? 1 : 0.2) });
+  }, 1100);
+}
+
+// ---- background music: a slow, generated "laboratory" loop (drone + soft modal arpeggio with echo). Own toggle, also
+// silenced by the Chamber's mute. It stops by itself when you leave the Lab. ----
+const MKEY = "al-music";
+export const musicOn = () => { try { return localStorage.getItem(MKEY) !== "0"; } catch { return true; } };
+export function setMusic(on) { try { localStorage.setItem(MKEY, on ? "1" : "0"); } catch {} if (!on) stopMusic(); }
+let mus = null;
+const SCALE = [146.83, 174.61, 196, 220, 261.63, 293.66, 349.23, 392]; // D dorian-ish: D F G A C D F G
+const PHRASES = [[0, 2, 4, 3, 5, 4, 2, 1], [3, 4, 6, 5, 4, 2, 3, 0], [5, 7, 6, 4, 3, 4, 2, 0]];
+export function startMusic(alive) {
+  if (mus || !musicOn() || !ready()) return;
+  const g = ac.createGain(); g.gain.value = 0; g.connect(bus); g.gain.linearRampToValueAtTime(0.5, ac.currentTime + 3);
+  const dl = ac.createDelay(); dl.delayTime.value = 0.42; const fb = ac.createGain(); fb.gain.value = 0.35; const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1800;
+  dl.connect(fb); fb.connect(dl); dl.connect(lp); lp.connect(g);
+  const drones = [73.42, 110].map((f) => { const o = ac.createOscillator(), dg = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+    o.type = "sine"; o.frequency.value = f; dg.gain.value = 0.09; lfo.frequency.value = 0.07 + f / 4000; lg.gain.value = 0.04; lfo.connect(lg); lg.connect(dg.gain);
+    o.connect(dg); dg.connect(g); o.start(); lfo.start(); return [o, lfo]; }).flat();
+  let step = 0, phrase = 0;
+  const note = () => {
+    if (!alive() || isMuted() || !musicOn()) return stopMusic();
+    const t = ac.currentTime, f = SCALE[PHRASES[phrase][step % 8]] * (step % 16 >= 8 ? 2 : 1);
+    if (step % 8 !== 7 || Math.random() < 0.5) { const o = ac.createOscillator(), ng = ac.createGain(); o.type = "triangle"; o.frequency.value = f;
+      ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.07, t + 0.04); ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+      o.connect(ng); ng.connect(g); ng.connect(dl); o.start(t); o.stop(t + 1.5); }
+    if (++step % 16 === 0) phrase = (phrase + 1) % PHRASES.length;
+  };
+  mus = { g, drones, timer: setInterval(note, 620) };
+}
+export function stopMusic() {
+  if (!mus) return; const m = mus; mus = null; clearInterval(m.timer);
+  try { const t = ac.currentTime; m.g.gain.cancelScheduledValues(t); m.g.gain.setValueAtTime(m.g.gain.value, t); m.g.gain.linearRampToValueAtTime(0, t + 1.2); setTimeout(() => m.drones.forEach((o) => { try { o.stop(); } catch {} }), 1400); } catch {}
+}

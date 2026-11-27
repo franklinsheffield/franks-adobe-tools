@@ -106,3 +106,12 @@ test("apothecary: free items owned, buying spends Essence and puts it on the ben
   for (const it of SHOP) { const svg = sceneSvg({ look: { ...DEFAULT_LOOK, [it.slot]: it.id }, flames: 2, shelf: RECIPES[0].shelf, chips: ["mercury", "saltpetre"], glyph: "gold", label: "Test" });
     assert.ok(svg.startsWith("<svg") && svg.endsWith("</svg>"), it.id); }
 });
+
+test("every recipe and discovery has its own reaction animation", async () => {
+  const { reactionFx } = await import("../activity/src/alchemy/scene.js");
+  for (const x of [...RECIPES, ...DISCOVERIES]) {
+    assert.ok(x.fx && x.fxc, x.id);
+    const r = reactionFx({ from: x.make.map((i) => REAGENTS[i].c), to: x.colour, fx: x.fx, fxc: x.fxc });
+    assert.ok(r.after.length > 20, `${x.id} has no ${x.fx} effect`); assert.ok(r.anim.includes(x.colour), x.id);
+  }
+});

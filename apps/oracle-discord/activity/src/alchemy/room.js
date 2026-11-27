@@ -34,17 +34,19 @@ export const alchemy = {
 
     // ---- lobby ----
     function lobby(first) {
-      sfx.ambience(() => tableEl.classList.contains("alchemy")); clearReading(); cap("⚗️ The Alchemist's Lab"); draw({ shelf: ["mercury", "sulfur", "salt", "aquafortis", "vitriol", "gold"] });
+      const alive = () => tableEl.classList.contains("alchemy"); sfx.ambience(alive); clearReading(); cap("⚗️ The Alchemist's Lab"); draw({ shelf: ["mercury", "sulfur", "salt", "aquafortis", "vitriol", "gold"] });
       say(first && !lab().plays
         ? `Welcome to the laboratory, ${state.name}. Alchemists hunted for the philosopher's stone and never found it, but they invented the lab, and their recipes became chemistry. Start at level one to learn their symbols. Then light the furnace and follow their real recipes. Everything you mix here is true history.`
         : `The furnace is warm, ${state.name}. What shall we work on?`);
       const lvl = (L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⚗️".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${solvedCount(P(), L)} / ${L.deck.length} done · points ×${L.mult}</span></button>`;
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">4 flames in the furnace. A wrong answer, a failed mix or a notebook hint puts one out.</div>
-        <div class="choices"><button class="c" type="button" id="al-book">📓 Alchemist's notebook</button><button class="c" type="button" id="al-table">🧪 My periodic table</button><button class="c" type="button" id="al-shop">🏺 Apothecary</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        <div class="choices"><button class="c" type="button" id="al-book">📓 Alchemist's notebook</button><button class="c" type="button" id="al-music">${sfx.musicOn() ? "🎵 Music on" : "🔇 Music off"}</button><button class="c" type="button" id="al-table">🧪 My periodic table</button><button class="c" type="button" id="al-shop">🏺 Apothecary</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; begin(L, nextOf(P(), L, lab().last)); }));
       $("al-book").onclick = () => toggle("book", $("al-book"), "📓 Alchemist's notebook"); $("al-table").onclick = () => toggle("table", $("al-table"), "🧪 My periodic table");
       $("al-shop").onclick = shop; $("back").onclick = greet;
+      setTimeout(() => sfx.startMusic(() => tableEl.classList.contains("alchemy")), 50);
+      $("al-music").onclick = () => { const on = !sfx.musicOn(); sfx.setMusic(on); $("al-music").textContent = on ? "🎵 Music on" : "🔇 Music off"; if (on) sfx.startMusic(() => tableEl.classList.contains("alchemy")); };
     }
     function toggle(what, btn, label) {
       const rb = $("reading-body"), on = !rb.querySelector(".al-" + what); sfx.page();
@@ -113,7 +115,8 @@ export const alchemy = {
     const eqCard = (x) => `<div class="al-eq"><b>${esc(x.product)}</b><code>${esc(x.eq)}</code></div>`;
     function success(L, x, run) {
       sfx.transmute(); spark(); cap(`✨ ${x.product}`);
-      draw({ flames: run.flames, shelf: x.shelf, chips: x.make, liquid: x.colour, glow: true, label: x.product });
+      draw({ flames: run.flames, shelf: x.shelf, chips: x.make, liquid: x.colour, glow: true, label: x.product,
+        react: { from: x.make.map((i) => REAGENTS[i].c), to: x.colour, fx: x.fx, fxc: x.fxc } }); sfx.react(x.fx);
       if (L.n === 3) return talkThrough([`It works! ${x.story}`], () => askFind(L, x, run));
       talkThrough([`It works! ${x.product}.`, x.story, x.science], () => finish(L, x, run));
     }
