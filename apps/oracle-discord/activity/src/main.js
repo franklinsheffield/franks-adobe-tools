@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
 import { makeTable, fitSvg, setTableDecor } from "./table.js";
 import { unlockVoice, blip, isMuted, setMuted } from "./voice-sfx.js";
@@ -202,7 +203,7 @@ function greet() {
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
-for (const r of ROOMS) registerShelf(r.shop); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -436,6 +437,7 @@ function thumb(it) {
   if (k === "cardback") return it.id === "cb-deck" ? `<span class="th">🂠</span>` : `<span class="th th-card">${cardBackSvg(it.id)}</span>`;
   if (k === "outfit" && it.hood) return `<span class="th th-robe" style="--a:${it.hood[0]};--b:${it.hood[1]};--t:${it.trim}"></span>`;
   if (k === "cloth" && it.c) return `<span class="th th-cloth" style="--a:${it.c[0]};--b:${it.c[2]};--t:${it.ink || EARNED_INK[it.id] || "#E2B04A"}"></span>`;
+  if (k === "ghost") return `<span class="th th-ghost"><svg viewBox="110 0 180 210" aria-hidden="true"><defs><linearGradient id="sc-sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#c9c4e6" stop-opacity=".75"/></linearGradient></defs><g class="sc-gb sg-${it.id}">${ghostBody(it.id)}</g></svg></span>`;
   if (k === "orb") return `<span class="th th-orb" style="filter:${it.f || "none"}"></span>`;
   if (k === "flame" && it.wax) return `<span class="th th-flame" style="--w:${it.wax[0]};--f:${it.flame[1]};--h:${it.halo}"></span>`;
   if (k === "vibe" && it.stars) return `<span class="th th-vibe" style="--a:${it.stars[0]};--b:${it.stars[1]}"></span>`;
@@ -472,7 +474,7 @@ function showStore(tab = "outfit", opener = null) {
   if (tab === "cardback") { const bid = trying && trying.kind === "cardback" ? trying.id : p.cardback;
     if (CARD_BACK[bid]) { const t = $("table"); t.className = "table cb-show"; t.innerHTML = `<div class="cb-fan">${[-2, -1, 0, 1, 2].map((r, i) => `<i style="--r:${r * 13}deg;--i:${i}">${cardBackSvg(bid)}</i>`).join("")}</div>`; } // the back, fanned out
     else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
-  const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
+  const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc, prog: state.prog });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
     const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; if (!off) mood.emote("curious"); showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); if (!off) flourish(it.kind); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };

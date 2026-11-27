@@ -197,7 +197,7 @@ export const DEPTS = [
   { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["outfit", "avatar", "voice", "persona"] },
   { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table and the light", kinds: ["vibe", "cloth", "orb", "flame"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
-  { id: "ghosts", label: "👻 Ghosts", blurb: "Everything haunted, in one place", kinds: ["seancecandle", "haunted"] },
+  { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
 ];
 export function departments() {
