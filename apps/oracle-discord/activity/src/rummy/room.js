@@ -1,11 +1,16 @@
 // Constellation Rummy: a card room of the Oracle Chamber. Collect real stars into constellation sets (and, from Level 2,
 // colour sets of one spectral class), playing against the Oracle. Laying a constellation down tells one of its myths
 // (shared with Star Lore Navigator); every card carries a real fact. Rules in engine.js, deck in deck.js.
-// Mounted via main.js ROOMS; sells card backs on the Essence store's "🌌 Star cards" shelf (cardbacks.js). The table pane is drawn top-down on the equipped table cloth (table.js getTableDecor).
+// Play alone against one of four Oracles (each with its own style, lines and first-win prize), take the Daily deal (same
+// shuffle for everyone, shared board via ../daily.js), or play together: everyone in the Discord call at one table
+// (../net.js; the host's screen runs the game). The game ends on a night sky of the constellations laid down.
+// Mounted via main.js ROOMS; card backs come from the Essence store's shared Cards shelf (cardbacks.js). The table pane is drawn top-down on the equipped table cloth (table.js getTableDecor).
 import { CARD, CONS, CLASSES, FIGURE } from "./deck.js";
 import { GUIDE } from "./guide.js";
 import { LEVELS, newGame, levelOf, top, setType, fits, draw, layDown, layOff, discard, tally, oracleTurn, settle, pts, room as rummyOf,
-  winsOf, titleOf, nextTitle, backOf } from "./engine.js";
+  winsOf, titleOf, nextTitle, backOf, PERSONAS, freeze, thaw } from "./engine.js";
+import { joinTable, canJoin } from "../net.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { cardBackSvg, CARD_BACK } from "../cardbacks.js";
 import { project, centroid } from "../stars/engine.js";
 import { getTableDecor } from "../table.js";
@@ -84,17 +89,36 @@ function clothSvg() {
     ${D.fx ? `<g class="cr-clothfx" transform="translate(200 150) scale(.92) translate(-200 -200)">${D.fx}</g>` : ""}
     <rect width="400" height="300" fill="url(#cr-vign)"/><rect x="6" y="6" width="388" height="288" rx="14" fill="none" stroke="${ink}" stroke-opacity=".7" stroke-width="2"/><rect x="12" y="12" width="376" height="276" rx="10" fill="none" stroke="${ink}" stroke-opacity=".35" stroke-dasharray="2 5"/></svg>`;
 }
+/** The table seen from above. o.me = your seat (null when watching), o.names = { seat: name }, o.got = { seat: cards just drawn },
+ *  o.thinking = the seat now playing, o.fresh / o.grew = a meld that just landed, o.flip = the discard just thrown. */
 function tableHtml(g, o = {}) {
-  const L = levelOf(g), t = top(g), b = "cr-b-own", n = g.hands.or.length;
-  const opp = `<div class="cr-opp${o.thinking ? " think" : ""}"><div class="cr-ofan">${g.hands.or.map((_, i) => back(i >= n - (o.oracleGot || 0) ? "cr-new" : "", `--r:${f1((i - (n - 1) / 2) * 7)}deg;--y:${f1(Math.abs(i - (n - 1) / 2) * 1.6)}px`)).join("")}</div><span class="cr-cnt">Oracle · ${n}</span></div>`;
-  const piles = `<div class="cr-piles"><button type="button" class="cr-pile" data-draw="deck" ${g.deck.length ? "" : "disabled"}>${g.deck.length ? `<span class="cr-stack">${back("", "--o:2")}${back("", "--o:1")}${back()}</span>` : `<span class="cr-empty">${g.nights < 2 ? "new night" : "dawn"}</span>`}<span class="cr-cnt">${g.deck.length} left${g.nights > 1 ? " · night 2" : ""}</span></button>
-    <button type="button" class="cr-pile" data-draw="discard" ${t != null ? "" : "disabled"}>${t != null ? face(t, { mini: true, labels: L.labels, cls: o.flip ? "cr-flip" : "" }) : `<span class="cr-empty">discards</span>`}<span class="cr-cnt">discards</span></button></div>`;
-  const melds = g.melds.length ? g.melds.map((m) => `<div class="cr-meld ${m.owner === "me" ? "mine" : "theirs"}${m.id === o.fresh ? " fresh" : ""}${m.id === o.grew ? " grew" : ""}">
-      <div class="cr-fan">${m.cards.map((c, i) => face(c.hip, { mini: true, labels: true, cls: (c.by === "me" ? "by-me" : "by-or") + (m.id === o.grew && i === m.cards.length - 1 ? " cr-new" : "") })).join("")}</div>
+  const L = levelOf(g), t = top(g), me = o.me ?? null, opps = g.seats.filter((s) => s !== me), many = opps.length > 1;
+  const opp = `<div class="cr-opps${many ? " many" : ""}">${opps.map((s) => { const n = g.hands[s].length, got = (o.got && o.got[s]) || 0;
+    return `<div class="cr-opp${o.thinking === s ? " think" : ""}${g.turn === s && !g.over ? " turn" : ""}"><div class="cr-ofan">${g.hands[s].map((_, i) => back(i >= n - got ? "cr-new" : "", `--r:${f1((i - (n - 1) / 2) * (many ? 5 : 7))}deg;--y:${f1(Math.abs(i - (n - 1) / 2) * 1.6)}px`)).join("")}</div><span class="cr-cnt">${esc((o.names && o.names[s]) || "Oracle")} · ${n}</span></div>`; }).join("")}</div>`;
+  const deckN = g.deck.length;
+  const piles = `<div class="cr-piles"><button type="button" class="cr-pile" data-draw="deck" ${deckN ? "" : "disabled"}>${deckN ? `<span class="cr-stack">${back("", "--o:2")}${back("", "--o:1")}${back()}</span>` : `<span class="cr-empty">${g.nights < 2 ? "new night" : "dawn"}</span>`}<span class="cr-cnt">${deckN} left${g.nights > 1 ? " · night 2" : ""}</span></button>
+    <button type="button" class="cr-pile" data-draw="discard" data-drop="discard" ${t != null ? "" : "disabled"}>${t != null ? face(t, { mini: true, labels: L.labels, cls: o.flip ? "cr-flip" : "" }) : `<span class="cr-empty">discards</span>`}<span class="cr-cnt">discards</span></button></div>`;
+  const melds = g.melds.length ? g.melds.map((m) => `<div class="cr-meld ${m.owner === me ? "mine" : "theirs"}${m.id === o.fresh ? " fresh" : ""}${m.id === o.grew ? " grew" : ""}" data-id="${m.id}">
+      <div class="cr-fan">${m.cards.map((c, i) => face(c.hip, { mini: true, labels: true, cls: (c.by === me ? "by-me" : "by-or") + (m.id === o.grew && i === m.cards.length - 1 ? " cr-new" : "") })).join("")}</div>
       <span class="cr-mh">${m.type === "con" ? CONS[m.key].emoji + " " + esc(CONS[m.key].name) : "🌈 Class " + m.key}${m.type === "con" && m.cards.length === 4 ? " ✓" : ""}</span></div>`).join("")
-    : `<div class="cr-hint">Sets you and the Oracle lay down are dealt onto the cloth here.</div>`;
+    : `<div class="cr-hint">Sets are laid down here. Drag cards from your hand onto the table, a set, or the discard pile.</div>`;
   const surface = o.surface === "cloth" ? clothSvg() : `<div class="cr-mat">${back()}<span class="cr-matshade"></span></div>`;
-  return `<div class="cr-wrap ${b}">${surface}${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
+  return `<div class="cr-wrap cr-b-own">${surface}${opp}${piles}<div class="cr-melds">${melds}</div>${o.burst ? `<div class="cr-burst">${Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--d:${(i % 3) * 0.06}s"></i>`).join("")}</div>` : ""}</div>`;
+}
+/** The night sky at the end of a game: every constellation laid down tonight, its lines drawing themselves in, the stars
+ *  from the sets blazing. Gold = yours. Tap one to hear its myth. */
+function nightHtml(g, me) {
+  const cons = [...new Set(g.melds.filter((m) => m.type === "con").map((m) => m.key))];
+  if (!cons.length) return `<div class="cr-night"><div class="cr-hint">No constellations were laid down tonight. The sky stays dark.</div></div>`;
+  const tiles = cons.map((con, k) => {
+    const F = fig(con), cards = g.melds.filter((m) => m.type === "con" && m.key === con).flatMap((m) => m.cards), mine = cards.some((c) => c.by === me);
+    const lit = cards.map((c) => { const s = CARD[c.hip], [x, y] = F.xy(s.ra, s.de), p = pts(c.hip);
+      return `<g class="cr-lit" style="--d:${f1(0.9 + k * 0.25)}s"><circle cx="${f1(x)}" cy="${f1(y)}" r="${4 + p * 1.6}" fill="url(#cr-gl-${s.cls})"/>${spark(x, y, 3 + p * 1.4)}</g>
+        <text x="${f1(x)}" y="${f1(y + 6.5)}" text-anchor="middle" font-size="2.6" fill="#fff6dc" class="cr-lit" style="--d:${f1(1.1 + k * 0.25)}s">${esc(s.name)}</text>`; }).join("");
+    return `<button type="button" class="cr-sky-t${mine ? " mine" : ""}" data-sky="${con}"><svg viewBox="6 10 58 54" aria-hidden="true">
+      <path d="${F.path}" pathLength="100" fill="none" stroke="${mine ? "#FADE8C" : "#ff8fd0"}" stroke-width=".7" stroke-linecap="round" class="cr-line" style="--d:${f1(k * 0.25)}s"/>
+      ${F.nodes.map(([a, b]) => `<circle cx="${f1(a)}" cy="${f1(b)}" r=".7" fill="#e8e6ff"/>`).join("")}${lit}</svg><span>${CONS[con].emoji} ${esc(CONS[con].name)}</span></button>`; }).join("");
+  return `<div class="cr-night"><div class="cr-nh">✨ Tonight's sky · tap a constellation for its myth</div><div class="cr-tiles">${tiles}</div></div>`;
 }
 
 const CSS = `
@@ -150,6 +174,25 @@ const CSS = `
 .cr-back::after{content:"✷";position:absolute;inset:0;display:grid;place-items:center;color:#FADE8C;font-size:1.2em;text-shadow:0 0 6px #FADE8C}
 @keyframes cr-spin{to{transform:rotate(360deg)}}@keyframes cr-drift{to{background-position:100% 100%}}@keyframes cr-wave{to{background-position:0 100%}}@keyframes cr-pulse{50%{opacity:.3}}
 .cr-shelf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px}.cr-shelf .cr-back{width:66px;height:92px}.cr-shelf .cr-back:nth-child(1){transform:rotate(-10deg)}.cr-shelf .cr-back:nth-child(3){transform:rotate(10deg)}
+.cr-opps{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.cr-opps.many .cr-ofan .cr-back{width:20px;height:28px;margin-left:-11px}
+.cr-opp{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 6px;border-radius:10px}
+.cr-opp.turn{box-shadow:0 0 0 1px rgba(250,222,140,.6),0 0 12px rgba(250,222,140,.35);background:rgba(5,3,14,.35)}
+.cr-ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-60%) rotate(var(--rot,0deg)) scale(1.08);box-shadow:0 14px 28px rgba(0,0,0,.65),0 0 18px var(--k)}
+.cr-card.lift{opacity:.25}
+.cr-drop-on{outline:2px dashed #FADE8C;outline-offset:3px;border-radius:8px;filter:drop-shadow(0 0 10px rgba(250,222,140,.8))}
+.table.rummy.cr-drop-on{outline-offset:-6px}
+.cr-night{position:absolute;inset:0;z-index:3;background:radial-gradient(120% 90% at 50% 20%,#141046,#05040f 70%);padding:10px;overflow:auto;animation:cr-fade .8s ease-out both}
+@keyframes cr-fade{from{opacity:0}}
+.cr-nh{font-size:.7rem;color:var(--gold2,#FADE8C);text-align:center;letter-spacing:.06em;margin-bottom:6px}
+.cr-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.cr-sky-t{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(10,8,34,.7);border:1px solid rgba(255,143,208,.35);border-radius:10px;padding:4px;color:#fff3cf;font:inherit;font-size:.66rem;cursor:pointer}
+.cr-sky-t.mine{border-color:rgba(250,222,140,.7)}.cr-sky-t:hover{box-shadow:0 0 12px rgba(250,222,140,.5)}
+.cr-sky-t svg{width:100%;aspect-ratio:58/54;display:block}
+.cr-line{stroke-dasharray:100;stroke-dashoffset:100;animation:cr-line 1.8s ease-out var(--d) forwards}@keyframes cr-line{to{stroke-dashoffset:0}}
+.cr-lit{opacity:0;animation:cr-litup .7s ease-out var(--d) forwards}@keyframes cr-litup{to{opacity:1}}
+.cr-opp-pick{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.cr-opp-pick .c.on{box-shadow:0 0 0 2px #FADE8C}
+.cr-seats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.cr-seats span{padding:3px 9px;border-radius:12px;border:1px solid var(--line,#3a2f6a);font-size:.8rem}.cr-seats .host{border-color:#FADE8C}
+@media (prefers-reduced-motion: reduce){.cr-line{animation:none;stroke-dashoffset:0}.cr-lit{animation:none;opacity:1}.cr-night{animation:none}}
 @media (prefers-reduced-motion: reduce){.cr-deal,.cr-new,.cr-flip,.cr-shake,.cr-meld .cr-fan,.cr-burst,.cr-card .cr-sky,.cr-opp.think .cr-ofan,.cr-back,.cr-back::before,.cr-back::after,.cr-back i,.cr-clothfx *{animation:none}.cr-burst{display:none}}
 @media (max-width:560px){.cr-card{width:62px;height:85px}.cr-hand{gap:5px}}
 @media (min-width:900px){.cr-fan{padding-left:28px}.cr-fan .cr-card.mini{width:48px;height:66px;margin-left:-28px}.cr-melds{gap:10px 18px}}
@@ -160,70 +203,129 @@ export function guideHtml() {
   return `<div class="dec-guide cr-guide"><h3>📖 ${esc(GUIDE.title)}</h3>${GUIDE.sections.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(s.h)}</summary>${s.p.map((t) => `<p>${t}</p>`).join("")}</details>`).join("")}</div>`;
 }
 
+// Each Oracle's voice: what it says when it takes a discard, lays a set down, discards, wins and loses.
+const LINES = {
+  seer: { hello: "I am the Oracle. A steady hand and a clear sky.", take: ["I'll take that one.", "That star calls to me."], meld: ["The stars align."], dis: ["Your turn.", "Over to you.", "Your move, stargazer."],
+    win: ["I win this time. The stars favoured me.", "My game. Want a rematch?", "Ha! The Oracle foresaw this."], lose: ["You win. The heavens applaud.", "Victory! I shall consult my cards about this.", "You beat me fair and square. Mostly fair."] },
+  magpie: { hello: "Caw! I take whatever you throw away, so careful what you discard.", take: ["Mine! Shiny.", "Ooh, I'll have that.", "Finders keepers."], meld: ["Look at my collection!"], dis: ["Here, have a dull one.", "I'm bored of this one."],
+    win: ["Caw! All the shiny stars are mine."], lose: ["You out-grabbed the grabber."] },
+  hoarder: { hello: "I keep the brightest stars and throw away the dim ones. Bright stars score more, but they weigh heavy in the hand.", take: ["A bright one. Into the vault."], meld: ["Only the finest stars."], dis: ["Too dim for my vault.", "Keep your faint little star."],
+    win: ["My vault overflows with light."], lose: ["You spent your stars better than I hoarded mine."] },
+  trickster: { hello: "I hide my sets and throw out bait. Don't trust what I discard.", take: ["Oh, just a whim."], meld: ["Surprise! You didn't see that coming."], dis: ["I don't need that one at all.", "Take it. It's useless to me. Probably."],
+    win: ["Fooled you! The cards were mine all along."], lose: ["You saw through my tricks."] },
+};
+const OPPS = ["seer", "magpie", "hoarder", "trickster"];
+const oracleName = (k) => `${PERSONAS[k].emoji} ${PERSONAS[k].name}`;
+
 export const rummy = {
-  id: "rummy", row: "cards", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle and learn their myths",
+  id: "rummy", row: "cards", label: "Constellation Rummy", emoji: "🃏", blurb: "Collect real stars into constellation sets against the Oracle or your friends, and learn their myths",
   open(ctx) {
     const { $, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl, reduced } = ctx;
     styleOnce();
     const prog = () => rummyOf(state.prog), backId = () => { const id = backOf(state.prog); UNI = CARD_BACK[id] ? id : ""; return id; };
-    let g = null, sel = [], busy = false, tell = 0;
+    // g = the game (on a guest's screen: the host's view of it); me = your seat; T = the call's table when playing together
+    // real = this screen holds the real game (alone, or the host); a guest only holds the host's view of it
+    let g = null, me = "me", T = null, sel = [], busy = false, pending = false, tell = 0, cfg = null, lastO = {}, real = true;
+    const solo = () => !T, host = () => !T || (T.isHost() && real), seated = () => !!g && g.seats.includes(me);
+    const isOracle = (s) => g.kind[s] === "oracle", nameOf = (s) => (s === me ? "You" : g.names[s] || "Someone");
     const guideBtn = `<button class="c" type="button" id="cr-guide">📖 Study guide</button>`;
     const wireGuide = () => { const b = $("cr-guide"); if (!b) return; b.onclick = () => { const rb = $("reading-body"), on = !rb.querySelector(".cr-guide"); rb.innerHTML = on ? guideHtml() : "";
       b.textContent = on ? "📖 Close study guide" : "📖 Study guide"; if (on) rb.querySelector(".cr-guide").scrollIntoView({ behavior: "smooth", block: "start" }); }; };
-    const paint = (o = {}) => { tableEl.className = "table rummy"; tableEl.innerHTML = tableHtml(g, { back: backId(), surface: prog().surface || "back", ...o });
-      tableEl.querySelectorAll("[data-draw]").forEach((b) => (b.onclick = () => myDraw(b.dataset.draw))); };
+    const paint = (o = {}) => { lastO = o; tableEl.className = "table rummy";
+      tableEl.innerHTML = tableHtml(g, { surface: prog().surface || "back", me: seated() ? me : null, names: Object.fromEntries(g.seats.map((s) => [s, g.names[s]])), thinking: !g.over && isOracle(g.turn) ? g.turn : null, ...o });
+      backId(); tableEl.querySelectorAll("[data-draw]").forEach((b) => (b.onclick = () => doDraw(b.dataset.draw))); };
     const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? Math.min(ms, 150) : ms));
+    const leaveTable = () => { if (T) { const t = T; T = null; t.leave(); } };
 
+    // ---------- lobby ----------
     function lobby(first) {
-      g = null; clearReading(); cap("🃏 Constellation Rummy");
+      leaveTable(); g = null; me = "me"; clearReading(); cap("🃏 Constellation Rummy");
       tableEl.className = "table rummy"; tableEl.innerHTML = `<div class="cr-shelf cr-b-${backId()}">${back()}${face(37826, { mini: true })}${back()}</div>`;
-      const w = winsOf(state.prog), t = titleOf(w), nx = nextTitle(w);
+      const w = winsOf(state.prog), t = titleOf(w), nx = nextTitle(w), opp = PERSONAS[prog().opp] ? prog().opp : "seer", beat = prog().beat || {};
       say(first && !prog().plays
         ? `Pull up a chair, ${state.name}. This deck holds 48 real stars. Collect three or four from the same constellation and lay them down as a set. Each turn: draw one, lay down what you can, discard one. Empty your hand first and the night is yours. Brighter stars score more.`
-        : pick([`The cards are cold and the stars are out, ${state.name}. Fancy a hand?`, `Back for another game, ${state.name}? I've been practising my shuffle.`, `The table is set, ${state.name}. Choose your sky.`]));
+        : pick([`The cards are cold and the stars are out, ${state.name}. Fancy a hand?`, `Back for another game, ${state.name}? I've been practising my shuffle.`, `The table is set, ${state.name}. Choose your sky and your opponent.`]));
       const lvl = (L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${L.hand} cards · points ×${L.mult}${prog().wins[L.n] ? ` · ${prog().wins[L.n]} won` : ""}${prog().best[L.n] != null ? ` · best ${prog().best[L.n]}` : ""}</span></button>`;
+      const ds = dailyState(state.prog, "rummy"), dl = dailyLevel(), dp = dailyOpp();
       ui(`<div class="cx-top"><b>🃏 ${esc(t.name)}</b> · ${w} win${w === 1 ? "" : "s"}${nx ? ` · ${nx.at - w} more to ${esc(nx.name)}` : ""} · ${Object.keys(prog().cons).length} / 12 constellations played</div>
+        <div class="group">Your opponent</div><div class="cr-opp-pick">${OPPS.map((k) => `<button class="c small${k === opp ? " on" : ""}" type="button" data-opp="${k}" title="${esc(PERSONAS[k].style)}">${oracleName(k)}${PERSONAS[k].prize ? (beat[k] ? " ✓" : ` · first win +${PERSONAS[k].prize} 💎`) : ""}</button>`).join("")}</div>
+        <div class="note">${esc(PERSONAS[opp].style)}</div>
         <div class="levels">${LEVELS.map(lvl).join("")}</div>
-        <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-      $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => deal(LEVELS[+b.dataset.l - 1])));
+        <div class="choices"><button class="c main" type="button" id="cr-daily">📅 Daily deal #${dayNumber()}${ds.played ? " ✓" : ""}</button><button class="c main" type="button" id="cr-together">👥 Play together</button>${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
+        <div class="note">Daily deal: everyone gets the same cards today · Level ${dl.n} against ${oracleName(dp)}${ds.streak ? ` · streak ${ds.streak} 🔥` : ""}. Play together: everyone in this Discord call sits at one table (2 to 4 players, Oracles fill empty seats).</div>`);
+      $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => dealSolo(LEVELS[+b.dataset.l - 1], opp)));
+      $("ui").querySelectorAll("[data-opp]").forEach((b) => (b.onclick = () => { prog().opp = b.dataset.opp; saveProgress(); flickSfx(); say(LINES[b.dataset.opp].hello); lobby(false); }));
+      $("cr-daily").onclick = dailyLobby; $("cr-together").onclick = together;
       $("back").onclick = greet; wireGuide();
     }
+    const dailyLevel = () => LEVELS[dayNumber() % 3], dailyOpp = () => OPPS[dayNumber() % OPPS.length];
 
-    async function deal(L) {
-      g = newGame(L); sel = []; busy = true; tell = prog().plays || 0; clearReading(); cap(`🃏 Level ${L.n} · ${L.name}`);
-      shuffleSfx(); paint(); hand({ deal: true }); await wait(700); dealSfx(L.hand);
-      say(pick(["The cards are dealt. Your move.", "I shuffled the heavens. You go first.", "Stars in hand. Draw a card to begin."]) + (L.labels ? "" : " On this level the cards don't say where each star lives. A wrong set costs a point."));
-      busy = false; hand();
+    async function dailyLobby() {
+      const ds = dailyState(state.prog, "rummy"), L = dailyLevel(), opp = dailyOpp();
+      const draw = (board) => ui(`<div class="group">📅 Daily deal #${dayNumber()} · Level ${L.n} ${esc(L.name)} against ${oracleName(opp)}</div>
+        <div class="note">Everyone in Science is Magic gets the same shuffle today. Your first game of the day goes on the board.${ds.played ? ` You scored <b>${ds.today.score}</b> today${ds.today.won ? " and won" : ""}. Play again for practice: it won't count.` : ""}</div>
+        <div class="group">🏆 Today's board</div>${board === undefined ? `<div class="note">Reading the board…</div>` : boardHtml(board, esc, { unit: "pts", local: ds.today })}
+        <div class="choices"><button class="c main" type="button" id="cr-dgo">🃏 ${ds.played ? "Practice today's deal" : "Deal today's cards"}</button><button class="c" type="button" id="cr-lobby">Back</button></div>`);
+      const wire = () => { $("cr-dgo").onclick = () => dealSolo(L, opp, { daily: !ds.played }); $("cr-lobby").onclick = () => lobby(false); };
+      draw(undefined); wire(); const b = await boardOf(state, "rummy"); if (!g && $("cr-dgo")) { draw(b); wire(); }
     }
 
-    /** Your hand and the buttons for this phase. */
+    // ---------- dealing ----------
+    function dealSolo(L, opp, o = {}) {
+      real = true; g = newGame(L, o.daily !== undefined ? dailySeed("rummy") : Date.now(), { seats: ["me", "or"], persona: { or: opp } });
+      g.kind = { me: "human", or: "oracle" }; g.names = { me: state.name, or: oracleName(opp) }; g.daily = !!o.daily; me = "me";
+      startGame();
+    }
+    async function startGame() {
+      const L = levelOf(g); sel = []; busy = true; tell = prog().plays || 0; clearReading(); cap(`🃏 Level ${L.n} · ${L.name}${g.daily ? " · Daily deal" : ""}`);
+      shuffleSfx(); paint(); hand({ deal: true }); await wait(700); dealSfx(L.hand);
+      const opps = g.seats.filter((s) => s !== me && isOracle(s));
+      say((g.turn === me ? pick(["The cards are dealt. Your move.", "I shuffled the heavens. You go first.", "Stars in hand. Draw a card to begin."]) : `The cards are dealt. ${g.names[g.turn]} goes first.`)
+        + (opps.length === 1 && solo() ? " " + LINES[g.persona[opps[0]] || "seer"].hello : "") + (L.labels ? "" : " On this level the cards don't say where each star lives. A wrong set costs a point."));
+      busy = false; hand();
+      if (host() && isOracle(g.turn)) runOracles();
+    }
+
+    // ---------- your hand ----------
     function hand(o = {}) {
-      const L = levelOf(g), mine = g.turn === "me" && !g.over && !busy, t = top(g);
-      const cards = g.hands.me.map((h, i) => face(h, { labels: L.labels, sel: sel.includes(h), i, cls: o.deal ? "cr-deal" : o.fresh === h ? "cr-new" : "" })).join("");
+      if (!g) return;
+      const L = levelOf(g), mine = seated() && g.turn === me && !g.over && !busy && !pending, t = top(g), my = seated() ? g.hands[me] : [];
+      sel = sel.filter((h) => my.includes(h));
+      const cards = my.map((h, i) => face(h, { labels: L.labels, sel: sel.includes(h), i, cls: o.deal ? "cr-deal" : o.fresh === h ? "cr-new" : "" })).join("");
       let acts = "";
       if (mine && g.phase === "draw") acts = `<button class="c main" type="button" id="cr-deck" ${g.deck.length || g.nights < 2 ? "" : "disabled"}>🂠 Draw from the deck</button>${t != null ? `<button class="c" type="button" id="cr-top">⤴ Take ${esc(CARD[t].name)}</button>` : ""}`;
       else if (mine) {
         const set = sel.length >= 3 && (L.labels ? setType(g, sel) : true), one = sel.length === 1;
         acts = `<button class="c main" type="button" id="cr-set" ${set ? "" : "disabled"}>✦ Lay down set</button><button class="c" type="button" id="cr-add" ${one && g.melds.length ? "" : "disabled"}>➕ Add to a set</button>
-          <button class="c" type="button" id="cr-dis" ${one && (sel[0] !== g.took || g.hands.me.length === 1) ? "" : "disabled"}>⤵ Discard${one ? " " + esc(CARD[sel[0]].name) : ""}</button>`;
+          <button class="c" type="button" id="cr-dis" ${one && (sel[0] !== g.took || my.length === 1) ? "" : "disabled"}>⤵ Discard${one ? " " + esc(CARD[sel[0]].name) : ""}</button>`;
       }
-      const tip = !mine ? (g.over ? "" : "The Oracle is playing…") : g.phase === "draw" ? "Draw a card: from the deck, or take the top discard. Drag cards to rearrange your hand." :
-        sel.length === 0 ? "Tap cards to pick them, drag to rearrange. 3 or 4 of one constellation make a set" + (L.colour ? "; so do 3+ of one colour class from different constellations." : ".") + " Then discard one to end your turn." :
-        sel.length === 1 ? "One card: add it to a set on the table, or discard it." : sel.length === 2 ? "Pick at least 3 cards for a set." : (L.labels && !setType(g, sel) ? "These don't make a set yet." : "Lay them down!");
-      ui(`<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${g.over ? "" : `<button class="c small" type="button" id="cr-sort">⇅ Sort</button>`}<button class="c small" type="button" id="cr-surf">${prog().surface === "cloth" ? "🃏 Card-back table" : "🧵 Cloth table"}</button>${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
+      const tip = !seated() ? "You're watching this game. You'll get a seat in the next one." : !mine ? (g.over ? "" : pending ? "…" : `${g.names[g.turn]} is playing…`) : g.phase === "draw" ? "Draw a card: from the deck, or take the top discard. Drag cards to rearrange your hand." :
+        sel.length === 0 ? "Tap cards to pick them, drag to rearrange. 3 or 4 of one constellation make a set" + (L.colour ? "; so do 3+ of one colour class from different constellations." : ".") + " Drag a card onto a set or the discard pile, or a picked set onto the table." :
+        sel.length === 1 ? "One card: add it to a set on the table, or discard it. You can drag it there too." : sel.length === 2 ? "Pick at least 3 cards for a set." : (L.labels && !setType(g, sel) ? "These don't make a set yet." : "Lay them down, or drag them onto the table!");
+      const who = T ? `<div class="cr-seats">${g.seats.map((s) => `<span${g.turn === s && !g.over ? ' class="host"' : ""}>${esc(s === me ? "You" : g.names[s])} · ${g.hands[s].length}</span>`).join("")}</div>` : "";
+      ui(`${who}<div class="cr-hand${o.shake ? " cr-shake" : ""}">${cards}</div><div class="choices">${acts}${g.over || !seated() ? "" : `<button class="c small" type="button" id="cr-sort">⇅ Sort</button>`}<button class="c small" type="button" id="cr-surf">${prog().surface === "cloth" ? "🃏 Card-back table" : "🧵 Cloth table"}</button>${guideBtn}<button class="c small" type="button" id="cr-leave">↩ Leave game</button></div><div class="note">${esc(tip)}</div>`);
       wireHand();
-      $("cr-surf").onclick = () => { prog().surface = prog().surface === "cloth" ? "back" : "cloth"; saveProgress(); flickSfx(); paint(); hand(); };
+      $("cr-surf").onclick = () => { prog().surface = prog().surface === "cloth" ? "back" : "cloth"; saveProgress(); flickSfx(); paint(lastO); hand(); };
       if ($("cr-sort")) $("cr-sort").onclick = () => { const order = Object.keys(CONS); flickSfx();
-        g.hands.me.sort((a, b) => L.labels ? order.indexOf(CARD[a].con) - order.indexOf(CARD[b].con) || CARD[a].mag - CARD[b].mag : "BAFKM".indexOf(CARD[a].cls) - "BAFKM".indexOf(CARD[b].cls) || CARD[a].mag - CARD[b].mag); hand(); };
-      if ($("cr-deck")) $("cr-deck").onclick = () => myDraw("deck");
-      if ($("cr-top")) $("cr-top").onclick = () => myDraw("discard");
-      if ($("cr-set")) $("cr-set").onclick = mySet;
-      if ($("cr-add")) $("cr-add").onclick = myAdd;
-      if ($("cr-dis")) $("cr-dis").onclick = myDiscard;
+        g.hands[me].sort((a, b) => L.labels ? order.indexOf(CARD[a].con) - order.indexOf(CARD[b].con) || CARD[a].mag - CARD[b].mag : "BAFKM".indexOf(CARD[a].cls) - "BAFKM".indexOf(CARD[b].cls) || CARD[a].mag - CARD[b].mag); hand(); };
+      if ($("cr-deck")) $("cr-deck").onclick = () => doDraw("deck");
+      if ($("cr-top")) $("cr-top").onclick = () => doDraw("discard");
+      if ($("cr-set")) $("cr-set").onclick = () => doSet(sel);
+      if ($("cr-add")) $("cr-add").onclick = () => doAdd(sel[0]);
+      if ($("cr-dis")) $("cr-dis").onclick = () => doDiscard(sel[0]);
       $("cr-leave").onclick = () => lobby(false); wireGuide();
     }
     const toggle = (h) => { if (busy || g.over) return; flickSfx(); sel = sel.includes(h) ? sel.filter((x) => x !== h) : [...sel, h]; info(h); hand(); };
-    /** Tap a card to pick it; drag it (mouse or finger) to move it in your hand. */
+    /** What's under the pointer on the table: a set, the discard pile, or the table itself. */
+    function dropAt(x, y) {
+      for (const el of document.elementsFromPoint(x, y)) {
+        const m = el.closest && el.closest(".cr-meld[data-id]"); if (m && tableEl.contains(m)) return { kind: "meld", el: m, id: +m.dataset.id };
+        const d = el.closest && el.closest("[data-drop=discard]"); if (d) return { kind: "discard", el: d };
+        if (el === tableEl || (el.closest && el.closest(".table.rummy") === tableEl)) return { kind: "table", el: tableEl };
+      }
+      return null;
+    }
+    /** Tap a card to pick it; drag it (mouse or finger) to move it in your hand, or onto the table. */
     function wireHand() {
       const box = $("ui").querySelector(".cr-hand"); if (!box) return;
       box.querySelectorAll("[data-h]").forEach((b) => {
@@ -231,28 +333,44 @@ export const rummy = {
         b.onclick = (e) => { if (e.detail === 0) toggle(h); }; // keyboard (Enter/Space); pointer taps are handled below
         b.onpointerdown = (e) => {
           if (e.button > 0 || g.over) return;
-          const sx = e.clientX, sy = e.clientY; let drag = false, target = null, after = false;
+          const sx = e.clientX, sy = e.clientY; let drag = false, target = null, after = false, ghost = null, drop = null;
           try { b.setPointerCapture(e.pointerId); } catch {}
-          const others = [...box.querySelectorAll("[data-h]")].filter((x) => x !== b);
+          const others = [...box.querySelectorAll("[data-h]")].filter((x) => x !== b), hb = box.getBoundingClientRect();
           b.onpointermove = (ev) => {
             const dx = ev.clientX - sx, dy = ev.clientY - sy;
-            if (!drag && Math.hypot(dx, dy) > 8) { drag = true; b.classList.add("drag"); }
+            if (!drag && Math.hypot(dx, dy) > 8) { drag = true; b.classList.add("lift"); ghost = b.cloneNode(true); ghost.classList.add("cr-ghost"); ghost.classList.remove("sel", "lift"); ghost.style.width = b.offsetWidth + "px"; ghost.style.height = b.offsetHeight + "px"; document.body.append(ghost); }
             if (!drag) return;
-            b.style.transform = `translate(${dx}px,${dy}px) rotate(${Math.max(-12, Math.min(12, dx / 18))}deg) scale(1.06)`;
+            ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px"; ghost.style.setProperty("--rot", Math.max(-12, Math.min(12, dx / 18)) + "deg");
+            others.forEach((o) => o.classList.remove("ins-l", "ins-r")); if (drop) drop.el.classList.remove("cr-drop-on"); drop = null; target = null;
+            const inHand = ev.clientY > hb.top - 30 && ev.clientY < hb.bottom + 30 && ev.clientX > hb.left - 30 && ev.clientX < hb.right + 30;
+            if (!inHand) { drop = dropAt(ev.clientX, ev.clientY); if (drop) drop.el.classList.add("cr-drop-on"); return; }
             let best = null, bd = Infinity;
             for (const o of others) { const r = o.getBoundingClientRect(), d = Math.hypot(ev.clientX - (r.left + r.width / 2), (ev.clientY - (r.top + r.height / 2)) * 1.5); if (d < bd) { bd = d; best = o; } }
-            others.forEach((o) => o.classList.remove("ins-l", "ins-r"));
             if (best) { const r = best.getBoundingClientRect(); after = ev.clientX > r.left + r.width / 2; target = best; best.classList.add(after ? "ins-r" : "ins-l"); }
           };
           const done = (ev, cancel) => {
-            b.onpointermove = b.onpointerup = b.onpointercancel = null;
+            b.onpointermove = b.onpointerup = b.onpointercancel = null; if (ghost) ghost.remove(); if (drop) drop.el.classList.remove("cr-drop-on");
             if (!drag) { if (!cancel) toggle(h); return; }
-            if (!cancel && target) { const arr = g.hands.me, t = +target.dataset.h; arr.splice(arr.indexOf(h), 1); arr.splice(arr.indexOf(t) + (after ? 1 : 0), 0, h); takeSfx(); }
+            b.classList.remove("lift");
+            if (!cancel && drop) return dropCard(h, drop);
+            if (!cancel && target) { const arr = g.hands[me], t = +target.dataset.h; arr.splice(arr.indexOf(h), 1); arr.splice(arr.indexOf(t) + (after ? 1 : 0), 0, h); takeSfx(); }
             hand();
           };
           b.onpointerup = (ev) => done(ev, false); b.onpointercancel = (ev) => done(ev, true);
         };
       });
+    }
+    /** A card dropped on the table: onto a set = add it, onto the discards = discard it, onto the cloth = lay down your picked set. */
+    function dropCard(h, d) {
+      const mine = seated() && g.turn === me && !g.over && !busy && !pending;
+      if (!mine) { say(g.over ? "The game is over." : `Wait for your turn: ${g.names[g.turn]} is playing.`); return hand(); }
+      if (g.phase === "draw") { say("Draw a card first: tap the deck or the discards."); return hand(); }
+      if (d.kind === "meld") return doAdd(h, d.id);
+      if (d.kind === "discard") return doDiscard(h);
+      const cards = sel.includes(h) ? sel : [...sel, h];
+      if (cards.length >= 3) return doSet(cards);
+      if (cards.length === 1) { const m = g.melds.find((x) => fits(g, h, x)); if (m) return doAdd(h, m.id); }
+      say("Pick 3 or more cards that make a set, then drag them onto the table."); hand();
     }
     /** The card's real facts, under the hand. On Level 3 the fact would give away the constellation, so only once it's on the table. */
     function info(h) {
@@ -260,85 +378,218 @@ export const rummy = {
       $("reading-body").innerHTML = `<div class="cr-info"><b>${esc(c.name)}</b>${hidden ? "" : ` · ${esc(conLabel(c.con))}`} · class ${c.cls} (${k.name.toLowerCase()}, ${k.temp}) · magnitude ${c.mag} · ${stars(pts(h))}<br>${hidden ? "Lay it in a set to learn its story." : esc(c.fact)}</div>`;
     }
 
-    function myDraw(from) {
-      if (!g || busy || g.over || g.turn !== "me" || g.phase !== "draw") return;
-      const before = g.nights, h = draw(g, "me", from);
-      if (h == null) { if (g.over) return end(); return; }
-      if (g.nights > before) { dawnSfx(); say("The deck is empty. A new night falls: the discards are shuffled into a fresh deck."); }
-      else say(from === "discard" ? `You take ${CARD[h].name}. ${pick(["Bold.", "Interesting choice.", "I saw that."])}` : pick(["You draw from the deck.", "A new star for your hand.", "The deck gives you a card."]));
-      from === "discard" ? takeSfx() : flickSfx(); sel = []; info(h); paint(); hand({ fresh: h });
+    // ---------- moves: played here (alone, or as the host) or sent up to the host ----------
+    const canMove = () => seated() && g && g.turn === me && !g.over && !busy && !pending;
+    function doDraw(from) { if (!canMove() || g.phase !== "draw") return; move({ a: "draw", from }); }
+    function doSet(hips) { if (!canMove() || g.phase !== "play" || hips.length < 3) return;
+      if (levelOf(g).labels && !setType(g, hips)) { badSfx(); say("Those stars don't make a set."); return hand({ shake: true }); } move({ a: "set", hips: [...hips] }); }
+    function doAdd(hip, meld) { if (!canMove() || g.phase !== "play" || hip == null) return; move({ a: "add", hip, meld }); }
+    function doDiscard(hip) { if (!canMove() || g.phase !== "play" || hip == null) return;
+      if (hip === g.took && g.hands[me].length > 1) { badSfx(); say("You can't throw back the card you just took. Pick another."); return; } move({ a: "dis", hip }); }
+    function move(a) { if (host()) act(me, a); else { pending = true; T.up(a); hand(); } }
+
+    /** Host: apply one player's move to the game and send what happened to everyone. */
+    async function act(who, a) {
+      if (!g || g.over || g.turn !== who) return;
+      const ev = [], before = g.nights;
+      if (a.a === "draw") { const h = draw(g, who, a.from === "discard" ? "discard" : "deck"); if (g.nights > before) ev.push({ t: "night" });
+        if (h == null) { if (!g.over) return; } else ev.push({ t: "draw", who, from: a.from === "discard" ? "discard" : "deck", hip: h }); }
+      else if (a.a === "set") { const hips = Array.isArray(a.hips) ? a.hips.map(Number).slice(0, 8) : []; const m = layDown(g, who, hips); ev.push(m ? { t: "meld", who, meld: m } : { t: "miss", who, set: true }); }
+      else if (a.a === "add") { const hip = +a.hip, target = a.meld != null ? g.melds.find((m) => m.id === +a.meld) : g.melds.find((m) => m.type === "con" && fits(g, hip, m)) || g.melds.find((m) => fits(g, hip, m));
+        const m = layOff(g, who, hip, target ? target.id : -1); ev.push(m ? { t: "layoff", who, hip, meld: m } : { t: "miss", who, hip }); }
+      else if (a.a === "dis") { const hip = +a.hip; ev.push(discard(g, who, hip) ? { t: "discard", who, hip } : { t: "bad", who, why: "took" }); }
+      if (g.over) ev.push({ t: "over" });
+      if (!ev.length) return;
+      await emit(ev);
+      if (!g.over && isOracle(g.turn)) runOracles();
+    }
+    let oraclesOn = false;
+    async function runOracles() {
+      if (oraclesOn) return; oraclesOn = true; busy = true; hand();
+      try {
+        while (g && !g.over && isOracle(g.turn) && host()) {
+          const who = g.turn; await wait(700);
+          for (const step of oracleTurn(g, who)) { const ev = [step]; if (g.over) ev.push({ t: "over" }); await emit(ev); if (g.over) break; await wait(step.t === "meld" ? 1500 : 950); }
+          if (!g.over && g.turn === who) break; // safety: never loop on a stuck turn
+        }
+      } finally { oraclesOn = false; busy = false; }
+      if (g && !g.over) hand();
+    }
+    /** Host: show the events here, and send each player their own view (their own hand only). */
+    async function emit(ev) {
+      if (T) {
+        for (const m of T.members) if (m.id !== me) T.to(m.id, { k: "st", v: viewFor(m.id), ev: ev.map((e) => hideFor(e, m.id)) });
+        T.snap({ g: freeze(g), cfg });
+      }
+      return play(ev);
+    }
+    const hideFor = (e, id) => (e.t === "draw" && e.from === "deck" && e.who !== id ? { ...e, hip: null } : e.t === "bad" && e.who !== id ? { t: "noop" } : e);
+    function viewFor(id) {
+      const v = freeze(g); v.rs = 0; v.deck = g.deck.map(() => 0);
+      if (!g.over) v.hands = Object.fromEntries(g.seats.map((s) => [s, s === id ? [...g.hands[s]] : g.hands[s].map(() => 0)]));
+      return v;
+    }
+
+    /** Everyone: tell and animate what happened, then redraw. */
+    async function play(ev) {
+      let o = {}, fresh = null, shake = false, endIt = false;
+      for (const e of ev) {
+        const P = LINES[(g.persona && g.persona[e.who]) || "seer"], orc = e.who != null && isOracle(e.who), N = e.who != null ? nameOf(e.who) : "";
+        if (e.t === "night") { dawnSfx(); say("The deck is empty. A new night falls: the discards are shuffled into a fresh deck."); await wait(900); }
+        else if (e.t === "draw") {
+          e.from === "discard" ? takeSfx() : flickSfx();
+          if (e.who === me) { fresh = e.hip; if (e.hip != null) info(e.hip); say(e.from === "discard" ? `You take ${CARD[e.hip].name}.${solo() ? " " + pick(["Bold.", "Interesting choice.", "I saw that."]) : ""}` : pick(["You draw from the deck.", "A new star for your hand.", "The deck gives you a card."])); }
+          else { say(e.from === "discard" ? `${N} takes ${CARD[e.hip].name} from the discards.${orc ? " " + pick(P.take) : ""}` : `${N} draws from the deck.`); o.got = { [e.who]: 1 }; }
+        } else if (e.t === "meld") {
+          meldSfx(e.meld.cards.length, Math.max(...e.meld.cards.map((c) => pts(c.hip)))); o.fresh = e.meld.id;
+          if (e.who === me) { o.burst = true; say(lore(e.meld)); $("reading-body").innerHTML = `<div class="cr-info">${e.meld.cards.map((c) => `<b>${esc(CARD[c.hip].name)}</b>: ${esc(CARD[c.hip].fact)}`).join("<br>")}</div>`; }
+          else say(`${N} lays down ${setName(e.meld)}: ${e.meld.cards.map((c) => CARD[c.hip].name).join(", ")}.${orc ? " " + pick(P.meld) : ""}`);
+        } else if (e.t === "layoff") {
+          layoffSfx(); o.grew = e.meld.id; const full = e.meld.type === "con" && e.meld.cards.length === 4;
+          if (e.who === me) { say(full ? `${CARD[e.hip].name} completes ${CONS[e.meld.key].name}! ${CONS[e.meld.key].science[0]}` : `${CARD[e.hip].name} joins ${setName(e.meld)}. ${CARD[e.hip].fact}`); if (full) { chime(1); o.burst = true; } }
+          else say(`${N} adds ${CARD[e.hip].name} to ${setName(e.meld)}.`);
+        } else if (e.t === "discard") {
+          discardSfx(); o.flip = true; if (e.who === me) $("reading-body").innerHTML = "";
+          const next = g.over ? "" : g.turn === me ? "Your turn." : `${nameOf(g.turn)}'s turn.`;
+          say(e.who === me ? `You discard ${CARD[e.hip].name}. ${next}` : solo() ? `${N} discards ${CARD[e.hip].name}. ${pick(P.dis)}${g.persona[e.who] && g.persona[e.who] !== "seer" && !g.over ? " Your turn." : ""}` : `${N} discards ${CARD[e.hip].name}. ${next}`);
+        } else if (e.t === "miss" && e.who === me) { badSfx(); shake = true;
+          say(levelOf(g).labels ? (e.set ? "Those stars don't make a set." : `${CARD[e.hip].name} doesn't fit any set on the table.`) : `The stars disagree. That's not a set. One point lost (${g.miss[me] || 0} so far).`); }
+        else if (e.t === "bad" && e.who === me) { badSfx(); say("You can't throw back the card you just took. Pick another."); }
+        else if (e.t === "away") say(`${e.name} left the table. ${g.names[e.who]} plays their cards now.`);
+        else if (e.t === "back") say(`${g.names[e.who]} is back at the table.`);
+        else if (e.t === "over") endIt = true;
+      }
+      if (g) { paint(o); if (!endIt) hand({ fresh, shake }); }
+      if (endIt) end();
     }
     function lore(m) {
       if (m.type === "col") return `A colour set! ${CLASSES[m.key].fact}`;
       const c = CONS[m.key], x = c.lore[tell++ % c.lore.length];
       return `${c.emoji} ${c.name}! ${x.c}, "${x.title}": ${x.t}`;
     }
-    function mySet() {
-      if (busy || sel.length < 3) return;
-      const m = layDown(g, "me", sel);
-      if (!m) { badSfx(); say(levelOf(g).labels ? "Those stars don't make a set." : `The stars disagree. That's not a set. One point lost (${g.miss.me || 0} so far).`); hand({ shake: true }); return; }
-      meldSfx(m.cards.length, Math.max(...m.cards.map((c) => pts(c.hip)))); sel = []; say(lore(m));
-      $("reading-body").innerHTML = `<div class="cr-info">${m.cards.map((c) => `<b>${esc(CARD[c.hip].name)}</b>: ${esc(CARD[c.hip].fact)}`).join("<br>")}</div>`;
-      paint({ fresh: m.id, burst: true }); if (g.over) return end(); hand();
-    }
-    function myAdd() {
-      if (busy || sel.length !== 1) return;
-      const h = sel[0], target = g.melds.find((m) => m.type === "con" && fits(g, h, m)) || g.melds.find((m) => fits(g, h, m));
-      const m = layOff(g, "me", h, target ? target.id : -1);
-      if (!m) { badSfx(); say(levelOf(g).labels ? `${CARD[h].name} doesn't fit any set on the table.` : `${CARD[h].name} doesn't belong to any set there. One point lost.`); hand({ shake: true }); return; }
-      layoffSfx(); sel = [];
-      const done = m.type === "con" && m.cards.length === 4;
-      say(done ? `${CARD[h].name} completes ${CONS[m.key].name}! ${CONS[m.key].science[0]}` : `${CARD[h].name} joins ${setName(m)}. ${CARD[h].fact}`);
-      if (done) chime(1); paint({ grew: m.id, burst: done }); if (g.over) return end(); hand();
-    }
-    async function myDiscard() {
-      if (busy || sel.length !== 1) return;
-      const h = sel[0]; if (!discard(g, "me", h)) { badSfx(); say("You can't throw back the card you just took. Pick another."); return; }
-      discardSfx(); sel = []; $("reading-body").innerHTML = ""; paint({ flip: true });
-      if (g.over) return end();
-      busy = true; hand(); await oracle();
-    }
 
-    async function oracle() {
-      oracleSfx(); paint({ thinking: true }); await wait(700);
-      const before = g.nights;
-      for (const step of oracleTurn(g)) {
-        if (step.t === "draw") { if (g.nights > before) { dawnSfx(); say("The deck ran dry. A new night falls and the discards become the deck."); await wait(900); }
-          say(step.from === "discard" ? `The Oracle takes ${CARD[step.hip].name} from the discards.` : step.hip != null ? "The Oracle draws from the deck." : "The deck is empty.");
-          step.from === "discard" ? takeSfx() : flickSfx(); paint({ thinking: true, oracleGot: 1 }); }
-        else if (step.t === "meld") { meldSfx(step.meld.cards.length, 1); say(`The Oracle lays down ${setName(step.meld)}: ${step.meld.cards.map((c) => CARD[c.hip].name).join(", ")}.`); paint({ fresh: step.meld.id, thinking: true }); }
-        else if (step.t === "layoff") { layoffSfx(); say(`The Oracle adds ${CARD[step.hip].name} to ${setName(step.meld)}.`); paint({ grew: step.meld.id, thinking: true }); }
-        else if (step.t === "discard") { discardSfx(); say(`The Oracle discards ${CARD[step.hip].name}. ${pick(["Your turn.", "Over to you.", "Your move, stargazer."])}`); paint({ flip: true }); }
-        await wait(step.t === "meld" ? 1500 : 950);
-        if (g.over) break;
+    // ---------- playing together ----------
+    async function together() {
+      ui(`<div class="note">Finding your table…</div>`);
+      if (!canJoin(state)) { say("Playing together works inside a Discord call: open the Oracle Chamber Activity in a voice channel with friends."); return lobby(false); }
+      try { T = await joinTable("rummy", state); } catch (e) { T = null; say(`I couldn't set the table: ${e.message}`); return lobby(false); }
+      me = T.me.id; g = null; real = T.isHost(); cfg = { level: 1, opp: PERSONAS[prog().opp] ? prog().opp : "seer" };
+      T.on("msg", onMsg).on("members", onMembers).on("host", onHost).on("close", () => { if (!T) return; T = null; say("The table closed. You're back in the lobby."); lobby(false); });
+      say(T.isHost() ? `You're hosting, ${state.name}. Everyone in this call who opens Constellation Rummy and taps Play together joins your table.` : `You sit down at ${T.nameOf(T.host)}'s table.`);
+      if (!T.isHost()) T.up({ a: "hi" });
+      tableLobby();
+    }
+    const players = () => T.members.slice(0, 4);
+    function tableLobby() {
+      if (!T) return;
+      if (g && !g.over) return;
+      cap("🃏 Constellation Rummy · together"); g = null;
+      tableEl.className = "table rummy"; tableEl.innerHTML = `<div class="cr-shelf cr-b-${backId()}">${back()}${face(32349, { mini: true })}${back()}</div>`;
+      const ps = players(), L = LEVELS[cfg.level - 1], oracles = Math.max(0, 2 - ps.length);
+      const seats = `<div class="cr-seats">${ps.map((m) => `<span class="${m.id === T.host ? "host" : ""}">${m.id === T.host ? "👑 " : ""}${esc(m.id === me ? m.name + " (you)" : m.name)}</span>`).join("")}${oracles ? `<span>${oracleName(cfg.opp)}</span>` : ""}${T.members.length > 4 ? `<span>+${T.members.length - 4} watching</span>` : ""}</div>`;
+      if (host()) {
+        ui(`<div class="group">👥 Your table</div>${seats}
+          <div class="group">Level</div><div class="cr-opp-pick">${LEVELS.map((x) => `<button class="c small${x.n === cfg.level ? " on" : ""}" type="button" data-tl="${x.n}">${"⭐".repeat(x.n)} ${esc(x.name)}</button>`).join("")}</div>
+          <div class="group">Oracle in empty seats</div><div class="cr-opp-pick">${OPPS.map((k) => `<button class="c small${k === cfg.opp ? " on" : ""}" type="button" data-to="${k}">${oracleName(k)}</button>`).join("")}</div>
+          <div class="group">Seats</div><div class="cr-opp-pick">${[2, 3, 4].map((n) => `<button class="c small${n === (cfg.seats || Math.max(2, ps.length)) ? " on" : ""}" type="button" data-ts="${n}" ${n < ps.length ? "disabled" : ""}>${n} players</button>`).join("")}</div>
+          <div class="choices"><button class="c main" type="button" id="cr-tdeal">🃏 Deal for ${Math.max(cfg.seats || 0, ps.length, 2)}</button><button class="c" type="button" id="cr-tleave">↩ Leave the table</button></div>
+          <div class="note">${esc(L.what)}. Empty seats get an Oracle. More than 4 people? The rest watch and get the next seats.</div>`);
+        $("ui").querySelectorAll("[data-tl]").forEach((b) => (b.onclick = () => { cfg.level = +b.dataset.tl; flickSfx(); syncLobby(); }));
+        $("ui").querySelectorAll("[data-to]").forEach((b) => (b.onclick = () => { cfg.opp = b.dataset.to; flickSfx(); syncLobby(); }));
+        $("ui").querySelectorAll("[data-ts]").forEach((b) => (b.onclick = () => { cfg.seats = +b.dataset.ts; flickSfx(); syncLobby(); }));
+        $("cr-tdeal").onclick = dealTogether;
+      } else ui(`<div class="group">👥 ${esc(T.nameOf(T.host))}'s table</div>${seats}<div class="note">Level ${L.n} · ${esc(L.name)}. Waiting for ${esc(T.nameOf(T.host))} to deal…</div>
+        <div class="choices">${guideBtn}<button class="c" type="button" id="cr-tleave">↩ Leave the table</button></div>`);
+      $("cr-tleave").onclick = () => lobby(false); wireGuide();
+    }
+    function syncLobby() { if (T && host()) T.to("*", { k: "lobby", cfg }); tableLobby(); }
+    function dealTogether() {
+      const ps = players(), n = Math.max(cfg.seats || 0, ps.length, 2), L = LEVELS[cfg.level - 1];
+      const seats = ps.map((m) => m.id), kind = {}, names = {}, persona = {};
+      for (const m of ps) { kind[m.id] = "human"; names[m.id] = m.name; }
+      for (let i = seats.length; i < n; i++) { const id = "or" + i, k = i === seats.length ? cfg.opp : OPPS[(OPPS.indexOf(cfg.opp) + i - seats.length) % OPPS.length]; seats.push(id); kind[id] = "oracle"; persona[id] = k; names[id] = oracleName(k); }
+      g = newGame(L, Date.now(), { seats, persona }); g.kind = kind; g.names = names; g.daily = false;
+      for (const m of T.members) if (m.id !== me) T.to(m.id, { k: "deal", v: viewFor(m.id) });
+      T.snap({ g: freeze(g), cfg }); startGame();
+    }
+    function onMsg({ from, m }) {
+      if (!m || typeof m !== "object") return;
+      if (T && host()) {
+        if (m.a === "hi") { if (g && !g.over) { const v = viewFor(from); T.to(from, { k: "st", v, ev: [] }); } else T.to(from, { k: "lobby", cfg }); return; }
+        if (g && m.a && g.turn === from && g.kind[from] === "human") act(from, m);
+        return;
       }
-      busy = false;
-      if (g.over) return end();
-      hand();
+      if (from !== T.host) return;
+      if (m.k === "lobby") { cfg = m.cfg; if (!g) tableLobby(); }
+      else if (m.k === "deal") { g = adopt(m.v); startGame(); }
+      else if (m.k === "st") { const was = !!g; g = adopt(m.v); pending = false; if (!was) { clearReading(); cap(`🃏 Level ${g.level} · ${levelOf(g).name}`); } play(m.ev || []); }
+    }
+    /** A view from the host becomes this screen's game; keep the order you arranged your hand in. */
+    function adopt(v) {
+      const old = g && g.hands && g.hands[me] ? g.hands[me] : [], nu = v.hands[me];
+      if (nu) v.hands[me] = [...old.filter((h) => nu.includes(h)), ...nu.filter((h) => !old.includes(h))];
+      return thaw(v);
+    }
+    function onMembers() {
+      if (!T) return;
+      if (!T.isHost()) { if (!g) tableLobby(); return; }
+      if (!real) return; // just made host: wait for the saved game (onHost)
+      if (!g || g.over) { T.to("*", { k: "lobby", cfg }); if (!g) tableLobby(); return; }
+      // host: a player who left is played by an Oracle until they come back
+      const here = new Set(T.members.map((m) => m.id)), ev = [];
+      for (const s of g.seats) {
+        if (g.kind[s] === "human" && !here.has(s) && s !== me) { g.kind[s] = "oracle"; g.persona[s] = "seer"; const nm = g.names[s]; g.away = { ...(g.away || {}), [s]: nm }; g.names[s] = `🔮 Oracle for ${nm}`; ev.push({ t: "away", who: s, name: nm }); }
+        else if (g.away && g.away[s] && here.has(s)) { g.kind[s] = "human"; g.names[s] = g.away[s]; delete g.persona[s]; delete g.away[s]; ev.push({ t: "back", who: s }); }
+      }
+      emit(ev).then(() => { if (!g.over && isOracle(g.turn)) runOracles(); });
+    }
+    function onHost(snap) {
+      if (!T) return;
+      say("You're the host now."); real = true; pending = false;
+      if (snap && snap.g && !snap.g.over) { g = thaw(snap.g); cfg = snap.cfg || cfg; if (g.away && g.away[me]) { g.kind[me] = "human"; g.names[me] = g.away[me]; delete g.away[me]; } onMembers(); }
+      else { g = null; syncLobby(); }
     }
 
-    function end() {
+    // ---------- the end ----------
+    async function end() {
       busy = true;
-      if (!g.result) { const before = winsOf(state.prog), r = settle(state.prog, g), aw = award(r.xp, r.essence); saveProgress(); showStats();
-        ctx.trophy?.("rummy", g.level, { won: r.win, perfect: r.win && g.out === "me" }); // Trophy Case (trophies.js)
-        const t = titleOf(winsOf(state.prog)); g.result = { r, aw, t, titled: titleOf(before).name !== t.name }; }
+      if (!g.result) {
+        const before = winsOf(state.prog), r = seated() ? settle(state.prog, g, me) : null, aw = r ? award(r.xp, r.essence) : { rankUp: null };
+        if (r) { saveProgress(); showStats(); ctx.trophy?.("rummy", g.level, { won: r.win, perfect: r.win && g.out === me }); } // Trophy Case (trophies.js)
+        let daily = null;
+        if (r && g.daily) { const detail = `Level ${g.level} vs ${PERSONAS[g.persona.or || "seer"].name}`; daily = finishDaily(state.prog, "rummy", { score: r.score.me.total, won: r.win, detail }); saveProgress();
+          if (daily.first) postDaily(state, "rummy", { score: r.score.me.total, won: r.win, detail }); }
+        const t = titleOf(winsOf(state.prog)); g.result = { r, aw, t, titled: titleOf(before).name !== t.name, daily };
+      }
       results(true);
     }
     function results(fresh) {
-      const L = levelOf(g), { r, aw, t, titled } = g.result, s = r.score; paint();
-      const how = g.out === "me" ? "You went out!" : g.out === "or" ? "The Oracle went out." : "Dawn breaks and the stars fade. Game over.";
-      if (fresh) (r.win ? winSfx : r.tie ? dawnSfx : loseSfx)();
-      if (fresh) say(`${how} ${r.win ? pick(["You win. The heavens applaud.", "Victory! I shall consult my cards about this.", "You beat me fair and square. Mostly fair."]) : r.tie ? "A tie. The stars can't decide." : pick(["I win this time. The stars favoured me.", "My game. Want a rematch?", "Ha! The Oracle foresaw this."])}`);
-      const row = (k, a, b) => `<span>${k}</span><span>${a}</span><span>${b}</span>`;
-      const played = [...new Set(g.melds.filter((m) => m.type === "con").map((m) => m.key))];
-      ui(`<div class="cr-score">${row("", "<b>You</b>", "<b>Oracle</b>")}${row("Stars laid down", "+" + s.me.melded, "+" + s.or.melded)}${row("Left in hand", "−" + s.me.hand, "−" + s.or.hand)}${row("Went out", s.me.bonus ? "+5" : "", s.or.bonus ? "+5" : "")}${s.me.miss ? row("Wrong sets", "−" + s.me.miss, "") : ""}${row("<b>Total</b>", `<b>${s.me.total}</b>`, `<b>${s.or.total}</b>`)}</div>
-        <div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>${r.firstWin ? " · first win at this level" : ""}${r.best ? " · new best" : ""}${r.newFull.length ? ` · completed ${r.newFull.map((c) => CONS[c].name).join(", ")}` : ""}</div>
-        ${titled ? `<div class="up">🃏 Card title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
-        <div class="choices"><button class="c main" type="button" id="cr-again">🃏 Deal again</button>${played.length ? `<button class="c" type="button" id="cr-myths">📜 Hear the myths (${played.length})</button>` : ""}<button class="c" type="button" id="cr-lobby">Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      const L = levelOf(g), { r, aw, t, titled, daily } = g.result, s = tally(g, seated() ? me : g.seats[0]);
+      tableEl.className = "table rummy"; tableEl.innerHTML = tableHtml(g, { surface: prog().surface || "back", me: seated() ? me : null, names: g.names }) + nightHtml(g, me);
+      tableEl.querySelectorAll("[data-sky]").forEach((b) => (b.onclick = () => myth(b.dataset.sky)));
+      const out = g.out, how = out === me ? "You went out!" : out ? `${g.names[out]} went out.` : "Dawn breaks and the stars fade. Game over.";
+      const opp1 = g.seats.find((x) => x !== me && isOracle(x)), P = LINES[(opp1 && g.persona[opp1]) || "seer"];
+      if (fresh && r) (r.win ? winSfx : r.tie ? dawnSfx : loseSfx)();
+      if (fresh) say(`${how} ${!r ? `${g.names[s.best === me ? g.seats[0] : s.best] || ""} wins.` : r.win ? (solo() ? pick(P.lose) : "You win the table!") : r.tie ? "A tie. The stars can't decide." : solo() ? pick(P.win) : `${g.names[s.best]} wins this one. Place: ${s.place} of ${g.seats.length}.`}`);
+      const cols = g.seats, head = cols.map((x) => `<b>${esc(x === me ? "You" : g.names[x])}</b>`);
+      const row = (k, f) => `<span>${k}</span>${cols.map((x) => `<span>${f(s.by[x])}</span>`).join("")}`;
+      const played = [...new Set(g.melds.filter((m) => m.type === "con").map((m) => m.key))], canDeal = host();
+      ui(`<div class="cr-score" style="grid-template-columns:auto repeat(${cols.length},1fr)"><span></span>${head.join("")}${row("Stars laid down", (x) => "+" + x.melded)}${row("Left in hand", (x) => "−" + x.hand)}${row("Went out", (x) => (x.bonus ? "+5" : ""))}${cols.some((x) => s.by[x].miss) ? row("Wrong sets", (x) => (x.miss ? "−" + x.miss : "")) : ""}${row("<b>Total</b>", (x) => `<b>${x.total}</b>`)}</div>
+        ${r ? `<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>${r.firstWin ? " · first win at this level" : ""}${r.best ? " · new best" : ""}${r.newFull.length ? ` · completed ${r.newFull.map((c) => CONS[c].name).join(", ")}` : ""}${r.beat ? ` · first win against ${esc(oracleName(r.beat.key))} (+${r.beat.prize} 💎)` : ""}</div>
+        ${daily ? `<div class="up">📅 Daily deal ${daily.first ? `scored <b>${s.me.total}</b> · streak ${daily.streak} 🔥` : "practice game (only your first game of the day counts)"}</div>` : ""}
+        ${titled ? `<div class="up">🃏 Card title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>` : ""}
+        <div id="cr-board"></div>
+        <div class="choices">${canDeal ? `<button class="c main" type="button" id="cr-again">🃏 Deal again</button>` : `<span class="note">Waiting for ${esc(T.nameOf(T.host))} to deal again…</span>`}${played.length ? `<button class="c" type="button" id="cr-myths">📜 Hear the myths (${played.length})</button>` : ""}<button class="c" type="button" id="cr-lobby">${T ? "Leave the table" : "Choose a level"}</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (fresh && (titled || aw.rankUp)) chime(2);
-      $("cr-again").onclick = () => deal(L); $("cr-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      if ($("cr-again")) $("cr-again").onclick = () => (T ? (g.result = null, dealTogether()) : g.daily !== undefined && g.seed === dailySeed("rummy") ? dealSolo(L, g.persona.or, { daily: false }) : dealSolo(L, g.persona.or));
+      $("cr-lobby").onclick = () => lobby(false); $("back").onclick = () => { leaveTable(); greet(); };
       if ($("cr-myths")) $("cr-myths").onclick = () => { const pages = played.flatMap((c) => [`${CONS[c].emoji} ${CONS[c].name}.`, ...CONS[c].lore.slice(0, 2).flatMap((x) => [`${x.c}: ${x.title}.`, ...x.parts]), CONS[c].science[0]]);
         talkThrough(pages, () => { say("Those are the stories of tonight's sky."); results(false); }); };
+      if (daily && daily.first !== undefined) boardOf(state, "rummy").then((b) => { const el = $("cr-board"); if (el) el.innerHTML = `<div class="group">🏆 Today's board</div>${boardHtml(b, esc, { unit: "pts", local: dailyState(state.prog, "rummy").today })}`; });
+    }
+    function myth(con) {
+      const c = CONS[con], x = c.lore[Math.floor(Math.random() * c.lore.length)]; flickSfx();
+      talkThrough([`${c.emoji} ${c.name}. ${x.c}: ${x.title}.`, ...x.parts, c.science[0]], () => { say("Tap another constellation, or deal again."); results(false); });
     }
 
     lobby(true);

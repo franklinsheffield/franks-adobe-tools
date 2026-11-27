@@ -16,6 +16,12 @@ export const GUIDE = {
       "You can also <b>add</b> a single card to any set already on the table, yours or the Oracle's. The points go to whoever played the card.",
       "Empty your hand to <b>go out</b> and end the game. If the deck runs out, the discards are shuffled into a new night's deck once; when that runs out too, dawn ends the game.",
     ] },
+    { h: "Ways to play", p: [
+      "<b>Against an Oracle</b>: pick your opponent in the lobby. 🔮 <b>The Oracle</b> plays a steady game. 🐦‍⬛ <b>Magpie</b> grabs almost every discard, so think before you throw a card it can use. 💰 <b>Hoarder</b> keeps the bright stars and throws away dim ones. 🃏 <b>Trickster</b> hides its sets until it can go out all at once, and sometimes throws away a star it wants, as bait. Your first win against Magpie, Hoarder or Trickster pays extra 💎.",
+      "<b>📅 Daily deal</b>: everyone gets the same shuffle each day, at a level and against an Oracle that change daily. Only your first game of the day goes on the shared board.",
+      "<b>👥 Play together</b>: inside a Discord call, everyone who taps Play together sits at one table (2 to 4 players; Oracles fill empty seats, and play for anyone who leaves until they come back). With more players, extra constellations join the deck so everyone gets a full hand.",
+      "<b>Drag and drop</b>: drag a card onto a set on the table to add it, onto the discard pile to discard it, or drag a picked set onto the table to lay it down.",
+    ] },
     { h: "Sets", p: [
       "<b>Constellation set</b>: 3 or 4 stars of the same constellation. Each constellation has exactly 4 cards, so a set of 4 completes it and the Oracle tells its myths.",
       "<b>Colour set</b> (Levels 2 and 3): 3 or more stars of the same <b>spectral class</b>, every one from a <b>different</b> constellation. Example: Rigel (Orion), Regulus (Leo) and Navi (Cassiopeia) are all class B.",
