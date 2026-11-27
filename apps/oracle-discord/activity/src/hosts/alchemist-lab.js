@@ -187,3 +187,24 @@ export function grantOpus(p) {
   p.houses = p.houses || {}; const h = (p.houses.alchemist ||= {}); h.opus = true;
   p.owned = p.owned || []; if (!p.owned.includes(MAGISTER_COAT)) p.owned.push(MAGISTER_COAT); return p;
 }
+
+// ---- her own hands: a resting pose (cupping the flask), and her versions of the 3 gestures ----
+// Pieces live inside each hand (left-hand coordinates; the right hand is the left one mirrored), shown only while
+// the gesture plays: snap = a spark off her gloved fingers, point = a glass pipette, swat = a puff of steam.
+export const handPieces = (side) => (side === "R"
+  ? `<g class="hg hg-spark">${[[0, -14], [12, -6], [-12, -6], [8, 8], [-8, 8]].map(([dx, dy], i) => `<path style="--d:${i * 0.03}s" d="M${162 + dx} ${252 + dy} l2 -6 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2z" fill="#FADE8C" stroke="#fff" stroke-width=".6"/>`).join("")}</g>
+    <g class="hg hg-pipette"><path d="M160 300 L170 222" stroke="#e8f4ff" stroke-opacity=".9" stroke-width="5" stroke-linecap="round"/><path d="M168 240 L170 222" stroke="var(--liq,#66E0C8)" stroke-width="3"/><ellipse cx="159" cy="304" rx="7" ry="9" fill="#e3173e"/></g>`
+  : "") + `<g class="hg hg-steam">${[[150, 250, 9], [142, 236, 11], [154, 222, 8]].map(([x, y, r], i) => `<circle style="--d:${i * 0.08}s" cx="${x}" cy="${y}" r="${r}" fill="#e8eef4"/>`).join("")}</g>`;
+export const VELL_HANDS_CSS = `
+body[data-house="alchemist"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-hand{animation:v-cradle 4.2s ease-in-out infinite}
+body[data-house="alchemist"] .teller:not([data-mood]):not([data-gesture]) .o-hands .o-handR{animation-delay:-2.1s}
+body[data-house="alchemist"] .teller:not([data-mood]) .o-hand .o-f{animation:v-grip 4.2s ease-in-out infinite}
+body[data-house="alchemist"] .teller:not([data-mood]) .o-hand .o-thumb{animation:none!important;transform:rotate(-18deg)}
+@keyframes v-cradle{0%,100%{transform:translate(16px,12px) rotate(10deg)}50%{transform:translate(18px,8px) rotate(12deg)}}
+@keyframes v-grip{0%,100%{transform:rotate(30deg)}50%{transform:rotate(24deg)}}
+.hg{opacity:0;pointer-events:none}
+body[data-house="alchemist"] [data-gesture="snap"] .hg-spark{opacity:1}body[data-house="alchemist"] [data-gesture="snap"] .hg-spark path{animation:hv-spk .5s ease-out both;animation-delay:calc(.2s + var(--d));transform-origin:162px 252px;transform-box:view-box}
+body[data-house="alchemist"] [data-gesture="point"] .hg-pipette{opacity:1;transition:opacity .2s .15s}
+body[data-house="alchemist"] [data-gesture="swatL"] .o-handL .hg-steam,body[data-house="alchemist"] [data-gesture="swatR"] .o-handR .hg-steam{opacity:1}
+body[data-house="alchemist"] [data-gesture^="swat"] .hg-steam circle{animation:hv-puff .45s ease-out both;animation-delay:var(--d);transform-box:fill-box;transform-origin:50% 50%}
+@media (prefers-reduced-motion: reduce){body[data-house="alchemist"] .teller .o-hand,body[data-house="alchemist"] .teller .o-f{animation:none!important}}`;
