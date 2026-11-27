@@ -38,6 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { checkCollect, collectHtml } from "./collect.js";
 import { ALL_EMOTES, emoteAny, owned as emotesOwned, useEmote, emoteBookHtml, emoteFxHtml, slots as emoteSlots, toggleSlot, SLOTS as EMO_SLOTS } from "./emotes.js";
 import { CODES, BOOK_CODES, broken as cdBroken, tryCode, spot as cdSpot, codesOn, scrapHtml, glyphLayer } from "./codes.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
@@ -394,7 +395,7 @@ async function reveal(sys, options, question = "") {
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
   logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`, null,
     [["System", sys.label], ["Your question", question || ""], ["Headline", headline(r.embeds[0], r.headline)], ["The Oracle said", words], ...r.embeds.flatMap((e) => [[e.title || "Reading", e.description || ""], ...(e.fields || []).map((f) => [f.name, f.value])])]);
-  useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
+  useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); setTimeout(collectNews, reduced ? 0 : 4200); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name, r.analysis);
   const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" },
     ...(lore.length > 1 ? [{ text: `Your Codex adds this, ${state.name}. ${lore.slice(1, 3).join(" ")}`, mood: "think" }] : []), { text: joke(sys.key), after: "laugh" }];
@@ -837,11 +838,22 @@ const markBtn = (id, label) => { const on = lsGet(marksKey(), []).some((m) => m.
 function toggleMark(id, label) { let M = lsGet(marksKey(), []); M = M.some((m) => m.id === id) ? M.filter((m) => m.id !== id) : [...M, { id, label }].slice(-8); lsSet(marksKey(), M); bookSfx("page"); }
 function bkToast(msg) { const st = document.querySelector("#book .bk-stage"); if (!st) return; const t = document.createElement("div"); t.className = "bk-toast"; t.textContent = msg; st.append(t); setTimeout(() => t.remove(), 3800); }
 /** A secret found: pay once, say so in the book and in the Oracle's bubble, write it in the Journal. */
+/** Collect-everything rewards: announce and log anything just completed. */
+function collectNews() {
+  const p = state.prog, got = checkCollect(p); if (!got.length) return; saveProgress(); showStats(); chime(3);
+  const sysName = (k) => (available(MODULES).find((m) => m.key === k) || {}).label || k;
+  for (const g of got) logEvent("trophy", g.kind === "sys" ? "📜" : g.kind === "codex" ? "🏛️" : "🗝️", g.kind === "sys" ? `Finished the ${sysName(g.key)} Codex` : g.kind === "codex" ? "Finished the whole Codex" : "Found every secret in Your Grimoire", null,
+    [["Collection", g.kind === "sys" ? `${sysName(g.key)}: every entry` : g.kind === "codex" ? "Every system in the Codex" : "All 7 Grimoire secrets"], ["Reward", `💎 ${g.pay}`], ["Bonus", g.kind === "codex" ? "The Archivist's tome binding and the Archivist's flourish emote" : g.kind === "secrets" ? "The Keeper's sigil emote" : ""]]);
+  const big = got.find((g) => g.kind !== "sys"), g = big || got[0];
+  mood.emote("cheer"); burst();
+  mood.bubble(g.kind === "codex" ? `The whole Codex! 💎 ${g.pay}, and the Archivist's tome is yours.` : g.kind === "secrets" ? `Every secret in my book. 💎 ${g.pay} and the Keeper's sigil.` : `The ${sysName(g.key)} Codex is complete! 💎 ${g.pay}.`, 4200, g.kind === "codex" ? "🏛️" : g.kind === "secrets" ? "🗝️" : "📜");
+}
 function revealSecret(id, extra = null) {
   const p = state.prog, s = secretOf(id); if (!s) return false;
   if (id === "calendar" && extra) { p.gcal = Array.isArray(p.gcal) ? p.gcal : []; if (!p.gcal.includes(extra.id)) { p.gcal.push(extra.id); saveProgress(); } }
   if (gsFound(p, id)) return false;
   const pay = findSecret(p, id); saveProgress(); showStats(); chime(2);
+  setTimeout(collectNews, reduced ? 0 : 1800);
   logEvent("secret", "🗝️", `Found a secret in Your Grimoire: ${s.name}`, null, [["Secret", `${s.e} ${s.name}`], ["The clue", s.hint], ["Reward", pay ? `💎 ${pay}` : "A binding and a page"], ["Secrets found", `${(p.gs || []).length} of ${SECRETS.length}`]]);
   setTimeout(() => { bkToast(`🗝️ Secret found: ${s.name}${pay ? ` · +${pay} 💎` : ""}`); mood.bubble(`You found ${s.name}. I hid that one myself.`, 3600, "🗝️"); }, 60);
   return true;
@@ -860,9 +872,9 @@ function secretPages(p) {
   const solved = gsFound(p, "cipher"), secretBooks = BOOKS.filter((b) => b.secret && owns(b.id)), cal = (p.gcal || []).length;
   const right = pageHead("ᚱ The margin cipher", "Three margins, three words, one phrase") + `<div class="bk-cipher">${CIPHER.map((c) => `<span>${c.n} · ${toRunes(c.w)}</span>`).join("")}</div>`
     + (solved ? `<p class="bk-note">✓ Broken: <b>${CIPHER.map((c) => c.w).join(" ")}</b>.</p>` : `<div class="bk-speak"><input id="bk-cipher" type="text" autocomplete="off" placeholder="Write the phrase in letters" aria-label="The phrase from the margins"><button type="button" class="c small" id="bk-speak">Speak it</button></div><p class="bk-note" id="bk-cipher-r">Each rune stands for one letter. A few letters share a rune.</p>`)
-    + `<h4>Secret bindings</h4>${secretBooks.length ? `<div class="choices">${secretBooks.map((b) => `<button type="button" class="c small${p.book === b.id ? " on" : ""}" data-wb="${b.id}">${p.book === b.id ? "✓ " : ""}${esc(b.name)}</button>`).join("")}</div>` : `<p class="bk-empty">Three bindings are never sold. They are hidden in this book.</p>`}
+    + `<h4>Secret bindings</h4>${secretBooks.length ? `<div class="choices">${secretBooks.map((b) => `<button type="button" class="c small${p.book === b.id ? " on" : ""}" data-wb="${b.id}">${p.book === b.id ? "✓ " : ""}${esc(b.name)}</button>`).join("")}</div>` : `<p class="bk-empty">Four bindings are never sold. They are earned inside this book.</p>`}
     <p class="bk-note">🌙 Calendar pages seen: ${cal}</p>` + codebreakerHtml(p);
-  return [left, right];
+  return [left + collectHtml(p, esc, { codes: [CODES.filter((c) => cdBroken(p, c.id)).length, CODES.length], labels: Object.fromEntries(available(MODULES).map((m) => [m.key, m.label])) }), right];
 }
 function diaryPages(p) {
   const D = diary(p, state.name), half = Math.ceil(D.length / 2), page = (xs) => `<ol class="bk-diary">${xs.map(([t, x]) => `<li><time>${esc(t)}</time><p>${esc(x)}</p></li>`).join("")}</ol>`;

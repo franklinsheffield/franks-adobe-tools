@@ -1814,3 +1814,12 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .gb-vig{position:absolute;inset:0;background:radial-gradient(55% 45% at 50% 42%,transparent 30%,rgba(5,3,12,.75) 100%);animation:gb-vig 6s ease-in-out infinite}
 @keyframes gb-vig{50%{opacity:.8}}
 @media (prefers-reduced-motion:reduce){.gate-bg *{animation:none!important}.gb-con polyline{stroke-dashoffset:0}.gb-con circle{opacity:1}.gb-glyphs,.gate-bg u{display:none}}
+/* Collections panel (collect.js) */
+.co{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.co-row{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dotted color-mix(in srgb,var(--ink2) 40%,transparent)}
+.co-row b{display:block;font-size:14px}.co-row small{display:block;font-size:12px;color:var(--ink2)}
+.co-row em{font-style:normal;font-family:var(--display,Cinzel,serif);font-size:13px;color:var(--ink2)}
+.co-e{font-size:18px;text-align:center}
+.co-bar{display:block;height:4px;margin-top:4px;border-radius:2px;background:color-mix(in srgb,var(--ink2) 20%,transparent);overflow:hidden}
+.co-bar i{display:block;height:100%;width:var(--p);background:linear-gradient(90deg,#c88a2a,#FADE8C)}
+.co-row.done .co-e{color:#3a8a3a}.co-row.done b{color:var(--ink)}

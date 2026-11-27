@@ -18,6 +18,7 @@ export const BOOKS = [
   // secret bindings: never sold, earned inside the book (secrets.js)
   { id: "bk-rune", secret: "cipher", name: "Runebound codex", note: "Slate stone covers cut with glowing runes. Earned by breaking the margin cipher.", price: 0, cover: ["#4a4f57", "#1b1e23"], foil: "#7fe3ff", page: "vellum", emblem: "rune", clasp: "steel", fx: "twinkle" },
   { id: "bk-cipher", secret: "codes", name: "Codebreaker's folio", note: "Ink-black cloth stamped with a silver key, cipher-grid pages. Earned by breaking every coded message in the book.", price: 0, cover: ["#1f2a33", "#070b0f"], foil: "#c9d6e3", page: "grid", emblem: "key", clasp: "steel", fx: "ink" },
+  { id: "bk-archive", secret: "codex", name: "Archivist's tome", note: "Deep red leather, gold-edged pages, every system's sigil tooled on the cover. Earned by finishing the whole Codex.", price: 0, cover: ["#6e1424", "#2a050c"], foil: "#FADE8C", page: "parchment", emblem: "star", clasp: "gold", fx: "stars" },
   { id: "bk-crown", secret: "sealed", name: "Star-crowned grimoire", note: "Black and gold, crowned with stars. Earned by opening the sealed chapter.", price: 0, cover: ["#1a1426", "#05030a"], foil: "#FADE8C", page: "night", emblem: "crown", clasp: "gold", fx: "stars" },
 ];
 export const DEFAULT_BOOK = "bk-notebook";
