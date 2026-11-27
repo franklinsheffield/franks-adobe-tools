@@ -50,6 +50,7 @@ const GUIDE = [
   ["Reaction chains (Master)", ["Make the steps of a real industrial process on your turns in a row for +2 power per step:", ...CHAINS.map((ch) => `<b>${ch.name}</b>: ${ch.steps.map(pretty).join(" → ")}. <i>${ch.what}</i>`)]],
   ["Oxidation states", ["Each card shows its usual charges (oxidation states) in the corner. In a compound they add up to zero: Na is +1 and Cl is −1, so NaCl. Mg is +2 and Cl −1, so MgCl₂. Use them to work out formulas at Chemist and Master."]],
 ];
+export const DUEL_GUIDE = GUIDE; // read by the Study hall (study.js)
 const guideHtml = () => `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">⚛️ How to play Element Duel</h3>${GUIDE.map(([h, ps], i) => `<details${i < 2 ? " open" : ""}><summary>${h}</summary>${ps.map((p) => `<p>${p}</p>`).join("")}</details>`).join("")}</div>`;
 
 export const room = {

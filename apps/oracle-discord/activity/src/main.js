@@ -35,6 +35,7 @@ import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
+import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -194,9 +195,27 @@ function greet() {
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast" && !s.row).map(btn).join("")}
     <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}${ROOMS.filter((r) => r.row === "cards").map(roomBtn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
-    <div class="group">Investigate &amp; learn</div>${ROOMS.filter((r) => !r.row).map(roomBtn).join("")}</div>`);
+    <div class="group">Investigate &amp; learn</div>${ROOMS.filter((r) => !r.row).map(roomBtn).join("")}
+    <div class="group">Study</div>${STUDY.filter((x) => ROOMS.some((r) => r.id === x.room)).map((x) => `<button class="c small" type="button" data-study="${x.room}" title="Study guides for ${esc(x.name)}">📖 ${x.emoji} ${esc(x.name)}</button>`).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
+  $("ui").querySelectorAll("[data-study]").forEach((b) => (b.onclick = () => openStudy(b.dataset.study)));
+}
+
+// ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
+function openStudy(roomId, back) {
+  const x = studyFor(roomId); if (!x) return greet();
+  if (!document.getElementById("study-style")) { const st = document.createElement("style"); st.id = "study-style"; st.textContent = STUDY_CSS; document.head.appendChild(st); }
+  state.inRoom = null; clearReading(); table.idle(); cap(`📖 Study: ${x.name}`);
+  const show = (g) => { const rb = $("reading-body"); rb.innerHTML = studyHtml(g); rb.querySelector(".sh-guide")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("ui").querySelectorAll("[data-guide]").forEach((b) => b.classList.toggle("main", b.dataset.guide === g.id)); };
+  say(x.guides.length > 1 ? `The ${x.name} library. ${x.guides.length} guides: pick one and read at your own pace.` : `Everything ${x.name} asks is in here. Read at your own pace.`);
+  ui(`<div class="choices">${x.guides.map((g) => `<button class="c small" type="button" data-guide="${g.id}">${g.emoji} ${esc(g.title.replace(/ study guide$/i, ""))}</button>`).join("")}</div>
+    <div class="choices"><button class="c main" type="button" id="study-play">▶ Play ${esc(x.name)}</button><button class="c" type="button" id="study-back">${back ? "↩ Back" : "✦ Back to the Oracle"}</button></div>`);
+  $("ui").querySelectorAll("[data-guide]").forEach((b) => (b.onclick = () => show(x.guides.find((g) => g.id === b.dataset.guide))));
+  $("study-play").onclick = () => openRoom(roomId);
+  $("study-back").onclick = () => (back ? back() : greet());
+  show(x.guides[0]);
 }
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
@@ -215,7 +234,7 @@ function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000;
   const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
-  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter });
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back) });
 }
 
 function choose(sys) {
