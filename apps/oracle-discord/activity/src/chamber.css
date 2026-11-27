@@ -1067,6 +1067,10 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @media (max-width:640px){.rp-deck{grid-template-columns:1fr}.rp-crate{grid-template-columns:1fr 1fr}.tc-views{order:3;width:100%;margin:6px 0 0}}
 @media (prefers-reduced-motion: reduce){.vinyl.spin,.tt.playing .tt-disc,.rp-rec.now .rp-v,.th-rec svg{animation:none}}
 .music-pop[hidden],.gate[hidden]{display:none}
+/* Daily challenge boards (daily.js boardHtml) */
+.daily-board{list-style:none;margin:6px 0;padding:0;display:grid;gap:3px}
+.daily-board li{padding:4px 8px;border:1px solid rgba(255,255,255,.12);border-radius:8px;font-size:.92em}
+.daily-board li.me{border-color:var(--gold2,#e8c66a);background:rgba(232,198,106,.08)}
 /* ---- the Star Crown (credits.js): the Oracle's permanent reward for finishing every game on every level ---- */
 .teller .o-crown{pointer-events:none;filter:drop-shadow(0 0 6px rgba(250,222,140,.8))}
 .teller .o-crown .cr-halo{animation:crown-glow 3s ease-in-out infinite}
