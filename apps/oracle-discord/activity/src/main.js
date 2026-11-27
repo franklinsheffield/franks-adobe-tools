@@ -14,6 +14,7 @@ import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
 import { STORE, KINDS, SHOP_TALK, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout } from "./voice-sfx.js";
+import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 
 const $ = (id) => document.getElementById(id);
@@ -98,8 +99,26 @@ function greet() {
   say(greeting(state.name) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast").map(btn).join("")}
-    <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}</div>`);
+    <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
+    <div class="group">Investigate &amp; learn</div>${ROOMS.map((r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
+  $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
+}
+
+// ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
+// and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }];
+/** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
+function award(xp = 0, essence = 0) {
+  const p = state.prog, before = rankOf(p.xp).name;
+  p.xp += xp; p.essence = (p.essence || 0) + essence;
+  const after = rankOf(p.xp).name, rankUp = after !== before ? after : null;
+  if (rankUp) p.essence += 25;
+  return { rankUp };
+}
+function openRoom(id) {
+  const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award });
 }
 
 function choose(sys) {
@@ -345,7 +364,7 @@ function showCodex() {
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
     <div class="cx-top"><b>🏅 ${esc(rk.name)}</b> · ${p.xp} ✦${nx ? ` · ${nx.at - p.xp} ✦ to ${esc(nx.name)}` : ""} · 🔥 ${liveStreak(p)} days (best ${p.best}) · 🌙 ${p.tokens} · ${p.readings} readings</div>
     <div class="group">Ranks</div><div class="note">${RANKS.map((r) => `${r.name} ${r.at}✦`).join(" → ")}</div>
-    <div class="group">Collection</div>${rows}
+    <div class="group">Collection</div>${rows}${ROOMS.filter((r) => r.codexHtml).map((r) => r.codexHtml(p, esc)).join("")}
     <div class="group">Table cloth</div><div class="choices">${look("cloth")}</div>
     <div class="group">Crystal ball</div><div class="choices">${look("orb")}</div>`);
   $("back").onclick = greet;

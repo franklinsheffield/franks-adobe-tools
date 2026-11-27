@@ -74,11 +74,13 @@ export function record(p, key, r, now = new Date()) {
 /** A streak that has lapsed (no reading yesterday or today) shows as 0. */
 export const liveStreak = (p, now = new Date()) => (p.last === today(now) || p.last === yesterday(now) ? p.streak : 0);
 
-/** Keep the better of two saved copies (most readings wins; cosmetics chosen are kept from the newer). */
+/** Keep the better of two saved copies (most readings, counting room plays, wins; cosmetics chosen are kept from the newer). */
 export function merge(a, b) {
   if (!a) return b; if (!b) return a;
-  return (b.readings || 0) > (a.readings || 0) ? b : a;
+  return activity(b) > activity(a) ? b : a;
 }
+/** Readings plus plays in the Chamber's rooms (Séance and friends), so room progress isn't lost to a merge. */
+export const activity = (p) => (p.readings || 0) + Object.values(p.rooms || {}).reduce((n, r) => n + ((r && r.plays) || 0), 0);
 
 // ---- storage ----
 const lk = (id) => "oracle-progress:" + id;
