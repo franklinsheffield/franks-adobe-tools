@@ -8,6 +8,9 @@ GH_REPO = "franklinsheffield/franks-adobe-tools"
 GH_WORKFLOW = "oracle-reading.yml"
 GH_REF = "main"
 COOLDOWN_S = "20"
+PUBLIC_URL = "https://science-is-magic-oracle.science-is-magic.workers.dev"
+# "true" once the Oracle Chamber Activity is live: the "Enter the Chamber" button then launches it.
+ACTIVITY_READY = "false"
 # Secrets (set by the deploy workflow): DISCORD_PUBLIC_KEY, GH_DISPATCH_TOKEN, ORACLE_KEY
 
 # Saved birth profiles (opt-in, sealed). The deploy workflow creates the namespace and fills in its id.
