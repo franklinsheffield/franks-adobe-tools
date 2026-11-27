@@ -74,6 +74,18 @@ export const REAGENTS = {
   potash: { name: "Caustic potash", f: "KOH", c: "#f2f2f2" },
   air: { name: "Air", glyph: "air", f: "N₂ + O₂", c: "#bfe3ff" },
   water: { name: "Water", glyph: "water", f: "H₂O", c: "#4aa3df" },
+  // Level 4 (modern chemistry) reagents
+  charcoal: { name: "Charcoal", f: "C", c: "#2a2a2e" },
+  silvercyanate: { name: "Silver cyanate", f: "AgOCN", c: "#eeeeea" },
+  aniline: { name: "Aniline (coal tar)", f: "C₆H₅NH₂", c: "#d9b56a" },
+  dichromate: { name: "Potassium dichromate", f: "K₂Cr₂O₇", c: "#f07a1a" },
+  springwater: { name: "Dürkheim spa water", f: "mineral salts", c: "#a9d6e6" },
+  zincblende: { name: "Zinc blende", f: "ZnS", c: "#6b5a3a" },
+  magnesium: { name: "Magnesium", f: "Mg", c: "#cfd3d8" },
+  pitchblende: { name: "Pitchblende", f: "UO₂ ore", c: "#1d1d1f" },
+  nitrogen: { name: "Nitrogen", f: "N₂", c: "#e8eefc" },
+  hydrogengas: { name: "Hydrogen gas", f: "H₂", c: "#f4fbff" },
+  osmium: { name: "Osmium", f: "Os", c: "#7d8aa0" },
 };
 
 /** The operations of the laboratory. */
@@ -83,6 +95,7 @@ export const OPS = {
   distil: { name: "Distil", emoji: "⚗️", what: "Boil and catch the vapour in the alembic, where it cools to a liquid." },
   sublime: { name: "Sublime", emoji: "☁️", what: "Heat a solid so it turns straight to vapour and settles as a solid higher up." },
   electrolyse: { name: "Electrolyse", emoji: "⚡", what: "Pass an electric current through it (from 1800, after Volta's battery)." },
+  spectro: { name: "Spectroscope", emoji: "🌈", what: "Burn a sample in a clean flame and split its light with a prism into coloured lines (from 1859, Bunsen and Kirchhoff)." },
 };
 export const OPS_ALCH = ["heat", "dissolve", "distil", "sublime"];
 
@@ -169,11 +182,56 @@ export const DISCOVERIES = [
     science: "Potassium, element 19, so reactive it had never been seen as a metal. Electricity split compounds that no fire could. Within a few years Davy had added six new elements." },
 ];
 
+/** Level 4: modern chemistry, 1803 to 1909. Real experiments, real people, real dates. */
+export const MODERN = [
+  { id: "dalton", fx: "fumes", fxc: "#9aa3b0", who: "John Dalton", when: "Manchester, 1803–1808", goal: "Burn charcoal in a little air, then in plenty, and weigh the oxygen each gas holds", make: ["charcoal", "air"], op: "heat", shelf: ["charcoal", "air", "water", "sulfur", "saltpetre", "copper"],
+    hint: "Wood baked without air, and the atmosphere around it.", product: "Two gases, one holding exactly twice the oxygen of the other", colour: "#b8c0cc", eq: "2C + O₂ → 2CO", el: ["C", "O"],
+    options: ["Matter is made of atoms that combine in whole-number ratios", "Air is a single element", "Charcoal slowly turns into gold", "Fire is a substance called phlogiston"], answer: "Matter is made of atoms that combine in whole-number ratios",
+    story: "Carbon forms two gases with oxygen. For the same weight of carbon, one holds exactly twice as much oxygen as the other. Simple ratios like 1 to 2 only made sense to Dalton if every element came in tiny identical lumps.",
+    science: "This is the law of multiple proportions behind Dalton's atomic theory (1808). The gases are carbon monoxide, CO, and carbon dioxide, CO₂. Dalton also drew the first table of atomic weights, with a circle symbol for each element." },
+  { id: "urea", fx: "crystals", fxc: "#f2f2f2", who: "Friedrich Wöhler", when: "Berlin, 1828", goal: "Make an ordinary mineral salt from two others, then warm it", make: ["silvercyanate", "salammoniac"], op: "heat", shelf: ["silvercyanate", "salammoniac", "water", "chalk", "salt", "wine"],
+    hint: "A silver salt of cyanic acid, and the salt named after the temple of Amun.", product: "White crystals identical to a substance found in urine", colour: "#f2f2f2", eq: "AgOCN + NH₄Cl → AgCl + CO(NH₂)₂", el: ["C", "N", "O", "H"],
+    options: ["Urea", "Sugar", "Alcohol", "Ammonia"], answer: "Urea",
+    story: "Wöhler wanted ammonium cyanate, a salt from the mineral world. When he warmed it he got white crystals that were exactly the compound doctors took from urine. He wrote to Berzelius that he could make it 'without needing kidneys, or any animal, be it man or dog'.",
+    science: "Urea, CO(NH₂)₂, was the first natural 'organic' compound made from inorganic ones. It weakened vitalism, the belief that life's chemicals need a special vital force. Today around 180 million tonnes a year are made as fertiliser." },
+  { id: "mauve", fx: "powder", fxc: "#8e3fb5", who: "William Perkin", when: "London, 1856", goal: "Try to make the malaria drug quinine from coal-tar chemicals", make: ["aniline", "dichromate"], op: "dissolve", shelf: ["aniline", "dichromate", "vitriol", "wine", "water", "salt"],
+    hint: "An oily base from coal tar, and a bright orange oxidising salt.", product: "A black sludge that dyes silk a brilliant purple", colour: "#8e3fb5", eq: "aniline (with toluidines) + K₂Cr₂O₇ → purple dye", noBalance: true, el: ["C", "N", "H"],
+    options: ["Mauveine, the first synthetic dye", "Quinine", "Indigo", "Aspirin"], answer: "Mauveine, the first synthetic dye",
+    story: "Perkin was 18 and working at home over the Easter holiday. Oxidising aniline gave a black tar instead of quinine, but alcohol washed a vivid purple out of it that dyed silk and did not fade in sunlight.",
+    science: "Mauveine was the first synthetic dye. Perkin patented it and built a factory, and Queen Victoria wore the colour. It launched the synthetic dye industry, which grew into much of modern pharmaceutical chemistry." },
+  { id: "caesium", fx: "flare", fxc: "#6fb8ff", who: "Robert Bunsen and Gustav Kirchhoff", when: "Heidelberg, 1860", goal: "Boil down mineral water and read its flame through a prism", make: ["springwater"], op: "spectro", shelf: ["springwater", "salt", "potash", "chalk", "water", "copper"],
+    hint: "Water from the Dürkheim spa, boiled down to its salts.", product: "Two new sky-blue lines in the spectrum", colour: "#6fb8ff", eq: "spectral lines at 455 and 459 nm → new element", noBalance: true, el: ["Cs"],
+    options: ["Caesium", "Sodium", "Potassium", "Lithium"], answer: "Caesium",
+    story: "Bunsen boiled down tens of thousands of litres of Dürkheim mineral water. Through the new spectroscope its flame showed two bright blue lines that matched no known element.",
+    science: "They named it from Latin caesius, 'sky blue'. Caesium, element 55, was the first element found by spectroscopy; rubidium followed in 1861. Caesium atoms now define the second in atomic clocks." },
+  { id: "gallium", fx: "glow", fxc: "#9a8cff", who: "Paul-Émile Lecoq de Boisbaudran, testing Mendeleev", when: "Cognac, 1875", goal: "Search a zinc ore for the element missing from Mendeleev's table", make: ["zincblende"], op: "spectro", shelf: ["zincblende", "springwater", "vitriol", "salt", "water", "lead"],
+    hint: "Sphalerite, the shiny brown ore of zinc.", product: "A soft silver metal that melts in your hand", colour: "#c9cfe0", eq: "violet spectral lines at 403 and 417 nm → new element", noBalance: true, el: ["Ga", "Zn", "S"],
+    options: ["Gallium", "Zinc", "Aluminium", "Germanium"], answer: "Gallium",
+    story: "In 1869 Dmitri Mendeleev arranged the elements by weight and left gaps, predicting an 'eka-aluminium' of atomic weight about 68 and density 5.9. Lecoq saw two new violet lines in zinc blende, then isolated the metal.",
+    science: "Gallium, element 31, was Mendeleev's eka-aluminium. He told Lecoq his first density of 4.7 was wrong; purer metal gave 5.9. That made the periodic table famous. Gallium melts at 29.8 °C and is in most LEDs today." },
+  { id: "argon", fx: "bubbles", fxc: "#c8b6ff", who: "Lord Rayleigh and William Ramsay", when: "London, 1894", goal: "Strip the oxygen and nitrogen out of air and see what is left", make: ["air", "copper", "magnesium"], op: "heat", shelf: ["air", "copper", "magnesium", "water", "salt", "lead"],
+    hint: "Air passed over two red-hot metals: one grabs oxygen, the light silvery one grabs nitrogen.", product: "A gas that reacts with nothing at all", colour: "#e6dcff", eq: "air − O₂ − N₂ → a gas, 0.93% of air", noBalance: true, el: ["Ar", "Mg", "N"],
+    options: ["Argon", "Neon", "Helium", "Nitrogen"], answer: "Argon",
+    story: "Rayleigh found that nitrogen taken from air was half a percent heavier than nitrogen made from chemicals. Ramsay removed the oxygen with hot copper and the nitrogen with hot magnesium. About one percent of the air stayed behind.",
+    science: "Argon, element 18, from Greek argos, 'lazy'. It was the first noble gas found. Ramsay went on to find helium, neon, krypton and xenon and won the 1904 chemistry Nobel; Rayleigh won physics the same year." },
+  { id: "radium", fx: "glow", fxc: "#9fd8ff", who: "Marie and Pierre Curie", when: "Paris, 1898–1902", goal: "Find what makes a black uranium ore far more active than its uranium", make: ["pitchblende", "spiritofsalt"], op: "dissolve", shelf: ["pitchblende", "spiritofsalt", "vitriol", "water", "chalk", "salt"],
+    hint: "A heavy black ore from Joachimsthal, and Glauber's acid from salt.", product: "A salt that glows faint blue in the dark", colour: "#bfe6ff", glow: true, eq: "pitchblende residue, dissolved and crystallised thousands of times → RaCl₂", noBalance: true, el: ["Ra"],
+    options: ["Radium", "Uranium", "Polonium", "Thorium"], answer: "Radium",
+    story: "Marie Curie found pitchblende more active than its uranium could explain. With Pierre she processed tonnes of ore residue in a leaky shed, dissolving and recrystallising, and in 1902 had a tenth of a gram of a chloride that glowed in the dark.",
+    science: "Radium, element 88, is about a million times more radioactive than uranium. Marie Curie won Nobel Prizes in physics (1903) and chemistry (1911). Her notebooks are still too radioactive to handle without protection." },
+  { id: "haber", fx: "fumes", fxc: "#e6f2ff", who: "Fritz Haber", when: "Karlsruhe, 1909", goal: "Fix nitrogen from the air into fertiliser", make: ["nitrogen", "hydrogengas", "osmium"], op: "heat", shelf: ["nitrogen", "hydrogengas", "osmium", "air", "water", "iron"],
+    hint: "Two gases squeezed to about 200 atmospheres over a rare, heavy metal catalyst.", product: "A pungent liquid dripping steadily from the cold trap", colour: "#eef6ff", eq: "N₂ + 3H₂ → 2NH₃", el: ["N", "H", "Os"],
+    options: ["Ammonia", "Nitric acid", "Urea", "Water"], answer: "Ammonia",
+    story: "On 2 July 1909 Haber's tabletop machine pressed nitrogen and hydrogen together at high pressure and about 500 °C over osmium, and liquid dripped out for five hours. Carl Bosch then scaled it up at BASF with a cheap iron catalyst.",
+    science: "Ammonia, NH₃. The Haber–Bosch process makes the nitrogen fertiliser that grows food for about half the people alive. Haber won the 1918 Nobel Prize, but he also led Germany's chlorine attacks in WWI: the Lab's Ypres lesson." },
+];
+
 /** A small periodic table: every element the lab mentions, in its real place (period, group). */
 export const ELEMENTS = {
   H: [1, 1, 1], C: [2, 14, 6], N: [2, 15, 7], O: [2, 16, 8], Na: [3, 1, 11], Mg: [3, 2, 12], Si: [3, 14, 14], P: [3, 15, 15], S: [3, 16, 16], Cl: [3, 17, 17], Ar: [3, 18, 18],
   K: [4, 1, 19], Ca: [4, 2, 20], Mn: [4, 7, 25], Fe: [4, 8, 26], Cu: [4, 11, 29], Ag: [5, 11, 47], Sn: [5, 14, 50], Sb: [5, 15, 51],
   Au: [6, 11, 79], Hg: [6, 12, 80], Pb: [6, 14, 82],
+  Zn: [4, 12, 30], Ga: [4, 13, 31], Cs: [6, 1, 55], Os: [6, 8, 76], Ra: [7, 2, 88],
 };
 
 /** Real dangerous combinations. Mixing one of these ends the experiment with an explosion and teaches why.
@@ -212,4 +270,7 @@ export const HAZARDS = [
   { id: "ammoniagas", kind: "gas", col: "#e6f2ff", name: "Ammonia fumes", all: ["salammoniac"], any: ["chalk", "potash"], ops: ["heat", "distil", "sublime"],
     what: "Heating sal ammoniac with chalk or potash drives out ammonia, a sharp gas that burns the eyes and throat.",
     lesson: "The same reaction made sal volatile, the smelling salts of Victorian fainting couches. Big ammonia leaks from refrigeration plants still kill, as in Shanghai in 2013." },
+  { id: "oxyhydrogen", kind: "boom", name: "Hydrogen and air", all: ["hydrogengas", "air"], ops: ["heat", "distil", "sublime"],
+    what: "Hydrogen mixed with air explodes with a sharp crack at the first flame. Haber kept air out of his machine for exactly this reason.",
+    lesson: "The squeaky 'pop' test for hydrogen in school is a tiny version of this. In 2011, hydrogen-air explosions blew apart three reactor buildings at Fukushima Daiichi." },
 ];

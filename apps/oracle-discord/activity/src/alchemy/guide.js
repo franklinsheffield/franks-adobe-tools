@@ -35,6 +35,12 @@ export const NOTEBOOK = [
     "Lavoisier showed burning and rusting combine things with oxygen, overturning the phlogiston theory, and proved mass is conserved. His 1789 book listed 33 'simple substances'. Dalton's atomic theory followed (1808), and in 1869 Dmitri Mendeleev arranged the elements into the periodic table, leaving gaps for elements not yet found.",
     "And transmutation? Chemistry can never turn lead into gold, because the number of protons decides the element. Nuclear physics can: in 1980 Glenn Seaborg's team made a few thousand gold atoms from bismuth.",
   ] },
+  { h: "Level 4: modern chemistry", p: [
+    "Dalton (1808) explained fixed ratios with atoms; Wöhler (1828) made a body chemical, urea, from mineral salts; Perkin (1856) made the first synthetic dye by accident.",
+    "Bunsen and Kirchhoff (1859-60) found that every element burns with its own coloured spectral lines, and used it to find caesium and rubidium. The Spectroscope operation does this.",
+    "Mendeleev (1869) left gaps in his periodic table and predicted the missing elements; gallium (1875) fitted his eka-aluminium almost exactly.",
+    "Rayleigh and Ramsay (1894) found argon hiding in air, the Curies (1898-1902) found polonium and radium, and Haber (1909) turned air into ammonia for fertiliser.",
+  ] },
   { h: "Safety: why you shouldn't try these", p: [
     "Many alchemical substances are dangerous. Mercury vapour, lead and its compounds (including sugar of lead), arsenic and antimony are poisons; strong acids burn; chlorine is a toxic gas; potassium explodes in water. Some alchemists were poisoned by their own work.",
     "In the Lab, some real dangerous mixtures will explode or release a deadly gas and end your experiment: water poured into oil of vitriol, strong nitric acid with alcohol, hydrogen near a flame, saltpetre heated with sulfur or with sal ammoniac, chlorine driven out by heat, rotten-egg gas from iron, sulfur and acid, mercury vapour from the still, red fumes from copper in nitric acid, and ammonia. Each one is a true accident chemists learned to avoid.",

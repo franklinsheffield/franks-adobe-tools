@@ -7,6 +7,8 @@ import { STARS, LINES, FIGURES, CON_NAMES, STAR_NAMES } from "./sky.gen.js";
 import { DECK, LEVELS } from "./lore.js";
 
 export { LEVELS, DECK };
+/** Tonight's real sky: the sky as it is now from the player's place, with a horizon (tonight.js). Scored like level 2, outside the level ladder. */
+export const TONIGHT = { n: 4, name: "Tonight's sky", what: "The real sky from where you are, tonight: only what you could step outside and see", guide: "none", mult: 1.5, tonight: true };
 export const ALL = LEVELS.flatMap((L) => DECK.map((g) => ({ L, g })));
 export const keyOf = (L, g) => L.n + ":" + g.id;
 export const TITLES = [{ at: 0, name: "Stargazer" }, { at: 6, name: "Sky Watcher" }, { at: 16, name: "Star Joiner" }, { at: 32, name: "Navigator" }, { at: ALL.length, name: "Keeper of Star Lore" }];
@@ -60,7 +62,7 @@ export function spin(v, dx, dy, degPerPx = 1.2) {
   return { ...v, ra: (((v.ra + (dx * degPerPx) / Math.max(0.25, Math.cos(v.dec * D))) % 360) + 360) % 360, dec };
 }
 /** Seconds on the clock to find and draw a figure: a base per level plus time per line. */
-export const timeFor = (g, L) => [[90, 8], [75, 7], [60, 6]][L.n - 1].reduce((a, b, i) => (i ? a + b * figureEdges(g).length : b), 0);
+export const timeFor = (g, L) => [[90, 8], [75, 7], [60, 6], [90, 8]][L.n - 1].reduce((a, b, i) => (i ? a + b * figureEdges(g).length : b), 0);
 export const zoom = (v, f) => ({ ...v, fov: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (v.fov || 45) * f)) });
 
 /** Bright stars on screen: [{ s, X, Y }]. */
@@ -176,7 +178,7 @@ export function nextTarget(p, L, after) {
   const pool = open.length ? open : DECK.filter((g) => g.id !== after);
   return pool[Math.floor(Math.random() * pool.length)] || DECK[0];
 }
-const levelOf = (run) => LEVELS[run.level - 1];
+const levelOf = (run) => (run.level === TONIGHT.n ? TONIGHT : LEVELS[run.level - 1]);
 export const drawPts = (run) => (run.done ? Math.round(10 * starsFor(run.mistakes) * levelOf(run).mult) : 0);
 export const quizPts = (run) => (run.quiz ? Math.round(5 * levelOf(run).mult) : 0);
 export const scoreOf = (run) => drawPts(run) + quizPts(run);

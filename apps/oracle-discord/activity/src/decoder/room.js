@@ -75,7 +75,7 @@ export function decoderCodex(prog, e = esc) {
       <div class="bar"><i style="width:${(st / of) * 100}%"></i></div>${got.length ? `<div class="chips">${got.map((l) => `<span>${e(l.codex)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
 }
 
-function open(ctx) { C = ctx; styleOnce(); mountBoard(); home(); }
+function open(ctx) { C = ctx; styleOnce(); mountBoard(); const k = ctx.arg && ctx.arg.script; SCRIPTS[k] ? scriptMenu(k) : home(); } // ctx.arg.script: opened from another room (History of Magic)
 
 // ---- Maya numerals as SVG: dots (1), bars (5), shell (0) ----
 export function mayaSvg(n, w = 64) {

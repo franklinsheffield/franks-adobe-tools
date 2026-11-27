@@ -182,3 +182,50 @@ test("Daily Lab: everyone gets the same deal today, and a win outscores a loss",
   b.over = { winner: "oracle", how: "stability" }; b.you.hp = 0; b.oracle.hp = 3; b.round = 8;
   assert.ok(dailyScore(a) > dailyScore(b)); assert.ok(dailyScore(b) >= 0);
 });
+
+test("Rivals: a ladder of real chemists at Master, each with their own deck, hand and taste", async () => {
+  const { RIVALS, RIVAL, rivalTaste } = await import("../activity/src/duel/rivals.js");
+  assert.deepEqual(RIVALS.map((r) => r.id), ["davy", "lavoisier", "faraday", "mendeleev", "curie"]);
+  for (const rv of RIVALS) {
+    for (const s of rv.fav) { assert.ok(EL[s], s); assert.ok(COMPOUNDS.some((c) => c.atoms[s] && c.tier <= 3), `${rv.id} can use ${s}`); }
+    const g = newGame(3, 42, rv.id);
+    assert.equal(g.rival, rv.id); assert.equal(g.oracle.hp, START + (rv.hp || 0)); assert.equal(g.oracle.hand.length, LEVELS[2].oHand + (rv.hand || 0));
+    const base = newGame(3, 42); const n = (gg, s) => [...gg.oracle.deck, ...gg.oracle.hand].filter((x) => x.s === s).length;
+    for (const s of rv.fav) assert.equal(n(g, s), n(base, s) + (rv.copies ?? 2));
+  }
+  assert.equal(newGame(2, 42, "curie").rival, null); // Master only
+  assert.ok(rivalTaste(RIVAL.lavoisier, BY_ID.H2O, []) > rivalTaste(RIVAL.lavoisier, BY_ID.NaCl, []));
+  assert.ok(rivalTaste(RIVAL.mendeleev, BY_ID.NaCl, []) > rivalTaste(RIVAL.mendeleev, BY_ID.NaCl, ["NaCl"]));
+  const p = {}, g = newGame(3, 5, "davy"); g.over = { winner: "you", how: "stability" };
+  const a = settle(p, g), b = settle(p, g);
+  assert.equal(a.newRival, "davy"); assert.equal(b.newRival, null); assert.equal(a.essence - b.essence, 25); assert.equal(room(p).rivals.davy, 2);
+});
+
+test("Bigger hits: reactions scale with power, and every compound has a one-line fact", async () => {
+  const { powerTier } = await import("../activity/src/duel/scene.js");
+  const { firstLine } = await import("../activity/src/duel/room.js");
+  assert.deepEqual([3, 4, 5, 7, 8, 10, 11, 15].map(powerTier), ["small", "small", "", "", "big", "big", "huge", "huge"]);
+  const g = newGame(2, 4), c = BY_ID.Al2O3;
+  for (const [p, cls] of [[3, /p-small/], [9, /p-big/], [12, /p-huge/]]) {
+    const svg = sceneSvg({ look: DEFAULT_LOOK, g, fx: { kind: "react", side: "you", c, cards: [], dmg: p, power: p } });
+    assert.match(svg, cls); if (p >= 8) assert.match(svg, /REACTION · /);
+  }
+  for (const x of COMPOUNDS) { const l = firstLine(x.fact); assert.ok(l.length > 10 && l.length <= x.fact.length, x.id); }
+});
+
+test("Codex upgrade: every compound has uses and a turning structure, and milestones pay once", async () => {
+  const { USES, MILESTONES } = await import("../activity/src/duel/uses.js");
+  const { structureSvg } = await import("../activity/src/duel/scene.js");
+  const { pageHtml } = await import("../activity/src/duel/room.js");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  for (const c of COMPOUNDS) {
+    assert.ok(USES[c.id] && USES[c.id].length, "uses for " + c.id);
+    assert.ok(c.dh >= -1720 && c.dh <= 240, "heat scale covers " + c.id);
+    assert.match(structureSvg(c), /du-turn/); assert.match(pageHtml(c, esc), /Used for/);
+  }
+  assert.equal(Object.keys(USES).length, COMPOUNDS.length);
+  const p = {}, r = room(p); COMPOUNDS.slice(0, 9).forEach((c) => (r.codex[c.id] = 1));
+  const g = newGame(1, 3); g.you.found = [COMPOUNDS[9].id, COMPOUNDS[10].id]; g.over = { winner: "oracle", how: "stability" };
+  const a = settle(p, g); assert.deepEqual(a.newMilestones.map((m) => m.at), [10]); assert.ok(a.essence >= MILESTONES[0].essence);
+  assert.deepEqual(settle(p, g).newMilestones, []);
+});

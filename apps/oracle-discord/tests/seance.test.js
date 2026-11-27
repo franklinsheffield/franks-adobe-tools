@@ -129,3 +129,26 @@ test("Daily Ghost: same pick for a seed, rotates levels, share line has no spoil
   const run = { candles: 3, won: true, mode: "type", fieldRight: true, hints: [] }, line = shareLine(run, a.L, 331);
   assert.ok(line.includes("#331") && line.includes("🕯️🕯️🕯️💨💨")); assert.ok(!line.toLowerCase().includes(a.g.name.toLowerCase()));
 });
+
+test("Group séance: votes, shared clues need half the circle, first right name wins, wrong names snuff shared candles", async () => {
+  const { groupStart, groupAct, groupReward, majority } = await import("../activity/src/seance/group.js");
+  const L = LEVELS[2], g = L.deck.find((x) => x.id === "faraday"), ms = [{ id: "a", name: "Ann" }, { id: "b", name: "Bo" }, { id: "c", name: "Cy" }];
+  const st = groupStart(L, g);
+  assert.equal(groupAct(st, "a", { a: "guess", text: "Faraday" }, ms, "a"), null, "vote first");
+  assert.equal(groupAct(st, "a", { a: "vote", f: "magic" }, ms, "a"), "vote");
+  assert.equal(groupAct(st, "b", { a: "vote", f: "science" }, ms, "a"), "vote");
+  assert.equal(groupAct(st, "b", { a: "close" }, ms, "a"), null, "only the host closes the vote");
+  assert.equal(groupAct(st, "c", { a: "vote", f: "science" }, ms, "a"), "field"); assert.equal(st.field, "science"); assert.ok(st.fieldRight);
+  assert.equal(majority({ a: "magic", b: "science" }, "a"), "magic", "a tie goes to the host");
+  assert.equal(groupAct(st, "a", { a: "ask" }, ms, "a"), "ask"); assert.equal(st.shown, 1);
+  assert.equal(groupAct(st, "b", { a: "ask" }, ms, "a"), "clue"); assert.equal(st.shown, 2); assert.equal(st.candles, CANDLES - 1);
+  assert.equal(groupAct(st, "b", { a: "guess", text: "zzqqx" }, ms, "a"), "unknown"); assert.equal(st.candles, CANDLES - 1, "unknown names are free");
+  assert.equal(groupAct(st, "b", { a: "guess", text: "Tesla" }, ms, "a"), "wrong"); assert.equal(st.candles, CANDLES - 2);
+  assert.equal(groupAct(st, "c", { a: "guess", text: "faraday" }, ms, "a"), "right"); assert.equal(st.winner, "c"); assert.equal(st.winnerName, "Cy");
+  assert.equal(groupAct(st, "a", { a: "guess", text: "faraday" }, ms, "a"), null, "round over");
+  const w = groupReward(st, "c"), o = groupReward(st, "a"); assert.ok(w.won && w.run.won && w.bonus > 0); assert.equal(o.essence, Math.round(5 * L.mult));
+  const p = fresh(); assert.equal(settle(p, w.run).score, Math.round(5 * L.mult) + Math.round(3 * L.mult) * 3);
+  const s2 = groupStart(L, g); groupAct(s2, "a", { a: "vote", f: "magic" }, ms.slice(0, 1), "a");
+  for (let i = 0; i < 4; i++) groupAct(s2, "a", { a: "guess", text: "Newton" }, ms.slice(0, 1), "a");
+  assert.equal(groupAct(s2, "a", { a: "guess", text: "Newton" }, ms.slice(0, 1), "a"), "out"); assert.ok(s2.over && !s2.winner);
+});

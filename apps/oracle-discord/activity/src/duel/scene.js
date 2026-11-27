@@ -6,6 +6,7 @@ import { CARD_BACK, cardBackSvg } from "../cardbacks.js";
 import { colourOf } from "./elements.js";
 import { BY_ID, pretty } from "./compounds.js";
 import { COND, START, GOAL } from "./logic.js";
+import { RIVAL } from "./rivals.js";
 
 const xml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -53,6 +54,8 @@ function kindFx(k) {
   if (k === "gas") return R(7, (i) => `<circle class="du-k-cloud" style="--i:${i};--dx:${(i - 3) * 22}px;--dy:${-20 - (i % 3) * 12}px" cx="200" cy="138" r="${16 + (i % 3) * 6}" fill="${c}" opacity=".35"/>`).join("");
   return R(8, (i) => `<path class="du-k-shard" style="--i:${i};--a:${i * 45}deg" d="M200 138 l5 -14 l-5 -26 l-5 26 Z" fill="${c}" stroke="#fff" stroke-width=".8"/>`).join("") + `<circle class="du-k-ring" cx="200" cy="138" r="36" fill="none" stroke="${c}" stroke-width="2.5"/>`;
 }
+/** How big a reaction looks and sounds: "small" (power 4 or less), "big" (8+), "huge" (11+), or "". */
+export const powerTier = (p) => (p == null ? "" : p >= 11 ? "huge" : p >= 8 ? "big" : p <= 4 ? "small" : "");
 /** The played cards flying from the hand (bottom) or the Oracle's hand (top) to the middle. */
 function flyingCards(cards, up) {
   const n = Math.min(cards.length, 7);
@@ -91,10 +94,15 @@ function moleculeSvg(c, cx, cy, k = 1, cls = "") {
   const bonds = at.length === 2 ? `<path d="M${at[0].x} ${cy} H${at[1].x}" stroke="#ddd" stroke-width="${4 * k}"/>` : rest.map((a) => `<path d="M${a0.x} ${a0.y} L${a.x} ${a.y}" stroke="#ddd" stroke-width="${4 * k}"/>`).join("");
   return `<g class="${cls}">${bonds}${at.map((a, i) => `<g class="du-atom" style="--i:${i}"><circle cx="${a.x}" cy="${a.y}" r="${rOf(a.s, k)}" fill="${colourOf(a.s)}" stroke="#000" stroke-opacity=".5"/><circle cx="${a.x - rOf(a.s, k) * 0.35}" cy="${a.y - rOf(a.s, k) * 0.35}" r="${rOf(a.s, k) * 0.3}" fill="#fff" opacity=".45"/><text x="${a.x}" y="${a.y + 3.5 * k}" font-size="${(a.s === "H" ? 8 : 10) * k}" text-anchor="middle" fill="${["C", "N", "Cs", "Rb", "I", "Br", "K"].includes(a.s) ? "#fff" : "#111"}" font-weight="700" font-family="system-ui">${a.s}</text></g>`).join("")}</g>`;
 }
-function bar(x, y, w, hp, col, label, found, shield) {
-  const f = Math.max(0, hp) / START;
+/** A compound's atoms and bonds on its own, slowly turning (a simplified layout, not real bond angles). */
+export function structureSvg(c) {
+  const k = c.n > 6 ? 1 : 1.3;
+  return `<svg class="du-struct" viewBox="0 0 160 120" role="img" aria-label="${c.name}: atoms and bonds"><defs><radialGradient id="du-sg"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><circle cx="80" cy="60" r="56" fill="url(#du-sg)"/>${moleculeSvg(c, 80, 60, k, "du-turn")}</svg>`;
+}
+function bar(x, y, w, hp, col, label, found, shield, max = START) {
+  const f = Math.min(1, Math.max(0, hp) / max);
   return `<g class="du-bar${shield ? " shielded" : ""}"><text x="${x}" y="${y - 4}" font-size="9" fill="${col}" font-family="Cinzel,Georgia,serif" letter-spacing="1.5">${label}</text>
-    <text x="${x + w}" y="${y - 4}" font-size="9" fill="#ece6fa" text-anchor="end" font-family="system-ui">${hp} / ${START} · ${"◆".repeat(found)}${"◇".repeat(Math.max(0, GOAL - found))}</text>
+    <text x="${x + w}" y="${y - 4}" font-size="9" fill="#ece6fa" text-anchor="end" font-family="system-ui">${hp} / ${max} · ${"◆".repeat(found)}${"◇".repeat(Math.max(0, GOAL - found))}</text>
     <rect x="${x}" y="${y}" width="${w}" height="9" rx="4.5" fill="rgba(0,0,0,.5)" stroke="${col}" stroke-opacity=".6"/>
     <rect class="du-fill" x="${x}" y="${y}" width="${(w * f).toFixed(1)}" height="9" rx="4.5" fill="${col}"/>
     ${shield ? `<rect class="du-shield" x="${x - 4}" y="${y - 4}" width="${w + 8}" height="17" rx="8.5" fill="rgba(95,224,232,.15)" stroke="#5fe0e8" stroke-width="1.5"/><text x="${x + w / 2}" y="${y + 7.5}" font-size="8" fill="#e8ffff" text-anchor="middle" font-family="system-ui">🛡 ${shield}</text>` : ""}</g>`;
@@ -125,9 +133,10 @@ export function sceneSvg(s) {
     <text x="339" y="181" font-size="7.5" fill="#d8d0f0" text-anchor="middle" font-family="system-ui">+2 power · +3 💎</text></g>`;
   let centre = `<g class="du-idle" opacity=".55"><path d="M188 120 V146 L170 178 Q166 186 176 186 H224 Q234 186 230 178 L212 146 V120 Z" fill="rgba(200,230,255,.1)" stroke="#cfe6ff" stroke-width="1.6"/><path d="M174 172 H226 L230 180 Q232 186 224 186 H176 Q168 186 170 180 Z" fill="#66e0c8" opacity=".6"/><rect x="184" y="114" width="32" height="6" rx="2" fill="#cfe6ff" opacity=".7"/></g>`;
   if (fx.kind === "react" && fx.c) {
-    const up = fx.side === "you", ty = up ? 106 : 236, k = kindOf(fx.c), K = KIND[k], hitY = up ? 70 : 274;
-    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"} k-${k}" style="--kc:${K.col}">${flyingCards(fx.cards || [], up)}
+    const up = fx.side === "you", ty = up ? 106 : 236, k = kindOf(fx.c), K = KIND[k], hitY = up ? 70 : 274, tier = powerTier(fx.power);
+    centre = `<g class="du-rx ${up ? "from-you" : "from-oracle"} k-${k}${tier ? " p-" + tier : ""}" style="--kc:${K.col}">${flyingCards(fx.cards || [], up)}
       <circle class="du-flash" cx="200" cy="138" r="70" fill="url(#du-flash)"/><g class="du-kfx">${kindFx(k)}</g>${moleculeSvg(fx.c, 200, 138, fx.c.n > 5 ? 0.8 : 1, "du-mol")}
+      ${tier === "big" || tier === "huge" ? `<text class="du-tier" x="200" y="${up ? 214 : 98}" font-size="${tier === "huge" ? 15 : 12}" fill="${K.glow}" text-anchor="middle" font-family="Cinzel,Georgia,serif" letter-spacing="3" stroke="#000" stroke-width=".8" paint-order="stroke">${tier === "huge" ? "MASSIVE REACTION" : "BIG REACTION"} · ${fx.power}</text>` : ""}
       <text class="du-name" x="200" y="194" font-size="14" fill="#fff" text-anchor="middle" font-weight="700" font-family="system-ui" stroke="#000" stroke-width=".6" paint-order="stroke">${xml(pretty(fx.c.f))} · ${xml(fx.c.name)}</text>
       <path class="du-beam" d="M200 ${up ? 116 : 160} L200 ${hitY}" stroke="${K.col}" stroke-width="5" stroke-linecap="round"/><circle class="du-orb" cx="200" cy="138" r="7" fill="${K.glow}" stroke="${K.col}" stroke-width="3" style="--ty:${hitY - 138}px"/>
       ${fx.blocked ? `<circle class="du-block" cx="200" cy="${hitY}" r="26" fill="rgba(95,224,232,.25)" stroke="#5fe0e8" stroke-width="3"/>` : ""}
@@ -142,7 +151,7 @@ export function sceneSvg(s) {
       ${fx.kind === "win" ? Array.from({ length: 14 }, (_, i) => `<circle class="du-conf" cx="200" cy="130" r="3" fill="${["#fade8c", "#ff4fb3", "#66e0c8", "#b07cff"][i % 4]}" style="--a:${i * 25.7}deg;--d:${(i % 5) * 0.06}s"/>`).join("") : ""}</g>`;
   }
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${fx.hit ? "du-hit-" + fx.hit : ""}">${wall}${backs}
-    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", "ORACLE", g.oracle.found.length, g.oracle.shield)}</g>
+    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", g.rival ? RIVAL[g.rival].short.toUpperCase() : "ORACLE", g.oracle.found.length, g.oracle.shield, g.oMax || START)}</g>
     ${condCard}${bonusCard}${centre}
     <g class="du-y">${bar(110, 270, 180, g.you.hp, "#66e0c8", "YOU", g.you.found.length, g.you.shield)}</g>
     <text x="12" y="290" font-size="8" fill="${ink}" opacity=".6" font-family="system-ui">deck ${g.you.deck.length}</text></svg>`;
