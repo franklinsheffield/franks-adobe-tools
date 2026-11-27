@@ -24,6 +24,7 @@ export const TROPHIES = [
   { id: "duel", game: "Element Duel", name: "Elemental Crown", art: "crown", need: 1 },
   { id: "rummy", game: "Constellation Rummy", name: "Star Hand", art: "cards", need: 1 },
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
+  { id: "comet", game: "Comet Hunter", name: "Halley's Plate", art: "astro", need: 3, how: ["Clear Spot the mover", "Clear Comet or Messier object", "Clear Predict a return", "A perfect run at every level"] },
   { id: "watch", game: "The Night Watch", name: "Brass Eyepiece", art: "astro", need: 3, how: ["Log 3 observations", "Measure 3 plates", "Deliver 3 Almanac Desk jobs", "A perfect round at every step"] },
   { id: "flametest", game: "Flame Test Lab", name: "Bunsen's Burner", art: "burner", need: 3 },
   { id: "inscriptions", game: "Inscription Tray", name: "Scribe's Loupe", art: "loupe", need: 3 },
@@ -59,6 +60,7 @@ export const LINES = {
   bench: "The Golden Crucible. Every discovery in it was real chemistry.",
   commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
+  comet: "Halley's Plate. He predicted a return and so did you. Comets keep appointments.",
   minerals: "The Collector's Geode. Crack it open: crystals, and your name on the label.",
   casefiles: "The Investigator's Lens. Every ghost you looked through it had a method.",
 };

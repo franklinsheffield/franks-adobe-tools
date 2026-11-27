@@ -1,5 +1,6 @@
 // /chinesezodiac: animal, element and yin/yang by the real lunar new year, plus the four pillars (BaZi) from solar terms.
-import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js";
+import { geocode, parseBirth } from "../../birthplace.js";
+import { birthMoment } from "../../moment.js";
 import { zodiacYear, fourPillars, elementBalance, ymd, STEMS, BRANCHES } from "./calendar.js";
 import { ANIMALS, ELEMENTS, DAY_MASTER, TRINES, TRINE_NAMES, HARMONY, clashOf, trineOf, yearRelation } from "./text.js";
 import { analyse } from "./insight.js";
@@ -61,17 +62,22 @@ function body(z, p, bal) {
   return s;
 }
 
-/** Reading from local birth data. */
-export function compute({ birth, utc, timeKnown, now = new Date() }) {
+/**
+ * Reading from local birth data. solar: the true solar wall clock at the birthplace (moment.js). When it is given,
+ * the day and hour pillars follow the Sun's real position there, as careful BaZi practice does; pClock keeps the
+ * plain clock-time pillars so a reading can say when the two disagree.
+ */
+export function compute({ birth, utc, timeKnown, solar = null, now = new Date() }) {
   const z = zodiacYear(birth);
-  const p = fourPillars(utc, birth, timeKnown);
+  const p = fourPillars(utc, solar && timeKnown ? solar : birth, timeKnown), pClock = solar && timeKnown ? fourPillars(utc, birth, timeKnown) : null;
   const bal = elementBalance(p);
   const today = { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate() };
   const cur = zodiacYear(today);
-  return { z, p, bal, cur };
+  return { z, p, bal, cur, pClock, solar: solar && timeKnown ? solar : null };
 }
 
-export function readingEmbeds({ z, p, bal, cur }, { who = "you", timeKnown = true } = {}) {
+export function readingEmbeds({ z, p, bal, cur, pClock }, { who = "you", timeKnown = true } = {}) {
+  const differs = pClock && (pClock.hour.b !== p.hour.b || pClock.day.index !== p.day.index);
   const a = z.branch.animal, A = ANIMALS[a], el = z.stem.el, E = ELEMENTS[el];
   const dm = p.day.stem, DM = ELEMENTS[dm.el];
   const sorted = Object.entries(bal).sort((x, y) => y[1] - x[1]);
@@ -98,6 +104,7 @@ export function readingEmbeds({ z, p, bal, cur }, { who = "you", timeKnown = tru
       { name: `${DM.emoji} Day Master · ${dm.hz} ${dm.py} ${yy(dm)} ${dm.el}`, value: cut(`The day stem is *you* in BaZi.\n${DAY_MASTER[p.day.s]}\n${DM.dm}`) },
       { name: "🐾 Your other animals", value: `**Inner animal (month): ${p.month.branch.animal}.** How you are in private and in love.\n**Secret animal (hour): ${p.hour ? p.hour.branch.animal : "unknown"}.** ${p.hour ? "Your truest self, the one few people meet." : "Add your birth time to find it."}\n**Day animal: ${p.day.branch.animal}.** The ground your Day Master stands on: your partnerships.` },
       { name: "⚖️ Element balance", value: `${sorted.map(([k, v]) => `${ELEMENTS[k].emoji} ${k} ${v % 1 ? v.toFixed(1) : v}`).join(" · ")}\nStrongest: **${sorted[0][0]}** (${ELEMENTS[sorted[0][0]].kw}). ${weak.length ? `Missing: **${weak.join(", ")}**.` : `Lightest: **${low[0]}**.`}\n${low.map((k) => ELEMENTS[k].lack).join(" ")}` },
+      ...(differs ? [{ name: "🧭 Clock time and Sun time disagree", value: `The hour pillar here follows true solar time at the birthplace (the Sun's real position), which gives the **${p.hour.branch.animal}** hour. The clock time alone would give the **${pClock.hour.branch.animal}** hour${pClock.day.index !== p.day.index ? " and a different day pillar" : ""}. Schools of BaZi differ on which to use, so both are named.` }] : []),
       ...(!timeKnown ? [{ name: "⏱️ Birth time unknown", value: "The hour pillar is left out and the balance counts six characters, not eight. Your animal, element and Day Master don't depend on the time (unless you were born near 11 pm, when the traditional day changes)." }] : []),
     ],
     footer: FOOTER,
@@ -120,19 +127,20 @@ export async function run(o, ctx = {}) {
   if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
   const timeKnown = !o.time_unknown && !!(o.time && String(o.time).trim());
   const birth = parseBirth(o.date, timeKnown ? o.time : "12:00");
-  let utc;
+  let utc, moment = null;
   if (o.place) {
     const where = ctx.geocoded || await geocode(o.place, ctx.fetch || fetch);
     if (!where) throw new Error(`Couldn't find "${o.place}". Try "City, Country".`);
-    utc = localToUtc(birth, timeZoneAt(where.lat, where.lon));
+    moment = birthMoment(birth, where, timeKnown); utc = moment.utc;
   } else utc = new Date(Date.UTC(birth.year, birth.month - 1, birth.day, birth.hour - 8, birth.minute)); // no place: assume China time
-  const r = compute({ birth, utc, timeKnown, now: ctx.now || new Date() });
+  const r = compute({ birth, utc, timeKnown, solar: moment ? moment.solar : null, now: ctx.now || new Date() });
+  r.moment = moment;
   const who = ctx.user ? `@${ctx.user}` : "you";
   const dm = r.p.day.stem;
   const png = await cardPng({ title: "Chinese Zodiac", subtitle: `${yy(r.z.stem)} ${r.z.stem.el} ${r.z.branch.animal} · reading for ${who}${timeKnown ? "" : " · birth time unknown"}`,
     tag: "lunar calendar + solar terms, real astronomy", body: body(r.z, r.p, r.bal),
     facts: [["Lunar new year", nice(r.z.newYear)], ["Day Master", `${plain(dm.py)} ${dm.el}`], ["Inner animal", r.p.month.branch.animal], ["This year", `${r.cur.stem.el} ${r.cur.branch.animal}`]] });
-  const ins = analyse(r, { timeKnown, who });
+  const ins = analyse(r, { timeKnown, who, moment, detail: !!(o.private || ctx.birthDetail) });
   return { embeds: withInsight(readingEmbeds(r, { who, timeKnown }), ins), analysis: ins.analysis, files: [{ name: "chinesezodiac.png", data: png }], ephemeral: !!o.private, reading: r,
     headline: `${yy(r.z.stem)} ${r.z.stem.el} ${r.z.branch.animal} · ${dm.py} ${dm.el} Day Master` };
 }

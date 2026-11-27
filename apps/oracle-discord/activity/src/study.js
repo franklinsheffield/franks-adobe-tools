@@ -15,6 +15,7 @@ import { CHEM_GUIDES } from "./duel/chemistry.js";
 import { POOL, GENERAL, SPECIFIC } from "./seance/practices.js";
 import { GHOSTS } from "./seance/ghosts.js";
 import { GUIDE as WATCH } from "./watch/guide.js";
+import { GUIDE as COMET } from "./comet/guide.js";
 
 const escT = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const book = (title, sections) => ({ title, sections });
@@ -25,6 +26,7 @@ export const STUDY = [
   { room: "stars", emoji: "🔭", name: "Star Lore Navigator", guides: [{ id: "stars", emoji: "🔭", ...titled(STARS) }] },
   { room: "rummy", emoji: "🃏", name: "Constellation Rummy", guides: [{ id: "rummy", emoji: "🃏", ...titled(RUMMY) }] },
   { room: "watch", emoji: "🔭", name: "The Night Watch", guides: [{ id: "watch", emoji: "🔭", ...titled(WATCH) }] },
+  { room: "comet", emoji: "☄️", name: "Comet Hunter", guides: [{ id: "comet", emoji: "☄️", ...titled(COMET) }] },
   { room: "decoder", emoji: "🗝️", name: "Rune & Glyph Decoder", guides: Object.entries(DECODER).map(([id, g]) => ({ id, emoji: "🗝️", ...titled(g) })) },
   { room: "timeline", emoji: "⏳", name: "History of Magic", guides: Object.entries(TIMELINE).map(([id, g]) => ({ id, emoji: "⏳", ...titled(g) })) },
   { room: "grimoire", emoji: "🌿", name: "Herbalist's Grimoire", guides: Object.entries(GRIMOIRE).map(([id, g]) => ({ id: "g" + id, emoji: "🌿",
