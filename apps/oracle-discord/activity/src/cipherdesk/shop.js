@@ -12,10 +12,13 @@ export const SHOP = [
   { id: "cd-wheel", slot: "tool", name: "Jefferson wheel", note: "Thomas Jefferson described a stack of 36 lettered wooden discs on an axle around 1795; the US Army used the idea in 1922", price: 150 },
   { id: "cd-pine", slot: "desk", name: "Clerk's pine desk", note: "A plain sloped desk, like the ones clerks copied letters at for centuries", price: 0 },
   { id: "cd-vienna", slot: "desk", name: "Black Chamber desk", note: "Vienna's secret cabinet office opened diplomats' post in the 1700s, copied it and resealed it, often within hours", price: 90 },
+  { id: "cd-pennant", slot: "banner", name: "Linen pennant", note: "A plain linen pennant for Split Key races: Team Quill flies red, Team Seal flies blue", price: 0 },
+  { id: "cd-cabinet", slot: "banner", name: "Cabinet Noir banner", note: "France's Cabinet Noir opened and read private letters for the king from the 1600s; the name came to mean any secret post-opening office", price: 80 },
+  { id: "cd-hut", slot: "banner", name: "Hut 6 banner", note: "Bletchley Park's codebreakers worked in wooden huts known by number: Hut 6 broke German Army and Air Force Enigma, Hut 8 the Navy's", price: 130 },
   { id: "cd-room40", slot: "desk", name: "Room 40 desk", note: "Britain's First World War codebreakers worked from Room 40 of the Admiralty's Old Building, and kept the name", price: 120 },
 ];
-export const SLOTS = [["lamp", "🕯️ Lamps"], ["tool", "🎡 Cipher tools"], ["desk", "🪑 Desks"]];
-export const DEFAULT_LOOK = { lamp: "cd-tallow", tool: "cd-strip", desk: "cd-pine" };
+export const SLOTS = [["lamp", "🕯️ Lamps"], ["tool", "🎡 Cipher tools"], ["desk", "🪑 Desks"], ["banner", "🚩 Split Key banners"]];
+export const DEFAULT_LOOK = { lamp: "cd-tallow", tool: "cd-strip", desk: "cd-pine", banner: "cd-pennant" };
 export const shopItem = (id) => SHOP.find((s) => s.id === id);
 export const owns = (p, id) => shopItem(id)?.price === 0 || (p.owned || []).includes(id);
 export function lookOf(p) {
