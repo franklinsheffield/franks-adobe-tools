@@ -123,3 +123,10 @@ export function stopMusic() {
   if (!mus) return; const m = mus; mus = null; clearInterval(m.timer);
   try { const t = ac.currentTime; m.g.gain.cancelScheduledValues(t); m.g.gain.setValueAtTime(m.g.gain.value, t); m.g.gain.linearRampToValueAtTime(0, t + 1.2); setTimeout(() => m.drones.forEach((o) => { try { o.stop(); } catch {} }), 1400); } catch {}
 }
+
+/** An explosion: a white-noise blast, a deep thump, a rumble, then glass raining down. */
+export function boom() { if (!ready()) return; const t = ac.currentTime;
+  noise(t, 1.6, { type: "lowpass", f: 4000, to: 120, vol: 0.9, shape: (x) => Math.exp(-x * 4) });
+  tone(90, t, 0.8, { vol: 0.8, to: 28, attack: 0.002 }); tone(55, t + 0.05, 1.6, { type: "triangle", vol: 0.4, to: 30 });
+  noise(t + 0.2, 2.2, { type: "lowpass", f: 300, vol: 0.4, shape: (x) => (1 - x) ** 2 });
+  for (let k = 0; k < 14; k++) { const s = t + 0.25 + k * rnd(0.04, 0.11), f = rnd(2500, 5200); tone(f, s, rnd(0.08, 0.25), { vol: rnd(0.05, 0.12) }); tone(f * 1.5, s, 0.08, { vol: 0.04 }); } }

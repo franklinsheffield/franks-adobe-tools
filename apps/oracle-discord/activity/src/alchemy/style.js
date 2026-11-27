@@ -49,7 +49,19 @@ export const CSS = `
 .table.alchemy .al-flare{opacity:0;animation:al-flare 1.6s 1.3s ease-out both}@keyframes al-flare{0%{opacity:0;transform:scale(.2) rotate(0)}30%{opacity:1;transform:scale(2) rotate(45deg)}100%{opacity:.7;transform:scale(1.2) rotate(90deg)}}
 .table.alchemy .al-film{transform-origin:50% 50%;animation:al-film 1.6s 1.2s ease-out both}@keyframes al-film{from{transform:scaleX(0)}}
 .table.alchemy .al-spark2{opacity:0;animation:al-spark2 1s ease-out both}@keyframes al-spark2{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--x),var(--y))}}
-@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}}
+.table.alchemy :is(.al-fireball,.al-ring,.al-shard,.al-soot){transform-box:fill-box;transform-origin:center}
+.table.alchemy .al-vessel.gone{animation:al-gone .15s ease-in forwards}@keyframes al-gone{to{opacity:0;transform:scale(1.3)}}
+.table.alchemy .al-fireball{animation:al-fireball 1.4s ease-out both}@keyframes al-fireball{0%{transform:scale(.1);opacity:1}30%{transform:scale(1.6);opacity:1}100%{transform:scale(2.4);opacity:0}}
+.table.alchemy .al-ring{opacity:0;animation:al-ring 1s ease-out both}@keyframes al-ring{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(6)}}
+.table.alchemy .al-shard{animation:al-shard 1.1s cubic-bezier(.1,.8,.3,1) both}@keyframes al-shard{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:.15}}
+.table.alchemy .al-soot{opacity:0;animation:al-soot 3s ease-out forwards}@keyframes al-soot{0%{opacity:.95;transform:translate(0,0) scale(.3)}60%{opacity:.85}100%{opacity:.55;transform:translate(var(--dx),-70px) scale(2.2)}}
+.table.alchemy .al-flash{opacity:0;pointer-events:none;animation:al-flash .7s ease-out both}@keyframes al-flash{0%{opacity:.95}100%{opacity:0}}
+.table.alchemy .al-crack{stroke-dasharray:80;stroke-dashoffset:80;animation:al-draw .4s .2s ease-out forwards}
+.table.alchemy .al-exploded .al-fl,.table.alchemy .al-exploded .al-ember{display:none}
+.table.alchemy.quake{animation:al-quake .6s cubic-bezier(.36,.07,.19,.97) both}@keyframes al-quake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(5px,-3px)}30%,50%,70%{transform:translate(-8px,4px) rotate(-1deg)}40%,60%{transform:translate(8px,-4px) rotate(1deg)}}
+.al-boomcard{margin:8px 0;padding:10px 12px;border:1px solid #ff7a3c;border-radius:10px;background:linear-gradient(90deg,rgba(255,90,31,.18),rgba(40,20,30,.6));animation:al-in .5s ease-out both}
+.al-boomcard b{color:#ffb36b;font-family:var(--display);letter-spacing:.05em}.al-boomcard p{margin:6px 0 0;font-size:.88rem}
+@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}.table.alchemy :is(.al-shard,.al-flash,.al-ring){display:none}.table.alchemy .al-soot{opacity:.7}.table.alchemy .al-vessel.gone{opacity:0}}
 .al-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:4px 0 6px}
 .c.al-jar{display:flex;align-items:center;gap:8px;text-align:left;border-radius:10px;padding:6px 10px}
 .c.al-jar i{flex:none;width:24px;height:24px;border-radius:6px;background:var(--jc);display:grid;place-items:center;color:#160b2c;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18)}

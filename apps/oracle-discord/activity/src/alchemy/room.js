@@ -2,7 +2,7 @@
 // recipes at the furnace; level 3, repeat the experiments that turned alchemy into chemistry. Every answer reveals the
 // real history and the modern chemistry (with a balanced equation), and lights elements on your own periodic table.
 // Rules in logic.js, content in lab.js, study guide in guide.js, workbench drawing in scene.js, apothecary in shop.js.
-import { SYMBOLS, REAGENTS, OPS, ELEMENTS } from "./lab.js";
+import { SYMBOLS, REAGENTS, OPS, ELEMENTS, HAZARDS } from "./lab.js";
 import { glyphSvg } from "./glyphs.js";
 import { NOTEBOOK } from "./guide.js";
 import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
@@ -107,10 +107,20 @@ export const alchemy = {
       $("al-go").onclick = () => {
         const r = transmute(run, x, sel, op);
         if (r === "right") return success(L, x, run);
+        if (r === "boom") return explode(L, x, run, HAZARDS.find((h) => h.id === run.boom), sel);
         if (r === "out") { sfx.fizzle(); sfx.snuff(); draw({ flames: 0, shelf: x.shelf, liquid: "#3a3a3a", label: x.product, fizzle: true, snuff: true });
           return talkThrough([`The last flame dies. Here is how it was really done: ${x.make.map((i) => REAGENTS[i].name.toLowerCase()).join(" with ")}, then ${OPS[x.op].name.toLowerCase()}.`, x.story, x.science], () => finish(L, x, run)); }
         if (r === "wrong") { sfx.fizzle(); sfx.snuff(); bench(L, x, run, sel, op, pick(FIZZLE), { fizzle: true, snuff: true }); }
       };
+    }
+    function explode(L, x, run, hz, sel) {
+      sfx.boom(); cap("💥 " + hz.name);
+      draw({ flames: 0, shelf: x.shelf, chips: sel, boom: true, label: "💥 " + hz.name });
+      tableEl.classList.remove("quake"); void tableEl.offsetWidth; tableEl.classList.add("quake");
+      say(pick(["KABOOM! Glass everywhere. The experiment is over.", "BANG! The flask is gone, and so are your eyebrows. Experiment over.", "A blinding flash, a bang, and soot on the ceiling. That's the end of this experiment."]));
+      ui(`<div class="al-boomcard"><b>💥 ${esc(hz.name)}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>
+        <div class="choices"><button class="c main" type="button" id="al-ok">🧹 Sweep up the glass</button></div>`);
+      $("al-ok").onclick = () => finish(L, x, run, hz);
     }
     const eqCard = (x) => `<div class="al-eq"><b>${esc(x.product)}</b><code>${esc(x.eq)}</code></div>`;
     function success(L, x, run) {
@@ -128,12 +138,12 @@ export const alchemy = {
     }
 
     // ---- results ----
-    function finish(L, x, run) {
+    function finish(L, x, run, hz) {
       const before = solvedCount(P()), r = settle(P(), run, x), aw = award(r.xp, r.essence); saveProgress(); showStats();
       const after = solvedCount(P()), t = titleOf(after), titled = titleOf(before).name !== t.name;
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
-      bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");
-      say(run.won ? pick(["Into the notebook it goes.", "The Great Work advances.", "Another secret of matter, written down."]) : "Even Newton had bad days at the furnace.");
+      if (r.boom) bits.push(`💥 exploded: ${esc(hz.name)} · lesson added to your Codex`); else bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");
+      if (r.boom) say("Lesson learned the loud way. Try again with a steadier hand."); else say(run.won ? pick(["Into the notebook it goes.", "The Great Work advances.", "Another secret of matter, written down."]) : "Even Newton had bad days at the furnace.");
       const els = r.newEls.length ? `<div class="up">🧪 New on your periodic table: ${r.newEls.map((e) => `<span class="al-el on">${e}<small>${ELEMENTS[e][2]}</small></span>`).join(" ")}</div>` : "";
       const up = LEVELS[L.n] && run.won && r.first && solvedCount(P(), L) === 4 ? `<div class="up">🔓 Ready for Level ${L.n + 1}: ${esc(LEVELS[L.n].what)}</div>` : "";
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${els}${titled ? `<div class="up">⚗️ Lab title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
@@ -186,5 +196,6 @@ export function alchemyCodex(p, esc) {
   return LEVELS.map((L) => { const done = L.deck.filter((x) => r.solved[keyOf(L, x)]);
     return `<div class="cx"><div class="cx-h"><span>⚗️ Lab level ${L.n}: ${esc(L.what)}</span><span class="note">${done.length} / ${L.deck.length}</span></div>
       <div class="bar"><i style="width:${(done.length / L.deck.length) * 100}%"></i></div>${done.length ? `<div class="chips">${done.map((x) => `<span>${esc(x.name || x.product)}</span>`).join("")}</div>` : ""}</div>`; }).join("")
+    + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>💥 Lab accidents (lessons learned)</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
     + `<div class="cx"><div class="cx-h"><span>🧪 Elements found in the Lab</span><span class="note">${n} / ${of}</span></div><div class="bar"><i style="width:${(n / of) * 100}%"></i></div>${n ? `<div class="chips">${r.elements.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}</div>`;
 }
