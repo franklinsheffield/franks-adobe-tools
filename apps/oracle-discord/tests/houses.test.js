@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -160,7 +160,7 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
   setHost(P); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "MADAME ROOK · Madame Rook's hand · Séance Parlour");
   assert.equal(rename("Open the Record Player · Reach Oracle-touched, or try /oracle"), "Open the Spirit Trumpet Gramophone · Reach Oracle-touched, or try /oracle");
-  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["seance", "timeline"]);
+  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "seance", "timeline"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
   assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "decoder", "memory"]);
