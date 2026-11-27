@@ -5,6 +5,7 @@ import { room as NR, ROUNDS, PASS, VOYAGES, voyageOf, sightOf, sightAngle, goodS
 import { GUIDE } from "./guide.js";
 import { dailySeed, dailyState, finishDaily, todayKey, dayNumber } from "../daily.js";
 import * as S from "../stars/sfx.js";
+import { makeRace } from "../obsrace.js";
 
 export const SAILS = [
   { id: "sl-canvas", name: "Canvas sails", price: 0, c: "#efe6cf", note: "Square-rigged ships carried acres of canvas. A big clipper could spread over 3,000 square metres of sail." },
@@ -97,6 +98,7 @@ export const celestialNavigator = {
     const shake = () => { const s = $id("nv-svg"); if (!s) return; s.classList.remove("shake"); void s.getBoundingClientRect(); s.classList.add("shake"); };
     const LV = [null, ["⭐ 1 · Polaris", "Bring Polaris to the horizon: its height is your latitude"], ["☀️ 2 · The noon Sun", "Shoot the Sun at noon and use the almanac"], ["⏱️ 3 · Longitude", "The chronometer keeps Greenwich time"]];
 
+    const race = makeRace(C, { game: "navigator", title: "Crew race", emoji: "⛵", unit: "★", intro: "Same voyage for every crew, steering by Polaris.", play: (seed, done) => run(1, false, { seed, onDone: done }), back: () => lobby(false), sfx: (w) => S.verdict(w) });
     function lobby(first) {
       clearReading(); cap("🧭 Celestial Navigator"); tableEl.className = "table navigator"; tableEl.innerHTML = chartSvg(VOYAGES[0], 0, sailOf(P()));
       if (first) S.domeOpen();
@@ -105,14 +107,15 @@ export const celestialNavigator = {
       const lv = (n) => `<button class="c level" type="button" id="nv-go${n}"${isOpen(P(), n) ? "" : " disabled"}><b>${LV[n][0]}</b><span>${isOpen(P(), n) ? `${LV[n][1]}${r.best[n] ? ` · best ${r.best[n]}★` : ""}` : `Clear Level ${n - 1} to open`}</span></button>`;
       ui(`<div class="cx-top"><b>🧭 Celestial Navigator</b> · ${r.voyages.length} / ${VOYAGES.length} voyages completed · ${r.cleared.length} / 3 levels cleared</div>
         <div class="levels">${lv(1)}${lv(2)}${lv(3)}</div>
-        <div class="choices"><button class="c main" type="button" id="nv-daily">📅 Daily Voyage #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="nv-guide">📖 Navigator's manual</button><button class="c small" type="button" id="back">✦ Leave</button></div>
+        <div class="choices"><button class="c main" type="button" id="nv-daily">📅 Daily Voyage #${dayNumber(day)}${ds.played ? " ✓" : ""}</button><button class="c small" type="button" id="nv-guide">📖 Navigator's manual</button><button class="c small" type="button" id="nv-race">⛵ Crew race</button><button class="c small" type="button" id="back">✦ Leave</button></div>
         <div class="note">A run is one real voyage: ${ROUNDS} days at sea, one sight a day. Get ${PASS} right to clear a level.</div>`);
       [1, 2, 3].forEach((n) => { const b = $("nv-go" + n); if (b && isOpen(P(), n)) b.onclick = () => run(n, false); });
-      $("nv-daily").onclick = () => run(1, true); $("back").onclick = greet; $("nv-guide").onclick = () => (C.study ? C.study("navigator", () => lobby(false)) : null);
+      $("nv-daily").onclick = () => run(1, true); $("back").onclick = () => { race.leave(); greet(); }; $("nv-race").onclick = () => race.open(); $("nv-guide").onclick = () => (C.study ? C.study("navigator", () => lobby(false)) : null);
     }
 
-    function run(level, daily) {
-      const base = daily ? dseed : (Math.random() * 2 ** 31) >>> 0, v = voyageOf(level, base), results = []; let i = 0, settled = -1;
+    function run(level, daily, opt = {}) {
+      const t0 = Date.now();
+      const base = opt.seed != null ? opt.seed >>> 0 : daily ? dseed : (Math.random() * 2 ** 31) >>> 0, v = voyageOf(level, base), results = []; let i = 0, settled = -1;
       const dots = () => `<span class="nv-dots">${Array.from({ length: ROUNDS }, (_, k) => (k < results.length ? (results[k] ? "★".repeat(results[k]) : "✗") : "·")).join(" ")}</span>`;
       const next = (stars) => { if (settled === i) return; settled = i; $("ui").querySelectorAll("button:not(#nv-lobby)").forEach((b) => (b.disabled = true)); results.push(stars);
         tableEl.innerHTML = chartSvg(v, i + 1, sailOf(P()), true); i++; setTimeout(() => (i < ROUNDS ? play() : finish()), reduced ? 400 : 1900); };
@@ -151,6 +154,7 @@ export const celestialNavigator = {
         const res = settleRun(P(), level, v.id, results), stars = res.stars, xp = 3 * stars, es = 2 * stars + (res.first ? 10 : 0) + (res.newVoyage ? 5 : 0);
         let bonus = ""; if (daily) { const d = finishDaily(P(), "navigator", { score: stars * 10, won: res.won, detail: `${stars}★` }, day); if (d.first) bonus = " · 📅 Daily done"; }
         const aw = award(xp, es); save(); showStats(); C.trophy?.("navigator", level, { won: res.won, perfect: res.perfect });
+        if (opt.onDone) return opt.onDone({ n: stars, t: Date.now() - t0 });
         S.verdict(res.won); const b = C.banter && C.banter("navigator", res.won ? "win" : "lose"); if (b && C.bubble) C.bubble(b, 3500);
         tableEl.innerHTML = chartSvg(v, ROUNDS, sailOf(P()), res.won);
         say(res.won ? `Land ho! ${v.to.name} off the bow.${res.perfect ? " Not one sight wasted." : ""}` : `We're lost, ${state.name}. Dead reckoning will have to do. Try the voyage again.`);

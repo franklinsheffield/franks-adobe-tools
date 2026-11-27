@@ -4,6 +4,8 @@
 // its folklore, what science says and a safety note. For learning only: never medical advice.
 // Mounted via ROOMS (main.js): room.open(ctx), codexHtml, shop.
 import { DANGER, EVIDENCE } from "./plants.js";
+import { openFactFib } from "../party/factfib-ui.js";
+import { kit as fibKit } from "./factfib.js";
 import { LEVELS, ALL, LEAVES, keyOf, perLeaf, safetyPts, claimPts, room as grim, solvedCount, titleOf, nextTitle, plantById, nextPlant, start, moreClue, usePick, whichPlant, choices, guessName, guessSafety, guessClaim, settle, scoreOf } from "./logic.js";
 import { pageSvg, twinSvg, thumbSvg } from "./sketch.js";
 import { loreHtml } from "./lore.js";
@@ -93,10 +95,11 @@ export const room = {
         <div class="choices"><button class="c main" type="button" id="gr-twins">⚠️ Spot the look-alike <span class="note">· safe plant or deadly double? · ${spottedCount(state.prog)} / ${TWINS.length} spotted</span></button></div>
         <div class="choices">${LEVELS.map((L) => `<button class="c small" type="button" data-g="${L.n}" data-label="📖 Study guide: ${esc(L.name)}">📖 Study guide: ${esc(L.name)}</button>`).join("")}</div>
         <div class="note">5 leaves per plant. The first clue is free; each extra clue and each wrong typed name costs a leaf; a wrong pick from four costs 3. Typing the name scores double. For learning only: never eat or use a plant because of a game.</div>
-        <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
+        <div class="choices"><button class="c" type="button" id="ff-open">🎭 Fact or Fib (party)</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
 `);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; identify(L, nextPlant(state.prog, L, prog().last)); }));
       $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => toggleGuide(+b.dataset.g, b)));
+      $("ff-open").onclick = () => openFactFib(ctx, fibKit(tableEl), () => lobby(false));
       $("back").onclick = greet; $("gr-daily").onclick = () => (dailyState(state.prog, DAILY_ID).played ? dailyBoard() : dailyStart());
       $("gr-twins").onclick = () => twins(nextTwin(state.prog, prog().lastTwin));
       $("gr-herbarium").onclick = () => herbarium();

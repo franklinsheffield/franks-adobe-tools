@@ -24,6 +24,7 @@ export const TROPHIES = [
   { id: "duel", game: "Element Duel", name: "Elemental Crown", art: "crown", need: 1 },
   { id: "rummy", game: "Constellation Rummy", name: "Star Hand", art: "cards", need: 1 },
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
+  { id: "starparty", game: "Star Party", name: "Radiant Medal", art: "astro", need: 3, how: ["Clear First watch", "Clear Busy sky", "Clear Seasoned counter", "A perfect watch at every level"] },
   { id: "messier", game: "Messier's Catalogue", name: "Ferret of Comets", art: "astro", need: 3, how: ["Clear What is it?", "Clear Where is it?", "Clear Tonight", "A perfect run at every level"] },
   { id: "navigator", game: "Celestial Navigator", name: "Brass Sextant", art: "astro", need: 3, how: ["Clear Polaris", "Clear The noon Sun", "Clear Longitude", "A perfect voyage at every level"] },
   { id: "eclipse", game: "Eclipse Chaser", name: "Corona Medal", art: "astro", need: 3, how: ["Clear Line them up", "Clear The nodes", "Clear Saros and paths", "A perfect run at every level"] },
@@ -52,6 +53,7 @@ for (const t of TROPHIES) if (!t.how) {
 export const SETS = [
   { id: "story", name: "Story set", ids: ["seance", "decoder", "alchemy", "timeline"], bonus: 100 },
   { id: "cards", name: "Card set", ids: ["duel", "rummy", "memory"], bonus: 100 },
+  { id: "topbill", name: "Top of the Bill", ids: ["seance", "timeline", "darkseance", "mentalist", "phantasmagoria"], bonus: 300 }, // Gold on all 5 Séance Parlour games
   { id: "orrery", name: "The Grand Orrery", ids: ["stars", "calendar", "rummy", "comet", "eclipse", "navigator"], bonus: 250 }, // obsprog.js OBS_GAMES: Gold on every Observatory game
 ];
 export const CASE_LEVELS = [{ at: 0, name: "Apprentice" }, { at: 8, name: "Curator" }, { at: 20, name: "Archivist" }, { at: 32, name: "Grand Keeper" }];
@@ -75,6 +77,7 @@ export const LINES = {
   leadgold: "The Philosopher's Nucleus. You did what the alchemists only dreamed of.",
   commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
+  starparty: "The Radiant Medal. You counted the shower true, strays and all left out.",
   messier: "The Ferret of Comets. Louis XV's name for Messier, and now yours.",
   navigator: "The Brass Sextant. You found your way home with nothing but the sky and a clock.",
   eclipse: "The Corona Medal. You lined up Sun, Moon and node like a Babylonian scribe.",
