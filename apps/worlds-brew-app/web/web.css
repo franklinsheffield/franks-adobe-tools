@@ -25,3 +25,40 @@
 .ps-room-item button { grid-row: 1 / span 2; }
 .ps-room-empty { opacity: 0.7; }
 .ps-peer-tag { position: absolute; left: 0; top: 0; z-index: 4; padding: 1px 5px; background: rgba(0, 0, 0, 0.75); border: 1px solid; border-radius: 3px; font: 600 10px/1.3 system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+
+/* phone layout (web/phone.js adds body.ps-phone on small screens): full-screen 3D view, panels as slide-up drawers */
+#ps-tabs { display: none; }
+body.ps-phone #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) calc(58px + env(safe-area-inset-bottom)); grid-template-areas: "top" "centre" "tabs"; height: 100vh; height: 100dvh; }
+body.ps-phone #top .rack { display: none; }
+body.ps-phone #top { min-height: 0; }
+body.ps-phone #top .menu { display: none; }
+body.ps-phone #top .docname { padding: 6px 10px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+body.ps-phone #toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px 6px; gap: 4px; }
+body.ps-phone #toolbar::-webkit-scrollbar { display: none; }
+body.ps-phone #toolbar > * { flex: none; }
+body.ps-phone #vpwrap { min-height: 0; }
+body.ps-phone #lib, body.ps-phone #insp, body.ps-phone #bar, body.ps-phone #top .menu.ps-open {
+  position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 30; max-height: 62vh; max-height: 62dvh;
+  overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; background: #08070f; border-top: 1px solid var(--glow, #5effc8);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6); padding: 10px 10px 16px; transform: translateY(calc(100% + 80px)); transition: transform 0.22s ease; display: block; }
+body.ps-phone #top .menu.ps-open { display: flex; flex-wrap: wrap; gap: 8px; transform: none; }
+body.ps-phone .ps-open { transform: none !important; }
+body.ps-phone #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+body.ps-phone #bar > * { max-width: 100%; }
+/* the Move pad is used while watching the view, so it docks under it (the view shrinks) instead of covering it */
+body.ps-phone #pad { display: none; grid-area: pad; position: static; flex-wrap: wrap; justify-content: center; gap: 8px; max-height: 42vh; max-height: 42dvh; overflow-y: auto; background: #08070f; border-top: 1px solid var(--glow, #5effc8); padding: 8px; }
+body.ps-phone #pad.ps-open { display: flex; }
+body.ps-phone.ps-pad #app { grid-template-rows: auto minmax(0, 1fr) auto calc(58px + env(safe-area-inset-bottom)); grid-template-areas: "top" "centre" "pad" "tabs"; }
+body.ps-phone #ps-tabs { grid-area: tabs; display: flex; align-items: stretch; z-index: 40; background: #05040c; border-top: 1px solid rgba(255, 255, 255, 0.25); padding-bottom: env(safe-area-inset-bottom); }
+body.ps-phone #ps-tabs button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; color: rgba(255, 255, 255, 0.75); font: 600 11px/1 system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+body.ps-phone #ps-tabs .ps-tab-ic { font-size: 20px; line-height: 22px; }
+body.ps-phone #ps-tabs button[aria-pressed="true"] { color: var(--glow, #5effc8); box-shadow: inset 0 2px 0 var(--glow, #5effc8); }
+/* finger-sized controls on touch screens */
+@media (pointer: coarse) {
+  #app .btn, #app button, #app select, #app input[type="number"], #app input[type="text"] { min-height: 40px; }
+  #app .btn, #app button { min-width: 40px; }
+  #app input[type="range"] { height: 32px; }
+  .ps-room-row button, .ps-room-item button { min-height: 36px; padding: 6px 10px; }
+}
+body.ps-phone .keyhints { display: none; }
+body.ps-phone .ps-room { top: 6px; left: 6px; max-width: calc(100% - 12px); }
