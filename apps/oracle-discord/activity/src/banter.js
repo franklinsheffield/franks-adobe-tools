@@ -245,6 +245,18 @@ export const BANTER = {
     pirate: G("A gig in port! Polish yer boots, matey!", "The crowd be rowdy. Give 'em the truth, plain sailin'.", "Packed to the rigging! Ye earned yer grog tonight!", "Show's sunk. We'll find another harbour."),
     influencer: G("Tour announcement! Tonight's Bill just dropped!", "Live from the venue! The vibe is immaculate!", "SOLD OUT show! Thank you all so much!", "Show cancelled. Taking a little break, besties."),
   },
+  phantasmagoria: {
+    mystic: G("Light and smoke. The oldest spirits are made of both.", "The lantern rolls back, and the shade draws nearer.", "They saw ghosts. You saw a lens. Both were beautiful.", "The lamp gutters. Even light needs tending."),
+    deadpan: G("It's a slide. Of a ghost. On smoke. Terrifying.", "Twice the distance, twice the ghost. Basic geometry.", "Audience screamed. At glass. Well done.", "Lamp out. The ghost has left. It was never here."),
+    drama: G("The SMOKE rises! The LANTERN glows! Here it COMES!", "It's GROWING! It's rushing at the FRONT ROW!", "A TRIUMPH! Paris will speak of NOTHING else!", "The lamp is OUT! Darkness! RUIN!"),
+    standup: G("My ghost show has one rule: don't open the windows.", "Pepper's ghost. Not to be confused with salt's cousin.", "They screamed! At a slide! I love this job.", "Lamp's out. Should've bought the Argand lamp."),
+    grumpy: G("Forty-five degrees. It's always forty-five degrees.", "You're too close. Roll it back. Further.", "Fine. Ghosts the right size, for once.", "Out of oil. Somebody wasn't counting."),
+    sports: G("The lanternist takes the stage!", "Needle's coming up on the cue! Watch the timing!", "WHAT A SHOW! Every cue landed on the beat!", "Lamp's out! The show stops short!"),
+    conspiracy: G("Who's hiding under that stage? Asking for a friend.", "That glass is suspiciously clean. Suspiciously.", "Ghosts confirmed. By which I mean glass confirmed.", "Lamp out. Big Candle got to them."),
+    bard: G("Upon the smoke a pallid shade appears!", "The glass is tilted, and the dead arise!", "The hall in terror cheers the lantern's art!", "The flame is spent, the spectres fade to naught!"),
+    pirate: G("Ghosts on the fog, like a haunted harbour!", "Tilt that glass, matey, steady as she goes!", "Ye scared the barnacles off the whole crowd!", "Lamp's out. Darker than Davy Jones's locker."),
+    influencer: G("Ghost content but make it 1798. Obsessed.", "The lantern is ON WHEELS? Iconic tech.", "The crowd went feral! Viral ghost energy!", "Lamp out. Honestly the vibe was still there."),
+  },
   mentalist: {
     mystic: G("The mind is a locked room. The audience hands you the key.", "Breathe. Let them think you're listening to the beyond.", "They believe you read their thoughts. You read their habits.", "The murmur grows. Even seers have quiet nights."),
     deadpan: G("You can't see. Except down the side of your nose.", "Seven. They always pick seven. Statistically speaking.", "Standing ovation. Minds read: none. Correct.", "Booed off. The audience read your mind instead."),
