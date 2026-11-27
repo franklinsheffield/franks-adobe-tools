@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CURIOS, findCurio, curFound, curCount, magicWord, hearWord, WORDS, timedNow, eclipseOn, meeting, cabinetHtml, ALL_PAY } from "../activity/src/curios.js";
+import { CURIOS, WEEKS, liveCurios, nextWeek, timedMore, repdigit, findCurio, curFound, curCount, magicWord, hearWord, WORDS, timedNow, eclipseOn, meeting, cabinetHtml, ALL_PAY } from "../activity/src/curios.js";
 import { ALL_EMOTES, owned } from "../activity/src/emotes.js";
 
 const esc = (s) => String(s);
@@ -13,9 +13,10 @@ test("finds pay once; ten pays the Curator emote, all pays the Cabinet prize", (
   const p = { essence: 0, tokens: 0 };
   const r = findCurio(p, "window"); assert.equal(r.pay.gem, 15); assert.equal(p.essence, 15); assert.equal(findCurio(p, "window"), null); assert.equal(p.essence, 15);
   assert.ok(curFound(p, "window")); assert.equal(findCurio(p, "nope"), null);
-  let ten = 0, all = 0; for (const c of CURIOS) { const x = findCurio(p, c.id); if (x?.ten) ten++; if (x?.all) all++; }
-  assert.equal(ten, 1); assert.equal(all, 1); assert.equal(curCount(p), CURIOS.length);
-  const gems = CURIOS.reduce((a, c) => a + (c.pay.gem || 0), 0) + ALL_PAY.gem, moons = CURIOS.reduce((a, c) => a + (c.pay.moon || 0), 0) + ALL_PAY.moon;
+  const later = Date.UTC(2027, 1, 1), live = liveCurios(later); assert.equal(live.length, CURIOS.length);
+  let ten = 0, all = 0, weeks = 0; for (const c of CURIOS) { const x = findCurio(p, c.id, later); if (x?.ten) ten++; if (x?.all) all++; if (x?.week) weeks++; }
+  assert.equal(ten, 1); assert.equal(all, 1); assert.equal(weeks, WEEKS.length); assert.equal(curCount(p), CURIOS.length);
+  const gems = CURIOS.reduce((a, c) => a + (c.pay.gem || 0), 0) + ALL_PAY.gem, moons = CURIOS.reduce((a, c) => a + (c.pay.moon || 0), 0) + ALL_PAY.moon + 2 * WEEKS.length;
   assert.equal(p.essence, gems); assert.equal(p.tokens, moons);
   const mine = owned(p).map((e) => e.id); for (const id of ["knot", "curator", "wonder"]) assert.ok(mine.includes(id), id);
   assert.ok(ALL_EMOTES.some((e) => e.id === "wonder"));
@@ -38,5 +39,19 @@ test("eclipses and planet meetings come from real astronomy", () => {
 });
 test("the Cabinet pages show riddles, never names, until found", () => {
   const p = { cur: ["skull"] }, [L, R] = cabinetHtml(p, esc), html = L + R;
-  assert.ok(html.includes("The skull's whole act")); assert.ok(!html.includes("The staring contest")); assert.ok(html.includes("1 of " + CURIOS.length));
+  assert.ok(html.includes("The skull's whole act")); assert.ok(!html.includes("The staring contest")); assert.ok(html.includes("1 of " + liveCurios().length)); assert.ok(html.includes("more drawers open"));
+});
+test("weekly drawers open on their Friday, not before", () => {
+  const before = new Date(2026, 11, 3, 23, 59).getTime(), on = new Date(2026, 11, 4, 0, 1).getTime();
+  assert.equal(liveCurios(before).length, 24); assert.equal(liveCurios(on).length, 28);
+  assert.equal(findCurio({}, "shake", before), null); assert.ok(findCurio({}, "shake", on));
+  assert.equal(nextWeek(on).n, 2); assert.equal(nextWeek(Date.UTC(2027, 0, 1)), null);
+  const ids = new Set(); for (const w of WEEKS) { assert.ok(w.items.length >= 3 && w.items.length <= 4); for (const c of w.items) ids.add(c.id); } assert.equal(ids.size, WEEKS.length * 4);
+});
+test("the weekly timed finds read real dates and astronomy", () => {
+  assert.deepEqual(timedMore(new Date(2026, 11, 21, 12)).map(([id]) => id), ["solstice"]); // December solstice 2026
+  assert.deepEqual(timedMore(new Date(2026, 11, 13, 20)).map(([id]) => id), ["meteor"]); // Geminids
+  assert.deepEqual(timedMore(new Date(2027, 0, 1, 0, 0)).map(([id]) => id), ["midnight", "twins", "newyear"]);
+  assert.deepEqual(timedMore(new Date(2027, 2, 14, 15, 14)).map(([id]) => id), ["pi"]);
+  assert.ok(repdigit(777) && repdigit(2222) && !repdigit(77) && !repdigit(778));
 });

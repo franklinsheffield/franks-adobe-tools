@@ -35,6 +35,38 @@ export const CURIOS = [
   { id: "sulk", e: "😤", name: "Silenced once too often", hint: "Turn her voice off again and again. See how she takes it.", pay: { gem: 15 } },
   { id: "sync", e: "🫶", name: "In sync", hint: "In a call, send the same emote as a friend at the same moment.", pay: { moon: 2 }, rare: true },
 ];
+// ---- new drawers every week: each Friday four more curiosities are hidden (dates are the player's local midnight) ----
+export const WEEKS = [
+  { n: 1, from: "2026-12-04", items: [
+    { id: "shake", e: "🫨", name: "A good shake", hint: "Shake your pointer fast across the Oracle, side to side. She does not like it.", pay: { gem: 20 } },
+    { id: "nap", e: "😴", name: "Caught napping", hint: "Leave her alone long enough and she dozes off. Wake her up.", pay: { gem: 20 } },
+    { id: "mirror", e: "🪞", name: "The mirror name", hint: "Ask her a question that is only her title, written backwards.", pay: { gem: 25 } },
+    { id: "familiar", e: "🐾", name: "The familiar's trick", hint: "Whoever keeps her company knows a trick. Tap them five times.", pay: { gem: 20 } } ] },
+  { n: 2, from: "2026-12-11", items: [
+    { id: "konami", e: "🎮", name: "The old cheat code", hint: "Up, up, down, down, left, right, left, right, B, A. On a keyboard.", pay: { gem: 30 } },
+    { id: "echo", e: "🔁", name: "An echo", hint: "Ask her the exact same question twice in a row.", pay: { gem: 15 } },
+    { id: "meteor", e: "☄️", name: "Meteor night", hint: "Visit on the peak night of a great meteor shower.", pay: { moon: 2 }, rare: true },
+    { id: "newmoon", e: "🐈‍⬛", name: "A cat on a dark night", hint: "Knock on the window when the Moon is new and the sky is darkest.", pay: { moon: 2 }, rare: true } ] },
+  { n: 3, from: "2026-12-18", items: [
+    { id: "solstice", e: "🌞", name: "Solstice or equinox", hint: "Visit on a day the seasons turn: a solstice or an equinox.", pay: { moon: 3 }, rare: true },
+    { id: "hundred", e: "🎂", name: "One hundred readings", hint: "Keep coming back. At a round number, she bakes something.", pay: { moon: 3 }, rare: true },
+    { id: "jackpot", e: "🎰", name: "Matching digits", hint: "Hold an Essence balance whose digits all match, three or more of them.", pay: { gem: 30 } },
+    { id: "midnight", e: "🕛", name: "The stroke of midnight", hint: "Be in the Chamber at exactly midnight.", pay: { gem: 30 } } ] },
+  { n: 4, from: "2026-12-25", items: [
+    { id: "pi", e: "🥧", name: "Pi time", hint: "Visit at 3:14, or on the 14th of March.", pay: { gem: 31 } },
+    { id: "twins", e: "👯", name: "A twin date", hint: "Visit on a day whose number matches its month.", pay: { gem: 20 } },
+    { id: "polish", e: "🧽", name: "A polished trophy", hint: "Rub one of your trophies back and forth until it shines.", pay: { gem: 20 } },
+    { id: "newyear", e: "🎆", name: "New Year's Day", hint: "Visit on the first day of the year.", pay: { moon: 2 }, rare: true } ] },
+];
+export const WEEK_SET_PAY = { moon: 2 };
+const opens = (w) => { const [y, m, d] = w.from.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
+for (const w of WEEKS) for (const c of w.items) CURIOS.push({ ...c, week: w.n, from: w.from });
+/** The curiosities hidden so far (the first 24, plus each week opened by now). */
+export const liveCurios = (at = Date.now()) => CURIOS.filter((c) => !c.week || opens(WEEKS[c.week - 1]) <= at);
+/** The next week of drawers still to open: { n, from, at, count } or null. */
+export function nextWeek(at = Date.now()) { const w = WEEKS.find((x) => opens(x) > at); return w ? { n: w.n, from: w.from, at: opens(w), count: w.items.length } : null; }
+/** The newest week open now, if it opened in the last 7 days. */
+export function freshWeek(at = Date.now()) { return [...WEEKS].reverse().find((w) => opens(w) <= at && at - opens(w) < 7 * 864e5) || null; }
 export const curioOf = (id) => CURIOS.find((c) => c.id === id) || null;
 export const TEN_EMOTE = "curator", ALL_PAY = { gem: 300, moon: 10 };
 const list = (p) => (Array.isArray(p.cur) ? p.cur : (p.cur = []));
@@ -43,12 +75,13 @@ export const curCount = (p) => list(p).filter((id) => curioOf(id)).length;
 export const payText = (pay) => [pay.gem ? `💎 ${pay.gem}` : "", pay.moon ? `🌙 ${pay.moon}` : ""].filter(Boolean).join(" + ");
 
 /** Mark a find. Pays once. Returns { c, pay, ten, all } or null when already found or unknown. */
-export function findCurio(p, id) {
-  const c = curioOf(id); if (!c || curFound(p, id)) return null;
+export function findCurio(p, id, at = Date.now()) {
+  const c = curioOf(id); if (!c || curFound(p, id) || !liveCurios(at).includes(c)) return null;
   list(p).push(id); const m = (p.curM ||= {}), give = (x) => { p.essence = (p.essence || 0) + (x.gem || 0); p.tokens = (p.tokens || 0) + (x.moon || 0); };
   give(c.pay); const n = curCount(p), out = { c, pay: c.pay, ten: false, all: false };
   if (n >= 10 && !m.ten) { m.ten = true; out.ten = true; }
-  if (n >= CURIOS.length && !m.all) { m.all = true; out.all = true; give(ALL_PAY); }
+  if (n >= liveCurios(at).length && !m.all) { m.all = true; out.all = true; give(ALL_PAY); }
+  if (c.week) { const w = WEEKS[c.week - 1], wk = (m.wk = Array.isArray(m.wk) ? m.wk : []); if (!wk.includes(w.n) && w.items.every((x) => curFound(p, x.id))) { wk.push(w.n); give(WEEK_SET_PAY); out.week = w.n; } }
   return out;
 }
 
@@ -87,6 +120,23 @@ export function timedNow(at = new Date(), birth = "") {
   if (b && +b[1] === d.getMonth() + 1 && +b[2] === d.getDate()) out.push("bday");
   return out;
 }
+/** Meteor shower peak nights (IMO calendar, the usual peak dates): Quadrantids, Lyrids, Eta Aquariids, Perseids, Orionids, Leonids, Geminids. */
+export const SHOWERS = [["Quadrantids", 1, 3], ["Lyrids", 4, 22], ["Eta Aquariids", 5, 6], ["Perseids", 8, 12], ["Orionids", 10, 21], ["Leonids", 11, 17], ["Geminids", 12, 13]];
+/** The week's extra timed finds open right now: meteor, solstice, midnight, pi, twins, newyear. Returns [[id, detail]]. */
+export function timedMore(at = new Date()) {
+  const d = at instanceof Date ? at : new Date(at), M = d.getMonth() + 1, D = d.getDate(), out = [];
+  const sh = SHOWERS.find(([, m, day]) => m === M && (D === day || D === day + 1)); if (sh) out.push(["meteor", sh[0]]);
+  try { const S = A.Seasons(d.getFullYear()); for (const [k, t] of [["March equinox", S.mar_equinox], ["June solstice", S.jun_solstice], ["September equinox", S.sep_equinox], ["December solstice", S.dec_solstice]]) { const x = t.date; if (x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth() && x.getDate() === D) out.push(["solstice", k]); } } catch { /* out of range */ }
+  if (d.getHours() === 0 && d.getMinutes() === 0) out.push(["midnight", ""]);
+  if ((M === 3 && D === 14) || ((d.getHours() % 12 || 12) === 3 && d.getMinutes() === 14)) out.push(["pi", ""]);
+  if (M === D) out.push(["twins", `${M}/${D}`]);
+  if (M === 1 && D === 1) out.push(["newyear", ""]);
+  return out;
+}
+/** An Essence balance whose digits all match (111, 2222, …). */
+export const repdigit = (n) => Number.isInteger(n) && n >= 111 && /^(\d)\1+$/.test(String(n));
+/** Is the Moon new enough for the dark-night cat? (2% lit or less.) */
+export const newMoon = (at = Date.now()) => moonLight(at).lit <= 0.02;
 /** Is the Moon full enough for the howl? (98% lit or more.) */
 export const fullMoon = (at = Date.now()) => moonLight(at).lit >= 0.98;
 /** An eclipse peaking on this local day, anywhere on Earth: { kind: "lunar"|"solar", type } or null. Real astronomy. */
@@ -135,11 +185,11 @@ export const BACKROOM = "The shopkeeper's back room: dusty boxes, one candle, an
 export const GATE_STARS = [["S", 18, 30], ["E", 30, 22], ["E", 70, 22], ["K", 82, 30]];
 
 /** The Cabinet pages: one drawer per curiosity. Found ones show the name; others show only the riddle. Returns [left, right]. */
-export function cabinetHtml(p, esc) {
-  const n = curCount(p), W = Array.isArray(p.curW) ? p.curW.length : 0, half = Math.ceil(CURIOS.length / 2);
+export function cabinetHtml(p, esc, at = Date.now()) {
+  const LIVE = liveCurios(at), n = curCount(p), W = Array.isArray(p.curW) ? p.curW.length : 0, half = Math.ceil(LIVE.length / 2), fresh = freshWeek(at), nx = nextWeek(at);
   const drawer = (c) => { const f = curFound(p, c.id);
-    return `<div class="cu-drawer${f ? " found" : ""}${c.rare ? " rare" : ""}"><span class="cu-knob" aria-hidden="true">${f ? c.e : "?"}</span><div><b>${f ? esc(c.name) : c.rare ? "A rare curiosity" : "An empty drawer"}</b><small>${esc(c.hint)}</small><i>${f ? "✓ Found" : payText(c.pay)}</i></div></div>`; };
+    return `<div class="cu-drawer${f ? " found" : ""}${c.rare ? " rare" : ""}"><span class="cu-knob" aria-hidden="true">${f ? c.e : "?"}</span><div><b>${f ? esc(c.name) : c.rare ? "A rare curiosity" : "An empty drawer"}${fresh && c.week === fresh.n ? ` <em class="cu-new">✨ New</em>` : ""}</b><small>${esc(c.hint)}</small><i>${f ? "✓ Found" : payText(c.pay)}</i></div></div>`; };
   const bar = (done, e, t, prize, pct) => `<div class="co-row${done ? " done" : ""}"><span class="co-e">${done ? "✓" : e}</span><div><b>${t}</b><small>${prize}</small><i class="co-bar"><i style="--p:${pct}%"></i></i></div></div>`;
-  const top = `<p class="bk-note">${n} of ${CURIOS.length} found · magic words heard: ${W} of ${WORDS.length}</p><div class="co">${bar(n >= 10, "🔍", "Ten curiosities", "The Curator's lens emote", Math.round((Math.min(n, 10) / 10) * 100))}${bar(n >= CURIOS.length, "🏺", "The whole Cabinet", `${payText(ALL_PAY)} and the Wonder emote`, Math.round((n / CURIOS.length) * 100))}</div>`;
-  return [`${top}<div class="cu-drawers">${CURIOS.slice(0, half).map(drawer).join("")}</div>`, `<div class="cu-drawers">${CURIOS.slice(half).map(drawer).join("")}</div>`];
+  const top = `<p class="bk-note">${n} of ${LIVE.length} found · magic words heard: ${W} of ${WORDS.length}</p><div class="co">${bar(n >= 10, "🔍", "Ten curiosities", "The Curator's lens emote", Math.round((Math.min(n, 10) / 10) * 100))}${bar(n >= LIVE.length, "🏺", "The whole Cabinet", `${payText(ALL_PAY)} and the Wonder emote`, Math.round((Math.min(n, LIVE.length) / LIVE.length) * 100))}</div><p class="bk-note">Every Friday, new drawers. Each week's set found in full pays ${payText(WEEK_SET_PAY)}.</p>`;
+  return [`${top}<div class="cu-drawers">${LIVE.slice(0, half).map(drawer).join("")}</div>`, `<div class="cu-drawers">${LIVE.slice(half).map(drawer).join("")}</div>${nx ? `<p class="bk-note cu-next">🔒 ${nx.count} more drawers open ${new Date(nx.at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} (in ${Math.max(1, Math.ceil((nx.at - at) / 864e5))} days).</p>` : ""}`];
 }
