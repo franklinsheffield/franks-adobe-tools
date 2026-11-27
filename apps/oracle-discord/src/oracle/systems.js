@@ -6,7 +6,7 @@
 import { MODULES } from "../registry.js";
 
 export const SYSTEMS = [
-  { key: "tarot", command: "tarot", label: "Tarot", emoji: "🃏", kind: "cast", hint: "Shuffle, cut and deal the 78", ask: "question",
+  { key: "tarot", command: "tarot", label: "Tarot", emoji: "🃏", kind: "cast", row: "cards", hint: "Shuffle, cut and deal the 78", ask: "question",
     spreads: [["three", "Past · present · future"], ["one", "One card"], ["five", "The crossroads (5)"], ["celtic", "Celtic cross (10)"]] },
   { key: "iching", command: "iching", label: "I Ching", emoji: "🪙", kind: "cast", hint: "Six coins, one question", ask: "question" },
   { key: "runes", command: "runes", label: "Runes", emoji: "🪨", kind: "cast", hint: "Draw from the Elder Futhark", ask: "question",
