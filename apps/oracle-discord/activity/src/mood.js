@@ -15,6 +15,35 @@ export const MOODS = {
 /** The emoji for each mood: it pops over her hood, rides on her speech bubble and sits by her name in the text box. */
 export const MOOD_EMOJI = { joy: "😄", cheer: "🥳", love: "😍", laugh: "😂", wow: "😲", curious: "🧐", think: "🤔", nod: "👍", shake: "🙅", wink: "😉", flinch: "😖",
   sad: "😢", sulk: "😒", smug: "😏", angry: "😤", sleepy: "😴", nervous: "😅", dizzy: "😵" };
+// ---- reaction emojis: each mood pops its emoji somewhere new around the Oracle, moving in its own way ----
+/** Where an emoji can appear, in % of the Oracle pane: beside the hood, over the head, by each hand, by the orb. */
+export const EMOJI_SPOTS = [[50, 2], [28, 12], [72, 12], [18, 34], [82, 34], [22, 66], [78, 66], [50, 58]];
+/** How each mood's emoji moves. bounce: hop and float off · float: drift up swaying · burst: shake-in with sparks
+ *  · slam: drop from above and squash · drip: sag and slide down · orbit: circle the head · pop: the plain pop. */
+export const EMOJI_MOTION = { joy: "bounce", cheer: "burst", laugh: "bounce", love: "float", wow: "burst", flinch: "burst", nervous: "drip", dizzy: "orbit",
+  curious: "orbit", think: "orbit", angry: "slam", sulk: "slam", sad: "drip", sleepy: "drip", smug: "float", wink: "pop", nod: "bounce", shake: "slam" };
+const SPARKS = { cheer: ["🎉", "✨", "⭐"], love: ["💕", "💗", "💖"], wow: ["✨", "❗"], flinch: ["💦", "💥"], angry: ["💢"], laugh: ["😆"], sleepy: ["💤"], sad: ["💧"], dizzy: ["💫"], nervous: ["💦"] };
+/** Pick a spot: not the one used last time, and for orbit moods always over the head. */
+export function emojiSpot(mood, last = -1, rnd = Math.random) {
+  if (EMOJI_MOTION[mood] === "orbit") return 0;
+  let i; do i = Math.floor(rnd() * EMOJI_SPOTS.length); while (i === last && EMOJI_SPOTS.length > 1); return i;
+}
+let lastSpot = -1;
+function popEmoji(teller, mood) {
+  const pane = teller.parentElement || teller, motion = EMOJI_MOTION[mood] || "pop", i = emojiSpot(mood, lastSpot); lastSpot = i;
+  const [x, y] = EMOJI_SPOTS[i], side = x < 50 ? -1 : 1, b = document.createElement("b");
+  b.className = "emo-pop em-" + motion; b.textContent = MOOD_EMOJI[mood]; b.setAttribute("aria-hidden", "true");
+  b.style.cssText = `left:${x}%;top:${y}%;--r:${(Math.random() * 30 - 15).toFixed(0)}deg;--s:${(0.85 + Math.random() * 0.45).toFixed(2)};--side:${side}`;
+  pane.append(b); setTimeout(() => b.remove(), 2200);
+  for (const [k, e] of (SPARKS[mood] || []).entries()) {
+    for (let n = 0; n < (motion === "burst" ? 2 : 1); n++) {
+      const sp = document.createElement("i"), a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 50;
+      sp.className = "emo-spark"; sp.textContent = e; sp.setAttribute("aria-hidden", "true");
+      sp.style.cssText = `left:${x}%;top:${y}%;--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 20).toFixed(0)}px;--d:${(k * 0.08 + n * 0.12 + 0.1).toFixed(2)}s`;
+      pane.append(sp); setTimeout(() => sp.remove(), 1700);
+    }
+  }
+}
 /** Rooms where you play against the Oracle: she sulks when you win and gloats when you lose. */
 export const VS_ROOMS = ["duel", "rummy"];
 /** The Oracle's face when a game ends. */
@@ -110,7 +139,7 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
     clear(); cur = mood; teller.dataset.mood = mood; teller.classList.remove("tracking"); teller.style.removeProperty("--lx"); teller.style.removeProperty("--ly");
     tell(); void teller.offsetWidth; // restart the pose's animations when the same mood repeats
     if (opts.fx !== false) puff(M.fx);
-    if (!reduced && opts.fx !== false && mood !== "sleepy") { big.textContent = MOOD_EMOJI[mood] || ""; big.classList.remove("in"); void big.offsetWidth; big.classList.add("in"); }
+    if (!reduced && opts.fx !== false && MOOD_EMOJI[mood]) popEmoji(teller, mood);
     if (!opts.quiet) { emoteSfx(mood); (HAND_BEATS[mood] || []).forEach(([k, d]) => beats.push(setTimeout(() => cur === mood && handSfx(k), d))); }
     if (mood === "angry") beats.push(setTimeout(() => { document.body.classList.remove("slam"); void document.body.offsetWidth; document.body.classList.add("slam"); setTimeout(() => document.body.classList.remove("slam"), 420); }, 260));
     if (opts.say) bubble(opts.say, 2600, MOOD_EMOJI[mood]);
