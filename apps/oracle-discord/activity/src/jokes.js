@@ -105,6 +105,16 @@ export const GENERAL = [
 ];
 
 export const BY_SYSTEM = {
+  tarot: [
+    "Seventy-eight cards and not one of them is a joker. I checked. Twice.",
+    "I shuffled seven times. Mathematicians say that's enough to truly mix a deck. I say it's enough to feel fancy.",
+    "Tarot started as a card game in Renaissance Italy. Somewhere a duke is furious we're not playing for coins.",
+    "The Death card is about endings, {name}. Mostly the ending of bad ideas. Relax.",
+    "Reversed cards aren't bad, they're just doing a handstand to get your attention.",
+    "The Tower again? It's not personal. The Tower just loves an entrance.",
+    "Every card has a hidden meaning. The hidden meaning of the Ten of Swords is 'take a nap'.",
+    "I cut the deck with my mind. I don't have thumbs that bend that way. Long story.",
+  ],
   iching: [
     "Three thousand years old and still undefeated. The coins, not me. Well, also me.",
     "Six coins, sixty-four hexagrams, one very busy Oracle.",

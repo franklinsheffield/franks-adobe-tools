@@ -48,6 +48,7 @@ const table = makeTable($("table"), { reduced });
   svg.querySelectorAll(".o-hands .o-nail").forEach((e) => (e.dataset.r = e.getAttribute("r")));
 })();
 const CAST = {
+  tarot: "I shuffle the deck… cut… and deal…",
   iching: "Six coins leave my hand… spinning… falling…", runes: "I loosen the pouch. Let the stones choose themselves…",
   oraclebones: "The bronze rod is hot. Listen… the shell answers with a crack…", ifa: "The chain falls. Eight seeds, open or closed…",
   astrology: "I turn the heavens back to the hour you arrived…", humandesign: "Your centres are lighting, one by one…",
@@ -106,9 +107,12 @@ function choose(sys) {
   clearReading(); table.rest(sys.key); cap(sys.emoji + " " + sys.label);
   say(askLine(sys, state.name));
   if (sys.kind === "cast") {
-    ui(`<form class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label></form>
+    const spreadSel = sys.spreads ? `<label for="sp">Spread<select id="sp">${sys.spreads.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("")}</select></label>` : "";
+    ui(`<form class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label>${spreadSel}</form>
       <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>`);
-    $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(); reveal(sys, optionsFor(sys, q ? { [sys.ask || "question"]: q } : {}), q); };
+    $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(), extra = q ? { [sys.ask || "question"]: q } : {};
+      if ($("sp")) extra.spread = $("sp").value;
+      reveal(sys, optionsFor(sys, extra), q); };
     setTimeout(() => $("q").focus(), 50);
   } else {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
@@ -142,7 +146,7 @@ async function reveal(sys, options, question = "") {
   let r, err;
   try {
     const mod = MODS[sys.command];
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key), wait(3000)]);
+    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait(sys.key === "tarot" && options.spread === "celtic" ? 3600 : 3000)]);
   } catch (e) { err = e; }
   document.body.classList.remove("trance"); cap(sys.emoji + " " + sys.label);
   if (err) {
