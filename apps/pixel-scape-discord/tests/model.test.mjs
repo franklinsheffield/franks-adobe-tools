@@ -31,6 +31,8 @@ test("/model find, show and random answer with embeds and links", () => {
   assert.match(r.data.embeds[0].description, /^vehicles/); assert.strictEqual(r.data.components[0].components[2].custom_id, "model:rnd:vehicles::");
   const again = modelInteraction({ type: 3, data: { custom_id: "model:rnd:vehicles::" } }, {}, () => 0.1); assert.match(again.data.embeds[0].description, /^vehicles/);
   assert.strictEqual(modelInteraction(cmd("find", { query: "zzzqqq" }), {}).data.flags, 64);
+  const sa = modelInteraction(Object.assign(cmd("show", { model: id }), { application_id: "42" }), {}), add = sa.data.components[0].components.find((b) => b.label === "Add to my scene");
+  assert.strictEqual(add.url, "https://discord.com/activities/42?custom_id=" + encodeURIComponent("model|" + id), "Add to my scene opens the Activity with the model");
 });
 test("autocomplete suggests models and vibes", () => {
   const a = modelInteraction({ type: 4, data: { name: "model", options: [{ name: "show", options: [{ name: "model", value: "rocket", focused: true }] }] } }, {});

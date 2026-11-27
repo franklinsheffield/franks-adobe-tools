@@ -110,3 +110,22 @@ body.ps-explore #app, body.ps-explore.ps-phone #app, body.ps-explore.ps-phone.ps
 .ps-tip button.ghost { border-color: rgba(255, 255, 255, 0.35); }
 #lib.ps-flash { box-shadow: inset 0 0 0 2px #5effc8; transition: box-shadow 0.3s; }
 body.ps-phone .ps-mode { bottom: 8px; }
+/* M3: Make drawer, place toast, library kinds */
+.ps-make-btn { position: absolute; left: 90px; bottom: 8px; z-index: 6; padding: 6px 12px; background: #000; color: #5effc8; border: 1px solid #5effc8; border-radius: 3px; font: 600 11px/1.2 system-ui, sans-serif; cursor: pointer; }
+.ps-make-btn:hover, .ps-make-btn[aria-pressed="true"] { box-shadow: 0 0 8px #5effc8; }
+body.ps-explore .ps-make-btn { display: none; }
+.ps-make { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; width: min(640px, calc(100% - 24px)); max-height: 80vh; max-height: 80dvh; overflow-y: auto; padding: 14px; background: #05040c; border: 1px solid #5effc8; box-shadow: 0 0 24px rgba(94, 255, 200, 0.25); font: 13px/1.4 system-ui, sans-serif; color: #fff; }
+.ps-make[hidden] { display: none; }
+body.ps-phone .ps-make { bottom: calc(66px + env(safe-area-inset-bottom)); }
+.ps-make-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ps-make-head b { color: #5effc8; font-size: 16px; letter-spacing: 0.04em; }
+.ps-make-x { width: 36px; height: 36px; background: none; color: #fff; border: 0; font-size: 22px; cursor: pointer; }
+.ps-make-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.ps-make-card { display: flex; flex-direction: column; gap: 4px; min-height: 76px; padding: 10px 12px; text-align: left; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 3px; font: inherit; cursor: pointer; }
+.ps-make-card span { opacity: 0.75; font-size: 12px; }
+.ps-make-card:hover, .ps-make-card:focus-visible { border-color: #5effc8; box-shadow: 0 0 10px rgba(94, 255, 200, 0.6); outline: none; }
+.ps-room-toast { display: flex; align-items: center; gap: 6px; padding: 4px 6px; background: rgba(0, 0, 0, 0.85); border: 1px solid #5effc8; border-radius: 3px; }
+.ps-room-toast[hidden] { display: none; }
+.ps-room-toast button { padding: 3px 8px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 3px; font: inherit; cursor: pointer; }
+.ps-kind { font-style: normal; font-size: 9px; padding: 0 4px; margin-right: 2px; border: 1px solid #5effc8; color: #5effc8; border-radius: 2px; vertical-align: 1px; }
+.ps-kind.scene { border-color: rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.8); }

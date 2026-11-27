@@ -127,6 +127,32 @@ test("post render: bot posts the PNG to the call's channel, rate limited", async
   await a.say({ t: "post", h }); assert.match(a.last("posted").error, /20 seconds/);
 });
 
+test("post render with a scene: a Remix copy goes to the library and the post links to it", async () => {
+  const calls = [], f = async (u, o) => { calls.push({ u, o }); return new Response("{}", { status: 200 }); };
+  const w = world({ DISCORD_BOT_TOKEN: "bot", PLAY_CHANNEL_ID: "777", DISCORD_APP_ID: "42" }, f), a = await w.join("Ana"), h = "c".repeat(64);
+  await a.say({ t: "replace", objs: [{ nid: "x1", o: sphere(1) }], env: {}, name: "Garden" });
+  await a.say(packChunk({ t: "chunk", h, i: 0, n: 1 }, new Uint8Array([137, 80, 78, 71]))); await a.say({ t: "post", h, caption: "Weekly theme: Moon base | Garden" });
+  const it = a.last("lib").items[0]; assert.deepStrictEqual([it.kind, it.name], ["scene", "Remix: Garden"]);
+  const btn = JSON.parse(calls[0].o.body.get("payload_json")).components[0].components[0];
+  assert.strictEqual(btn.label, "Remix in Pixel Scape"); assert.strictEqual(btn.url, "https://discord.com/activities/42?custom_id=scene%7C" + it.id);
+});
+
+test("real places: shared with the call, kept in the server library once (no duplicates), owner removes", async () => {
+  const w = world(), a = await w.join("Ana"), b = await w.join("Bo");
+  await a.say({ t: "place", name: "Grand Canyon", lat: 36.1, lon: -112.1, km: 10 });
+  assert.deepStrictEqual(b.last("place").place, { name: "Grand Canyon", lat: 36.1, lon: -112.1, km: 10 }); assert.strictEqual(b.last("place").name, "Ana");
+  assert.ok(!b.last("lib"), "looking is not keeping");
+  await a.say({ t: "place", name: "Grand Canyon", lat: 36.1, lon: -112.1, km: 10, keep: true }); assert.ok(!b.sent.some((m) => m.t === "lib"), "max one place every 2 s");
+  const m = w.hub.meta(a); m.placeAt = 0; w.hub.setMeta(a, m);
+  await a.say({ t: "place", name: "Grand Canyon", lat: 36.1, lon: -112.1, km: 10, keep: true });
+  let items = b.last("lib").items; assert.deepStrictEqual(items.map((x) => [x.kind, x.name, x.lat, x.by]), [["place", "Grand Canyon", 36.1, "Ana"]]);
+  const m2 = w.hub.meta(b); m2.placeAt = 0; w.hub.setMeta(b, m2); await b.say({ t: "place", name: "Canyon again", lat: 36.1001, lon: -112.1001, km: 10, keep: true });
+  assert.strictEqual(b.last("lib").items.length, 1, "the same spot is kept once");
+  await b.say({ t: "place", name: "Nowhere", lat: 200, lon: 0, km: 10, keep: true });
+  await b.say({ t: "unsave", id: items[0].id, kind: "place" }); assert.match(b.last("error").error, /only the builder/);
+  await a.say({ t: "unsave", id: items[0].id, kind: "place" }); assert.deepStrictEqual(a.last("lib").items, []);
+});
+
 test("Worker: /api/room needs a WebSocket, a server and a room", async () => {
   const env = { ROOMS: { idFromName: (n) => n, get: (id) => ({ fetch: async () => new Response("room " + id) }) }, ASSETS: { fetch: async () => new Response("asset") } };
   const up = { headers: { upgrade: "websocket" } };

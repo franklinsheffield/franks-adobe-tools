@@ -25,6 +25,19 @@ Pixel Scape now lives in the Science is Magic Discord: a bot that builds real te
 - **Post render** posts a 1920x1080 image to the call's channel (or #🌍-pixel-scape-play). One post per 20 seconds.
 - Rooms are kept for 30 days.
 
+### Works on phones, easier to start
+- Phone layout: the 3D view fills the screen; Add, Edit, Move, Render and File slide up from a tab bar. Pinch to zoom, two fingers to slide, bigger handles on touch.
+- Start screen: a real place, a blank world, a library, or join the call's build. Three first-time tips.
+- **Make** button: a real place, your photo on the map, real buildings, the 3D library, a model file, or a photo (phone camera too) wrapped on a thing.
+- **Explore**: hide the panels, then fly or walk through the world (WASD, or the on-screen pad).
+- Auto quality renders fewer pixels when the view stutters.
+
+### Better together
+- See where everyone is looking; tap a name to follow their view. Long-press the ground to ping a spot for the whole call.
+- Pick a real place in Terrain Lab and the call can **Look too**; places you build land in the server library next to saved scenes.
+- Weekly build theme in the room bar; posted renders carry it so mods can spot theme builds.
+- Posts link back in: **Open in Pixel Scape** on `/terrain` results, **Add to my scene** on `/model`, **Remix in Pixel Scape** on posted renders.
+
 ## Who can use it
 - Members of Science is Magic with a Pixel Scape access role. Others get a private "locked" note.
 - The app is verified by Discord (team Science is Magic), so the Activity opens for every member with access.
@@ -32,4 +45,4 @@ Pixel Scape now lives in the Science is Magic Discord: a bot that builds real te
 
 ## Under the hood
 - $0 hosting: Cloudflare Workers + a Durable Object per server (SQLite) for rooms, and GitHub Actions for terrain renders.
-- PRs: #15, #18-#22 (bot, web build, Activity), #25 (role gate), #31 (building together), #49 (/pixelscape), #54 (3D library), #109 (terms and privacy).
+- PRs: #15, #18-#22 (bot, web build, Activity), #25 (role gate), #31 (building together), #49 (/pixelscape), #54 (3D library), #109 (terms and privacy), #182 (phones), #184 (start screen, Explore, presence, pings), M3 crossover.

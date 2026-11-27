@@ -33,10 +33,14 @@ export function embed(m, big) {
   if (big) e.image = { url: L.thumbUrl(m) }; else e.thumbnail = { url: L.thumbUrl(m) };
   return e;
 }
+// "Add to my scene" opens the Pixel Scape Activity with the model's id (the Activity reads it as discordSdk.customId)
+export const sceneLink = (appId, m) => "https://discord.com/activities/" + appId + "?custom_id=" + encodeURIComponent("model|" + m.id);
+let APP = "";
 const buttons = (m, again) => [{ type: 1, components: [
   { type: 2, style: 5, label: "Download .glb", url: L.fileUrl(m) },
+].concat(APP ? [{ type: 2, style: 5, label: "Add to my scene", url: sceneLink(APP, m) }] : []).concat([
   { type: 2, style: 5, label: "Open the library", url: L.siteUrl() },
-].concat(again ? [{ type: 2, style: 2, label: "Another", emoji: { name: "🎲" }, custom_id: again.slice(0, 100) }] : []) }];
+]).concat(again ? [{ type: 2, style: 2, label: "Another", emoji: { name: "🎲" }, custom_id: again.slice(0, 100) }] : []) }];
 const reply = (data) => ({ type: 4, data: Object.assign({ allowed_mentions: { parse: [] } }, data) });
 const quiet = (content) => reply({ content, flags: 64 });
 const rndId = (f) => ["model:rnd", f.category, f.style, f.vibe].join(":");
@@ -49,6 +53,7 @@ function randomReply(f, rnd) {
 
 // it = a Discord interaction (2 command, 3 button, 4 autocomplete) -> the response body, or null when it isn't ours
 export function modelInteraction(it, env, rnd = Math.random) {
+  APP = String(it.application_id || (env && env.DISCORD_APP_ID) || "");
   if (it.type === 3) {
     const [, kind, category, style, vibe] = String(it.data.custom_id || "").split(":");
     return kind === "rnd" ? randomReply({ category, style, vibe }, rnd) : null;
