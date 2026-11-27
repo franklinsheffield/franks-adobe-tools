@@ -156,7 +156,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const parlour = {
   id: "parlour", name: "Madame Rook", house: "The Séance Parlour", emoji: "🕯️", accent: "#C3A6FF",
   channelIds: ["1575977181622829158"], // #🕯️-parlour
-  readings: false, rooms: ["casefiles", "workshop", "bookings", "seance", "timeline"], daily: "timeline",
+  readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "seance", "timeline"], daily: "timeline",
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
@@ -181,6 +181,7 @@ export const parlour = {
   banter: {
     casefiles: G("Look for the method, darling. Every spirit leaves a mechanism.", "Houdini exposed fake mediums in his 1924 book, A Magician Among the Spirits.", "Solved! Another ghost unmasked. The Society would applaud.", "Not quite. The trick hides where you aren't looking, darling."),
     workshop: G("Every trick has a method, darling. Find the thread.", "Maskelyne invented a coin lock for public toilets. Magicians love a mechanism.", "Built and baffling! The Davenports would be jealous, {name}.", "The trick showed its strings. Rehearse, darling."),
+    darkseance: G("Lights out, darling. Mediums always insisted on the dark. Ask yourself why.", "Penn's Seybert Commission sat with mediums in the 1880s and found no real spirits.", "Caught it in the dark, {name}! Luminous paint gave many trumpets away.", "Fooled in the dark. The Davenport brothers fooled crowds for years too."),
     bookings: G("Pick your act for tonight's bill, darling.", "Houdini played dime museums and vaudeville for years before fame.", "A full house! They'll talk about this show all week, {name}.", "Empty seats tonight. Even Houdini had thin houses early on."),
     seance: G("Mind the clues, darling. The spirit is someone real, from the history books.", "Listen... a rap. No, that's the pipes. Read the clue.", "Named! The spirit can rest. It was never here, but still.", "Not that one. History is fussier than any ghost."),
     timeline: G("Order matters. Tricks have a family tree, like everything else.", "Conjurors were around long before séances. Mind the dates.", "In order! A history fit for a playbill, {name}.", "Out of order. Even the past gets shuffled sometimes."),
