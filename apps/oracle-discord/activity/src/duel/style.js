@@ -41,7 +41,7 @@ export const CSS = `
 .du-bench .formula{margin-left:auto;font-size:1.15rem;font-weight:700;color:var(--gold2);padding:0 8px}
 .du-bench .formula.ok{color:#9ff0c8}
 .du-hand{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.du-card{position:relative;width:62px;height:80px;border-radius:9px;border:1.5px solid var(--fam,#888);background:linear-gradient(160deg,#fbf6ea,#e9dfc6);color:#1b1430;cursor:pointer;padding:3px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--body);animation:du-cardin .35s cubic-bezier(.2,.8,.3,1.2) both;transition:transform .15s,box-shadow .15s}
+.du-card{position:relative;width:68px;height:104px;border-radius:9px;border:1.5px solid var(--fam,#888);background:linear-gradient(160deg,#fbf6ea,#e9dfc6);color:#1b1430;cursor:pointer;padding:3px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--body);animation:du-cardin .35s cubic-bezier(.2,.8,.3,1.2) both;transition:transform .15s,box-shadow .15s}
 .du-card:hover{transform:translateY(-3px)}
 .du-card:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .du-card .z{position:absolute;top:2px;left:5px;font-size:.62rem;opacity:.7}
@@ -52,7 +52,13 @@ export const CSS = `
 .du-card.glow{box-shadow:0 0 0 2px var(--teal),0 0 14px rgba(102,224,200,.8);animation:du-cardin .35s cubic-bezier(.2,.8,.3,1.2) both,du-glowc 1.6s ease-in-out infinite}
 @keyframes du-glowc{50%{box-shadow:0 0 0 2px var(--teal),0 0 4px rgba(102,224,200,.4)}}
 .du-card.hint{box-shadow:0 0 0 3px var(--gold2),0 0 16px rgba(250,222,140,.9)}
-.du-card.small{width:50px;height:64px}.du-card.small .sym{font-size:1.15rem}
+.du-card .du-ico{width:40px;height:26px;margin:9px 0 1px;flex:none}
+.du-card .sym{font-size:1.3rem}
+.du-card .cl{display:flex;align-items:center;gap:2px;font-size:.52rem;margin-top:2px;color:#3a3150;letter-spacing:.02em}
+.du-card .cl i{font-style:normal;text-transform:uppercase;font-weight:700;color:var(--cl);filter:brightness(.7)}
+.du-card .cl b{font-size:.72rem;color:#7a5a12;margin-left:1px}
+.du-card::after{content:"";position:absolute;inset:14px 6px auto;height:30px;border-radius:50%;background:radial-gradient(var(--cl),transparent 70%);opacity:.18;pointer-events:none}
+.du-card.small{width:54px;height:84px}.du-card.small .sym{font-size:1.05rem}.du-card.small .du-ico{width:32px;height:21px;margin-top:8px}.du-card.small .cl i{display:none}
 @keyframes du-cardin{from{opacity:0;transform:translateY(16px) scale(.85)}}
 .du-cond-line{font-size:.85rem;border-left:3px solid var(--gold);padding:2px 8px;margin:4px 0;color:var(--fg)}
 .du-cond-line i{color:var(--muted)}
