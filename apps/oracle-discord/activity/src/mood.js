@@ -2,7 +2,7 @@
 // #teller (chamber.css poses the eye, lids, brow, hood and hands for each), a puff of little symbols, a sound in
 // the current voice (voice-sfx.js emoteSfx) and, sometimes, a speech bubble. The eye also follows the pointer,
 // the Oracle reacts to being poked, and punctuation in her speech flicks her face as she talks.
-import { emoteSfx, blip, setVoiceMood } from "./voice-sfx.js";
+import { emoteSfx, blip, setVoiceMood, handSfx } from "./voice-sfx.js";
 
 /** mood -> how long it holds (ms; 0 = until cleared) and the symbols that puff out around the hood. */
 export const MOODS = {
@@ -22,6 +22,11 @@ export function moodForOutcome(roomId, { won = false, perfect = false } = {}) {
   if (VS_ROOMS.includes(roomId)) return won ? "sulk" : "smug";
   return won ? (perfect ? "cheer" : "joy") : "sad";
 }
+/** Hand sounds that land on a mood's gesture beat: [sound, delay ms] (chamber.css times the poses to match). */
+export const HAND_BEATS = { angry: [["slam", 260]], cheer: [["clap", 180], ["clap", 480], ["clap", 780], ["clap", 1080]], love: [["clap", 120]], wow: [["swat", 0]], flinch: [["swat", 0]] };
+/** One-off hand gestures that play over any mood: snap (cards flip), point (she talks to you), swatL / swatR (a poke). */
+export const GESTURES = { snap: 520, point: 1500, swatL: 430, swatR: 430 };
+
 /** A yes is a nod, a no is a shake of the hood, anything else a thoughtful look. */
 export const moodForTone = (t) => (t > 0 ? "nod" : t < 0 ? "shake" : "think");
 /** Punctuation that flicks her face while she talks. */
@@ -45,7 +50,7 @@ export function pokeLine(zone, count, name = "traveller", rand = Math.random) {
 }
 
 const NS = "http://www.w3.org/2000/svg";
-/** Wire the figure up. Returns { emote, flick, bubble, sleep, wake, clear, mood() }. `onPoke(zone, count)` may return a line to say. */
+/** Wire the figure up. Returns { emote, flick, bubble, gesture, sleep, wake, clear, mood() }. `onPoke(zone, count)` may return a line to say. */
 export function initMood(teller, { reduced = false, name = () => "traveller", busy = () => false, onPoke = null, onChange = null } = {}) {
   const svg = teller.querySelector("svg"), eye = svg.querySelector(".o-eye"), lid = eye.querySelector(".o-lid"), iris = eye.querySelector(".o-iris");
   // the brow is the dark lash line over the eye; lids are two soft shapes clipped to the eye that slide in to squint or droop
@@ -82,13 +87,23 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
   const bub = document.createElement("div"); bub.className = "o-bubble"; bub.hidden = true; bub.setAttribute("aria-live", "polite");
   teller.append(fx, big, bub);
 
+  let beats = [], gestT = null;
+  /** A one-off hand gesture over the current pose. */
+  function gesture(kind, { sound = true, sx = 0, sy = 0 } = {}) {
+    if (!GESTURES[kind] || reduced) return; clearTimeout(gestT);
+    teller.style.setProperty("--sx", sx.toFixed(0) + "px"); teller.style.setProperty("--sy", sy.toFixed(0) + "px");
+    delete teller.dataset.gesture; void teller.offsetWidth; teller.dataset.gesture = kind;
+    if (sound && kind === "snap") setTimeout(() => handSfx("snap"), 230);
+    if (sound && kind.startsWith("swat")) handSfx("swat");
+    gestT = setTimeout(() => delete teller.dataset.gesture, GESTURES[kind]);
+  }
   let cur = "", timer = null, bubT = null, flickT = null, zzz = null, trackT = null;
   const puff = (glyphs) => { if (reduced || !glyphs.length) return;
     const made = glyphs.map((g, i) => { const side = i % 2 ? 1 : -1, el = document.createElement("i"); el.textContent = g;
       el.style.cssText = `--x:${(50 + side * (14 + Math.random() * 14)).toFixed(1)}%;--y:${(14 + Math.random() * 22).toFixed(1)}%;--dx:${(side * (10 + Math.random() * 30)).toFixed(0)}px;--d:${(i * 0.12).toFixed(2)}s`; return el; });
     fx.append(...made); setTimeout(() => made.forEach((n) => n.remove()), 2400); };
   const tell = () => { if (cur) document.body.dataset.mood = cur; else delete document.body.dataset.mood; setVoiceMood(cur); onChange && onChange(cur); }; // the room, the candles and the voice follow her mood
-  const clear = () => { clearTimeout(timer); clearInterval(zzz); zzz = null; cur = ""; delete teller.dataset.mood; tell(); };
+  const clear = () => { clearTimeout(timer); beats.forEach(clearTimeout); beats = []; clearInterval(zzz); zzz = null; cur = ""; delete teller.dataset.mood; tell(); };
   /** Show a mood. opts: { ms, quiet (no sound), fx: false (no symbols), say (bubble text) }. */
   function emote(mood, opts = {}) {
     const M = MOODS[mood]; if (!M) return;
@@ -96,7 +111,8 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
     tell(); void teller.offsetWidth; // restart the pose's animations when the same mood repeats
     if (opts.fx !== false) puff(M.fx);
     if (!reduced && opts.fx !== false && mood !== "sleepy") { big.textContent = MOOD_EMOJI[mood] || ""; big.classList.remove("in"); void big.offsetWidth; big.classList.add("in"); }
-    if (!opts.quiet) emoteSfx(mood);
+    if (!opts.quiet) { emoteSfx(mood); (HAND_BEATS[mood] || []).forEach(([k, d]) => beats.push(setTimeout(() => cur === mood && handSfx(k), d))); }
+    if (mood === "angry") beats.push(setTimeout(() => { document.body.classList.remove("slam"); void document.body.offsetWidth; document.body.classList.add("slam"); setTimeout(() => document.body.classList.remove("slam"), 420); }, 260));
     if (opts.say) bubble(opts.say, 2600, MOOD_EMOJI[mood]);
     const ms = opts.ms ?? M.ms; if (ms) timer = setTimeout(clear, ms);
     if (mood === "sleepy" && !reduced) zzz = setInterval(() => puff(["💤"]), 2800);
@@ -104,7 +120,7 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
   /** A quick twitch of the face on "!", "?" or "…" while she talks. */
   function flick(kind) { if (!kind || cur) return; clearTimeout(flickT); teller.dataset.flick = kind; flickT = setTimeout(() => delete teller.dataset.flick, 420); }
   /** A little speech bubble by the hood, for asides that must not replace what is in the text box. */
-  function bubble(text, ms = 2600, emoji = "") { clearTimeout(bubT); bub.textContent = text; if (emoji) { const e = document.createElement("span"); e.className = "be"; e.textContent = emoji; bub.append(e); } bub.hidden = false; bub.classList.remove("in"); void bub.offsetWidth; bub.classList.add("in");
+  function bubble(text, ms = 2600, emoji = "") { clearTimeout(bubT); bub.textContent = text; if (emoji) { const e = document.createElement("span"); e.className = "be"; e.textContent = emoji; bub.append(e); } bub.hidden = false; if (!document.body.classList.contains("trance")) { const sw = (teller.dataset.gesture || "").startsWith("swat"); setTimeout(() => gesture("point", { sound: false }), sw ? 440 : 0); } bub.classList.remove("in"); void bub.offsetWidth; bub.classList.add("in");
     [...text.replace(/[^\p{L}]/gu, "").slice(0, 7)].forEach((c, i) => setTimeout(() => blip(c, { final: i === 6 }), 120 + i * 60));
     bubT = setTimeout(() => { bub.hidden = true; }, ms + text.length * 28); }
   const sleep = () => { if (cur !== "sleepy") emote("sleepy"); };
@@ -126,11 +142,13 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
     if (document.body.classList.contains("trance")) return;
     if (wake() || Date.now() - wokeAt < 700) return;
     const t = e.target, zone = t.closest?.(".o-eye") ? "eye" : t.closest?.(".o-ball") ? "orb" : t.closest?.(".o-hands") ? "hands" : "hood";
+    const m = svg.getScreenCTM(); if (m) { const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()), L = p.x < 200, x = L ? p.x : 400 - p.x;
+      const cl = (v, a) => Math.max(-a, Math.min(a, v)); gesture(L ? "swatL" : "swatR", { sx: cl((x - 140) * 0.6, 50), sy: cl((p.y - 300) * 0.6, 90) }); }
     pokes++; clearTimeout(pokeT); pokeT = setTimeout(() => { pokes = 0; }, 9000);
     const mood = pokeMood(zone, pokes), custom = onPoke ? onPoke(zone, pokes, mood) : null;
     if (zone === "orb" && pokes < 5) { teller.classList.remove("orb-flare"); void teller.offsetWidth; teller.classList.add("orb-flare"); emoteSfx("orb"); setTimeout(() => teller.classList.remove("orb-flare"), 1000); }
     emote(mood, { quiet: zone === "orb" && pokes < 5, say: busy() && pokes < 5 ? null : custom || pokeLine(zone, pokes, name()) });
     if (pokes >= 8) pokes = 0;
   });
-  return { emote, flick, bubble, sleep, wake, clear, mood: () => cur };
+  return { emote, flick, bubble, gesture, sleep, wake, clear, mood: () => cur };
 }

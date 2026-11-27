@@ -254,3 +254,14 @@ export function puff() { if (muted || !ctx || ctx.state !== "running") return; n
 export function ignite() { if (muted || !ctx || ctx.state !== "running") return; noiseSweep(0.3, 900, 5200, 0.55, 2);
   const t = ctx.currentTime + 0.12, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "triangle"; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(1500, t + 0.12);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.22); }
+
+/** Hand sounds for the Oracle's gestures: a fist slam on the table, a finger snap, a clap, a swat through the air. */
+export function handSfx(kind) {
+  if (muted || !ctx || ctx.state !== "running") return;
+  if (kind === "slam") { noiseSweep(0.2, 700, 110, 0.9, 0.6);
+    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.8, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32); return; }
+  if (kind === "snap") { noiseSweep(0.05, 3800, 2600, 0.9, 3); return; }
+  if (kind === "clap") { noiseSweep(0.08, 1900, 900, 0.75, 0.8); return; }
+  if (kind === "swat") { noiseSweep(0.16, 700, 2600, 0.45, 1.2); }
+}

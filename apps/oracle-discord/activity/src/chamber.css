@@ -865,3 +865,75 @@ body.fl-vibe::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:
 @keyframes mp-big{0%{transform:translateX(-50%) scale(0) rotate(-20deg);opacity:0}18%{transform:translateX(-50%) scale(1.25) rotate(6deg);opacity:1}30%{transform:translateX(-50%) scale(1)}80%{transform:translateX(-50%) scale(1);opacity:1}100%{transform:translateX(-50%) translateY(-14px) scale(.8);opacity:0}}
 .o-bubble .be{position:absolute;right:-12px;top:-16px;font-size:1.7em;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));animation:mp-pop .3s cubic-bezier(.3,1.8,.5,1)}
 .speaker[data-emo]:not([data-emo=""])::after{content:" " attr(data-emo);font-size:1.25em;letter-spacing:0}
+
+/* ---- Hand gestures (mood.js): each mood gets a pose of the hands; one-off gestures (data-gesture) play over it ----
+   The right hand is the left one mirrored, so translateX(+) moves either hand toward the middle. Origin: the wrist. */
+.teller .o-hand{transform-box:view-box;transform-origin:140px 335px}
+.teller[data-mood]:not([data-mood="nod"]):not([data-mood="wink"]) .o-hands{animation:none;transform:none}
+.teller[data-mood] .o-hand{animation:none}
+.teller[data-mood] .o-hands .o-hand{transition:transform .28s cubic-bezier(.3,1.5,.5,1)}
+/* finger shapes: spread, curled into a fist, pointing (index out), drooping */
+.teller[data-mood="joy"] .o-hand .o-f1,.teller[data-mood="wow"] .o-hand .o-f1{animation:none;transform:rotate(20deg)}
+.teller[data-mood="joy"] .o-hand .o-f2,.teller[data-mood="wow"] .o-hand .o-f2{animation:none;transform:rotate(6deg)}
+.teller[data-mood="joy"] .o-hand .o-f3,.teller[data-mood="wow"] .o-hand .o-f3{animation:none;transform:rotate(-10deg)}
+.teller[data-mood="joy"] .o-hand .o-f4,.teller[data-mood="wow"] .o-hand .o-f4{animation:none;transform:rotate(-26deg)}
+.teller[data-mood="joy"] .o-hand .o-thumb,.teller[data-mood="wow"] .o-hand .o-thumb{animation:none;transform:rotate(28deg)}
+.teller[data-mood="angry"] .o-hand .o-f,.teller[data-mood="sulk"] .o-hand .o-f{animation:none;transform:rotate(84deg)}
+.teller[data-mood="angry"] .o-hand .o-thumb,.teller[data-mood="sulk"] .o-hand .o-thumb{transform:rotate(-30deg)}
+.teller[data-mood="think"] .o-handL .o-f,.teller[data-mood="curious"] .o-handL .o-f,.teller[data-mood="shake"] .o-handR .o-f,.teller[data-gesture="point"] .o-hands .o-handR .o-f{animation:none;transform:rotate(86deg)}
+.teller[data-mood="think"] .o-handL .o-f1,.teller[data-mood="curious"] .o-handL .o-f1,.teller[data-mood="shake"] .o-handR .o-f1,.teller[data-gesture="point"] .o-hands .o-handR .o-f1{transform:rotate(0)}
+.teller[data-mood="think"] .o-handL .o-f1{animation:g-tapf .5s ease-in-out infinite alternate}
+.teller[data-mood="sad"] .o-hand .o-f,.teller[data-mood="dizzy"] .o-hand .o-f,.teller[data-mood="sleepy"] .o-handL .o-f{animation:none;transform:rotate(-16deg)}
+.teller[data-mood="love"] .o-hand .o-f{animation:none;transform:rotate(38deg)}
+/* poses */
+.teller[data-mood="joy"] .o-hands .o-hand{animation:g-up .42s ease-in-out infinite alternate}
+.teller[data-mood="cheer"] .o-hands .o-hand{animation:g-clap .3s ease-in-out infinite}
+.teller[data-mood="love"] .o-hands .o-hand{transform:translate(50px,-70px) rotate(16deg)}
+.teller[data-mood="love"] .o-hands{animation:g-sway 1.3s ease-in-out infinite!important}
+.teller[data-mood="laugh"] .o-hands .o-handL{transform:translate(58px,-128px) rotate(30deg)}
+.teller[data-mood="laugh"] .o-hands .o-handR{animation:g-chuckle .16s ease-in-out infinite}
+.teller[data-mood="wow"] .o-hands .o-hand{animation:g-wow .32s cubic-bezier(.3,1.7,.5,1) forwards}
+.teller[data-mood="angry"] .o-hands .o-hand{animation:g-slam .5s cubic-bezier(.6,0,.4,1) forwards,g-shiver .12s .5s linear infinite}
+.teller[data-mood="nervous"] .o-hands .o-hand{animation:g-tap .2s ease-in-out infinite alternate}
+.teller[data-mood="sad"] .o-hands .o-hand{transform:translate(4px,46px) rotate(-8deg)}
+.teller[data-mood="sulk"] .o-hands .o-handL{transform:translate(78px,-34px) rotate(64deg)}
+.teller[data-mood="sulk"] .o-hands .o-handR{transform:translate(70px,-58px) rotate(58deg)}
+.teller[data-mood="smug"] .o-hands .o-handL{animation:g-flick 1.3s ease-in-out forwards}
+.teller[data-mood="smug"] .o-handR .o-f{animation-duration:.5s}
+.teller[data-mood="think"] .o-hands .o-handL{transform:translate(56px,-84px) rotate(22deg)}
+.teller[data-mood="curious"] .o-hands .o-handL{transform:translate(-8px,-52px) rotate(-6deg)}
+.teller[data-mood="shake"] .o-hands .o-handR{animation:g-wag .22s ease-in-out infinite alternate}
+.teller[data-mood="flinch"] .o-hands .o-hand{transform:translate(48px,-120px) rotate(12deg)}
+.teller[data-mood="dizzy"] .o-hands .o-hand{animation:g-loop .9s linear infinite}
+.teller[data-mood="dizzy"] .o-hands .o-handR{animation-delay:-.45s}
+.teller[data-mood="sleepy"] .o-hands .o-handR{animation:g-prop 5s ease-in infinite}
+.teller[data-mood="sleepy"] .o-hands .o-handL{transform:translate(0,22px) rotate(-6deg)}
+/* one-off gestures */
+.teller[data-gesture="snap"] .o-hands .o-handR{animation:g-snap .52s ease-out}
+.teller[data-gesture="snap"] .o-hands .o-handR .o-thumb{animation:g-snapt .52s ease-out}
+.teller[data-gesture="point"] .o-hands .o-handR{animation:g-point 1.5s cubic-bezier(.3,1.4,.5,1)}
+.teller[data-gesture="swatL"] .o-hands .o-handL,.teller[data-gesture="swatR"] .o-hands .o-handR{animation:g-swat .43s cubic-bezier(.2,1.4,.5,1)}
+/* readings: conjuring passes circle the ball, faster in the trance */
+.gazing .teller .o-handL{animation:g-pass 1.4s ease-in-out infinite}.gazing .teller .o-handR{animation:g-pass 1.4s ease-in-out -.7s infinite}
+.trance .teller .o-hand{animation:g-pass .5s ease-in-out infinite}.trance .teller .o-handR{animation-delay:-.25s}
+/* the slam shakes the table */
+body.slam .table{animation:g-tshake .4s ease-out}
+@keyframes g-up{from{transform:translate(-16px,-78px) rotate(-22deg)}to{transform:translate(-20px,-94px) rotate(-30deg)}}
+@keyframes g-clap{0%,100%{transform:translate(28px,-140px) rotate(-8deg)}50%{transform:translate(52px,-140px) rotate(4deg)}}
+@keyframes g-sway{0%,100%{transform:rotate(-3deg) translateX(-3px)}50%{transform:rotate(3deg) translateX(3px)}}
+@keyframes g-chuckle{0%,100%{transform:translate(22px,-12px)}50%{transform:translate(24px,-17px) rotate(-3deg)}}
+@keyframes g-wow{from{transform:none}to{transform:translate(-42px,-66px) rotate(-36deg)}}
+@keyframes g-slam{0%{transform:none}45%{transform:translate(6px,-62px) rotate(-6deg)}70%,100%{transform:translate(8px,14px) rotate(2deg)}}
+@keyframes g-shiver{0%,100%{transform:translate(7px,14px)}50%{transform:translate(9px,13px)}}
+@keyframes g-tap{from{transform:translate(38px,-50px) rotate(8deg)}to{transform:translate(45px,-52px) rotate(12deg)}}
+@keyframes g-flick{0%{transform:none}35%,55%{transform:translate(-8px,-140px) rotate(-26deg)}68%{transform:translate(-8px,-146px) rotate(-48deg)}100%{transform:translate(-4px,-120px) rotate(-20deg)}}
+@keyframes g-tapf{to{transform:rotate(-12deg)}}
+@keyframes g-wag{from{transform:translate(16px,-76px) rotate(-12deg)}to{transform:translate(16px,-76px) rotate(12deg)}}
+@keyframes g-loop{0%{transform:translate(0,0) rotate(0)}25%{transform:translate(10px,-10px) rotate(-14deg)}50%{transform:translate(0,-20px) rotate(10deg)}75%{transform:translate(-10px,-10px) rotate(-8deg)}100%{transform:translate(0,0) rotate(0)}}
+@keyframes g-prop{0%{transform:translate(42px,-112px) rotate(12deg)}80%{transform:translate(44px,-96px) rotate(18deg)}86%{transform:translate(42px,-116px) rotate(10deg)}100%{transform:translate(42px,-112px) rotate(12deg)}}
+@keyframes g-snap{0%{transform:none}40%{transform:translate(-6px,-70px) rotate(-14deg)}50%{transform:translate(-6px,-74px) rotate(-22deg) scale(1.08)}100%{transform:none}}
+@keyframes g-snapt{0%,40%{transform:rotate(0)}48%{transform:rotate(-40deg)}100%{transform:rotate(0)}}
+@keyframes g-point{0%{transform:none}18%,80%{transform:translate(-30px,-96px) rotate(-38deg) scale(1.08)}100%{transform:none}}
+@keyframes g-swat{0%{transform:none}35%{transform:translate(var(--sx,0),var(--sy,-40px)) rotate(-26deg) scale(1.1)}100%{transform:none}}
+@keyframes g-pass{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(14px,-22px) rotate(10deg)}50%{transform:translate(4px,-40px) rotate(-4deg)}75%{transform:translate(-8px,-18px) rotate(-10deg)}}
+@keyframes g-tshake{0%,100%{transform:none}20%{transform:translateY(5px)}40%{transform:translate(-3px,-2px)}60%{transform:translate(2px,1px)}}

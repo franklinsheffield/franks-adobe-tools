@@ -274,7 +274,7 @@ async function reveal(sys, options, question = "") {
     ui(`<div class="choices"><button class="c main" type="button" id="again">Try again</button><button class="c" type="button" id="back">Choose another</button></div>`);
     $("again").onclick = () => choose(sys); $("back").onclick = greet; return;
   }
-  $("table").classList.add("fade"); await wait(450);
+  $("table").classList.add("fade"); mood.gesture("snap"); await wait(450);
   poof(); await wait(250);
   const files = (r.files || []).map(svgOf).filter(Boolean);
   layArt(files);
