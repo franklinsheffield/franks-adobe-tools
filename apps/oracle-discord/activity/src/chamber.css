@@ -1996,3 +1996,23 @@ body.box-full .dock{position:fixed;left:18px;bottom:18px;margin:0;z-index:41}
 /* Frank 23:18Z: text feed shade 20% darker; the + quick save sits at the very top of the Oracle pane */
 .oracle-pane .feed{background:linear-gradient(to bottom,rgba(10,6,26,0) 0,rgba(10,6,26,.66) 26%,rgba(10,6,26,.86) 100%)}
 .feed-save{position:absolute;top:8px;right:8px;z-index:9}
+
+/* small text box by default; the secret behind it shows only once the member has folded it themselves */
+.oracle-pane.feed-mini:not(.feed-folded) .feed-secret{opacity:0;pointer-events:none;animation:none}
+/* Frank 23:23Z: smoother hands and fingers. Fingers and thumbs ease into every pose (they used to snap), hand
+   transitions lose their bounce, gestures ease in and out over a little longer, and each keyframe segment eases. */
+.teller .o-hand,.teller .o-f,.teller .o-thumb,.teller .o-hands{will-change:transform;backface-visibility:hidden}
+.teller .o-f,.teller .o-thumb{transition:transform .45s cubic-bezier(.45,.05,.25,1)}
+.teller[data-mood] .o-hands .o-hand{transition:transform .5s cubic-bezier(.34,1.12,.64,1)}
+.teller[data-mood] .o-hands,.teller[data-mood] .o-sleeves{transition:transform .5s cubic-bezier(.34,1.12,.64,1)}
+.teller .o-hands,.teller .o-sleeves{transition:transform .65s cubic-bezier(.34,1.12,.64,1)}
+.teller[data-gesture="snap"] .o-hands .o-handR{animation:g-snap .72s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="snap"] .o-hands .o-handR .o-thumb{animation:g-snapt .72s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="point"] .o-hands .o-handR{animation:g-point 1.6s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="swatL"] .o-hands .o-handL,.teller[data-gesture="swatR"] .o-hands .o-handR{animation:g-swat .58s cubic-bezier(.45,.05,.25,1)}
+.teller[data-mood="joy"] .o-hand,.teller[data-mood="cheer"] .o-hand{animation:m-clap .36s cubic-bezier(.45,.05,.55,.95) infinite}
+@keyframes finger{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}40%{transform:rotate(-9deg)}60%{transform:rotate(2deg)}75%{transform:rotate(4deg)}}
+@keyframes g-snap{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}38%{transform:translate(-6px,-70px) rotate(-14deg)}48%{transform:translate(-6px,-74px) rotate(-22deg) scale(1.08);animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@keyframes g-point{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}22%,78%{transform:translate(-30px,-96px) rotate(-38deg) scale(1.08)}84%{animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@keyframes g-swat{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}38%{transform:translate(var(--sx,0),var(--sy,-40px)) rotate(-26deg) scale(1.1);animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.teller .o-f,.teller .o-thumb,.teller .o-hand,.teller .o-hands{transition:none}}

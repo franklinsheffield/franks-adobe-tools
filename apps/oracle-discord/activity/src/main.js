@@ -237,8 +237,8 @@ function setFeedMini(on, save = true) {
   if (save) try { localStorage.setItem("oracle-feed-mini", on ? "1" : "0"); } catch { /* blocked */ }
   FEED.pinned = true; feedToEnd(); setTimeout(feedToEnd, 320);
 }
-$("feed-min").onclick = () => { chime(1); setFeedMini(!$("feed").parentElement.classList.contains("feed-mini")); };
-try { if (localStorage.getItem("oracle-feed-mini") === "1") setFeedMini(true, false); } catch { /* blocked */ }
+$("feed-min").onclick = () => { chime(1); $("feed").parentElement.classList.add("feed-folded"); /* the secret shows only after the member folds it themselves */ setFeedMini(!$("feed").parentElement.classList.contains("feed-mini")); };
+{ let mini = true; try { mini = localStorage.getItem("oracle-feed-mini") !== "0"; } catch { /* blocked */ } if (mini) setFeedMini(true, false); } // small by default (Frank 23:22Z)
 $("feed-secret").onclick = () => { const first = revealSecret("behind"); mood.bubble(first ? "You looked behind my words. Hardly anyone does." : "Still there. Some things only show when the talking stops.", 3600, "🔺"); };
 /** Quick save: everything in the feed goes into the Journal as a saved conversation. */
 $("feed-save").onclick = () => {
