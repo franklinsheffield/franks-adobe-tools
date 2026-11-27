@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier", "phantasmagoria"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -160,7 +160,7 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
   setHost(P); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "MADAME ROOK · Madame Rook's hand · Séance Parlour");
   assert.equal(rename("Open the Record Player · Reach Oracle-touched, or try /oracle"), "Open the Spirit Trumpet Gramophone · Reach Oracle-touched, or try /oracle");
-  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "seance", "timeline"]);
+  assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "seance", "timeline"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
   assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "decoder", "memory"]);
@@ -254,4 +254,11 @@ test("Parlour Phase 1: parlour scene dims at night, bell jar, poses, reactions, 
   assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("gown"));
   assert.ok(D.grantDebunker({}).owned.includes(D.DEBUNKER));
   assert.equal(parlour.scene, D.parlourSceneHtml); assert.equal(parlour.emotes, D.SEANCE_EMOTES); assert.ok(parlour.shelves.includes(D.gownShop));
+});
+
+test("Observatory Phase 4: six new relics and The Grand Orrery set", async () => {
+  const { observatory } = await import("../activity/src/hosts/observatory.js"), { SETS } = await import("../activity/src/trophies.js"), { OBS_GAMES } = await import("../activity/src/obsprog.js");
+  for (const id of ["sk-nebra", "sk-ulughbeg", "sk-h4", "sk-herschel", "sk-leavitt", "sk-blink"]) assert.ok(observatory.relics.some((r) => r.id === id), id);
+  assert.equal(new Set(observatory.relics.map((r) => r.id)).size, observatory.relics.length);
+  assert.deepEqual(SETS.find((s) => s.id === "orrery").ids, OBS_GAMES);
 });
