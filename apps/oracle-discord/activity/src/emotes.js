@@ -15,6 +15,8 @@ const EARNED = [
   { id: "handshake", e: "🤝", name: "Secret handshake", mood: "wink", say: "You know the code.", how: "Break a coded message in Your Grimoire", test: (p) => (p.cd || []).length >= 1, fx: { p: ["🔐", "✦"], m: "orbit" } },
   { id: "stargaze", e: "🔭", name: "Stargaze", mood: "curious", say: "Every one of those is a sun.", how: "Find 3 secrets in Your Grimoire", test: (p) => (p.gs || []).length >= 3, fx: { p: ["⭐", "✨", "🌟"], m: "fall" } },
   { id: "applause", e: "👏", name: "Applause", mood: "cheer", say: "Bravo! Encore!", how: "Use emotes 30 times", test: (p) => total(p) >= 30, fx: { p: ["👏", "🎉"], m: "burst" } },
+  { id: "keeper", e: "🗝️", name: "Keeper's sigil", mood: "smug", say: "Every secret, kept.", how: "Find all 7 secrets in Your Grimoire", test: (p) => (p.gs || []).length >= 7, fx: { p: ["🗝️", "✦", "🕯️"], m: "orbit" } },
+  { id: "archivist", e: "🏛️", name: "Archivist's flourish", mood: "cheer", say: "The whole Codex. Every page.", how: "Finish the whole Codex", test: (p) => !!(p.coll && p.coll.codex), fx: { p: ["📜", "✨", "🏛️"], m: "rise" } },
   { id: "crownbow", e: "👑", name: "Royal bow", mood: "smug", say: "You may rise.", how: "Win the Star Crown", test: (p) => hasCrown(p), fx: { p: ["👑", "✨"], m: "rise" } },
 ];
 /** One per robe, in the robe's own element. */

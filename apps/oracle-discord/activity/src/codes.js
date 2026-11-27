@@ -131,6 +131,7 @@ export const GLYPHS = {
   "bk-aurora": ["∿", "≋", "✧", "⋆", "˚", "✺", "❋", "✵"],
   "bk-rune": ["ᚠ", "ᚢ", "ᚦ", "ᚨ", "ᚱ", "ᚲ", "ᚷ", "ᛟ", "ᛉ"],
   "bk-cipher": ["⌗", "⊞", "⊠", "#", "⚿", "⁜", "⌘", "◫"],
+  "bk-archive": ["☉", "☯\uFE0E", "ᚠ", "♈\uFE0E", "☰", "∞", "✶", "⚕\uFE0E"],
   "bk-crown": ["♔", "♕", "✠", "✦", "⚜" + VS, "✧", "♛", "✶"],
 };
 /** A seeded scatter so a page keeps the same doodles while it is open. */
