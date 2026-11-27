@@ -70,6 +70,12 @@ export const CSS = `
 .table.alchemy.choke{animation:al-choke 2.4s ease-in-out both}@keyframes al-choke{0%,100%{filter:none}40%{filter:blur(1px) saturate(1.4)}70%{filter:blur(.5px)}}
 .al-boomcard.gas{border-color:#b6e35a;background:linear-gradient(90deg,rgba(150,210,60,.18),rgba(20,30,20,.6))}.al-boomcard.gas b{color:#d4f58a}
 .al-boomcard.saved{border-color:#9fd8ff;background:linear-gradient(90deg,rgba(120,190,255,.18),rgba(20,24,40,.6))}.al-boomcard.saved b{color:#cfeaff}
+.al-grid h3{margin:4px 0;font-family:var(--display);color:#FADE8C}.al-finds{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin:4px 0 10px}
+.al-find{display:flex;flex-direction:column;gap:2px;padding:8px;border:1px dashed rgba(226,176,74,.35);border-radius:8px;font-size:.82rem;opacity:.55}.al-find.on{opacity:1;border-style:solid;border-color:#E2B04A;background:rgba(226,176,74,.08)}
+.al-find b{font-size:1.1rem}.al-find small{opacity:.75;font-size:.72rem;word-break:break-word}
+button.al-find{font:inherit;color:inherit;text-align:left;cursor:pointer}button.al-find:hover{box-shadow:0 0 10px rgba(250,222,140,.45)}
+.al-seal{border:1px solid #E2B04A;border-radius:8px;padding:6px 10px;background:linear-gradient(90deg,rgba(226,176,74,.25),rgba(226,176,74,.05));animation:al-in .6s ease-out both}
+.c.level.al-daily{border-color:#7fd1ff}.c.level.al-daily.done{opacity:.7}
 @media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}.table.alchemy :is(.al-shard,.al-flash,.al-ring){display:none}.table.alchemy .al-soot{opacity:.7}.table.alchemy .al-vessel.gone{opacity:0}.table.alchemy .al-cloud{opacity:.5}.table.alchemy .al-skull{opacity:.95}.table.alchemy .al-tint{opacity:.22}}
 .al-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:4px 0 6px}
 .c.al-jar{display:flex;align-items:center;gap:8px;text-align:left;border-radius:10px;padding:6px 10px}

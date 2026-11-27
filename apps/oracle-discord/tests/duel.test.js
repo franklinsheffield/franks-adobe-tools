@@ -170,3 +170,15 @@ test("damage phase: every compound gets a reaction kind, every kind draws with f
       assert.match(svg, /du-k-card/); assert.match(svg, new RegExp("k-" + k)); assert.doesNotMatch(svg, /undefined|NaN/, k); } }
   assert.equal(duelRoomDef.row, "cards", "Element Duel sits with the card decks");
 });
+
+test("Daily Lab: everyone gets the same deal today, and a win outscores a loss", async () => {
+  const { dailyScore, DAILY_LEVEL } = await import("../activity/src/duel/room.js");
+  const { dailySeed } = await import("../activity/src/daily.js");
+  const { newGame } = await import("../activity/src/duel/logic.js");
+  const a = newGame(DAILY_LEVEL, dailySeed("duel", "2026-11-27")), b = newGame(DAILY_LEVEL, dailySeed("duel", "2026-11-27")), c = newGame(DAILY_LEVEL, dailySeed("duel", "2026-11-28"));
+  const deal = (g) => JSON.stringify([g.you.hand.map((x) => x.s), g.oracle.hand.map((x) => x.s), g.cond, g.bonus]);
+  assert.equal(deal(a), deal(b)); assert.notEqual(deal(a), deal(c));
+  a.over = { winner: "you", how: "stability" }; a.oracle.hp = 0; a.round = 8;
+  b.over = { winner: "oracle", how: "stability" }; b.you.hp = 0; b.oracle.hp = 3; b.round = 8;
+  assert.ok(dailyScore(a) > dailyScore(b)); assert.ok(dailyScore(b) >= 0);
+});
