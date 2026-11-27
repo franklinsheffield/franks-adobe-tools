@@ -77,3 +77,18 @@ test("rewards only for improvement; levels unlock in order", () => {
   assert.deepEqual(p.rooms.decoder.codex, ["The futhark"]); assert.equal(p.rooms.decoder.plays, 3);
   assert.equal(levelsOf("futhark").length, 5);
 });
+
+test("each study guide covers its levels' questions", async () => {
+  const { GUIDES } = await import("../activity/src/decoder/guide.js");
+  const need = {
+    futhark: ["first six runes", "Bracteates", "painted", "Hlewagastiz", "aettir"],
+    ogham: ["Beith-Luis-Nin", "Ogma", "MUCOI", "tree", "aicme"],
+    egyptian: ["only consonants", "Champollion", "stool (p), lasso (o) and lion (l)", "honorific transposition", "Rosetta"],
+    maya: ["shell = 0", "earliest true zeros", "13th b'ak'tun", "Pakal", "4772"],
+  };
+  for (const [k, words] of Object.entries(need)) {
+    const g = GUIDES[k]; assert.ok(g && g.sections.length >= 5, k);
+    const text = g.sections.flatMap((s) => s.p).join(" ").replace(/<[^>]+>/g, "");
+    for (const w of words) assert.ok(text.includes(w), `${k} guide mentions "${w}"`);
+  }
+});
