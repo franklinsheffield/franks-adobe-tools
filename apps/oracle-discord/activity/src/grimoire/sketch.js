@@ -4,6 +4,10 @@
 const rng = (seed) => { let h = [...String(seed)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 2166136261); return () => ((h = (h * 1664525 + 1013904223) >>> 0) / 4294967296); };
 const f = (n) => Math.round(n * 10) / 10;
 const INK = "#3a2716";
+/** Lighten (amt > 0) or darken (amt < 0) a #rrggbb colour. */
+export const shade = (hex, amt) => { const n = parseInt(String(hex).slice(1), 16); if (isNaN(n)) return hex;
+  const c = (v) => Math.max(0, Math.min(255, Math.round(amt > 0 ? v + (255 - v) * amt : v * (1 + amt))));
+  return "#" + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => c(v).toString(16).padStart(2, "0")).join(""); };
 
 /** One leaf, base at 0,0 pointing up (-y), length L. */
 function leafPath(kind, L, o = {}) {
@@ -22,11 +26,12 @@ function leafPath(kind, L, o = {}) {
 
 /** A whole leaf (with compound and divided kinds), placed at x,y with angle a (degrees from up). */
 function leaf(look, x, y, a, L, r) {
-  const k = look.leaf, fill = look.lc, st = `stroke="${INK}" stroke-width=".9" fill="${fill}"`;
+  const k = look.leaf, fill = shade(look.lc, (r() - 0.5) * 0.3), st = `stroke="${INK}" stroke-width=".9" fill="${fill}"`;
   const g = (inner) => `<g transform="translate(${f(x)} ${f(y)}) rotate(${f(a)})">${inner}</g>`;
+  if (k === "trefoil") return g(`<path d="M0 0 L0 ${f(-L * 0.35)}" stroke="${INK}" stroke-width=".6"/>` + [-42, 0, 42].map((d) => `<g transform="translate(0 ${f(-L * 0.35)}) rotate(${d})"><path d="${leafPath("oval", L * 0.55)}" ${st}/><path d="M0 0 L0 ${f(-L * 0.5)}" stroke="${shade(fill, -0.45)}" stroke-width=".45"/>${look.leaf === "trefoil" && look.flower === "globe" ? `<path d="M${f(-L * 0.1)} ${f(-L * 0.2)} L0 ${f(-L * 0.3)} L${f(L * 0.1)} ${f(-L * 0.2)}" stroke="#e8f0d8" stroke-width="1.1" fill="none" opacity=".8"/>` : ""}</g>`).join(""));
   if (k === "needle") return g(`<path d="M0 0 L0 ${f(-L * 0.6)}" stroke="${fill}" stroke-width="2.6" stroke-linecap="round"/><path d="M0 0 L0 ${f(-L * 0.6)}" stroke="${INK}" stroke-width=".5"/>`);
   if (k === "pinnate" || k === "fern") {
-    const n = k === "fern" ? 7 : 3, parts = [`<path d="M0 0 L0 ${f(-L)}" stroke="${INK}" stroke-width=".9"/>`];
+    const n = k === "fern" ? 7 : 3, parts = [`<path d="M0 0 L0 ${f(-L)}" stroke="${shade(fill, -0.4)}" stroke-width="1.1"/>`];
     for (let i = 1; i <= n; i++) { const t = i / (n + 1), y2 = -L * t, s = L * (k === "fern" ? 0.32 : 0.42) * (1 - t * 0.4);
       for (const side of [1, -1]) parts.push(k === "fern"
         ? `<path d="M0 ${f(y2)} q${f(side * s * 0.5)} ${f(-s * 0.2)} ${f(side * s)} ${f(-s * 0.55)} M${f(side * s * 0.45)} ${f(y2 - s * 0.18)} l${f(side * s * 0.12)} ${f(-s * 0.3)} M${f(side * s * 0.7)} ${f(y2 - s * 0.33)} l${f(side * s * 0.18)} ${f(-s * 0.12)}" stroke="${fill}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`
@@ -42,8 +47,12 @@ function leaf(look, x, y, a, L, r) {
     for (let i = 0; i < n; i++) parts.push(`<path d="${leafPath("lance", L * (i === 2 ? 1 : 0.8))}" transform="rotate(${(i - 2) * 26})" ${st}/>`);
     return g(parts.join(""));
   }
-  const vein = k === "strap" ? "" : `<path d="M0 0 L0 ${f(-L * 0.92)}" stroke="${INK}" stroke-width=".55" opacity=".8"/>`;
-  return g(`<path d="${leafPath(k, L * (k === "strap" ? (look.short ? 0.5 : 1.4) : 1), look)}" ${st}/>${vein}`);
+  const LL = L * (k === "strap" ? (look.short ? 0.5 : 1.4) : 1), W = LL * ({ lance: 0.17, oval: 0.33, heart: 0.42, tiny: 0.3, broad: 0.3, huge: 0.55 }[k] ?? 0.3) * (look.big ? 1.3 : 1);
+  const sides = k === "strap" || k === "tiny" || LL < 12 ? "" : [0.22, 0.4, 0.58, 0.74].map((t) => `M0 ${f(-LL * t)} Q${f(W * 0.35)} ${f(-LL * (t + 0.05))} ${f(W * 0.62 * Math.sin(Math.PI * (t + 0.1)))} ${f(-LL * (t + 0.13))} M0 ${f(-LL * t)} Q${f(-W * 0.35)} ${f(-LL * (t + 0.05))} ${f(-W * 0.62 * Math.sin(Math.PI * (t + 0.1)))} ${f(-LL * (t + 0.13))}`).join(" ");
+  const light = k === "strap" || k === "tiny" ? "" : `<path d="M${f(-W * 0.12)} ${f(-LL * 0.15)} Q${f(-W * 0.45)} ${f(-LL * 0.5)} ${f(-W * 0.1)} ${f(-LL * 0.82)}" stroke="${shade(fill, 0.45)}" stroke-width="${f(Math.max(1, W * 0.18))}" fill="none" stroke-linecap="round" opacity=".55"/>`;
+  const vein = k === "strap" ? `<path d="M0 0 L0 ${f(-LL * 0.95)}" stroke="${shade(fill, -0.35)}" stroke-width=".5"/>` : `${light}<path d="M0 0 L0 ${f(-LL * 0.92)}${sides ? " " + sides : ""}" stroke="${shade(fill, -0.45)}" stroke-width=".55" fill="none" opacity=".9"/>`;
+  const spots = look.leafSpots ? [[0.25, 0.3], [-0.3, 0.45], [0.2, 0.62], [-0.15, 0.25], [0.05, 0.8]].map(([dx, t]) => `<ellipse cx="${f(dx * W * 1.6)}" cy="${f(-LL * t)}" rx="${f(W * 0.16)}" ry="${f(W * 0.12)}" fill="${look.leafSpots}" opacity=".85"/>`).join("") : "";
+  return g(`<path d="${leafPath(k, L * (k === "strap" ? (look.short ? 0.5 : 1.4) : 1), look)}" ${st}/>${spots}${vein}`);
 }
 
 /** One flower (or flower head) at x,y; a = lean in degrees. */
@@ -53,8 +62,10 @@ function flower(look, x, y, a, s, r) {
   switch (look.flower) {
     case "daisy": { const n = look.double ? 22 : 14, out = [];
       if (look.puff && r() < 0.5) { for (let i = 0; i < 26; i++) { const t = (i / 26) * 6.283; out.push(`<path d="M0 0 L${f(Math.cos(t) * s * 1.5)} ${f(Math.sin(t) * s * 1.5)}" stroke="${INK}" stroke-width=".35" opacity=".7"/><circle cx="${f(Math.cos(t) * s * 1.5)}" cy="${f(Math.sin(t) * s * 1.5)}" r="1" fill="#fff" stroke="${INK}" stroke-width=".3"/>`); } return g(out.join("")); }
-      for (let i = 0; i < n; i++) out.push(`<ellipse cx="0" cy="${f(-s * (look.double && i % 2 ? 0.55 : 0.75))}" rx="${f(s * 0.18)}" ry="${f(s * 0.5)}" transform="rotate(${f((i / n) * 360)})" fill="${fc}" ${ink}/>`);
-      return g(out.join("") + `<circle r="${f(s * 0.34)}" fill="${cc}" ${ink}/>`); }
+      for (let i = 0; i < n; i++) { const cy = -s * (look.double && i % 2 ? 0.55 : 0.75), rot = f((i / n) * 360 + (r() - 0.5) * 6);
+        out.push(`<g transform="rotate(${rot})"><ellipse cx="0" cy="${f(cy)}" rx="${f(s * 0.18)}" ry="${f(s * 0.5)}" fill="${i % 2 ? fc : shade(fc, -0.08)}" ${ink}/><path d="M0 ${f(cy + s * 0.35)} L0 ${f(cy - s * 0.35)}" stroke="${shade(fc, -0.3)}" stroke-width=".4"/></g>`); }
+      const dots = Array.from({ length: 9 }, (_, i) => { const t = i * 2.4, d = (i / 9) * s * 0.28; return `<circle cx="${f(Math.cos(t) * d)}" cy="${f(Math.sin(t) * d)}" r="${f(s * 0.05)}" fill="${shade(cc, -0.4)}"/>`; }).join("");
+      return g(out.join("") + `<circle r="${f(s * 0.34)}" fill="${cc}" ${ink}/><circle r="${f(s * 0.2)}" cx="${f(-s * 0.06)}" cy="${f(-s * 0.06)}" fill="${shade(cc, 0.3)}" opacity=".6"/>${dots}`); }
     case "cone": { const out = []; for (let i = 0; i < 10; i++) { const t = -30 + (i / 9) * 240; out.push(`<path d="M0 0 Q${f(Math.cos((t * Math.PI) / 180) * s)} ${f(Math.sin((t * Math.PI) / 180) * s * 0.5 + s * 0.4)} ${f(Math.cos((t * Math.PI) / 180) * s * 1.1)} ${f(s * 1.1)}" stroke="${fc}" stroke-width="${f(s * 0.22)}" fill="none" stroke-linecap="round"/>`); }
       return g(out.join("") + `<path d="M${f(-s * 0.45)} 0 Q0 ${f(-s * 1.1)} ${f(s * 0.45)} 0Z" fill="${cc}" ${ink}/>`); }
     case "umbel": { const out = [], n = 9, R = s * 1.6;
@@ -66,14 +77,34 @@ function flower(look, x, y, a, s, r) {
     case "globe": { const out = []; for (let i = 0; i < 24; i++) { const t = r() * 6.283, d = r() * s; out.push(`<circle cx="${f(Math.cos(t) * d)}" cy="${f(Math.sin(t) * d - s)}" r="${f(s * 0.17)}" fill="${fc}" ${ink}/>`); } return g(out.join("")); }
     case "cup": { const vein = look.veins ? `<path d="M0 ${f(-s * 0.2)} L${f(-s * 0.6)} ${f(-s)} M0 ${f(-s * 0.2)} L${f(s * 0.6)} ${f(-s)} M0 ${f(-s * 0.2)} L0 ${f(-s * 1.1)}" stroke="${look.veins}" stroke-width=".8"/>` : "";
       return g(`<path d="M0 0 C${f(-s * 1.4)} ${f(-s * 0.2)} ${f(-s * 1.2)} ${f(-s * 1.4)} ${f(-s * 0.3)} ${f(-s * 1.2)} C${f(-s * 0.1)} ${f(-s * 1.5)} ${f(s * 0.1)} ${f(-s * 1.5)} ${f(s * 0.3)} ${f(-s * 1.2)} C${f(s * 1.2)} ${f(-s * 1.4)} ${f(s * 1.4)} ${f(-s * 0.2)} 0 0Z" fill="${fc}" ${ink}/>${vein}<circle cy="${f(-s * 0.45)}" r="${f(s * 0.26)}" fill="${cc}" ${ink}/>`); }
-    case "star": { const out = []; for (let i = 0; i < 5; i++) out.push(`<path d="${leafPath("heart", s)}" transform="rotate(${i * 72 + 180})" fill="${fc}" ${ink}/>`);
-      return g(out.join("") + `<circle r="${f(s * 0.22)}" fill="${cc}" ${ink}/>`); }
+    case "star": { const out = []; for (let i = 0; i < 5; i++) out.push(`<g transform="rotate(${i * 72 + 180})"><path d="${leafPath("heart", s)}" fill="${fc}" ${ink}/><path d="M0 ${f(-s * 0.1)} L0 ${f(-s * 0.8)} M0 ${f(-s * 0.3)} L${f(s * 0.2)} ${f(-s * 0.7)} M0 ${f(-s * 0.3)} L${f(-s * 0.2)} ${f(-s * 0.7)}" stroke="${shade(fc, -0.3)}" stroke-width=".35"/></g>`);
+      const stam = look.flower === "star" && look.fc === "#f4c21b" ? Array.from({ length: 14 }, (_, i) => { const t = (i / 14) * 6.283; return `<path d="M0 0 L${f(Math.cos(t) * s * 0.6)} ${f(Math.sin(t) * s * 0.6)}" stroke="${shade(fc, -0.25)}" stroke-width=".4"/><circle cx="${f(Math.cos(t) * s * 0.6)}" cy="${f(Math.sin(t) * s * 0.6)}" r=".7" fill="#b86a10"/>`; }).join("") : "";
+      return g(out.join("") + stam + `<circle r="${f(s * 0.22)}" fill="${cc}" ${ink}/>`); }
     case "trumpet": return g(`<path d="M0 0 L${f(-s * 0.25)} ${f(-s * 1.6)} Q${f(-s * 1.1)} ${f(-s * 2.2)} ${f(-s * 0.9)} ${f(-s * 2.7)} L${f(s * 0.9)} ${f(-s * 2.7)} Q${f(s * 1.1)} ${f(-s * 2.2)} ${f(s * 0.25)} ${f(-s * 1.6)} Z" fill="${fc}" ${ink}/><path d="M0 0 L0 ${f(-s * 2.6)} M${f(-s * 0.1)} ${f(-s * 1.4)} L${f(-s * 0.6)} ${f(-s * 2.6)} M${f(s * 0.1)} ${f(-s * 1.4)} L${f(s * 0.6)} ${f(-s * 2.6)}" stroke="${INK}" stroke-width=".4" opacity=".6"/>`);
     case "daff": { const out = []; for (let i = 0; i < 6; i++) out.push(`<path d="${leafPath("oval", s * 0.9)}" transform="rotate(${i * 60})" fill="${fc}" ${ink}/>`);
       return g(`<g transform="rotate(70)">${out.join("")}<path d="M${f(-s * 0.32)} 0 L${f(-s * 0.42)} ${f(-s * 1.2)} Q0 ${f(-s * 1.4)} ${f(s * 0.42)} ${f(-s * 1.2)} L${f(s * 0.32)} 0Z" fill="${cc}" ${ink}/></g>`); }
     case "catkin": return g(`<path d="M0 0 q${f(s * 0.3)} ${f(s * 0.9)} 0 ${f(s * 2)}" stroke="${fc}" stroke-width="${f(s * 0.5)}" stroke-linecap="round" fill="none"/><path d="M0 0 q${f(s * 0.3)} ${f(s * 0.9)} 0 ${f(s * 2)}" stroke="${INK}" stroke-width=".5" stroke-dasharray="1 2" fill="none"/>`);
+    case "thistle": { const out = [`<path d="M${f(-s * 0.7)} 0 Q${f(-s * 0.9)} ${f(-s * 0.9)} 0 ${f(-s * 1.1)} Q${f(s * 0.9)} ${f(-s * 0.9)} ${f(s * 0.7)} 0 Q0 ${f(s * 0.3)} ${f(-s * 0.7)} 0Z" fill="#7a9a5a" ${ink}/>`];
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 3; j++) { const x = -s * 0.55 + i * s * 0.18 + (j % 2) * s * 0.09, y = -s * 0.25 - j * s * 0.28; out.push(`<path d="M${f(x)} ${f(y)} l${f(-s * 0.12)} ${f(-s * 0.12)} M${f(x)} ${f(y)} l${f(s * 0.12)} ${f(-s * 0.12)}" stroke="${INK}" stroke-width=".45"/>`); }
+      for (let i = 0; i < 15; i++) { const t = -1 + (i / 14) * 2; out.push(`<path d="M${f(t * s * 0.4)} ${f(-s * 1)} L${f(t * s * 0.85)} ${f(-s * 1.9 + Math.abs(t) * s * 0.35)}" stroke="${fc}" stroke-width="1.6" stroke-linecap="round"/>`); }
+      return g(out.join("")); }
+    case "spathe": return g(`<path d="M0 0 C${f(-s * 1.3)} ${f(-s * 0.6)} ${f(-s * 1.2)} ${f(-s * 2.6)} ${f(s * 0.1)} ${f(-s * 3.6)} C${f(s * 0.3)} ${f(-s * 2.6)} ${f(s * 1.3)} ${f(-s * 1.2)} 0 0Z" fill="${fc}" ${ink}/><path d="M${f(-s * 0.15)} ${f(-s * 0.6)} Q${f(-s * 0.3)} ${f(-s * 1.6)} ${f(s * 0.05)} ${f(-s * 2.1)} Q${f(s * 0.3)} ${f(-s * 1.5)} ${f(s * 0.15)} ${f(-s * 0.6)}Z" fill="${cc}" ${ink}/><path d="M${f(-s * 0.7)} ${f(-s * 0.6)} Q${f(-s * 0.9)} ${f(-s * 2)} ${f(s * 0.05)} ${f(-s * 3.4)}" stroke="${shade(fc, -0.25)}" stroke-width=".6" fill="none"/>`);
+    case "chain": { const out = [`<path d="M0 0 Q${f(s * 0.4)} ${f(s * 2)} ${f(s * 0.1)} ${f(s * 4.2)}" stroke="${INK}" stroke-width=".5" fill="none"/>`];
+      for (let i = 0; i < 9; i++) { const t = i / 8, x = s * 0.35 * Math.sin(t * 2.4), y = s * 0.3 + t * s * 3.9, w = s * (0.55 - t * 0.3);
+        for (const d of [-1, 1]) out.push(`<path d="M${f(x)} ${f(y)} q${f(d * w * 1.2)} ${f(-w * 0.2)} ${f(d * w * 0.9)} ${f(w * 0.9)} q${f(-d * w * 0.5)} ${f(w * 0.3)} ${f(-d * w * 0.9)} ${f(-w * 0.2)}Z" fill="${i % 2 ? fc : shade(fc, -0.12)}" ${ink}/>`); }
+      return `<g transform="translate(${f(x)} ${f(y)})">${out.join("")}</g>`; }
     default: return "";
   }
+}
+
+/** A big fruit hanging at x,y: round (apple, tomato, nutmeg) or long (chilli); nutmeg shows its seed and red mace. */
+function fruit(look, x, y, r) {
+  const c = look.fruit, ink = `stroke="${INK}" stroke-width=".7"`;
+  if (look.fruitLong) return `<path d="M${f(x)} ${f(y)} q2 4 1 7" stroke="#4a6a3a" stroke-width="1.4" fill="none"/><path d="M${f(x - 3)} ${f(y + 6)} q-2 14 6 24 q2 -12 2 -24 q-4 -3 -8 0Z" fill="${c}" ${ink}/><path d="M${f(x - 1)} ${f(y + 9)} q-1 8 3 15" stroke="${shade(c, 0.5)}" stroke-width="1.1" fill="none" opacity=".7"/>`;
+  const R = look.mace ? 8 : 7.5;
+  const body = `<path d="M${f(x)} ${f(y)} l0 5" stroke="#5a3a1a" stroke-width="1.2"/><circle cx="${f(x)}" cy="${f(y + 5 + R)}" r="${R}" fill="${c}" ${ink}/>`;
+  if (look.mace) return body + `<path d="M${f(x - R * 0.8)} ${f(y + 5 + R)} Q${f(x)} ${f(y + 5 + R * 0.4)} ${f(x + R * 0.8)} ${f(y + 5 + R)}" stroke="${INK}" stroke-width=".6" fill="none"/><ellipse cx="${f(x)}" cy="${f(y + 6 + R)}" rx="${f(R * 0.5)}" ry="${f(R * 0.6)}" fill="#6a3a1a" ${ink}/><path d="M${f(x - 3)} ${f(y + 2 + R)} q2 4 0 8 M${f(x)} ${f(y + 1 + R)} q2 5 -1 10 M${f(x + 3)} ${f(y + 2 + R)} q-2 4 1 8" stroke="#d4141e" stroke-width="1.1" fill="none"/>`;
+  return body + `<circle cx="${f(x - R * 0.35)}" cy="${f(y + 5 + R * 0.65)}" r="${f(R * 0.28)}" fill="#fff" opacity=".45"/>${look.leaf === "pinnate" ? `<path d="M${f(x - 3)} ${f(y + 5)} l3 2 l3 -2 l-1 3" stroke="#4a7a3a" stroke-width="1" fill="none"/>` : ""}`;
 }
 
 /** Small flowers along the top of a stem path (spike, spire, hood, bells, tassel, dots). */
@@ -83,7 +114,7 @@ function along(look, pts, r) {
   top.forEach(([x, y], i) => {
     const s = (kind === "bells" ? 5.5 : 3) + (1 - i / top.length) * 2.5;
     if (kind === "spike") { const w = look.thin ? 0.6 : 1; for (const d of [-1, 1]) out.push(`<ellipse cx="${f(x + d * s * 0.7 * w)}" cy="${f(y)}" rx="${f(s * 0.55 * w)}" ry="${f(s * 0.75)}" fill="${fc}" ${ink}/>`); }
-    else if (kind === "spire" && i % 2 === 0) out.push(`<path d="M${f(x)} ${f(y)} q${f(s * 1.6)} ${f(s * 0.4)} ${f(s * 2.6)} ${f(s * 2.4)} q${f(-s * 0.9)} ${f(s * 0.9)} ${f(-s * 2.2)} ${f(s * 0.2)}Z" fill="${fc}" ${ink}/><circle cx="${f(x + s * 1.8)}" cy="${f(y + s * 1.9)}" r=".8" fill="${INK}"/>`);
+    else if (kind === "spire") out.push(`<path d="M${f(x)} ${f(y)} q${f(s * 1.6)} ${f(s * 0.4)} ${f(s * 2.6)} ${f(s * 2.4)} q${f(-s * 0.9)} ${f(s * 0.9)} ${f(-s * 2.2)} ${f(s * 0.2)}Z" fill="${fc}" ${ink}/><circle cx="${f(x + s * 1.8)}" cy="${f(y + s * 1.9)}" r=".8" fill="${INK}"/>`);
     else if (kind === "hood" && i % 2 === 0) out.push(`<path d="M${f(x)} ${f(y + s)} q${f(s * 2.4)} ${f(-s * 0.4)} ${f(s * 1.8)} ${f(-s * 2.2)} q${f(-s * 1)} ${f(-s * 0.9)} ${f(-s * 2.2)} ${f(0)} Q${f(x - s * 1.4)} ${f(y + s * 1.6)} ${f(x)} ${f(y + s)}Z" transform="translate(${f(-x * 0)} 0)" fill="${fc}" ${ink}/>`);
     else if (kind === "bells" && i % 2 === 0) out.push(`<path d="M${f(x)} ${f(y)} l${f(s * 0.8)} ${f(s * 0.6)}" stroke="${INK}" stroke-width=".5"/><path d="M${f(x + s * 0.2)} ${f(y + s * 0.8)} q${f(s * 0.6)} ${f(-s * 1.4)} ${f(s * 1.3)} 0 l${f(s * 0.2)} ${f(s * 0.3)} l${f(-s * 1.7)} 0Z" fill="${fc}" ${ink}/>`);
     else if (kind === "tassel" && i % 3 === 0) for (const d of [-1, 1]) out.push(`<path d="M${f(x)} ${f(y)} q${f(d * s * 2)} ${f(s)} ${f(d * s * 2.6)} ${f(s * 3.4)}" stroke="${fc}" stroke-width="2.2" fill="none" stroke-dasharray="1.6 1"/>`);
@@ -124,15 +155,22 @@ export function specimen(p, cx = 200, gy = 222, scale = 1) {
     out.push(`<path d="M${cx - 120} ${gy - 40} Q${cx} ${gy - 70} ${cx + 120} ${gy - 30}" stroke="#6b4a2a" stroke-width="7" fill="none" stroke-linecap="round"/>`);
     for (const a of [0, 120, 240]) twig(cx, gy - 60, a, 0);
   } else {
-    const n = { herb: 3, tall: 2, shrub: 4, tree: 1 }[look.habit] || 2, H = { herb: 110, tall: 168, shrub: 120, tree: 160 }[look.habit] || 120;
+    const tree = look.habit === "tree", n = { herb: 3, tall: 2, shrub: 4, tree: 3 }[look.habit] || 2, H = { herb: 110, tall: 168, shrub: 120, tree: 118 }[look.habit] || 120;
+    const base = tree ? gy - 52 : gy;
+    if (tree) out.push(`<path d="M${cx - 6} ${gy} Q${cx - 3} ${gy - 30} ${cx - 2} ${base} L${cx + 2} ${base} Q${cx + 3} ${gy - 30} ${cx + 6} ${gy}Z" fill="${stemC}" stroke="${INK}" stroke-width=".7"/><path d="M${cx - 2} ${gy - 6} q1 -20 0 -40" stroke="${shade(stemC, 0.35)}" stroke-width=".8" fill="none"/>`);
     for (let i = 0; i < n; i++) {
-      const spread = n === 1 ? 0 : (i / (n - 1) - 0.5), x0 = cx + spread * (look.habit === "shrub" ? 18 : 10);
-      const pts = stemPts(x0, gy, H * (1 - Math.abs(spread) * 0.35) * scale, spread * 70 + (look.habit === "tree" ? 60 : 0) + (r() - 0.5) * 8);
+      const spread = n === 1 ? 0 : (i / (n - 1) - 0.5), x0 = cx + spread * (look.habit === "shrub" ? 18 : tree ? 3 : 10);
+      const pts = stemPts(x0, base, H * (1 - Math.abs(spread) * (tree ? 0.25 : 0.35)) * scale, spread * (tree ? 130 : 70) + (r() - 0.5) * 8);
       stems.push(pts);
-      out.push(`<path d="${line(pts)}" stroke="${stemC}" stroke-width="${look.habit === "tree" ? 4 : look.habit === "shrub" ? 2.4 : 1.6}" fill="none" stroke-linecap="round"/>`);
+      const w0 = look.habit === "tree" ? 3.6 : look.habit === "shrub" ? 3 : 2.1;
+      for (let j = 0; j < pts.length - 1; j++) { const t = j / pts.length;
+        out.push(`<path d="M${f(pts[j][0])} ${f(pts[j][1])} L${f(pts[j + 1][0])} ${f(pts[j + 1][1])}" stroke="${shade(stemC, -0.15 + t * 0.25)}" stroke-width="${f(w0 * (1 - t * 0.6))}" stroke-linecap="round"/>`); }
+      if (look.habit === "tree" || look.habit === "shrub") out.push(`<path d="${line(pts.slice(0, -3))}" stroke="${shade(stemC, 0.35)}" stroke-width=".6" fill="none" transform="translate(-.8 0)" opacity=".7"/>`);
       if (look.spots) pts.slice(1, -4).forEach(([x, y], j) => j % 2 || out.push(`<ellipse cx="${f(x)}" cy="${f(y)}" rx="1.3" ry="2.2" fill="#7a2a5a"/>`));
     }
   }
+  // a basal rosette of big leaves (foxglove, comfrey, henbane…)
+  if (look.basal) for (let i = 0; i < 7; i++) { const a = -75 + (i / 6) * 150 + (r() - 0.5) * 10; out.push(leaf(look, cx, gy - 2, a, leafLen * 1.7 * (0.85 + r() * 0.3), r)); }
   // leaves up each stem
   const tipFrac = look.flower === "spike" || look.flower === "spire" || look.flower === "hood" ? 0.55 : 0.85;
   stems.forEach((pts, si) => { if (look.habit === "rosette") return;
@@ -146,16 +184,19 @@ export function specimen(p, cx = 200, gy = 222, scale = 1) {
     }
   });
   // flowers
-  const head = ["daisy", "cone", "umbel", "globe", "cup", "star", "trumpet", "daff", "catkin"].includes(look.flower);
+  const head = ["daisy", "cone", "umbel", "globe", "cup", "star", "trumpet", "daff", "catkin", "thistle", "spathe", "chain"].includes(look.flower);
   stems.forEach((pts) => {
     const [x, y] = pts[pts.length - 1], [px, py] = pts[pts.length - 3], a = (Math.atan2(x - px, py - y) * 180) / Math.PI;
-    if (head) { const s = { umbel: 12, globe: 12, cup: 15, trumpet: 9, daff: 13, catkin: 6 }[look.flower] || 9;
-      if (look.flower === "catkin") for (let j = 4; j < pts.length; j += 3) out.push(flower(look, pts[j][0] + 3, pts[j][1], 0, s, r));
+    if (head) { const s = { umbel: 12, globe: 12, cup: 15, trumpet: 9, daff: 13, catkin: 6, thistle: 11, spathe: 9, chain: 7 }[look.flower] || 9;
+      if (look.flower === "chain") for (let j = 6; j < pts.length; j += 3) out.push(flower(look, pts[j][0] + (j % 2 ? 10 : -10), pts[j][1], 0, s * (0.8 + j / pts.length * 0.3), r));
+      else if (look.flower === "catkin") for (let j = 4; j < pts.length; j += 3) out.push(flower(look, pts[j][0] + 3, pts[j][1], 0, s, r));
       else out.push(flower(look, x, y, look.flower === "daff" ? 0 : a * 0.5, s, r));
       if (look.many) for (const d of [-14, 14]) { out.push(`<path d="M${f(x)} ${f(y + 10)} L${f(x + d)} ${f(y - 2)}" stroke="#4a6a3a" stroke-width="1"/>`, flower(look, x + d, y - 2, 0, 7, r)); }
     } else out.push(along(look, pts, r));
+    if (look.fruit) for (const k of [0.4, 0.62, 0.8]) { const [fx, fy] = pts[Math.floor(pts.length * k)]; out.push(fruit(look, fx + (k === 0.62 ? -12 : 12), fy + 2, r)); }
     if (look.pod) { const [qx, qy] = pts[Math.floor(pts.length * 0.6)];
-      out.push(look.pod === "spiky" ? `<g transform="translate(${f(qx + 14)} ${f(qy)})"><ellipse rx="8" ry="10" fill="#6a8a4a" stroke="${INK}" stroke-width=".7"/>${Array.from({ length: 12 }, (_, k) => { const t = (k / 12) * 6.283; return `<path d="M${f(Math.cos(t) * 7)} ${f(Math.sin(t) * 9)} l${f(Math.cos(t) * 4)} ${f(Math.sin(t) * 4)}" stroke="${INK}" stroke-width=".7"/>`; }).join("")}</g>`
+      out.push(look.pod === "bean" ? `<g transform="translate(${f(qx + 8)} ${f(qy)}) rotate(28)"><path d="M0 0 C10 2 30 10 40 26 C30 18 10 10 0 6Z" fill="#a89a6a" stroke="${INK}" stroke-width=".7"/><path d="M0 6 C10 14 26 22 40 26" stroke="${INK}" stroke-width=".5" fill="none"/>${[8, 17, 26, 34].map((d, k) => `<ellipse cx="${d}" cy="${f(4 + d * 0.38)}" rx="3.6" ry="2.8" fill="${look.seed || "#5a3a2a"}" stroke="${INK}" stroke-width=".5" transform="rotate(${20 + k * 6} ${d} ${f(4 + d * 0.38)})"/>${look.berryEye ? `<circle cx="${d - 2}" cy="${f(3 + d * 0.38)}" r="1.3" fill="#111"/>` : `<circle cx="${d - 1}" cy="${f(3 + d * 0.38)}" r=".9" fill="#fff" opacity=".4"/>`}`).join("")}</g>`
+        : look.pod === "spiky" ? `<g transform="translate(${f(qx + 14)} ${f(qy)})"><ellipse rx="8" ry="10" fill="#6a8a4a" stroke="${INK}" stroke-width=".7"/>${Array.from({ length: 12 }, (_, k) => { const t = (k / 12) * 6.283; return `<path d="M${f(Math.cos(t) * 7)} ${f(Math.sin(t) * 9)} l${f(Math.cos(t) * 4)} ${f(Math.sin(t) * 4)}" stroke="${INK}" stroke-width=".7"/>`; }).join("")}</g>`
         : `<g transform="translate(${f(qx + 14)} ${f(qy)})"><path d="M-3 12 L-3 6" stroke="${INK}"/><ellipse rx="8" ry="7" fill="#a8b8a0" stroke="${INK}" stroke-width=".7"/><path d="M-7 -6 L-4 -9 L-1 -6 L2 -9 L5 -6 L7 -8" stroke="${INK}" stroke-width=".8" fill="none"/></g>`); }
   });
   if (look.habit !== "ball" && look.habit !== "tree") out.push(roots(look, cx, gy, r));
@@ -176,13 +217,16 @@ export function pageSvg(p, { leaves = 5, max = 5, revealed = false, no = 1, them
   const name = revealed && p ? esc(p.name) : "Unknown specimen";
   const leafIcons = Array.from({ length: max }, (_, i) => `${i >= fell && i < fellTo && fell >= 0 ? `<g transform="translate(${36 + i * 18} 40)"><g class="gr-fall"><path d="${leafPath("oval", 13)}" transform="rotate(-30)" fill="#5a9a4a" stroke="${INK}" stroke-width=".9"/></g></g>` : ""}<g transform="translate(${36 + i * 18} 40) rotate(-30)"><path d="${leafPath("oval", 13)}" fill="${i < leaves ? "#5a9a4a" : "none"}" stroke="${i < leaves ? INK : T.ink}" stroke-width=".9" opacity="${i < leaves ? 1 : 0.45}"/></g>`).join("");
   return `<svg viewBox="0 0 400 318" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-<defs><radialGradient id="gr-page" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="${T.paper}"/><stop offset="1" stop-color="${T.edge}"/></radialGradient></defs>
+<defs><radialGradient id="gr-page" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="${T.paper}"/><stop offset="1" stop-color="${T.edge}"/></radialGradient>
+<filter id="gr-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .12  0 0 0 .22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+<filter id="gr-wash" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" result="d"/><feGaussianBlur in="d" stdDeviation="1.6" result="b"/><feColorMatrix in="b" type="saturate" values="1.25" result="w"/><feMerge><feMergeNode in="w"/><feMergeNode in="d"/></feMerge></filter>
+<radialGradient id="gr-shadow"><stop offset="0" stop-color="#2a1a0a" stop-opacity=".28"/><stop offset="1" stop-color="#2a1a0a" stop-opacity="0"/></radialGradient></defs>
 <rect x="-600" y="-400" width="1600" height="1100" fill="${T.desk}"/>
-<rect x="14" y="10" width="372" height="282" rx="6" fill="url(#gr-page)" stroke="${T.ink}" stroke-width="1.2"/>
+<rect x="14" y="10" width="372" height="282" rx="6" fill="url(#gr-page)" stroke="${T.ink}" stroke-width="1.2"/><rect x="14" y="10" width="372" height="282" rx="6" fill="#fff" filter="url(#gr-grain)" opacity=".9"/>
 <rect x="22" y="18" width="356" height="266" rx="3" fill="none" stroke="${T.ink}" stroke-width=".6" opacity=".55" stroke-dasharray="${T.dash || "none"}"/>
 ${T.decor || ""}
 <rect x="174" y="12" width="52" height="14" fill="#efe3b8" opacity=".75" transform="rotate(-3 200 19)"/>
-<g class="gr-spec${turn ? " turn" : ""}"><g class="gr-sway">${p ? placed(p) : ""}</g></g>${sparkle ? `<g class="gr-spark">${Array.from({ length: 16 }, (_, i) => `<circle cx="${130 + ((i * 53) % 140)}" cy="${90 + ((i * 37) % 120)}" r="${i % 3 ? 2 : 3.2}" fill="${["#FADE8C", "#9be59b", "#f7b6e0"][i % 3]}" style="--d:${(i % 8) * 0.09}s"/>`).join("")}</g>` : ""}
+${p ? `<ellipse cx="206" cy="232" rx="92" ry="12" fill="url(#gr-shadow)"/>` : ""}<g class="gr-spec${turn ? " turn" : ""}"><g class="gr-sway"><g filter="url(#gr-wash)">${p ? placed(p) : ""}</g></g></g>${p && p.look.habit !== "ball" && p.look.habit !== "rosette" ? `<rect x="180" y="${p.look.root ? 176 : 196}" width="44" height="11" rx="1" fill="#efe3b8" opacity=".7" transform="rotate(4 202 ${p.look.root ? 181 : 201})"/>` : ""}${sparkle ? `<g class="gr-spark">${Array.from({ length: 16 }, (_, i) => `<circle cx="${130 + ((i * 53) % 140)}" cy="${90 + ((i * 37) % 120)}" r="${i % 3 ? 2 : 3.2}" fill="${["#FADE8C", "#9be59b", "#f7b6e0"][i % 3]}" style="--d:${(i % 8) * 0.09}s"/>`).join("")}</g>` : ""}
 ${leafIcons}
 <g transform="translate(244 240)"><rect width="130" height="42" rx="3" fill="${T.label}" stroke="${T.ink}" stroke-width=".8"/>
 <text x="8" y="13" font-family="Cinzel, Georgia, serif" font-size="8" fill="${T.ink}" letter-spacing="1">SPECIMEN Nº ${String(no).padStart(2, "0")}</text>
