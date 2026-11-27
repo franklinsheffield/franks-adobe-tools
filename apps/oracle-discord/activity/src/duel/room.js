@@ -12,6 +12,14 @@ import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
 import { SFX } from "./sfx.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
+
+/** Daily Lab score: a win is worth most, then damage dealt, Stability kept and discoveries; fewer rounds is better. */
+export function dailyScore(g) {
+  const won = g.over && g.over.winner === "you";
+  return Math.max(0, (won ? 500 : 0) + (START - Math.max(0, g.oracle.hp)) * 10 + Math.max(0, g.you.hp) * 10 + g.you.found.length * 25 - g.round * 5);
+}
+export const DAILY_LEVEL = 2; // everyone duels at Chemist, with the same seed
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const sign = (o) => (o > 0 ? "+" + o : String(o));
@@ -63,7 +71,7 @@ export const room = {
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     styleOnce();
-    let g = null, L = LEVELS[0], gen = 0, fx = null, hintId = null, busy = false;
+    let g = null, L = LEVELS[0], gen = 0, fx = null, hintId = null, busy = false, isDaily = false;
     const live = (my) => my === gen && state.inRoom === "duel";
     const later = (ms, fn) => { const my = gen; setTimeout(() => live(my) && fn(), ms); };
     const look = () => ({ ...lookOf(state.prog), uni: equippedBack(state.prog) });
@@ -79,14 +87,29 @@ export const room = {
         ? `Welcome to Element Duel, ${state.name}. Your cards are atoms. Put them together into real compounds, salt, water, rust, and hurl them at me. More exothermic means more power. Bring me to zero Stability, or discover five compounds before I do.`
         : pick([`Back for more chemistry, ${state.name}? Pick your level.`, "The deck is shuffled. The bench is clean. Which level?", `My atoms are ready, ${state.name}. Are yours?`]));
       ui(`${statsTop()}<div class="levels">${LEVELS.map((x) => `<button class="c level" type="button" data-l="${x.n}"><b>${"⚛️".repeat(x.n)} ${x.n} · ${esc(x.name)}</b><span>${esc(x.what)} · won ${r.wins[x.n] || 0} of ${r.played[x.n] || 0} · points ×${x.mult}</span></button>`).join("")}</div>
+        ${dailyBtn()}
         <div class="choices"><button class="c small" type="button" id="du-how">📖 How to play</button><button class="c small" type="button" id="du-codex">📒 My compounds</button><button class="c small" type="button" id="du-shop">🧪 Lab supplies</button></div>
         <div class="note">Every compound is real, and its power comes from its real enthalpy of formation. Cards show each element's usual charges.</div>
         <div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => start(LEVELS[+b.dataset.l - 1])));
+      $("du-daily").onclick = () => start(LEVELS[DAILY_LEVEL - 1], true);
+      $("du-board").onclick = () => showBoard();
       $("du-how").onclick = () => toggle(guideHtml);
       $("du-codex").onclick = () => toggle(codexPage);
       $("du-shop").onclick = () => shop();
       $("back").onclick = leave;
+    }
+    function dailyBtn() {
+      const d = dailyState(state.prog, "duel");
+      return `<div class="group">📅 Daily Lab #${dayNumber()}</div><div class="levels"><button class="c level" type="button" id="du-daily"><b>${d.played ? "🔁 Replay today's Daily Lab" : "📅 Play today's Daily Lab"}</b><span>The same hands, lab conditions and bonus for everyone today, at Chemist${d.played ? ` · your score: ${d.today.score} (replays don't count)` : " · your first run counts"}${d.streak ? ` · 🔥 ${d.streak}-day streak` : ""}</span></button></div>
+        <div class="choices"><button class="c small" type="button" id="du-board">🏆 Today's board</button></div>`;
+    }
+    async function showBoard(local) {
+      const rb = $("reading-body"), my = gen;
+      rb.innerHTML = `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">🏆 Daily Lab #${dayNumber()}</h3><div class="note">Loading the board…</div></div>`; rb.dataset.v = "";
+      const b = await boardOf(state, "duel"); if (my !== gen && !local) return;
+      const d = dailyState(state.prog, "duel");
+      rb.innerHTML = `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">🏆 Daily Lab #${dayNumber()}</h3>${boardHtml(b, esc, { unit: "pts", local: d.today })}<div class="note">Score: +500 for a win, +10 per Stability you knock off the Oracle, +10 per Stability you keep, +25 per discovery, −5 per round. A new deal every day at midnight UTC.</div></div>`;
     }
     const toggle = (fn) => { const rb = $("reading-body"), html = fn(); const on = rb.dataset.v !== fn.name; rb.innerHTML = on ? html : ""; rb.dataset.v = on ? fn.name : ""; if (on) rb.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" }); };
     function codexPage() {
@@ -110,9 +133,9 @@ export const room = {
       $("du-lobby").onclick = () => lobby(false);
     }
 
-    function start(level) {
-      L = level; gen++; g = newGame(L.n); fx = null; hintId = null; busy = false; clearReading();
-      cap(`⚛️ ${L.name} duel`); SFX.deal(7); draw();
+    function start(level, daily = false) {
+      L = level; isDaily = daily; gen++; g = newGame(L.n, daily ? dailySeed("duel") : Date.now()); fx = null; hintId = null; busy = false; clearReading();
+      cap(isDaily ? `📅 Daily Lab #${dayNumber()}` : `⚛️ ${L.name} duel`); SFX.deal(7); draw();
       const c = COND[g.cond];
       say(`${pick(["I shuffle my deck. You shuffle yours.", "Seven atoms each. Let's see what you can make.", "The bench is set. Your move, chemist."])} Round 1: ${c.emoji} ${c.name}. ${c.rule}`);
       turn();
@@ -190,7 +213,7 @@ export const room = {
         else { fx = null; draw(); SFX.deal(Math.max(1, out.recycled)); lines.push(fill(pick(TAUNT.orecycle), { k: out.recycled })); }
         say(lines.join(" "), () => later(out.ok ? 900 : 400, () => {
           if (g.over) return end();
-          busy = false; fx = null; cap(`⚛️ ${L.name} duel`);
+          busy = false; fx = null; cap(isDaily ? `📅 Daily Lab #${dayNumber()}` : `⚛️ ${L.name} duel`);
           if (g.round !== prev) { const c = COND[g.cond], b = BY_ID[g.bonus]; SFX.flip(); turn(`Round ${g.round}: ${c.emoji} ${c.name}. ${c.rule} Bonus: ${pretty(b.f)}.`); }
           else turn();
         }));
@@ -201,6 +224,10 @@ export const room = {
       fx = { kind: won ? "win" : "lose", draw: draw_ }; draw(); won ? SFX.win() : SFX.lose();
       const before = codexCount(state.prog), r = settle(state.prog, g), aw = award(r.xp, r.essence); saveProgress(); showStats();
       ctx.trophy?.("duel", g.level, { won, perfect: won && g.over.how !== "time" }); // Trophy Case (trophies.js)
+      let dl = null;
+      if (isDaily) { const score = dailyScore(g), detail = `${won ? "won" : draw_ ? "draw" : "lost"} in ${g.round} round${g.round === 1 ? "" : "s"}`;
+        dl = { score, ...finishDaily(state.prog, "duel", { score, won, detail }) }; saveProgress();
+        if (dl.first) postDaily(state, "duel", { score, won, detail }).then(() => showBoard(true)); else showBoard(true); }
       const t = titleOf(codexCount(state.prog)), titled = titleOf(before).name !== t.name;
       const how = { stability: won ? "The Oracle's Stability hits zero." : "Your Stability hits zero.", discovery: won ? `You discovered ${GOAL} compounds first.` : `The Oracle discovered ${GOAL} compounds first.`, time: "Thirty rounds: the higher Stability takes it." }[g.over.how];
       say(won ? `${how} ${pick(["Well reacted, chemist.", "I am… destabilised. You win.", "Mendeleev would be proud."])}` : draw_ ? "A perfect stalemate. Even the atoms are confused." : `${how} ${pick(["Better luck next reaction.", "The Oracle's chemistry prevails. This time.", "Back to the textbooks, then come back."])}`);
@@ -208,9 +235,10 @@ export const room = {
       ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${g.you.found.length} discover${g.you.found.length === 1 ? "y" : "ies"} this duel${g.you.bonusHits ? ` · ${g.you.bonusHits} bonus compound${g.you.bonusHits > 1 ? "s" : ""}` : ""}</div>
         ${r.newCodex.length ? `<div class="up">📒 New in your Codex: ${r.newCodex.map((id) => esc(pretty(id))).join(", ")}</div>` : ""}
         ${r.newChains.length ? `<div class="up">🏭 Chain completed: ${r.newChains.map((id) => esc(CHAINS.find((c) => c.id === id).name)).join(", ")}</div>` : ""}
+        ${dl ? `<div class="up">📅 Daily Lab #${dayNumber()}: <b>${dl.score} pts</b>${dl.first ? ` · 🔥 ${dl.streak}-day streak` : " · practice run (your first run today counts)"}</div>` : ""}
         ${titled ? `<div class="up">⚛️ Duel title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
-        <div class="choices"><button class="c main" type="button" id="du-again">⚛️ Rematch (${esc(L.name)})</button><button class="c" type="button" id="du-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-      $("du-again").onclick = () => start(L); $("du-lobby").onclick = () => lobby(false); $("back").onclick = leave;
+        <div class="choices">${isDaily ? "" : `<button class="c main" type="button" id="du-again">⚛️ Rematch (${esc(L.name)})</button>`}<button class="c" type="button" id="du-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      if ($("du-again")) $("du-again").onclick = () => start(L); $("du-lobby").onclick = () => lobby(false); $("back").onclick = leave;
     }
 
     lobby(true);
