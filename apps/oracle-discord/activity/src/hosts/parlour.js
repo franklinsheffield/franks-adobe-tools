@@ -157,7 +157,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const parlour = {
   id: "parlour", name: "Madame Rook", house: "The Séance Parlour", emoji: "🕯️", accent: "#C3A6FF",
   channelIds: ["1575977181622829158"], // #🕯️-parlour
-  readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "seance", "timeline"], daily: "timeline",
+  readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "seance", "timeline", "possession"], daily: "timeline",
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
@@ -180,6 +180,7 @@ export const parlour = {
       "Houdini could hold his breath for over three minutes in practice. I can hold a dramatic pause for about four seconds."],
   },
   banter: {
+    possession: G("Pearl Curran said a spirit, Patience Worth, dictated her books from 1913.", "The Ouija board was patented in 1891, darling. You're cheaper.", "Spirit writing, {name}! Georgie Yeats did it for her husband from 1917.", "The planchette's stopped, darling. They sold those as toys in the 1860s."),
     casefiles: G("Look for the method, darling. Every spirit leaves a mechanism.", "Houdini exposed fake mediums in his 1924 book, A Magician Among the Spirits.", "Solved! Another ghost unmasked. The Society would applaud.", "Not quite. The trick hides where you aren't looking, darling."),
     workshop: G("Every trick has a method, darling. Find the thread.", "Maskelyne invented a coin lock for public toilets. Magicians love a mechanism.", "Built and baffling! The Davenports would be jealous, {name}.", "The trick showed its strings. Rehearse, darling."),
     phantasmagoria: G("Robertson's Fantasmagorie opened in Paris in 1798. The ghosts were lantern slides.", "His lantern rolled on wheels, darling. Pull it back and the ghost grows.", "Pepper's Ghost, {name}! First shown in London at Christmas 1862.", "Tilt the glass by θ and the reflection turns by 2θ. Mind your angles, darling."),
