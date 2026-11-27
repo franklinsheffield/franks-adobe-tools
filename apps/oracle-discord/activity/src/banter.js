@@ -197,6 +197,18 @@ export const BANTER = {
     pirate: G("Mixin' powders! Careful, that one's for the cannons.", "Smelt it hot, like the sun on the Spanish Main!", "A new treasure from the pot! Into the chest!", "Arr, nothin'. Just smoke and a smell o' bilge."),
     influencer: G("Experiment vlog! Rate this combo one to ten!", "This crucible is giving cottagecore alchemist.", "New discovery unlocked! Adding it to my highlights.", "Flop era. Deleting that one from the grid."),
   },
+  commissions: {
+    mystic: G("Each letter is a thread. Follow it to its weaver.", "What you make leaves your hands and changes a life.", "Sealed and sent. Your work travels where you cannot.", "The client waits. Some gifts need another day."),
+    deadpan: G("Client wants a thing. You have a thing. Business.", "Wax seal. Very fancy. Still just a parcel.", "Delivered. Someone, somewhere, is mildly pleased.", "Not made yet. The client will survive."),
+    drama: G("A LETTER! Sealed! From a STRANGER!", "The bell founder NEEDS you. The whole cathedral waits!", "DELIVERED! The Royal Society whispers your NAME!", "No product?! The client weeps into their quill!"),
+    standup: G("Village jobs: the gig economy, but with more goats.", "A royal commission? I can't even get my landlord to reply.", "Delivered! Five stars. The village has one rating.", "Missed it. Tell them the cart lost a wheel."),
+    grumpy: G("Read the letter properly before you start mixing.", "Royal clients pay late. Always have.", "Fine work. Stamp it and send it. No dawdling.", "You promised. You didn't make it. Typical."),
+    sports: G("Three jobs on the board! Who's taking the field?", "Village to Guild! The climb is ON!", "DELIVERED! Reputation points on the board!", "The job slips away! There's always tomorrow's draw!"),
+    conspiracy: G("Why does the Mint need aqua regia? Ask yourself.", "Same three jobs for everyone? Coordinated. Obviously.", "Delivered. Now they know where your lab is.", "The order vanished. Somebody intercepted the post."),
+    bard: G("A letter comes with crimson wax and a humble plea!", "From village hearth to royal hall, the work must go!", "Sealed and sent, and sung in every guild house!", "The order waits; the ballad pauses mid-verse."),
+    pirate: G("A commission! Is it for powder? Say it's powder.", "Royal Navy job, eh? I'll keep me head down.", "Delivered! Payment in stones and shiny gems!", "Arr, no cargo to deliver. The ship sails empty."),
+    influencer: G("Brand deal! Well, a blacksmith. Close enough.", "Unboxing today's commissions, live from the board!", "Delivered! Tagging the Royal Society in my story.", "Ghosted the client. Not a great look, babe."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */

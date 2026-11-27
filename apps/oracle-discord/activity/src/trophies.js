@@ -30,6 +30,7 @@ export const TROPHIES = [
   { id: "minerals", game: "Mineral Cabinet", name: "Collector's Geode", art: "geode", need: 3 },
   { id: "casefiles", game: "Case Files", name: "Investigator's Lens", art: "lens", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
+  { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
   const n = t.need, w = n === 1 ? "Win" : `Win ${n} rounds`;
@@ -56,6 +57,7 @@ export const LINES = {
   memory: "The Sealed Grimoire opens only for minds like yours. Remember this moment.",
   flametest: "Bunsen's Burner, in your colours. Every flame you read was a real element.",
   bench: "The Golden Crucible. Every discovery in it was real chemistry.",
+  commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
   minerals: "The Collector's Geode. Crack it open: crystals, and your name on the label.",
   casefiles: "The Investigator's Lens. Every ghost you looked through it had a method.",
@@ -129,6 +131,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     lens: `<circle cx="44" cy="42" r="20" ${F}/><circle cx="44" cy="42" r="13" fill="#cfe8ff" opacity=".35"/><path class="tr-gem" d="M36 34 Q40 30 46 30" stroke="#fff" stroke-width="3" fill="none"/><path d="M58 56 L76 74" stroke="#5a3a12" stroke-width="9" stroke-linecap="round"/><path d="M58 56 L76 74" stroke="#C9A24A" stroke-width="5" stroke-linecap="round"/>`,
     loupe: `<path d="M24 30 Q50 22 70 30 L70 74 L24 74Z" ${F}/><path d="M32 40 h26 M32 48 h20 M32 56 h24" stroke="${lo}" stroke-width="2" stroke-linecap="round"/><g class="tr-rot"><circle cx="62" cy="40" r="14" fill="rgba(255,255,255,.18)" stroke="${mid}" stroke-width="4"/><path d="M72 50 L84 64" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     geode: `<path d="M22 54 Q20 26 50 20 Q80 26 78 54 Q76 76 50 78 Q24 76 22 54Z" ${F}/><path d="M32 52 Q32 34 50 30 Q68 34 68 52 Q66 68 50 70 Q34 68 32 52Z" fill="#7a4ad0" opacity=".85"/><path class="tr-gem" d="M42 52 L50 36 L58 52 L50 64Z" fill="#c8a8ff"/><path d="M36 56 L44 46 L46 60Z M56 46 L64 54 L56 62Z" fill="#e6d8ff" opacity=".8"/>`,
+    seal: `<path d="M38 56 L30 84 L40 78 L46 86 L50 60Z" fill="#b8322a"/><path d="M62 56 L70 84 L60 78 L54 86 L50 60Z" fill="#8a2420"/><circle cx="50" cy="44" r="24" ${F}/><circle cx="50" cy="44" r="16" fill="none" stroke="${lo}" stroke-width="2"/><path class="tr-glyph" d="M40 50 L42 38 L50 46 L58 38 L60 50Z" fill="${lo}"/>`,
     crucible: `<path d="M26 34 L74 34 L66 74 Q64 80 56 80 L44 80 Q36 80 34 74Z" ${F}/><rect x="22" y="28" width="56" height="8" rx="3" ${F}/><path d="M34 46 L66 46 L63 60 L37 60Z" fill="#ffcf6a" opacity=".85"/><circle class="tr-bub" cx="46" cy="50" r="2.5" fill="#fff" opacity=".8"/><path class="tr-flame" d="M40 92 Q46 82 50 92 Q54 82 60 92Z" fill="#ff8a3a"/>`,
     mortar: `<path class="tr-pestle" d="M58 44 L74 14" stroke="${mid}" stroke-width="7" stroke-linecap="round"/><path d="M24 46 L76 46 Q74 74 50 76 Q26 74 24 46Z" ${F}/><rect x="22" y="42" width="56" height="6" rx="3" ${F}/><path d="M36 42 Q40 36 44 42 M48 42 Q52 34 56 42" fill="#7ad16a"/>`,
   };
