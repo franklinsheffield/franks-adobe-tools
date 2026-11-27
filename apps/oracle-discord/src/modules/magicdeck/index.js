@@ -1,12 +1,14 @@
 // /magicdeck: the Science is Magic deck. 44 original cards, each a reflection plus a real science fact.
 import { DECK, SUITS, SPREADS } from "./data.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, GOLD, TEAL, FOOTER, cut, wrap } from "../../card.js";
 
 export const command = {
   name: "magicdeck",
   description: "Draw from the Science is Magic deck: 44 cards, each with a real science fact",
   options: [
-    { type: 3, name: "question", description: "What you want guidance on (optional)", max_length: 200 },
+    { type: 3, name: "question", description: "What you want to explore (optional)", max_length: 200 },
     { type: 3, name: "spread", description: "Which spread (default: hypothesis, test, result)", choices: Object.entries(SPREADS).map(([value, s]) => ({ name: s.name, value })) },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
@@ -64,9 +66,6 @@ export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
   const sp = SPREADS[key], cards = cast.map((d) => d.card);
   const fields = cast.map((d, k) => { const [label, about] = sp.positions[k], c = d.card, s = SUITS.find((q) => q.key === c.suit);
     return { name: `${k + 1}. ${label}: ${c.n} (${s.n})`, value: cut(`*${about}* · ${c.kw.join(", ")}\n${c.up}\n🔬 ${c.fact}`) }; });
-  const count = Object.fromEntries(SUITS.map((s) => [s.key, cards.filter((c) => c.suit === s.key).length]));
-  const top = SUITS.slice().sort((a, b) => count[b.key] - count[a.key])[0], keepers = cards.filter((c) => c.num === "K").length;
-  const last = cards[cards.length - 1];
   const main = {
     title: `✦ Science is Magic deck · ${sp.name.split(":")[0]}: ${cards.map((c) => c.n).join(" · ")}`.slice(0, 250), color: GOLD,
     description: question ? `**Question:** ${cut(question, 200)}` : "*An open reading.*",
@@ -75,9 +74,8 @@ export function readingEmbeds(cast, key, question, { who = "you" } = {}) {
   const synth = {
     title: "✦ Lab notes", color: TEAL,
     fields: [
-      { name: "⚖️ Balance", value: `${count[top.key] >= 2 ? `${top.n} lead: this is mostly about ${top.theme}.` : "No suit leads: every part of life has a say."}${keepers ? `\n${keepers} Keeper${keepers > 1 ? "s" : ""}: someone with real know-how is part of this.` : ""}` },
-      { name: "🔮 Conclusion", value: cut(cards.length === 1 ? `${last.n}: ${last.up}` : `From **${cards[0].n}** (${cards[0].kw[0]}) to **${last.n}** (${last.kw[0]}). ${last.up}`) },
-      { name: "🧪 Your experiment", value: `Test **${last.kw[0]}** for one week. Write down one thing a day that fits it, then compare notes with your hypothesis.` },
+      { name: "🧭 How to read the cards above", value: "Each card's line is a metaphor built on its science fact. The fact is real; the reflection is one way of looking at a question, not an instruction." },
+      { name: "📖 About this deck", value: "44 original cards in four suits of 11: Atoms (body, work, money), Moons (feelings, love, dreams), Potions (change, risk, experiments) and Stars (ideas, purpose, direction). Each suit runs 1 to 10 plus a Keeper." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
   };
@@ -90,6 +88,7 @@ export async function run(o = {}, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const defs = `<linearGradient id="md-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241a5c"/><stop offset="1" stop-color="#0f0a26"/></linearGradient>`;
   const png = await cardPng({ title: "Science is Magic deck", subtitle: `${SPREADS[key].name} · dealt for ${who}`, tag: "44 cards · each with a real science fact", body: body(cast, SPREADS[key], question), defs, H: key === "one" ? 760 : 720 });
-  return { embeds: readingEmbeds(cast, key, question, { who }), files: [{ name: "magicdeck.png", data: png }], ephemeral: !!o.private,
+  const ins = analyse(cast, SPREADS[key], who);
+  return { embeds: withInsight(readingEmbeds(cast, key, question, { who }), ins), analysis: ins.analysis, files: [{ name: "magicdeck.png", data: png }], ephemeral: !!o.private,
     reading: { spread: key, cards: cast.map((d) => ({ name: d.card.n })) }, headline: cast.map((d) => d.card.n).join(", ") };
 }

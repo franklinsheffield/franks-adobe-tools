@@ -2,6 +2,8 @@
 import { parseBirth } from "../../birthplace.js";
 import { numerology } from "./calc.js";
 import { N, POSITIONS, PERSONAL_YEAR, PERSONAL_MONTH, CHALLENGE, KARMIC_TEXT, BIRTHDAY } from "./text.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, para, fit, GOLD, TEAL, FOOTER, cut, MONTHS } from "../../card.js";
 
 export const command = {
@@ -78,7 +80,7 @@ export function readingEmbeds(r, { who = "you" } = {}) {
     title: `🔢 Numerology · Life Path ${label(r.lifePath)}`, color: GOLD,
     description: `*${lp.name}: ${lp.kw.join(", ")}.*`,
     fields: [pos("lifePath"), pos("expression"), pos("soulUrge"), pos("personality"),
-      { name: `🎂 Birthday · ${r.birthday.value}`, value: `Born on the ${ord(r.birthday.value)}: ${BIRTHDAY[r.birthday.value]}. It's a talent you can lean on whatever your path.` }],
+      { name: `🎂 Birthday · ${r.birthday.value}`, value: `Born on the ${ord(r.birthday.value)}: ${BIRTHDAY[r.birthday.value]}. Tradition reads the birth day as a talent that stays available whatever the path.` }],
     image: { url: "attachment://numerology.png" }, footer: FOOTER,
   };
   const cur = r.current;
@@ -98,8 +100,7 @@ export function readingEmbeds(r, { who = "you" } = {}) {
     fields: [
       { name: "🔬 Core blend", value: cut(blend) },
       { name: "✨ Gifts", value: [...new Set([r.lifePath, r.expression, r.soulUrge].map((v) => N[v.value].gift))].map((g) => `• ${g}`).join("\n") },
-      { name: "🌑 Watch for", value: [...new Set([r.lifePath, r.expression, r.soulUrge].map((v) => N[v.value].shadow))].map((g) => `• ${g}`).join("\n") },
-      { name: "🧪 Your experiment", value: `For the next month, notice when you're living your **${N[r.soulUrge.value].name.replace(/^The /, "")}** heart (${N[r.soulUrge.value].kw[0]}) and when you're only performing your **${N[r.personality.value].name.replace(/^The /, "")}** surface (${N[r.personality.value].kw[0]}). Once a week, do one thing that is pure **${N[r.lifePath.value].kw[0]}**: that's Life Path ${r.lifePath.value} fuel.` },
+      { name: "🌑 Shadow side", value: [...new Set([r.lifePath, r.expression, r.soulUrge].map((v) => N[v.value].shadow))].map((g) => `• ${g}`).join("\n") },
     ],
     footer: { text: `${FOOTER.text} · Pythagorean system · reading for ${who}` },
   };
@@ -111,13 +112,13 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function blendLine(r) {
   const lp = r.lifePath.value, ex = r.expression.value, su = r.soulUrge.value;
   const base = (n) => (n > 9 ? [2, 4, 6][[11, 22, 33].indexOf(n)] : n);
-  if (lp === ex && ex === su) return `Life Path, Expression and Soul Urge all say **${lp}**. That's rare: what you want, how you work and where you're headed point the same way. Your risk is too much of one note, so borrow from your Personality ${r.personality.value} for contrast.`;
+  if (lp === ex && ex === su) return `Life Path, Expression and Soul Urge all say **${lp}**. That's rare: what you want, how you work and where you're headed point the same way. The risk tradition names is too much of one note; Personality ${r.personality.value} is where the contrast sits.`;
   const nm = (n) => N[n].name.replace(/^The /, "");
   const parts = [`You walk a **${nm(lp)}** road (${lp}) with the tools of the **${nm(ex)}** (${ex}), driven by a **${nm(su)}** heart (${su}).`];
   const odd = (n) => base(n) % 2 === 1;
   if (odd(lp) === odd(ex)) parts.push("Your path and your tools pull in the same direction, so progress comes naturally once you commit.");
-  else parts.push(`Your path and your tools speak different languages (${odd(lp) ? "action and ideas" : "care and structure"} vs ${odd(ex) ? "action and ideas" : "care and structure"}). That friction is creative: let each check the other.`);
-  if ([r.lifePath, r.expression, r.soulUrge, r.personality].some((v) => N[v.value].master)) parts.push("A master number in your chart raises both the ceiling and the voltage: give it a practical outlet.");
+  else parts.push(`Your path and your tools speak different languages (${odd(lp) ? "action and ideas" : "care and structure"} vs ${odd(ex) ? "action and ideas" : "care and structure"}). Tradition reads that friction as creative, each side checking the other.`);
+  if ([r.lifePath, r.expression, r.soulUrge, r.personality].some((v) => N[v.value].master)) parts.push("A master number in your chart is read as raising both the ceiling and the voltage.");
   return parts.join(" ");
 }
 
@@ -130,6 +131,7 @@ export async function run(o, ctx = {}) {
   const subtitle = o.show_name ? `${o.name} · ${b.day} ${MONTHS[b.month - 1]} ${b.year}` : `Personal numbers for ${who}`;
   const png = await cardPng({ title: "Numerology", subtitle, tag: "Pythagorean · masters 11 22 33 kept", body: body(r, !!o.show_name), H: 1000,
     facts: [["Personal year", `${r.personalYear.value} · ${r.personalYear.year}`], ["Personal month", r.personalMonth], ["Pinnacle", `${r.current.pinnacle} · age ${r.current.from}${r.current.to != null ? "–" + r.current.to : "+"}`], ["Maturity", r.maturity]] });
-  return { embeds: readingEmbeds(r, { who }), files: [{ name: "numerology.png", data: png }], ephemeral: !!o.private, reading: r,
+  const ins = analyse(r, !!o.show_name, who);
+  return { embeds: withInsight(readingEmbeds(r, { who }), ins), analysis: ins.analysis, files: [{ name: "numerology.png", data: png }], ephemeral: !!o.private, reading: r,
     headline: `Life Path ${label(r.lifePath)} · ${N[r.lifePath.value].name}` };
 }

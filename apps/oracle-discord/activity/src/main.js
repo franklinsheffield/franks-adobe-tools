@@ -13,7 +13,7 @@ import { fieldsFor } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
 import { MODS } from "./modules.gen.js";
 import { startDiscord, inDiscord, api } from "./discord.js";
-import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
+import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, codexNotes, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
 import { CARD_BACK, cardBackSvg } from "./cardbacks.js";
@@ -307,10 +307,12 @@ async function reveal(sys, options, question = "") {
   layArt(files);
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
-  state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
+  const lore = codexNotes(state.prog, sys.key, r);
+  state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
   useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
-  const a = answer(question, text, state.name);
-  const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" }, { text: joke(sys.key), after: "laugh" }];
+  const a = answer(question, text, state.name, r.analysis);
+  const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" },
+    ...(lore.length > 1 ? [{ text: `Your Codex adds this, ${state.name}. ${lore.slice(1, 3).join(" ")}`, mood: "think" }] : []), { text: joke(sys.key), after: "laugh" }];
   if (pid() === "standup") setTimeout(rimshot, 400);
   talkThrough(pages, () => { afterReading(); reward(gain, sys); });
 }
@@ -360,7 +362,7 @@ function askAgain() {
     if (L.sys.kind === "cast") { reveal(L.sys, optionsFor(L.sys, { [L.sys.ask || "question"]: q }), q); return; }
     clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); $("say").textContent = "…"; ui("");
     setTimeout(() => { document.body.classList.remove("trance");
-      talkThrough([deliver(pid(), answer(q, L.text, state.name).line, { name: state.name }), joke(L.sys.key)], afterReading); }, reduced ? 0 : 2000);
+      talkThrough([deliver(pid(), answer(q, L.text, state.name, L.r.analysis).line, { name: state.name }), joke(L.sys.key)], afterReading); }, reduced ? 0 : 2000);
   };
   bindGo("qf");
 }

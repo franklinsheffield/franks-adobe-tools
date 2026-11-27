@@ -69,6 +69,6 @@ export const DECK = SUITS.flatMap((s, si) => RAW[s.key].map(([n, kw, up, fact], 
 
 export const SPREADS = {
   one: { name: "One card: a quick experiment", positions: [["The finding", "the heart of it"]] },
-  three: { name: "Three cards: hypothesis, test, result", positions: [["Hypothesis", "what you suspect"], ["Test", "what to try"], ["Result", "what you'll learn"]] },
-  five: { name: "Five cards: the lab report", positions: [["Question", "what you're really asking"], ["Hypothesis", "your hunch"], ["Method", "how to go about it"], ["Result", "what's likely"], ["Conclusion", "the takeaway"]] },
+  three: { name: "Three cards: hypothesis, test, result", positions: [["Hypothesis", "what you suspect"], ["Test", "what would check it"], ["Result", "what you'll learn"]] },
+  five: { name: "Five cards: the lab report", positions: [["Question", "what you're really asking"], ["Hypothesis", "your hunch"], ["Method", "how it is being approached"], ["Result", "what's likely"], ["Conclusion", "the takeaway"]] },
 };

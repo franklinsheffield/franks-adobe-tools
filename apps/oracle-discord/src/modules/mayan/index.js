@@ -2,6 +2,8 @@
 import { parseBirth } from "../../birthplace.js";
 import { mayaDate, nextKinReturn, SIGNS, HAAB } from "./calendar.js";
 import { SIGN_TEXT, TONE_TEXT, LORDS } from "./text.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, GOLD, TEAL, FOOTER, cut, MONTHS } from "../../card.js";
 
 export const command = {
@@ -90,9 +92,8 @@ export function readingEmbeds(m, today, ret, { who = "you", birth } = {}) {
   const now = {
     title: "⏳ The count today", color: GOLD,
     fields: [
-      { name: `Today: ${today.tone} ${today.signName}`, value: `${SIGN_TEXT[today.sign].kw[0][0].toUpperCase() + SIGN_TEXT[today.sign].kw[0].slice(1)} energy with tone ${today.tone} (${TONE_TEXT[today.tone][0].toLowerCase()}). ${today.sign === m.sign ? "It's your own day sign: a good day for things that matter to you." : ""}`.trim() },
+      { name: `Today: ${today.tone} ${today.signName}`, value: `${SIGN_TEXT[today.sign].kw[0][0].toUpperCase() + SIGN_TEXT[today.sign].kw[0].slice(1)} energy with tone ${today.tone} (${TONE_TEXT[today.tone][0].toLowerCase()}). ${today.sign === m.sign ? "It's your own day sign today." : ""}`.trim() },
       { name: "🎂 Your next Tzolk'in birthday", value: ret === 0 ? "**Today!** Your sacred-calendar birthday comes every 260 days. Traditionally a day for gratitude and intentions." : `In **${ret} day${ret === 1 ? "" : "s"}**. Your day ${m.tone} ${m.signName} comes round every 260 days, about the length of a human pregnancy, and many daykeepers mark it.` },
-      { name: "🧪 Your experiment", value: `For one 13-day trecena, note each morning's Tzolk'in day and watch where **${m.signName}** themes (${T.kw[0]}) show up in your life. That's how daykeepers learn the count: by living it.` },
       { name: "📖 About this reading", value: "Dates use the GMT correlation (584283), the one most Maya scholars and highland daykeepers agree with. It follows the traditional count still kept in Guatemala, not the modern 'Dreamspell' calendar, so your sign can differ from Dreamspell sites." },
     ],
     footer: { text: `${FOOTER.text} · reading for ${who}` },
@@ -109,5 +110,6 @@ export async function run(o, ctx = {}) {
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Maya Calendar", subtitle: `${m.tone} ${m.signName} · reading for ${who}`, tag: "Tzolk'in · Haab' · Long Count · GMT 584283", body: body(m, today),
     facts: [["Day sign", `${m.tone} ${m.signName}`], ["Kin", `${m.kin} of 260`], ["Haab'", m.haabName], ["Next Tzolk'in birthday", ret === 0 ? "today" : `in ${ret} days`]] });
-  return { embeds: readingEmbeds(m, today, ret, { who, birth: b }), files: [{ name: "mayan.png", data: png }], ephemeral: !!o.private, reading: m, headline: `${m.tone} ${m.signName} · kin ${m.kin}` };
+  const ins = analyse(m, today, ret, who);
+  return { embeds: withInsight(readingEmbeds(m, today, ret, { who, birth: b }), ins), analysis: ins.analysis, files: [{ name: "mayan.png", data: png }], ephemeral: !!o.private, reading: m, headline: `${m.tone} ${m.signName} · kin ${m.kin}` };
 }

@@ -2,6 +2,8 @@
 import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js";
 import { zodiacYear, fourPillars, elementBalance, ymd, STEMS, BRANCHES } from "./calendar.js";
 import { ANIMALS, ELEMENTS, DAY_MASTER, TRINES, TRINE_NAMES, HARMONY, clashOf, trineOf, yearRelation } from "./text.js";
+import { analyse } from "./insight.js";
+import { withInsight } from "../../insight.js";
 import { cardPng, PAL, esc, GOLD, TEAL, FOOTER, cut, MONTHS } from "../../card.js";
 
 export const command = {
@@ -108,7 +110,6 @@ export function readingEmbeds({ z, p, bal, cur }, { who = "you", timeKnown = tru
       { name: "🌙 Secret friend", value: `**${HARMONY[a]}**: the quiet ally. This pairing balances each other out, often across very different temperaments.` },
       { name: "⚡ Clash", value: `**${clashOf(a)}** sits opposite you on the wheel. Not a curse: it's the sign that challenges you most, and pushes you to grow.` },
       { name: `${ANIMALS[cur.branch.animal].emoji} ${cur.lunarYear}: ${yy(cur.stem)} ${cur.stem.el} ${cur.branch.animal} · ${rel.kind}`, value: rel.text },
-      { name: "🧪 Your experiment", value: `For one lunar month, feed your lightest element (**${low[0]}**) once a day: ${ELEMENTS[low[0]].lack.replace(/^More \w+: /, "")} Notice whether your ${dm.el} Day Master feels steadier.` },
     ],
     footer: { text: `${FOOTER.text} · lunar dates computed in China Standard Time · reading for ${who}` },
   };
@@ -131,6 +132,7 @@ export async function run(o, ctx = {}) {
   const png = await cardPng({ title: "Chinese Zodiac", subtitle: `${yy(r.z.stem)} ${r.z.stem.el} ${r.z.branch.animal} · reading for ${who}${timeKnown ? "" : " · birth time unknown"}`,
     tag: "lunar calendar + solar terms, real astronomy", body: body(r.z, r.p, r.bal),
     facts: [["Lunar new year", nice(r.z.newYear)], ["Day Master", `${plain(dm.py)} ${dm.el}`], ["Inner animal", r.p.month.branch.animal], ["This year", `${r.cur.stem.el} ${r.cur.branch.animal}`]] });
-  return { embeds: readingEmbeds(r, { who, timeKnown }), files: [{ name: "chinesezodiac.png", data: png }], ephemeral: !!o.private, reading: r,
+  const ins = analyse(r, { timeKnown, who });
+  return { embeds: withInsight(readingEmbeds(r, { who, timeKnown }), ins), analysis: ins.analysis, files: [{ name: "chinesezodiac.png", data: png }], ephemeral: !!o.private, reading: r,
     headline: `${yy(r.z.stem)} ${r.z.stem.el} ${r.z.branch.animal} · ${dm.py} ${dm.el} Day Master` };
 }

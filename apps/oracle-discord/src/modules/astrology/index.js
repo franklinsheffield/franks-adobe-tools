@@ -3,6 +3,7 @@ import { geocode, timeZoneAt, localToUtc, parseBirth } from "../../birthplace.js
 import { castChart, NAMES } from "./chart.js";
 import { wheelSvg, GLYPH } from "./wheel.js";
 import { castNow, skyContext, transits, transitLine } from "./now.js";
+import { analyse } from "./insight.js";
 import { SUN, MOON, RISING, planetLine, aspectLine, elementLine, formula } from "./text.js";
 
 const CHART_OPTS = [
@@ -50,7 +51,9 @@ export async function run(options, ctx = {}) {
   if (options.subcommand === "now") return runNow(options, ctx);
   const { chart: c, where } = await natalFrom(options, ctx);
   const nowChart = castNow(ctx.now || new Date(), null);
-  return withPng({ chart: c, ...render(c, options, where, nowChart) });
+  const out = render(c, options, where, nowChart), ins = analyse(c, { who: ctx.user ? `@${ctx.user}` : "you" });
+  out.embeds.push(ins.embed);
+  return withPng({ chart: c, ...out, analysis: ins.analysis, headline: `Sun in ${c.get("sun").sign}, Moon in ${c.get("moon").sign}${c.cusps ? `, ${c.get("asc").sign} rising` : ""}` });
 }
 
 async function natalFrom(options, ctx) {
@@ -80,14 +83,16 @@ export async function runNow(options, ctx = {}) {
     if (!options.birth_place) throw new Error("Add birth_place too, so I can place your chart.");
     ({ chart: natal } = await natalFrom({ date: options.birth_date, time: options.birth_time, time_unknown: options.birth_time_unknown ?? options.time_unknown, place: options.birth_place }, { ...ctx, geocoded: ctx.geocodedBirth }));
   }
-  return withPng(renderNow(sky, date, where, natal, options));
+  const out = renderNow(sky, date, where, natal, options), ins = analyse(sky, { who: ctx.user ? `@${ctx.user}` : "you", now: true });
+  out.embeds.push(ins.embed);
+  return withPng({ ...out, analysis: ins.analysis });
 }
 
 export function renderNow(sky, date, where, natal, options = {}) {
   const { fields, phase } = skyContext(sky, date);
   if (natal) {
     const tr = transits(natal, sky).slice(0, 5);
-    fields.push({ name: "🌌 How it touches your chart", value: tr.length ? tr.map(transitLine).join("\n").slice(0, 1024) : "No tight contacts today: a quiet sky for you. Good for steady work." });
+    fields.push({ name: "🌌 How it touches your chart", value: tr.length ? tr.map(transitLine).join("\n").slice(0, 1024) : "No tight contacts today. Astrologers would call that a quiet sky for this chart." });
   }
   const unix = Math.floor(date.getTime() / 1000);
   const place = where ? String(where.name).split(",").slice(0, 2).join(",").trim() : "";
