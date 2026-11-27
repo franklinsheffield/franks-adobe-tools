@@ -117,6 +117,7 @@ export const CSS = `
 .dec-play{display:flex;align-items:flex-end;gap:10px;margin:4px 0 2px}
 .dec-deck{position:relative;flex:0 0 66px;height:92px;border:0;background:none;padding:0;cursor:pointer;color:var(--fg)}
 .dec-deck .dec-back{position:absolute;inset:0;border:1px solid var(--gold);border-radius:9px;background:repeating-linear-gradient(45deg,rgba(226,176,74,.18) 0 4px,transparent 4px 9px),radial-gradient(circle at 50% 45%,#3a2a80,#161030);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.dec-deck .dec-back.cb{background:none;overflow:hidden}
 .dec-deck .dec-back:first-child{transform:translate(3px,-3px) rotate(3deg)}
 .dec-deck b{position:absolute;top:28px;left:0;right:0;font-family:var(--display);font-size:1.3rem;color:var(--gold2);text-shadow:0 1px 3px #000}
 .dec-deck small{position:absolute;bottom:-17px;left:-6px;right:-6px;font-size:.66rem;color:var(--muted);white-space:nowrap}
