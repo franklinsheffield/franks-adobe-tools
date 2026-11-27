@@ -6,6 +6,7 @@
 //        app's "3D library" card (the Activity frame can only reach this origin). Files: the public assets repo; thumbs:
 //        the web-pipeline-kit site; the list: kit-models.json in the web build (data/models-index.json).
 import { Rooms } from "./rooms.mjs";
+import { TERMS, PRIVACY } from "./legal.mjs";
 export { Rooms };
 // Role gate: GATE_GUILD_ID + GATE_ROLE_IDS (comma list). Unset = no gate.
 export const gateRoles = (env) => String(env.GATE_ROLE_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -64,6 +65,7 @@ export default {
       return env.ROOMS.get(env.ROOMS.idFromName("guild:" + guild)).fetch(req);
     }
     if (path.startsWith("/api/lib/")) return libProxy(req, env, path);
+    if (path === "/terms" || path === "/privacy") return new Response(path === "/terms" ? TERMS : PRIVACY, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
     if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, rooms: !!env.ROOMS, posting: !!env.DISCORD_BOT_TOKEN });
     return env.ASSETS.fetch(req);
   }
