@@ -13,7 +13,7 @@ export const isPhone = () => window.matchMedia(QUERY).matches;
 // phones: render at up to 1.5x pixels instead of 2x (about 45% fewer pixels to shade) and with cheaper shadows
 export function lightRender(win, on) {
   const r = win.__wb && win.__wb.vp && win.__wb.vp.renderer; if (!r) return false;
-  r.setPixelRatio(Math.min(on ? 1.5 : 2, win.devicePixelRatio || 1));
+  r.setPixelRatio(Math.min(on ? 1.5 : 2, win.devicePixelRatio || 1) * (win.__psQ || 1));   // __psQ: auto quality (extras.js)
   if (r.shadowMap) { const T = on ? 1 : 2; if (r.shadowMap.type !== T) { r.shadowMap.type = T; r.shadowMap.needsUpdate = true; } }   // 1 = PCF, 2 = PCF soft
   return true;
 }

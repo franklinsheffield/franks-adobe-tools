@@ -72,6 +72,20 @@ test("selected = locked: others can't edit, select or delete it; leaving frees i
   await b.say({ t: "lock", nid: "n1" }); assert.strictEqual(b.sent.filter((m) => m.t === "nack").length, 3, "free after Ana left");
 });
 
+test("presence: camera and ping are relayed to the others, rate limited, never stored", async () => {
+  const w = world(), a = await w.join("Ana"), b = await w.join("Bo"), sid = a.last("welcome").you.sid;
+  await a.say({ t: "cam", c: { tx: 1, ty: 0, tz: 2, d: 10, yaw: 0.5, pitch: 0.3 } });
+  assert.deepStrictEqual(b.last("cam"), { t: "cam", sid, c: { tx: 1, ty: 0, tz: 2, d: 10, yaw: 0.5, pitch: 0.3 } });
+  assert.ok(!a.sent.some((m) => m.t === "cam"), "not echoed back");
+  await a.say({ t: "cam", c: { tx: 9 } }); assert.strictEqual(b.sent.filter((m) => m.t === "cam").length, 1, "max 5 a second");
+  await a.say({ t: "cam", c: { big: "x".repeat(600) } }); assert.strictEqual(b.sent.filter((m) => m.t === "cam").length, 1, "too big is dropped");
+  await a.say({ t: "ping", x: 1, y: 0, z: -2 });
+  const p = b.last("ping"); assert.deepStrictEqual(p.p, [1, 0, -2]); assert.strictEqual(p.name, "Ana"); assert.strictEqual(p.sid, sid);
+  await a.say({ t: "ping", x: 2, y: 0, z: 0 }); assert.strictEqual(b.sent.filter((m) => m.t === "ping").length, 1, "max 1 a second");
+  await b.say({ t: "ping", x: "nope", y: 0, z: 0 }); assert.ok(!a.sent.some((m) => m.t === "ping"), "bad numbers are dropped");
+  const c = await w.join("Cy"); assert.strictEqual(c.last("welcome").scene, null, "nothing was stored");
+});
+
 test("room full at 8 builders", async () => {
   const w = world(); for (let i = 0; i < MAX_BUILDERS; i++) await w.join("P" + i);
   const late = await w.join("Late"); assert.ok(late.last("full") && late.closed === 4002);

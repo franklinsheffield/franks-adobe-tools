@@ -8,7 +8,7 @@ const BASE = process.argv[2] || "http://localhost:8787", SHOTS = process.argv[3]
 (async () => {
   const b = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }), errs = [];
   const open = async (ctxOpts, name) => { const c = await b.newContext(ctxOpts), p = await c.newPage(); p.on("pageerror", (e) => errs.push(name + ": " + e.message));
-    await p.goto(BASE + "/"); await p.waitForFunction(() => window.__wb && window.__wb.vp, null, { timeout: 90000 }); await p.waitForTimeout(4000); return { c, p }; };
+    await p.goto(BASE + "/?nostart=1"); await p.waitForFunction(() => window.__wb && window.__wb.vp, null, { timeout: 90000 }); await p.waitForTimeout(4000); return { c, p }; };
   const shot = async (p, n) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, n + ".png") }); } };
   try {
     const { c, p } = await open(devices["iPhone 13"], "phone");

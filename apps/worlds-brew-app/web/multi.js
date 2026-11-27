@@ -4,8 +4,11 @@
 //    big fields - meshes, photos, sculpt grids - as content-addressed blobs, uploaded once, gzip, 512 KB chunks)
 //  - selecting an object locks it for the others (their outline + name shows on it); a drag streams live at ~12 Hz
 //  - changes from others are applied in place and folded into the undo history, so Undo only undoes your own edits
-//  - the camera stays your own
+//  - the camera stays your own, but where each builder is looking is shared (a marker; tap their name to follow them)
+//  - long-press the ground to ping a spot for everyone (a pulsing marker for 4 seconds)
 import { inDiscord } from "./discord.js";
+import { mark } from "./marks.js";
+import { weekTheme, themeCaption } from "./theme.js";
 
 const HEAVY = ["mesh", "img", "hmap", "sculpt"], LHEAVY = ["img", "mimg"], LIVE = ["x", "y", "z", "ry", "s", "sx", "sy", "sz", "h"];
 const NOT_ENV = new Set(["objs", "cam", "name"]);
@@ -54,17 +57,42 @@ export class Net {
     ws.onopen = () => { this.retry = 0; this.pendingReplace = 0; ws.send(JSON.stringify(Object.assign({ t: "hello" }, this.who.hello))); };
     ws.onmessage = (ev) => { if (typeof ev.data !== "string") return this.onChunk(ev.data); let x; try { x = JSON.parse(ev.data); } catch (e) { return; } this.inbox = this.inbox.then(() => this.handle(x)).catch((e) => console.error("[multi]", e)); };
     ws.onclose = (ev) => {
-      this.ready = false; this.peers.clear(); this.drawPeers(); this.renderBar();
+      this.ready = false; for (const sid of this.peers.keys()) mark("cam:" + sid, null); this.peers.clear(); this.follow = null; this.drawPeers(); this.renderBar();
       if (this.closed || ev.code === 4001 || ev.code === 4002) return;
       const d = Math.min(15000, 1000 * Math.pow(2, this.retry++)); this.say("Building together: reconnecting...", true); setTimeout(() => this.connect(), d);
     };
   }
+  rejoin() { if (this.ws && this.ws.readyState <= 1) return; this.closed = false; this.retry = 0; this.say("Building together: rejoining..."); this.connect(); }
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(o instanceof Uint8Array ? o : JSON.stringify(o)); }
   hook() {
     const n = this.W.net;
     n.commit = () => this.queueDiff(); n.loaded = () => this.queueReplace(); n.sel = () => this.syncLock(); n.drag = () => this.drag();
     n.canSelect = (o) => this.canSelect(o); n.draw = () => {};
+    if (!this.camTimer) this.camTimer = setInterval(() => this.sendCam(), 250);
   }
+  // ---- presence: my camera, the others' cameras, following, pings
+  sendCam() {
+    if (!this.ready) return;
+    const c = this.W.st.scene.cam, r = (v) => +(+v).toFixed(2), o = { tx: r(c.tx), ty: r(c.ty), tz: r(c.tz), dist: r(c.dist), yaw: r(c.yaw), pitch: r(c.pitch), fov: r(c.fov) };
+    const s = JSON.stringify(o); if (s === this.camLast) return; this.camLast = s; this.send({ t: "cam", c: o });
+  }
+  applyCam(sid, c) {
+    const p = this.peers.get(sid); if (!p || !c || typeof c !== "object") return; p.cam = c;
+    if ([c.tx, c.ty, c.tz].every(Number.isFinite)) mark("cam:" + sid, { x: c.tx, y: c.ty, z: c.tz, label: p.name, color: p.color, cls: "eye" + (this.follow === sid ? " on" : "") });
+    if (this.follow === sid) { const cam = this.W.st.scene.cam; for (const k of ["tx", "ty", "tz", "dist", "yaw", "pitch", "fov"]) if (Number.isFinite(c[k])) cam[k] = c[k]; this.refresh("view"); }
+  }
+  setFollow(sid) {
+    const was = this.follow; this.follow = sid && sid !== was ? sid : null;
+    for (const id of [was, this.follow]) { const p = id && this.peers.get(id); if (p && p.cam) this.applyCam(id, p.cam); }
+    const p = this.follow && this.peers.get(this.follow);
+    this.say(p ? "Following " + p.name + ". Touch the view to stop." : "Stopped following"); this.renderBar();
+  }
+  ping(p) {
+    if (!this.ready) return false;
+    this.send({ t: "ping", x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) });
+    this.showPing(this.me, [p.x, p.y, p.z]); this.say("Pinged a spot for everyone in the call"); return true;
+  }
+  showPing(who, p) { mark("ping:" + who.sid, { x: p[0], y: p[1], z: p[2], label: who.name, color: who.color, cls: "ping", ttl: 4000 }); }
 
   // ---- incoming
   async handle(x) {
@@ -77,7 +105,9 @@ export class Net {
         this.syncLock(); this.drawPeers(); this.renderBar(); this.send({ t: "lib" }); return;
       }
       case "join": this.peers.set(x.peer.sid, x.peer); this.say(x.peer.name + " joined"); break;
-      case "left": { const p = this.peers.get(x.sid); this.peers.delete(x.sid); if (p) this.say(p.name + " left"); break; }
+      case "left": { const p = this.peers.get(x.sid); this.peers.delete(x.sid); mark("cam:" + x.sid, null); if (this.follow === x.sid) this.follow = null; if (p) this.say(p.name + " left"); break; }
+      case "cam": this.applyCam(x.sid, x.c); break;
+      case "ping": { const p = this.peers.get(x.sid) || { sid: x.sid, name: x.name, color: x.color }; if (Array.isArray(x.p)) { this.showPing(p, x.p); this.say(p.name + " pinged a spot"); } break; }
       case "lock": { const p = this.peers.get(x.sid); if (p) p.sel = x.nid; break; }
       case "nack": {
         if (x.lock) { this.myLock = null; const o = x.nid && this.byNid.get(x.nid); if (o && W.st.sel === o) { this.applying = true; try { W.select(null); } finally { this.applying = false; } } }
@@ -254,14 +284,18 @@ export class Net {
     if (!this.ui) {
       const bar = document.createElement("div"); bar.className = "ps-room"; wrap.appendChild(bar);
       const people = document.createElement("div"); people.className = "ps-room-people"; bar.appendChild(people);
+      people.addEventListener("click", (e) => { const c = e.target.closest("[data-sid]"); if (c) this.setFollow(c.dataset.sid); else if (e.target.closest("[data-rejoin]")) this.rejoin(); });
+      const th = weekTheme(), theme = document.createElement("div"); theme.className = "ps-room-theme"; bar.appendChild(theme);
+      theme.innerHTML = "This week's build theme: <b>" + esc(th.name) + "</b>"; theme.title = "Post a render this week and it is tagged with the theme, so the server can spot theme builds";
       const row = document.createElement("div"); row.className = "ps-room-row"; bar.appendChild(row);
       const b = (label, fn) => { const x = document.createElement("button"); x.textContent = label; x.onclick = fn; row.appendChild(x); return x; };
       b("Save", () => this.saveToServer()).title = "Save the shared scene to this server's library"; b("Library", () => this.toggleLib()).title = "Scenes saved by this server"; this.postBtn = b("Post render", () => this.postRender());
       const lib = document.createElement("div"); lib.className = "ps-room-lib"; lib.hidden = true; bar.appendChild(lib);
       this.ui = { bar, people, lib, libOpen: false };
     }
-    const chip = (p, me) => '<span class="ps-chip" style="--c:' + p.color + '"><i></i>' + esc(p.name) + (me ? " (you)" : "") + "</span>";
-    this.ui.people.innerHTML = !this.ready ? '<span class="ps-chip off">Building together: offline</span>' : chip(this.me, true) + [...this.peers.values()].map((p) => chip(p)).join("");
+    const chip = (p, me) => me ? '<span class="ps-chip" style="--c:' + p.color + '"><i></i>' + esc(p.name) + " (you)</span>"
+      : '<button type="button" class="ps-chip' + (this.follow === p.sid ? " on" : "") + '" data-sid="' + esc(p.sid) + '" style="--c:' + p.color + '" title="' + (this.follow === p.sid ? "Stop following " : "Follow ") + esc(p.name) + "'s view\"><i></i>" + esc(p.name) + (this.follow === p.sid ? " (following)" : "") + "</button>";
+    this.ui.people.innerHTML = !this.ready ? '<span class="ps-chip off">Building together: offline</span><button type="button" class="ps-chip" data-rejoin="1" title="Connect to the call\'s shared scene again">Rejoin</button>' : chip(this.me, true) + [...this.peers.values()].map((p) => chip(p)).join("");
   }
   toggleLib() { this.ui.libOpen = !this.ui.libOpen; this.ui.lib.hidden = !this.ui.libOpen; if (this.ui.libOpen) { this.send({ t: "lib" }); this.renderLib(); } }
   renderLib() {
@@ -287,7 +321,7 @@ export class Net {
       const bytes = png instanceof Uint8Array ? png : new Uint8Array(png), h = await sha(bytes);
       this.onServer.delete(h); await this.upload(h, bytes, false); this.onServer.delete(h);
       const done = new Promise((r) => { this.postDone = r; setTimeout(r, 30000); });
-      this.send({ t: "post", h, caption: this.W.st.scene.name || "" }); await done;
+      this.send({ t: "post", h, caption: themeCaption(this.W.st.scene.name || "") }); await done;
     } catch (e) { this.say("Post failed: " + e.message, true); }
     finally { this.posting = false; this.postDone = null; this.postBtn.disabled = false; }
   }
@@ -305,5 +339,8 @@ export async function startMulti() {
     base = "/.proxy/api/room";
   } else { who = { hello: { dev: true, name: q.get("name") || "Guest" }, guild: "dev", room: q.get("room") }; base = "/api/room"; }
   const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + base + "?guild=" + encodeURIComponent(who.guild) + "&room=" + encodeURIComponent(who.room);
-  const net = new Net(W, who, url); window.__psNet = net; net.renderBar(); net.connect(); return net;
+  const net = new Net(W, who, url); window.__psNet = net; net.renderBar(); net.connect();
+  // touching the view yourself stops following someone
+  const wrap = document.getElementById("vpwrap"); if (wrap) { const stop = (e) => { if (net.follow && !(e.target.closest && e.target.closest("button, .ps-room"))) net.setFollow(null); }; wrap.addEventListener("pointerdown", stop, true); wrap.addEventListener("wheel", stop, { capture: true, passive: true }); }
+  return net;
 }
