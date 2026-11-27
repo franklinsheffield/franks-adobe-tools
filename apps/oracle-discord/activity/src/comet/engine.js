@@ -1,5 +1,6 @@
 // Comet Hunter: pure logic (no DOM). The Observatory's second new game.
-// Level 1 Spot the mover: blink two plates taken a week apart and tap what moved (plate flaws show on one plate only).
+// Level 1 Spot the mover: blink two plates and tap what moved. Decoys teach: a variable star, dust on one plate, a satellite trail.
+// The size of the hop says what it is (near-Earth, main belt, far out); the last plate is modelled on Tombaugh's 1930 Pluto pair.
 // Level 2 Comet or Messier object: a fuzzy patch on both plates. Did it move? If not, which Messier object is it?
 // Level 3 Predict a return: from a real comet's last pass and its period, say when it comes back, as Halley did.
 // Progress: prog.rooms.comet = { plays, best: { 1: stars, 2, 3 }, cleared: [levels], caught: [comet ids] }.
@@ -37,15 +38,49 @@ export const RETURNS = [
 ];
 
 // ---- Level 1: spot the mover ----
-/** A plate pair: stars (same on both), the mover's two positions, and (from round 3) a flaw on one plate only. Plates are 400x260. */
+/** What a mover is, by how far it hops between plates: the nearer an object, the faster it seems to move against the stars. */
+export const MOVERS = {
+  near: { hop: [40, 55], label: "Near-Earth asteroid", note: "A big hop means it's close. Surveys such as ATLAS and Pan-STARRS find near-Earth asteroids this way today: repeat images of the same sky, searched for points that move." },
+  main: { hop: [18, 30], label: "Main-belt asteroid", note: "A middling hop: most likely a main-belt asteroid, between Mars and Jupiter. Giuseppe Piazzi found the first, Ceres, on 1 January 1801 by seeing it shift from night to night." },
+  far: { hop: [8, 12], label: "Something far out", note: "A tiny hop: something a long way off. The farther out an object is, the slower it seems to drift against the stars." },
+  pluto: { hop: [8, 10], label: "Pluto, 1930", note: "Clyde Tombaugh blinked plates of Gemini taken on 23 and 29 January 1930 and spotted Pluto on 18 February 1930, near the star Delta Geminorum. He was 24." },
+};
+/** The last plate of a run is a Pluto plate modelled on Tombaugh's discovery pair. */
+export const PLUTO_ROUND = 4;
+/**
+ * A plate pair (400x260): stars (same on both), the mover's two positions and kind, and decoys that teach:
+ * from round 1 a variable star (brightens, never moves), from round 2 a flaw on one plate, from round 3 a satellite trail on one plate.
+ */
 export function platePair(seed, round = 0) {
-  const r = rng(seed), n = 34 + round * 12, shift = Math.max(9, 30 - round * 5);
+  const r = rng(seed), n = 34 + round * 12;
   const stars = Array.from({ length: n }, () => ({ x: 14 + r() * 372, y: 14 + r() * 232, s: 0.5 + r() * r() * 2.2 }));
-  const x0 = 60 + r() * 280, y0 = 40 + r() * 180, a = r() * Math.PI * 2;
-  const mover = { a: { x: x0, y: y0 }, b: { x: Math.min(386, Math.max(14, x0 + Math.cos(a) * shift)), y: Math.min(246, Math.max(14, y0 + Math.sin(a) * shift)) }, s: 1.1 + r() * 0.6 };
-  const flaw = round >= 2 ? { x: 20 + r() * 360, y: 20 + r() * 220, on: r() < 0.5 ? "a" : "b" } : null;
-  return { stars, mover, flaw };
+  const kind = round === PLUTO_ROUND ? "pluto" : round <= 1 ? (r() < 0.5 ? "near" : "main") : ["near", "main", "far"][Math.floor(r() * 3)];
+  const [lo, hi] = MOVERS[kind].hop, shift = lo + r() * (hi - lo);
+  const x0 = 70 + r() * 260, y0 = 50 + r() * 160, a = r() * Math.PI * 2, cl = (v, m) => Math.min(m - 14, Math.max(14, v));
+  const mover = { kind, a: { x: x0, y: y0 }, b: { x: cl(x0 + Math.cos(a) * shift, 400), y: cl(y0 + Math.sin(a) * shift, 260) }, s: Math.max(0.9, 1.7 - round * 0.18) };
+  const away = (x, y, d = 30) => [mover.a, mover.b].every((m) => Math.hypot(m.x - x, m.y - y) > d);
+  for (const q of stars) for (let k = 0; k < 20 && !away(q.x, q.y, 14); k++) { q.x = 14 + r() * 372; q.y = 14 + r() * 232; } // no star crowds the mover
+  const spot = () => { for (let k = 0; k < 20; k++) { const x = 24 + r() * 352, y = 24 + r() * 212; if (away(x, y)) return { x, y }; } return { x: 30, y: 30 }; };
+  const variable = round >= 1 ? { ...spot(), sa: 2.4, sb: 0.9, bright: r() < 0.5 ? "a" : "b" } : null;
+  const flaw = round >= 2 ? { ...spot(), on: r() < 0.5 ? "a" : "b" } : null;
+  let trail = null;
+  if (round >= 3) { const y1 = 20 + r() * 220, y2 = 20 + r() * 220; trail = { x1: 0, y1, x2: 400, y2, on: r() < 0.5 ? "a" : "b" }; if ([mover.a, mover.b].some((m) => segDist(trail, m.x, m.y) < 22)) { trail.y1 = cl(mover.a.y + 60, 260); trail.y2 = cl(mover.a.y + 70, 260); } }
+  return { stars, mover, flaw, variable, trail };
 }
+const segDist = (t, x, y) => { const dx = t.x2 - t.x1, dy = t.y2 - t.y1, k = Math.max(0, Math.min(1, ((x - t.x1) * dx + (y - t.y1) * dy) / (dx * dx + dy * dy))); return Math.hypot(t.x1 + k * dx - x, t.y1 + k * dy - y); };
+/** What a tap at (x, y) lands on: the nearest of mover / variable / flaw / trail / star within R, or null for empty sky. */
+export function pickAt(pair, x, y, R = 16) {
+  const c = [];
+  for (const m of [pair.mover.a, pair.mover.b]) c.push(["mover", Math.hypot(m.x - x, m.y - y) * 0.8]); // a small pull towards the mover
+  if (pair.variable) c.push(["variable", Math.hypot(pair.variable.x - x, pair.variable.y - y)]);
+  if (pair.flaw) c.push(["flaw", Math.hypot(pair.flaw.x - x, pair.flaw.y - y)]);
+  if (pair.trail) c.push(["trail", segDist(pair.trail, x, y) + 4]);
+  for (const s of pair.stars) c.push(["star", Math.hypot(s.x - x, s.y - y)]);
+  const best = c.filter((q) => q[1] <= R).sort((p, q) => p[1] - q[1])[0];
+  return best ? best[0] : null;
+}
+/** How far the mover hopped, and what that suggests. */
+export const hopOf = (pair) => ({ d: Math.round(Math.hypot(pair.mover.a.x - pair.mover.b.x, pair.mover.a.y - pair.mover.b.y)), ...MOVERS[pair.mover.kind] });
 /** Did a tap at (x, y) on the 400x260 plate hit the mover (on either plate)? */
 export const hitMover = (pair, x, y, R = 12) => [pair.mover.a, pair.mover.b].some((m) => Math.hypot(m.x - x, m.y - y) <= R);
 export const hitFlaw = (pair, x, y, R = 12) => !!pair.flaw && Math.hypot(pair.flaw.x - x, pair.flaw.y - y) <= R;
