@@ -148,3 +148,12 @@ export function logDaily(p, k, won) {
   d.streak = d.last === prevDay(k) ? d.streak + 1 : 1; d.last = k; d.best = Math.max(d.best, d.streak);
   return { bonus: DAILY_BASE + DAILY_STEP * (Math.min(d.streak, DAILY_MAX) - 1), streak: d.streak };
 }
+
+// ---- head-to-head race (in a Discord call, over the Chamber's shared tables, net.js) ----
+export const RACE_POOL = [...RECIPES, ...DISCOVERIES, ...MODERN];
+export const RACE_WIN = 15;
+/** Rank race results: finished first, then most flames left, then fastest. An explosion or a give-up ranks last. */
+export function raceRank(rows) {
+  return [...rows].sort((a, b) => (b.won - a.won) || (a.won ? b.flames - a.flames : 0) || (a.boom - b.boom) || (a.ms - b.ms)).map((r, i) => ({ ...r, place: i + 1 }));
+}
+export const raceLevel = (x) => LEVELS.find((L) => L.deck.includes(x));
