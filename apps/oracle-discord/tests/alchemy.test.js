@@ -115,3 +115,22 @@ test("every recipe and discovery has its own reaction animation", async () => {
     assert.ok(r.after.length > 20, `${x.id} has no ${x.fx} effect`); assert.ok(r.anim.includes(x.colour), x.id);
   }
 });
+
+test("hazards: real dangerous mixes explode and end the experiment; no correct recipe is a hazard; each is reachable", async () => {
+  const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
+  const { hazardOf } = await import("../activity/src/alchemy/logic.js");
+  for (const x of [...RECIPES, ...DISCOVERIES]) assert.equal(hazardOf(x.make, x.op), null, `${x.id}'s own recipe explodes`);
+  for (const h of HAZARDS) {
+    assert.ok(h.what && h.lesson && h.name, h.id);
+    const reach = [...RECIPES, ...DISCOVERIES].some((x) => { const ok = [...h.all, ...(h.any ? [h.any.find((i) => x.shelf.includes(i)) || h.any[0]] : [])];
+      return ok.every((i) => x.shelf.includes(i)) && ok.length <= 3 && hazardOf(ok, (h.ops || ["dissolve"])[0])?.id === h.id; });
+    assert.ok(reach, `${h.id} can't happen on any shelf`);
+  }
+  assert.equal(hazardOf(["vitriol", "water"], "dissolve").id, "acidwater");
+  assert.equal(hazardOf(["iron", "vitriol"], "dissolve"), null); assert.equal(hazardOf(["iron", "vitriol"], "heat").id, "hydrogenfire");
+  assert.equal(hazardOf(["mercury", "aquafortis", "wine"], "dissolve").id, "fulminate");
+  const L = LEVELS[1], x = RECIPES.find((r) => r.id === "aquafortis"), run = start(x, L), p = { xp: 0, essence: 0 };
+  assert.equal(transmute(run, x, ["vitriol", "water"], "distil"), "boom"); assert.ok(run.done && !run.won && run.flames === 0);
+  assert.equal(transmute(run, x, ["saltpetre", "vitriol"], "distil"), null, "game over after the explosion");
+  const s = settle(p, run, x); assert.equal(s.xp, 0); assert.ok(s.boom); assert.deepStrictEqual(room(p).accidents, ["acidwater"]); assert.equal(room(p).booms, 1);
+});

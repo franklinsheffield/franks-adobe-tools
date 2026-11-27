@@ -88,7 +88,7 @@ export const OPS_ALCH = ["heat", "dissolve", "distil", "sublime"];
 
 /** Level 2: real recipes from the alchemists' books. `make` = the reagents, `op` = the operation. */
 export const RECIPES = [
-  { id: "cinnabar", fx: "sublime", fxc: "#d42b1e", goal: "Make vermilion, the red pigment the alchemists prized", make: ["mercury", "sulfur"], op: "sublime", shelf: ["mercury", "sulfur", "lead", "salt", "vinegar", "copper"],
+  { id: "cinnabar", fx: "sublime", fxc: "#d42b1e", goal: "Make vermilion, the red pigment the alchemists prized", make: ["mercury", "sulfur"], op: "sublime", shelf: ["mercury", "sulfur", "lead", "salt", "vinegar", "saltpetre"],
     hint: "The two 'principles' Jabir said every metal is made of.", product: "Vermilion (cinnabar)", colour: "#d42b1e", eq: "Hg + S → HgS", el: ["Hg", "S"],
     story: "Medieval painters' recipes describe heating mercury and sulfur together: a black powder forms, then sublimes into brilliant red vermilion. To an alchemist this was proof that mercury and sulfur were the parents of things.",
     science: "Mercury and sulfur combine into mercury sulfide, HgS. The natural mineral cinnabar is the same compound and is the main ore of mercury. Both are toxic: never try this." },
@@ -100,7 +100,7 @@ export const RECIPES = [
     hint: "A salt from cellars and stables, plus the 'oil' made from vitriol.", product: "Aqua fortis", colour: "#f0c96a", eq: "KNO₃ + H₂SO₄ → KHSO₄ + HNO₃", el: ["N", "K"],
     story: "Latin texts written around 1300 under the name 'Geber' explain distilling saltpetre with vitriol to get aqua fortis. Goldsmiths used it to part silver from gold, because it dissolves silver but not gold.",
     science: "Aqua fortis is nitric acid, HNO₃. Sulfuric acid pushes it out of potassium nitrate, and it distils over as a fuming liquid. Glauber later perfected the method in the 1600s." },
-  { id: "aquaregia", fx: "fumes", fxc: "#e0a040", goal: "Make aqua regia, the 'royal water' that dissolves gold", make: ["aquafortis", "salammoniac"], op: "dissolve", shelf: ["aquafortis", "salammoniac", "vinegar", "water", "saltpetre", "sulfur"],
+  { id: "aquaregia", fx: "fumes", fxc: "#e0a040", goal: "Make aqua regia, the 'royal water' that dissolves gold", make: ["aquafortis", "salammoniac"], op: "dissolve", shelf: ["aquafortis", "salammoniac", "wine", "water", "saltpetre", "sulfur"],
     hint: "Start from the strong water, and add the salt from Egyptian temple soot.", product: "Aqua regia", colour: "#e8902c", eq: "HNO₃ + NH₄Cl → aqua regia (HNO₃ + HCl, with NH₄NO₃)", el: ["N", "Cl"], noBalance: true,
     story: "'Geber' also describes dissolving sal ammoniac in aqua fortis. The result dissolved gold, the king of metals, so it was named aqua regia, royal water.",
     science: "The sal ammoniac (ammonium chloride) supplies chloride, turning part of the mix into hydrochloric acid. Today aqua regia is made from 1 part nitric acid to 3 parts hydrochloric acid." },
@@ -120,11 +120,11 @@ export const RECIPES = [
     hint: "Kitchen salt, and the oily acid from vitriol.", product: "Spirit of salt + Glauber's salt", colour: "#e3efd8", eq: "2NaCl + H₂SO₄ → Na₂SO₄ + 2HCl", el: ["Na", "Cl", "S"],
     story: "Johann Rudolf Glauber described this in the mid-1600s. The fuming liquid that distilled over was 'spirit of salt'; the crystals left behind he called sal mirabilis, the miraculous salt, and sold as a medicine.",
     science: "Spirit of salt is hydrochloric acid, HCl. The residue is sodium sulfate, still called Glauber's salt today." },
-  { id: "aquavitae", fx: "drip", fxc: "#f6f1de", goal: "Distil aqua vitae, the 'water of life'", make: ["wine"], op: "distil", shelf: ["wine", "vinegar", "water", "salt", "urine", "sulfur"],
+  { id: "aquavitae", fx: "drip", fxc: "#f6f1de", goal: "Distil aqua vitae, the 'water of life'", make: ["wine"], op: "distil", shelf: ["wine", "vinegar", "water", "salt", "aquafortis", "sulfur"],
     hint: "Only one ingredient, from the vineyard.", product: "Spirit of wine", colour: "#f6f1de", eq: "boils off at 78 °C (ethanol) before water at 100 °C", el: ["C", "H", "O"], noBalance: true,
     story: "Distillers in medieval Europe, around the medical school of Salerno in the 1100s, learned to distil wine into a burning spirit. They called it aqua vitae and believed it prolonged life.",
     science: "It is ethanol. It boils at 78 °C, lower than water, so heating wine gently sends mostly alcohol up into the alembic first. This is the basis of distillation everywhere." },
-  { id: "dianatree", fx: "tree", fxc: "#8d98aa", goal: "Grow the 'Tree of Diana', a silver tree", make: ["silver", "aquafortis", "mercury"], op: "dissolve", shelf: ["silver", "aquafortis", "mercury", "gold", "vinegar", "salt"],
+  { id: "dianatree", fx: "tree", fxc: "#8d98aa", goal: "Grow the 'Tree of Diana', a silver tree", make: ["silver", "aquafortis", "mercury"], op: "dissolve", shelf: ["silver", "aquafortis", "mercury", "gold", "vinegar", "wine"],
     hint: "The Moon's metal in the strong water, then a drop of quicksilver.", product: "Arbor Dianae", colour: "#e6e9ee", eq: "Hg + 2AgNO₃ → Hg(NO₃)₂ + 2Ag", el: ["Ag", "Hg", "N"],
     story: "Silver dissolved in aqua fortis, with mercury added, grows glittering branches of silver. Alchemists named it after Diana, goddess of the Moon (silver's planet), and saw it as metals growing like plants.",
     science: "Silver dissolves as silver nitrate. Mercury is more reactive, so it pushes silver out of solution, and the silver atoms crystallise into branching 'dendrites'." },
@@ -132,7 +132,7 @@ export const RECIPES = [
 
 /** Level 3: the experiments that became chemistry. Bench step as in level 2, then name what they found. */
 export const DISCOVERIES = [
-  { id: "phosphorus", fx: "glow", fxc: "#b8ff8a", who: "Hennig Brand", when: "Hamburg, 1669", goal: "Boil down a golden liquid hoping for the philosopher's stone", make: ["urine"], op: "distil", shelf: ["urine", "wine", "gold", "salt", "vinegar", "sulfur"],
+  { id: "phosphorus", fx: "glow", fxc: "#b8ff8a", who: "Hennig Brand", when: "Hamburg, 1669", goal: "Boil down a golden liquid hoping for the philosopher's stone", make: ["urine"], op: "distil", shelf: ["urine", "wine", "aquafortis", "salt", "vinegar", "sulfur"],
     hint: "He collected a vast amount of a golden liquid from people, not mines.", product: "A white wax that glows in the dark", colour: "#d9ffb3", glow: true, eq: "phosphates + carbon → P (strong heat)", noBalance: true, el: ["P"],
     options: ["Phosphorus", "Gold", "Sulfur", "Mercury"], answer: "Phosphorus",
     story: "Brand boiled down buckets of urine, then heated the residue fiercely. Instead of gold he got a white, waxy substance that glowed in the dark with a ghostly green light.",
@@ -175,3 +175,23 @@ export const ELEMENTS = {
   K: [4, 1, 19], Ca: [4, 2, 20], Mn: [4, 7, 25], Fe: [4, 8, 26], Cu: [4, 11, 29], Ag: [5, 11, 47], Sn: [5, 14, 50], Sb: [5, 15, 51],
   Au: [6, 11, 79], Hg: [6, 12, 80], Pb: [6, 14, 82],
 };
+
+/** Real dangerous combinations. Mixing one of these ends the experiment with an explosion and teaches why.
+ *  all: every reagent needed; any: at least one of these too; ops: only with these operations (none = any). First match wins. */
+export const HAZARDS = [
+  { id: "fulminate", name: "Fulminating mercury", all: ["mercury", "aquafortis", "wine"],
+    what: "Mercury, nitric acid and alcohol together make mercury fulminate, a crystal so touchy it explodes from a knock or a spark.",
+    lesson: "Edward Howard first described it to the Royal Society in 1800 after it shattered his glassware. It later filled the percussion caps that fired guns. Alchemists who mixed 'quicksilver, strong water and spirit of wine' risked exactly this." },
+  { id: "nitricspirit", name: "Runaway acid and alcohol", all: ["wine"], any: ["aquafortis", "aquaregia"],
+    what: "Strong nitric acid attacks alcohol so fast that the mixture heats itself, boils and can burst its container.",
+    lesson: "This runaway reaction is a classic real laboratory accident. Nitric acid and alcohols are always stored and poured apart." },
+  { id: "acidwater", name: "Water into vitriol", all: ["vitriol", "water"],
+    what: "Pouring water into concentrated oil of vitriol releases so much heat that the water boils instantly and the acid erupts out of the flask.",
+    lesson: "Chemists still chant 'do as you oughta, add acid to water': a little acid poured slowly into lots of water, never the other way round." },
+  { id: "hydrogenfire", name: "Inflammable air meets fire", all: ["iron"], any: ["vitriol", "spiritofsalt"], ops: ["heat", "distil", "sublime"],
+    what: "Iron in acid gives off hydrogen. Heating it over the furnace lit the gas, and hydrogen mixed with air explodes.",
+    lesson: "Cavendish collected his 'inflammable air' carefully over water, away from flames. The same gas burned the airship Hindenburg in 1937." },
+  { id: "flashfire", name: "Saltpetre and brimstone", all: ["saltpetre", "sulfur"], ops: ["heat", "distil", "sublime"],
+    what: "Saltpetre releases oxygen when heated, so the sulfur burns all at once in a blinding flash.",
+    lesson: "A Chinese Daoist alchemy text from around 850 CE warns that heating saltpetre, sulfur and realgar with honey burned hands, faces and whole houses: the first written hint of gunpowder." },
+];

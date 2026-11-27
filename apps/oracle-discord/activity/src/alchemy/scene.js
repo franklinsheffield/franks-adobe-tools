@@ -63,6 +63,16 @@ export const reactionFx = (r) => {
   return { anim: `<animate attributeName="fill" values="${cols.join(";")}" dur="${0.5 + cols.length * 0.4}s" fill="freeze"/>`, over: swirl, after: (REACT[r.fx] || (() => ""))(r.fxc || r.to) };
 };
 
+/** The explosion: white flash, shockwave rings, flying glass shards, a fireball, a soot cloud and a cracked, empty stand. */
+const boomFx = (c = "#ff9a3c") => `<g class="al-boom">
+  <circle class="al-fireball" cx="200" cy="165" r="60" fill="url(#al-fireball)"/>
+  ${[0, 1].map((i) => `<circle class="al-ring" cx="200" cy="165" r="30" fill="none" stroke="${i ? "#fff" : c}" stroke-width="${i ? 3 : 8}" style="animation-delay:${i * 0.12}s"/>`).join("")}
+  ${Array.from({ length: 16 }, (_, i) => { const a = i * 0.3927 + (i % 2) * 0.2, d = 120 + (i % 4) * 40;
+    return `<path class="al-shard" d="M200 165 l${4 + (i % 3) * 3} -2 l-3 ${6 + (i % 2) * 4} Z" fill="#cfe6ff" opacity=".9" style="--x:${(Math.cos(a) * d).toFixed(0)}px;--y:${(Math.sin(a) * d * 0.8).toFixed(0)}px;--r:${(i * 97) % 720}deg"/>`; }).join("")}
+  ${[0, 1, 2, 3, 4, 5].map((i) => `<circle class="al-soot" cx="${170 + i * 12}" cy="160" r="${16 + (i % 3) * 6}" fill="#2a2430" style="--dx:${(i - 2.5) * 22}px;animation-delay:${0.25 + i * 0.07}s"/>`).join("")}
+  <path class="al-crack" d="M150 210 l14 -6 l6 10 l12 -8 M250 214 l-10 -4 l-4 9" stroke="#140804" stroke-width="2" fill="none"/>
+  <rect class="al-flash" x="-600" y="-400" width="1600" height="1100" fill="#fff"/></g>`;
+
 export function sceneSvg(s) {
   const rx = s.react ? reactionFx(s.react) : null;
   const fire = (shopItem(s.look.fire) || shopItem("al-coal")).flame;
@@ -76,10 +86,11 @@ export function sceneSvg(s) {
     return `<g transform="translate(${90 + i * 34} 196)"><g class="al-chip"><circle r="13" fill="#160b2c" stroke="${r.c || "#E2B04A"}" stroke-width="2"/>${r.glyph ? g(r.glyph, -9, -9, 18, "#FADE8C") : `<text y="4" font-size="9" fill="#FADE8C" text-anchor="middle" font-family="system-ui">${xml(r.f.length <= 5 ? r.f : r.name.slice(0, 4))}</text>`}</g></g>`; }).join("");
   const scroll = s.glyph ? `<g class="al-scroll${s.fizzle ? " shake" : ""}"><rect x="22" y="84" width="96" height="100" rx="8" fill="#efe1bf" stroke="#8a6a3a" stroke-width="2"/><rect x="16" y="80" width="108" height="10" rx="5" fill="#c9a46b"/><rect x="16" y="180" width="108" height="10" rx="5" fill="#c9a46b"/><g class="al-ink${s.glow ? " lit" : ""}">${g(s.glyph, 34, 98, 72, "#3a1f0e")}</g></g>` : "";
   const label = s.label ? `<g class="al-label"><rect x="${200 - Math.min(180, s.label.length * 4.4 + 20)}" y="10" width="${Math.min(360, s.label.length * 8.8 + 40)}" height="28" rx="6" fill="#160b2c" stroke="#E2B04A" stroke-width="2"/><text x="200" y="29" text-anchor="middle" font-family="Cinzel,Georgia,serif" font-weight="700" font-size="${s.label.length > 34 ? 10 : 13}" fill="#FADE8C">${xml(s.label)}</text></g>` : "";
-  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${s.glow ? "al-won" : ""}">
+  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${s.glow ? "al-won" : ""}${s.boom ? " al-exploded" : ""}">
 <defs><radialGradient id="al-wall" cx="50%" cy="60%" r="75%"><stop offset="0" stop-color="#3b2a52"/><stop offset="1" stop-color="#0a0612"/></radialGradient>
 <radialGradient id="al-fire" cx="50%" cy="80%" r="70%"><stop offset="0" stop-color="${fire[0]}"/><stop offset=".5" stop-color="${fire[1]}"/><stop offset="1" stop-color="${fire[2]}"/></radialGradient>
 <radialGradient id="al-halo"><stop offset="0" stop-color="${s.liquid || fire[1]}" stop-opacity=".7"/><stop offset="1" stop-color="${s.liquid || fire[1]}" stop-opacity="0"/></radialGradient>
+<radialGradient id="al-fireball"><stop offset="0" stop-color="#fffbe0"/><stop offset=".35" stop-color="#ffd23a"/><stop offset=".7" stop-color="#ff5a1f"/><stop offset="1" stop-color="#7a1010" stop-opacity="0"/></radialGradient>
 <radialGradient id="al-stoneglow"><stop offset="0" stop-color="#ff3a4a" stop-opacity=".6"/><stop offset="1" stop-color="#ff3a4a" stop-opacity="0"/></radialGradient>
 <pattern id="al-brick" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#6a2f1f"/><path d="M0 0 H20 M0 5 H20 M10 0 V5 M0 5 V10 M20 5 V10" stroke="#2a120a" stroke-width="1"/></pattern></defs>
 <rect x="-600" y="-400" width="1600" height="1100" fill="#0a0612"/><rect x="-200" width="800" height="300" fill="url(#al-wall)"/>
@@ -89,7 +100,7 @@ ${charm(s.look.charm)}${scroll}
 <circle class="al-halo" cx="200" cy="168" r="${s.glow ? 70 : 40}" fill="url(#al-halo)" opacity="${s.glow ? 1 : 0.35}"/>
 <rect x="150" y="198" width="100" height="52" rx="4" fill="url(#al-brick)" stroke="#2a120a" stroke-width="2"/><rect x="160" y="206" width="80" height="34" rx="14" fill="#140804"/>
 ${flames}${s.snuff ? `<g class="al-dying"><path d="M${xs[lit]} 236 C${xs[lit] + 9} 224 ${xs[lit] + 6} 214 ${xs[lit]} 204 C${xs[lit] - 6} 214 ${xs[lit] - 9} 224 ${xs[lit]} 236Z" fill="url(#al-fire)"/></g>` : ""}${lit ? embers() : ""}
-${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}">${vessel(s.look.vessel, s.react ? s.react.from[0] || s.liquid : s.liquid, !!s.pour, s.react ? rx.anim : "")}${s.react ? rx.over + rx.after : ""}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}
+${s.glow ? burstFx(s.liquid || "#FADE8C") : ""}<g class="al-vessel${s.fizzle ? " shake" : ""}${s.boom ? " gone" : ""}">${vessel(s.look.vessel, s.react ? s.react.from[0] || s.liquid : s.liquid, !!s.pour, s.react ? rx.anim : "")}${s.react ? rx.over + rx.after : ""}</g>${lit && !s.fizzle ? vapour() : ""}${s.pour ? pourFx(s.pour) : ""}${s.fizzle ? puffFx() : ""}${s.boom ? boomFx(s.boomColor) : ""}
 ${chips}${label}
 </svg>`;
 }

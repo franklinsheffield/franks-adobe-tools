@@ -4,7 +4,7 @@
 // answer costs a flame). Levels 2-3: choose the reagents and the operation, then Transmute; a failed mix or a hint
 // from the notebook costs a flame. Level 3 then asks what the experiment really found (one try, bonus points).
 // Points scale ×1 / ×1.5 / ×2. First success pays ✦ and 💎; replays pay only the improvement on your best.
-import { SYMBOLS, RECIPES, DISCOVERIES, OPS_ALCH } from "./lab.js";
+import { SYMBOLS, RECIPES, DISCOVERIES, OPS_ALCH, HAZARDS } from "./lab.js";
 
 export const LEVELS = [
   { n: 1, name: "Apprentice", what: "Read the symbols", deck: SYMBOLS, mult: 1 },
@@ -59,10 +59,16 @@ export function judge(x, ings, op) {
   const extra = set.length - right, missing = x.make.length - right, opRight = op === x.op;
   return { ok: !extra && !missing && opRight, right, extra, missing, opRight };
 }
-/** Transmute. "right" | "wrong" | "out" | null, plus the judgement in run.last. */
+/** The real hazard this mix and operation set off, or null. */
+export function hazardOf(ings, op) {
+  return HAZARDS.find((h) => h.all.every((i) => ings.includes(i)) && (!h.any || h.any.some((i) => ings.includes(i))) && (!h.ops || h.ops.includes(op))) || null;
+}
+/** Transmute. "right" | "wrong" | "out" | "boom" | null, plus the judgement in run.last (or the hazard in run.boom). */
 export function transmute(run, x, ings, op) {
   if (run.done || run.stage !== "bench" || !op || !ings.length) return null;
-  run.tries++; const j = judge(x, ings, op); run.last = j;
+  run.tries++;
+  const hz = hazardOf(ings, op);
+  if (hz) { run.boom = hz.id; run.flames = 0; run.done = true; run.won = false; return "boom"; } const j = judge(x, ings, op); run.last = j;
   if (j.ok) { if (run.level === 3) run.stage = "name"; else { run.done = run.won = true; } return "right"; }
   spend(run); return run.done ? "out" : "wrong";
 }
@@ -86,6 +92,7 @@ export const scoreOf = (run) => { const m = levelOf(run).mult; return run.won ? 
 export function settle(p, run, x) {
   const r = room(p), k = run.level + ":" + run.id; r.plays++; r.last = run.id;
   const out = { xp: 0, essence: 0, first: false, best: false, score: scoreOf(run), newEls: [] };
+  if (run.boom) { r.booms = (r.booms || 0) + 1; (r.accidents ||= []).includes(run.boom) || r.accidents.push(run.boom); out.boom = true; return out; }
   if (!run.won) { out.xp = 3; return out; }
   for (const e of x.el || []) if (!r.elements.includes(e)) { r.elements.push(e); out.newEls.push(e); }
   const prev = r.solved[k] || 0; out.first = !prev;
