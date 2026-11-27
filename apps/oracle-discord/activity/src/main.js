@@ -58,7 +58,8 @@ import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
 import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
-import { host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost } from "./hosts/index.js"; // the Houses engine: one host per channel
+import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip } from "./hosts/index.js";
+import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -281,6 +282,8 @@ function greet() {
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
+  { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
+  if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${HOST().token.emoji} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
   $("hm-surprise").onclick = () => { const all = [...items.question, ...items.cards, ...items.birth, ...items.play], it = all[Math.floor(Math.random() * all.length)];
     mood.emote("wink", { quiet: true }); it.kind === "sys" ? choose(systemByKey(it.id)) : openRoom(it.id); };
@@ -288,6 +291,19 @@ function greet() {
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
   $("ui").querySelectorAll("[data-study]").forEach((b) => (b.onclick = () => openStudy(b.dataset.study)));
   paintOrbs();
+}
+
+// ---- House tokens (hosts/tokens.js): a stray token from another House sometimes turns up and is sent home ----
+function strayCheck() {
+  const home = strayFind(state.prog, HOST(), HOSTS, new Date().toISOString().slice(0, 10)); if (!home) return;
+  saveProgress(); showStats(); setTimeout(() => { mood.emote("wow", { quiet: true }); mood.bubble(strayLine(HOST(), home), 6000, home.token.emoji); }, reduced ? 0 : 2200);
+}
+function openHouseRelics(note) {
+  const H = HOST(); state.inRoom = null; clearReading(); table.idle(); cap(H.relicLabel);
+  say(typeof note === "string" ? note : H.relicBlurb); ui(relicPanelHtml(state.prog, H, esc));
+  $("ui").querySelectorAll("[data-hrelic]").forEach((b) => (b.onclick = () => { const r = buyHouseRelic(state.prog, H, b.dataset.hrelic); if (!r) return;
+    saveProgress(); showStats(); applyLook(); chime(2); mood.emote("cheer"); openHouseRelics(`${r.name}. It stays in my House now, for good. Look behind me.`); }));
+  $("hr-back").onclick = greet;
 }
 
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
@@ -324,7 +340,7 @@ function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   if (state.inRoom !== id && !cine.mid) return cine(CINE.room, () => openRoom(id, arg));
   state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
-  const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
+  const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); if (xp || es) strayCheck(); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
     arg, go: (rid, a) => openRoom(rid, a), reading: (k) => { const sys = systemByKey(k); if (sys) choose(sys); } }); // reading: open one of the Oracle's readings (e.g. "astrology") // arg: optional entry hint from another room (e.g. { ghost } or { script }); go: jump to another room
 }
@@ -498,7 +514,7 @@ function reward(g, sys) {
 function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
-  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens to spend on Moon relics. Earn them with your first reading each day and by beating game levels.">🌙 ${moonLeft(p)}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens to spend on Moon relics. Earn them with your first reading each day and by beating game levels.">🌙 ${moonLeft(p)}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`; $("stats").insertAdjacentHTML("beforeend", houseChip(p));
   setTimeout(() => { try { musicNews(); } catch {} }, 0); // Essence-based records (Coin Drop Groove) unlock as the total changes
 }
 
@@ -1136,7 +1152,7 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
   mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) });
-  { const mt = levelTokens(state.prog, id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +🌙 ${mt.n}, series bonus included. That's a Moon relic.` : `First win at Level ${level}! +🌙 ${mt.n} for Moon relics.`, 3400, "🌙"), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
+  { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : "Lab relics"}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }

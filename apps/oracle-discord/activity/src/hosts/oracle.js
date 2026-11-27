@@ -7,4 +7,6 @@ export const oracle = {
   channelIds: ["1575683489712439467"], // #🔮-oracle (also the fallback for any channel without a House)
   readings: true, rooms: "all",
   player: { name: "The Record Player", deck: turntableSvg },
+  token: { id: "moon", emoji: "🌙", name: "moon token", plural: "moon tokens", purse: "Moon purse" }, // spent on Moon relics (moonrelics.js)
+  strayIntro: "Something rolled out of my crystal ball:",
 };
