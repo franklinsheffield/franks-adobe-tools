@@ -1,5 +1,6 @@
-// The Chamber's music: Frank's 11 soundtracks, kept as records in the Trophy Case's record player.
-// One record is yours from the start, 7 are unlocked by finishing tasks, 3 are sold in the Essence store.
+// The Chamber's music: Frank's 12 soundtracks, kept as records in the Trophy Case's record player.
+// One record is yours from the start, 8 are unlocked by finishing tasks, 3 are sold in the Essence store.
+// Don't Judge a Space Kid is the end-credits song (credits.js); its record unlocks when every game is finished.
 // The two "hero" tracks are battle music: they take over in the rooms where you play against the Oracle.
 // This file is data and rules only (no audio), so the tests can check it. player.js plays the music and draws the UI.
 import { tierOf } from "./trophies.js";
@@ -17,6 +18,7 @@ export const TRACKS = [
   { id: "arcade-heros-theme", title: "Arcade Hero's Theme", icon: "🛡️", label: "#c0392b", ink: "#ffe9d6", hero: true, how: "task", task: "Win Constellation Rummy at Level 1", test: (p) => tierOf(p, "rummy") >= 1 },
   { id: "the-curiosity-shop", title: "The Curiosity Shop", icon: "🏺", label: "#8a5a2b", ink: "#fbeedd", how: "shop", price: 150, note: "A wander through dusty shelves" },
   { id: "nile-arcade-dreams", title: "Nile Arcade Dreams", icon: "🐫", label: "#1f8a8a", ink: "#e0fffb", how: "shop", price: 200, note: "Desert sunsets on a tiny screen" },
+  { id: "dont-judge-a-space-kid", title: "Don't Judge a Space Kid", icon: "🚀", label: "#1b2a6b", ink: "#dfe9ff", how: "task", task: "Finish every game on every level", test: (p) => !!(p.credits && p.credits.done), credits: true },
   { id: "pixel-shaman", title: "Pixel Shaman", icon: "🪶", label: "#2e7d32", ink: "#e8ffe3", how: "shop", price: 250, note: "Drums, chants and chiptune smoke" },
 ];
 export const STARTER = "ember-menu";

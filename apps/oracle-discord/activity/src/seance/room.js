@@ -26,10 +26,10 @@ function sceneSvg(g, run, revealed = false, candle, fx = "", was = null, ghost =
   const fl = candleLook(candle);
   const lit = run ? run.candles : CANDLES, xs = [84, 136, 200, 264, 316];
   const candles = xs.map((x, i) => { const on = i < lit, y = i === 0 || i === 4 ? 214 : i === 2 ? 226 : 221;
-    if (!on && was != null && i < was) return `<g class="sc-candle snuffing" style="--d:${((was - 1 - i) * 0.18).toFixed(2)}s"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf"/>
+    if (!on && was != null && i < was) return `<g class="sc-candle snuffing" style="--d:${((was - 1 - i) * 0.18).toFixed(2)}s"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf" style="fill:var(--cw1,#efe3cf)"/>
       <circle class="sc-halo-out" cx="${x}" cy="${y - 8}" r="18" fill="url(#sc-halo)"/><path class="sc-flame-out" d="M${x} ${y - 20} C${x + 6} ${y - 11} ${x + 5} ${y - 4} ${x} ${y - 1} C${x - 5} ${y - 4} ${x - 6} ${y - 11} ${x} ${y - 20}Z" fill="url(#sc-flame)"/>
       <path class="sc-smoke late" d="M${x} ${y - 2} q-6 -10 0 -18 q6 -8 0 -18 q-5 -8 0 -16" stroke="#b9b2cc" stroke-width="2" fill="none" opacity=".6"/></g>`;
-    return `<g class="sc-candle${on ? "" : " out"}"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf"/>
+    return `<g class="sc-candle${on ? "" : " out"}"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf" style="fill:var(--cw1,#efe3cf)"/>
       ${on ? `<circle cx="${x}" cy="${y - 8}" r="18" fill="url(#sc-halo)"/><path class="sc-flame" d="M${x} ${y - 20} C${x + 6} ${y - 11} ${x + 5} ${y - 4} ${x} ${y - 1} C${x - 5} ${y - 4} ${x - 6} ${y - 11} ${x} ${y - 20}Z" fill="url(#sc-flame)"/>`
         : `<path class="sc-smoke" d="M${x} ${y - 2} q-6 -10 0 -18 q6 -8 0 -18" stroke="#b9b2cc" stroke-width="2" fill="none" opacity=".5"/>`}</g>`; }).join("");
   const dim = (CANDLES - lit) * 0.11;
