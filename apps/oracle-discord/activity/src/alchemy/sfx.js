@@ -130,3 +130,13 @@ export function boom() { if (!ready()) return; const t = ac.currentTime;
   tone(90, t, 0.8, { vol: 0.8, to: 28, attack: 0.002 }); tone(55, t + 0.05, 1.6, { type: "triangle", vol: 0.4, to: 30 });
   noise(t + 0.2, 2.2, { type: "lowpass", f: 300, vol: 0.4, shape: (x) => (1 - x) ** 2 });
   for (let k = 0; k < 14; k++) { const s = t + 0.25 + k * rnd(0.04, 0.11), f = rnd(2500, 5200); tone(f, s, rnd(0.08, 0.25), { vol: rnd(0.05, 0.12) }); tone(f * 1.5, s, 0.08, { vol: 0.04 }); } }
+
+/** Poison gas: a long hiss from the flask, a low uneasy drone, then a fit of coughing. */
+export function gas() { if (!ready()) return; const t = ac.currentTime;
+  noise(t, 2.6, { type: "highpass", f: 2200, vol: 0.35, shape: (x) => (x < 0.1 ? x * 10 : 1 - x) });
+  tone(73, t + 0.2, 2.6, { type: "sawtooth", vol: 0.07, to: 65 }); tone(77.8, t + 0.2, 2.6, { type: "sawtooth", vol: 0.06, to: 69 });
+  [1.5, 1.78, 2.02, 2.6, 2.85].forEach((d, k) => noise(t + d, 0.18, { type: "bandpass", f: 520 + k * 40, q: 2.2, vol: 0.5, shape: (x) => Math.exp(-x * 6) })); }
+/** Safety gear doing its job: a solid clunk and a fan-like whoosh. */
+export function saved() { if (!ready()) return; const t = ac.currentTime;
+  tone(180, t, 0.25, { type: "square", vol: 0.12, to: 90 }); noise(t + 0.05, 1.1, { type: "bandpass", f: 900, to: 300, q: 0.8, vol: 0.25 });
+  tone(660, t + 0.3, 0.4, { vol: 0.08 }); tone(990, t + 0.42, 0.5, { vol: 0.06 }); }

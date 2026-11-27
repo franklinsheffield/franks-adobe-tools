@@ -1,7 +1,7 @@
 // The Lab's apothecary: cosmetic upgrades for the workbench, bought with 💎 Essence (in-game only, never money).
 // Ids start with "al-" and live in prog.owned like the Chamber store. The Lab registers one shelf ("alchemy") in the
 // Chamber's Essence store (store.js registerShelf); prog.alchemy is the item last put on there, and each slot
-// (vessel, fire, charm) in use is kept in prog.rooms.alchemy.look.
+// (vessel, fire, charm, gear) in use is kept in prog.rooms.alchemy.look.
 // Each item's note is a real fact (flame colours are the real flame-test colours of those metals).
 export const SHOP = [
   { id: "al-alembic", slot: "vessel", name: "Glass alembic", note: "The classic: a flask, a beaked head and a receiver", price: 0 },
@@ -13,13 +13,18 @@ export const SHOP = [
   { id: "al-k", slot: "fire", name: "Lilac flame", note: "Potassium burns lilac, the colour Davy saw in 1807", price: 80, flame: ["#fbf0ff", "#d2a8ff", "#8a55d8"] },
   { id: "al-sr", slot: "fire", name: "Crimson flame", note: "Strontium salts give the deep red of fireworks", price: 80, flame: ["#ffe3e3", "#ff4a5a", "#b3122a"] },
   { id: "al-na", slot: "fire", name: "Sodium flare", note: "A pinch of salt turns any flame bright yellow-orange", price: 60, flame: ["#ffffff", "#ffe14a", "#ff9d00"] },
+  { id: "al-nogear", slot: "gear", name: "No safety gear", note: "Brave, like most alchemists. Many of them died of it", price: 0, guards: [] },
+  { id: "al-goggles", slot: "gear", name: "Splash goggles", note: "Sealed eye protection, required in every school lab today. Saves you once per experiment from an acid splash or eruption", price: 60, guards: ["splash"] },
+  { id: "al-shield", slot: "gear", name: "Blast shield", note: "A thick clear screen in front of the flask, as used for explosive work since the 1800s. Saves you once per experiment from an explosion", price: 120, guards: ["boom"] },
+  { id: "al-hood", slot: "gear", name: "Fume hood", note: "A hood that sucks fumes out of the room, standard in labs since the 1920s. Saves you once per experiment from a poison gas", price: 120, guards: ["gas"] },
+  { id: "al-kit", slot: "gear", name: "Full safety kit", note: "Goggles, blast shield and fume hood together. Saves you once per experiment from any accident", price: 300, guards: ["splash", "boom", "gas"] },
   { id: "al-bare", slot: "charm", name: "Bare wall", note: "Just stone and shadows", price: 0 },
   { id: "al-ouroboros", slot: "charm", name: "Ouroboros banner", note: "The serpent eating its tail, drawn in Greek alchemy manuscripts as a sign that all is one", price: 100 },
   { id: "al-tablet", slot: "charm", name: "Emerald Tablet", note: "The legendary text credited to Hermes Trismegistus: 'as above, so below'", price: 120 },
   { id: "al-stone", slot: "charm", name: "Philosopher's Stone", note: "A glowing red stone. Nobody ever made one; this one is for show", price: 250 },
 ];
-export const SLOTS = [["vessel", "⚗️ Vessels"], ["fire", "🔥 Furnace flames"], ["charm", "🐍 Wall charms"]];
-export const DEFAULT_LOOK = { vessel: "al-alembic", fire: "al-coal", charm: "al-bare" };
+export const SLOTS = [["vessel", "⚗️ Vessels"], ["fire", "🔥 Furnace flames"], ["charm", "🐍 Wall charms"], ["gear", "🥽 Safety gear"]];
+export const DEFAULT_LOOK = { vessel: "al-alembic", fire: "al-coal", charm: "al-bare", gear: "al-nogear" };
 export const shopItem = (id) => SHOP.find((s) => s.id === id);
 export const owns = (p, id) => shopItem(id)?.price === 0 || (p.owned || []).includes(id);
 export function lookOf(p) {
