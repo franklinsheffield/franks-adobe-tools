@@ -42,7 +42,10 @@ async function post(payload, files) {
       `**${place.name}** for ${E.USER || "you"}: ${(info.widthM / 1000).toFixed(1)} × ${(info.depthM / 1000).toFixed(1)} km, ${info.minElevationM} to ${info.maxElevationM} m`,
       `-# ${place.lat.toFixed(4)}, ${place.lon.toFixed(4)} · ${sat} · AWS Terrain Tiles · built in ${secs} s` + (files.some((f) => f.name.endsWith(".glb")) ? " · .glb opens in Pixel Scape, Blender and most 3D apps" : ""),
     ];
-    await post({ content: lines.join("\n") }, files);
+    // "Open in Pixel Scape": opens the Activity on this spot in Terrain Lab (the Activity reads discordSdk.customId)
+    const cid = ["place", place.lat.toFixed(5), place.lon.toFixed(5), size, String(place.name).replace(/[|]/g, " ").slice(0, 50)].join("|");
+    const components = E.DISCORD_APP_ID ? [{ type: 1, components: [{ type: 2, style: 5, label: "Open in Pixel Scape", url: "https://discord.com/activities/" + E.DISCORD_APP_ID + "?custom_id=" + encodeURIComponent(cid) }] }] : undefined;
+    await post({ content: lines.join("\n"), components }, files);
     console.log("posted", files.map((f) => f.name + " " + (f.data.length / 1e6).toFixed(2) + " MB").join(", "));
   } catch (e) {
     console.error(e);

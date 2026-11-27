@@ -9,6 +9,7 @@
 import { inDiscord } from "./discord.js";
 import { mark } from "./marks.js";
 import { weekTheme, themeCaption } from "./theme.js";
+import { openPlace } from "./make.js";
 
 const HEAVY = ["mesh", "img", "hmap", "sculpt"], LHEAVY = ["img", "mimg"], LIVE = ["x", "y", "z", "ry", "s", "sx", "sy", "sz", "h"];
 const NOT_ENV = new Set(["objs", "cam", "name"]);
@@ -69,6 +70,7 @@ export class Net {
     n.commit = () => this.queueDiff(); n.loaded = () => this.queueReplace(); n.sel = () => this.syncLock(); n.drag = () => this.drag();
     n.canSelect = (o) => this.canSelect(o); n.draw = () => {};
     if (!this.camTimer) this.camTimer = setInterval(() => this.sendCam(), 250);
+    if (!this.placeTimer) this.placeTimer = setInterval(() => this.watchPlace(), 1000);
   }
   // ---- presence: my camera, the others' cameras, following, pings
   sendCam() {
@@ -92,6 +94,22 @@ export class Net {
     this.send({ t: "ping", x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) });
     this.showPing(this.me, [p.x, p.y, p.z]); this.say("Pinged a spot for everyone in the call"); return true;
   }
+  // ---- building a real place together: what I preview in Terrain Lab is offered to the others; what I build is kept
+  sharePlace(p, keep) { if (!this.ready) return; this.send({ t: "place", name: p.name, lat: p.lat, lon: p.lon, km: p.km, keep: !!keep }); }
+  watchPlace() {
+    const TL = this.ready && this.W.TL && this.W.TL(); if (!TL || !TL.isOpen || !TL.st.data) return;
+    const t = TL.tl, p = { name: t.name || "A place", lat: +(+t.lat).toFixed(5), lon: +(+t.lon).toFixed(5), km: +Math.max(t.wKm, t.dKm).toFixed(2) }, k = [p.lat, p.lon, p.km].join(",");
+    if (k !== this.placeKey) { this.placeKey = k; this.placeFolder = TL.st.folder; this.sharePlace(p, false); return; }
+    if (TL.st.folder && TL.st.folder !== this.placeFolder) { this.placeFolder = TL.st.folder; setTimeout(() => this.sharePlace(p, true), 2100); }   // built: into the server library
+  }
+  onPlace(x) {
+    const p = x.place; if (!p || !this.ui) return;
+    const t = this.ui.toast; t.innerHTML = ""; t.hidden = false;
+    const look = document.createElement("button"); look.textContent = "Look too"; look.onclick = () => { t.hidden = true; openPlace(this.W, p); };
+    const no = document.createElement("button"); no.textContent = "×"; no.title = "Dismiss"; no.onclick = () => { t.hidden = true; };
+    const msg = document.createElement("span"); msg.textContent = x.name + (x.kept ? " built " : " is looking at ") + p.name + " (" + p.km + " km)";
+    t.append(msg, look, no); clearTimeout(this.toastT); this.toastT = setTimeout(() => { t.hidden = true; }, 20000);
+  }
   showPing(who, p) { mark("ping:" + who.sid, { x: p[0], y: p[1], z: p[2], label: who.name, color: who.color, cls: "ping", ttl: 4000 }); }
 
   // ---- incoming
@@ -107,6 +125,7 @@ export class Net {
       case "join": this.peers.set(x.peer.sid, x.peer); this.say(x.peer.name + " joined"); break;
       case "left": { const p = this.peers.get(x.sid); this.peers.delete(x.sid); mark("cam:" + x.sid, null); if (this.follow === x.sid) this.follow = null; if (p) this.say(p.name + " left"); break; }
       case "cam": this.applyCam(x.sid, x.c); break;
+      case "place": this.onPlace(x); break;
       case "ping": { const p = this.peers.get(x.sid) || { sid: x.sid, name: x.name, color: x.color }; if (Array.isArray(x.p)) { this.showPing(p, x.p); this.say(p.name + " pinged a spot"); } break; }
       case "lock": { const p = this.peers.get(x.sid); if (p) p.sel = x.nid; break; }
       case "nack": {
@@ -290,8 +309,9 @@ export class Net {
       const row = document.createElement("div"); row.className = "ps-room-row"; bar.appendChild(row);
       const b = (label, fn) => { const x = document.createElement("button"); x.textContent = label; x.onclick = fn; row.appendChild(x); return x; };
       b("Save", () => this.saveToServer()).title = "Save the shared scene to this server's library"; b("Library", () => this.toggleLib()).title = "Scenes saved by this server"; this.postBtn = b("Post render", () => this.postRender());
+      const toast = document.createElement("div"); toast.className = "ps-room-toast"; toast.hidden = true; bar.appendChild(toast);
       const lib = document.createElement("div"); lib.className = "ps-room-lib"; lib.hidden = true; bar.appendChild(lib);
-      this.ui = { bar, people, lib, libOpen: false };
+      this.ui = { bar, people, lib, toast, libOpen: false };
     }
     const chip = (p, me) => me ? '<span class="ps-chip" style="--c:' + p.color + '"><i></i>' + esc(p.name) + " (you)</span>"
       : '<button type="button" class="ps-chip' + (this.follow === p.sid ? " on" : "") + '" data-sid="' + esc(p.sid) + '" style="--c:' + p.color + '" title="' + (this.follow === p.sid ? "Stop following " : "Follow ") + esc(p.name) + "'s view\"><i></i>" + esc(p.name) + (this.follow === p.sid ? " (following)" : "") + "</button>";
@@ -300,12 +320,13 @@ export class Net {
   toggleLib() { this.ui.libOpen = !this.ui.libOpen; this.ui.lib.hidden = !this.ui.libOpen; if (this.ui.libOpen) { this.send({ t: "lib" }); this.renderLib(); } }
   renderLib() {
     const L = this.ui.lib; L.innerHTML = "";
-    if (!this.lib.length) { L.innerHTML = '<div class="ps-room-empty">No saved scenes yet. Save to server keeps the shared scene here for everyone in this server.</div>'; return; }
+    if (!this.lib.length) { L.innerHTML = '<div class="ps-room-empty">Nothing saved yet. Save keeps the shared scene here for everyone in this server; places built in Terrain Lab, and /terrain builds opened here, show up too.</div>'; return; }
     for (const it of this.lib) {
-      const r = document.createElement("div"); r.className = "ps-room-item";
-      r.innerHTML = "<b>" + esc(it.name) + "</b><span>" + esc(it.by) + ", " + new Date(it.at).toLocaleDateString() + "</span>";
-      const o = document.createElement("button"); o.textContent = "Open"; o.onclick = () => { if (confirmOpen(it.name)) { this.send({ t: "open", id: it.id }); this.toggleLib(); } };
-      const x = document.createElement("button"); x.textContent = "Remove"; x.onclick = () => this.send({ t: "unsave", id: it.id });
+      const r = document.createElement("div"), place = it.kind === "place"; r.className = "ps-room-item";
+      r.innerHTML = "<b>" + (place ? '<i class="ps-kind">Place</i> ' : '<i class="ps-kind scene">Scene</i> ') + esc(it.name) + "</b><span>" + esc(it.by) + ", " + new Date(it.at).toLocaleDateString() + (place ? ", " + it.km + " km" : "") + "</span>";
+      const o = document.createElement("button"); o.textContent = place ? "Look" : "Open";
+      o.onclick = place ? () => { this.toggleLib(); openPlace(this.W, it); } : () => { if (confirmOpen(it.name)) { this.send({ t: "open", id: it.id }); this.toggleLib(); } };
+      const x = document.createElement("button"); x.textContent = "Remove"; x.onclick = () => this.send({ t: "unsave", id: it.id, kind: it.kind || "scene" });
       r.append(o, x); L.appendChild(r);
     }
   }

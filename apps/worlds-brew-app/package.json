@@ -15,7 +15,8 @@
     "web:serve": "node web/serve.js",
     "web:smoke": "node web/smoke.js",
     "web:phone": "node web/phone-smoke.js",
-    "web:extras": "node web/extras-smoke.js"
+    "web:extras": "node web/extras-smoke.js",
+    "web:make": "node web/make-smoke.js"
   },
   "dependencies": {
     "earcut": "2.2.4",

@@ -78,8 +78,8 @@ export function phonographSvg(t, playing) {
 }
 
 export const ALCHEMIST_CSS = `
-body[data-house="alchemist"] .speaker{color:#E89A55}
-body[data-house="alchemist"] .gate-title{color:#E89A55}
+body[data-house="alchemist"] .speaker{color:#E89A55;font-family:"IM Fell English",Georgia,serif;letter-spacing:.08em}
+body[data-house="alchemist"] .gate-title{color:#E89A55;font-family:"IM Fell English",Georgia,serif}
 .ph .ph-b{opacity:0}
 .ph.playing .ph-b{animation:ph-rise 1.8s linear infinite}
 .ph.playing .ph-b2{animation-delay:.6s}.ph.playing .ph-b3{animation-delay:1.2s}

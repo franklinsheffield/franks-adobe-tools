@@ -15,6 +15,8 @@ function pick(o) {
     const inp = document.createElement("input"); inp.type = "file"; inp.multiple = !!o.multi; inp.style.display = "none";
     if (o.dirs) inp.webkitdirectory = true;
     const ex = (o.filters || []).flatMap((f) => f.extensions || []); if (ex.length && !o.dirs) inp.accept = ex.map((e) => "." + e).join(",");
+    // phones: list image/* too, so the picker offers the camera as well as the photo library (My photo, surface pictures)
+    if (inp.accept && /\.(jpe?g|png)\b/.test(inp.accept) && window.matchMedia && window.matchMedia("(pointer: coarse)").matches) inp.accept += ",image/*";
     let done = false; const finish = (v) => { if (!done) { done = true; inp.remove(); res(v); } };
     inp.addEventListener("cancel", () => finish(null));
     inp.addEventListener("change", async () => {
