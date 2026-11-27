@@ -63,11 +63,13 @@ export function judge(x, ings, op) {
 export function hazardOf(ings, op) {
   return HAZARDS.find((h) => h.all.every((i) => ings.includes(i)) && (!h.any || h.any.some((i) => ings.includes(i))) && (!h.ops || h.ops.includes(op))) || null;
 }
-/** Transmute. "right" | "wrong" | "out" | "boom" | null, plus the judgement in run.last (or the hazard in run.boom). */
+/** Transmute. "right" | "wrong" | "out" | "boom" | "saved" | null (run.guard = hazard kinds your safety gear stops, once
+ * per experiment: a stopped accident costs one flame instead of the whole experiment), plus the judgement in run.last (or the hazard in run.boom). */
 export function transmute(run, x, ings, op) {
   if (run.done || run.stage !== "bench" || !op || !ings.length) return null;
   run.tries++;
   const hz = hazardOf(ings, op);
+  if (hz && !run.saved && (run.guard || []).includes(hz.kind)) { run.saved = hz.id; run.last = null; spend(run); return "saved"; }
   if (hz) { run.boom = hz.id; run.flames = 0; run.done = true; run.won = false; return "boom"; } const j = judge(x, ings, op); run.last = j;
   if (j.ok) { if (run.level === 3) run.stage = "name"; else { run.done = run.won = true; } return "right"; }
   spend(run); return run.done ? "out" : "wrong";
@@ -92,6 +94,7 @@ export const scoreOf = (run) => { const m = levelOf(run).mult; return run.won ? 
 export function settle(p, run, x) {
   const r = room(p), k = run.level + ":" + run.id; r.plays++; r.last = run.id;
   const out = { xp: 0, essence: 0, first: false, best: false, score: scoreOf(run), newEls: [] };
+  if (run.saved) (r.accidents ||= []).includes(run.saved) || r.accidents.push(run.saved);
   if (run.boom) { r.booms = (r.booms || 0) + 1; (r.accidents ||= []).includes(run.boom) || r.accidents.push(run.boom); out.boom = true; return out; }
   if (!run.won) { out.xp = 3; return out; }
   for (const e of x.el || []) if (!r.elements.includes(e)) { r.elements.push(e); out.newEls.push(e); }

@@ -49,7 +49,7 @@ export const CSS = `
 .table.alchemy .al-flare{opacity:0;animation:al-flare 1.6s 1.3s ease-out both}@keyframes al-flare{0%{opacity:0;transform:scale(.2) rotate(0)}30%{opacity:1;transform:scale(2) rotate(45deg)}100%{opacity:.7;transform:scale(1.2) rotate(90deg)}}
 .table.alchemy .al-film{transform-origin:50% 50%;animation:al-film 1.6s 1.2s ease-out both}@keyframes al-film{from{transform:scaleX(0)}}
 .table.alchemy .al-spark2{opacity:0;animation:al-spark2 1s ease-out both}@keyframes al-spark2{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--x),var(--y))}}
-.table.alchemy :is(.al-fireball,.al-ring,.al-shard,.al-soot){transform-box:fill-box;transform-origin:center}
+.table.alchemy :is(.al-fireball,.al-ring,.al-shard,.al-soot,.al-cloud,.al-skull){transform-box:fill-box;transform-origin:center}
 .table.alchemy .al-vessel.gone{animation:al-gone .15s ease-in forwards}@keyframes al-gone{to{opacity:0;transform:scale(1.3)}}
 .table.alchemy .al-fireball{animation:al-fireball 1.4s ease-out both}@keyframes al-fireball{0%{transform:scale(.1);opacity:1}30%{transform:scale(1.6);opacity:1}100%{transform:scale(2.4);opacity:0}}
 .table.alchemy .al-ring{opacity:0;animation:al-ring 1s ease-out both}@keyframes al-ring{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(6)}}
@@ -61,7 +61,16 @@ export const CSS = `
 .table.alchemy.quake{animation:al-quake .6s cubic-bezier(.36,.07,.19,.97) both}@keyframes al-quake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(5px,-3px)}30%,50%,70%{transform:translate(-8px,4px) rotate(-1deg)}40%,60%{transform:translate(8px,-4px) rotate(1deg)}}
 .al-boomcard{margin:8px 0;padding:10px 12px;border:1px solid #ff7a3c;border-radius:10px;background:linear-gradient(90deg,rgba(255,90,31,.18),rgba(40,20,30,.6));animation:al-in .5s ease-out both}
 .al-boomcard b{color:#ffb36b;font-family:var(--display);letter-spacing:.05em}.al-boomcard p{margin:6px 0 0;font-size:.88rem}
-@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}.table.alchemy :is(.al-shard,.al-flash,.al-ring){display:none}.table.alchemy .al-soot{opacity:.7}.table.alchemy .al-vessel.gone{opacity:0}}
+.table.alchemy .al-cloud{opacity:0;animation:al-cloud 3.2s ease-out forwards}@keyframes al-cloud{0%{opacity:.9;transform:translate(0,0) scale(.3)}50%{opacity:.75}100%{opacity:.6;transform:translate(var(--dx),var(--dy)) scale(2.6)}}
+.table.alchemy .al-cloud.small{animation-duration:1.6s}
+.table.alchemy .al-tint{opacity:0;animation:al-tint 3s ease-in forwards}@keyframes al-tint{to{opacity:.28}}
+.table.alchemy .al-skull{opacity:0;animation:al-skull 1.2s 1.4s ease-out forwards}@keyframes al-skull{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.15)}100%{opacity:.95;transform:scale(1)}}
+.table.alchemy .al-gassed .al-vessel{animation:al-shake .5s 3}
+.table.alchemy .al-gear.lit{filter:drop-shadow(0 0 6px #9fd8ff);animation:al-gearlit 1.2s ease-in-out 2}@keyframes al-gearlit{50%{filter:drop-shadow(0 0 14px #fff)}}
+.table.alchemy.choke{animation:al-choke 2.4s ease-in-out both}@keyframes al-choke{0%,100%{filter:none}40%{filter:blur(1px) saturate(1.4)}70%{filter:blur(.5px)}}
+.al-boomcard.gas{border-color:#b6e35a;background:linear-gradient(90deg,rgba(150,210,60,.18),rgba(20,30,20,.6))}.al-boomcard.gas b{color:#d4f58a}
+.al-boomcard.saved{border-color:#9fd8ff;background:linear-gradient(90deg,rgba(120,190,255,.18),rgba(20,24,40,.6))}.al-boomcard.saved b{color:#cfeaff}
+@media (prefers-reduced-motion:reduce){.table.alchemy *{animation:none!important}.table.alchemy .al-swirl{display:none}.table.alchemy :is(.al-shard,.al-flash,.al-ring){display:none}.table.alchemy .al-soot{opacity:.7}.table.alchemy .al-vessel.gone{opacity:0}.table.alchemy .al-cloud{opacity:.5}.table.alchemy .al-skull{opacity:.95}.table.alchemy .al-tint{opacity:.22}}
 .al-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin:4px 0 6px}
 .c.al-jar{display:flex;align-items:center;gap:8px;text-align:left;border-radius:10px;padding:6px 10px}
 .c.al-jar i{flex:none;width:24px;height:24px;border-radius:6px;background:var(--jc);display:grid;place-items:center;color:#160b2c;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18)}
