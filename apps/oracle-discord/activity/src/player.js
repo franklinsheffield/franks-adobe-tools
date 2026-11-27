@@ -5,7 +5,7 @@ import { TRACKS, trackOf, fileOf, musicOf, hasTrack, playlist, battleList, nextI
 /** Create the player. getProg() returns the member's progress; save() stores it; onChange() redraws any open UI. */
 export function createPlayer({ getProg, save, onChange = () => {} }) {
   const audio = new Audio(); audio.preload = "auto";
-  let queue = [], idx = 0, cur = null, started = false, battle = null, fadeT = null, previewT = null;
+  let held = false, queue = [], idx = 0, cur = null, started = false, battle = null, fadeT = null, previewT = null;
   const m = () => musicOf(getProg());
   const setVol = (v) => { audio.volume = Math.max(0, Math.min(1, v)); };
   function fade(to, ms, done) {
@@ -15,7 +15,7 @@ export function createPlayer({ getProg, save, onChange = () => {} }) {
   function load(id, fadeIn = true) {
     const t = trackOf(id); if (!t) return;
     cur = t.id; audio.src = fileOf(t); audio.currentTime = 0;
-    if (!m().on) { onChange(); return; }
+    if (!m().on || held) { onChange(); return; }
     setVol(fadeIn ? 0 : m().vol); audio.play().then(() => fadeIn && fade(m().vol, 900)).catch(() => {}); onChange();
   }
   function rebuild(keep = true) {
@@ -50,6 +50,10 @@ export function createPlayer({ getProg, save, onChange = () => {} }) {
     room(roomId) { const b = roomId ? battleList(getProg(), roomId) : null, nb = b && b.length ? b : null;
       if (JSON.stringify(nb) === JSON.stringify(battle)) return; battle = nb; if (!started || !m().on) { rebuild(false); return onChange(); }
       const id = rebuild(false); fade(0, 400, () => (id ? load(id) : audio.pause())); },
+    /** Hold the music while something else plays (the end credits), then pick it back up. */
+    hold(on) { held = !!on; clearTimeout(previewT);
+      if (held) { fade(0, 500, () => { audio.pause(); onChange(); }); return; }
+      if (started && m().on && cur) { setVol(0); audio.play().then(() => fade(m().vol, 900)).catch(() => {}); } onChange(); },
     /** Listen to a record from the store before buying: 25 seconds from its middle, then back to your music. */
     preview(id) { const t = trackOf(id); if (!t) return; clearTimeout(previewT); started = true; const back = cur;
       audio.src = fileOf(t); cur = t.id; setVol(0); audio.addEventListener("loadedmetadata", () => { audio.currentTime = Math.max(0, (audio.duration || 60) * 0.35); }, { once: true });
