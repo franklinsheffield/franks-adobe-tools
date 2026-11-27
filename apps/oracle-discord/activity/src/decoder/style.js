@@ -77,4 +77,34 @@ export const CSS = `
 .table.decoder[data-tablet="jade"]{background:radial-gradient(60% 50% at 30% 30%,rgba(255,255,255,.18),transparent 70%),radial-gradient(40% 30% at 75% 70%,rgba(0,0,0,.25),transparent 70%),linear-gradient(150deg,#2a9a72,#13664a 55%,#0a3a2a);--dink:#f0fff7;--dink2:#9ff0c8;--dglow:rgba(160,255,210,.4);--dcard:rgba(6,40,28,.85)}
 .table.decoder[data-tablet="bracteate"]{--dsnd:#3a2205;--dtext:#3a2205;background:repeating-radial-gradient(circle at 50% 45%,transparent 0 22px,rgba(90,58,10,.25) 22px 24px),radial-gradient(circle at 50% 40%,#ffe08a,#e2a93a 45%,#8c5e17 85%);--dink:#3a2205;--dink2:#5a3608;--dglow:rgba(255,240,180,.55);--dcard:rgba(48,30,4,.86)}
 .table.decoder[data-tablet="birch"]~.table-cap,.table.decoder[data-tablet="papyrus"]~.table-cap,.table.decoder[data-tablet="bracteate"]~.table-cap{color:#3a2205;text-shadow:0 1px 2px rgba(255,240,200,.7)}
+
+/* ---- motion: carve-in, live cell, solved wave and shimmer, star pops, sparks, medals (all off for reduced motion) ---- */
+.dec-cell.just>span,.dec-cell.just>svg{animation:dec-carve .55s ease-out}
+.dec-cell.just>b{animation:dec-pop .4s ease-out}
+@keyframes dec-carve{0%{transform:scale(1.45);filter:drop-shadow(0 0 0 transparent) brightness(2)}35%{filter:drop-shadow(0 0 10px var(--dglow,rgba(250,222,140,.9))) brightness(1.5)}100%{transform:none;filter:none}}
+@keyframes dec-pop{0%{transform:translateY(-8px) scale(1.5);opacity:0}100%{transform:none;opacity:1}}
+.dec-cell.now>b{animation:dec-live 1.2s ease-in-out infinite}
+@keyframes dec-live{50%{border-color:var(--teal);box-shadow:0 3px 8px -3px var(--teal)}}
+.dec-strip{position:relative}
+.dec-strip.won .dec-cell{animation:dec-wave .6s ease-in-out both;animation-delay:calc(var(--i,0) * 55ms)}
+@keyframes dec-wave{40%{transform:translateY(-9px);filter:drop-shadow(0 0 8px var(--dglow,rgba(250,222,140,.8)))}}
+.dec-strip.won::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 30%,rgba(255,240,190,.45) 50%,transparent 70%) no-repeat;background-size:40% 100%;animation:dec-shine 1.1s .25s ease-in-out both;mix-blend-mode:screen}
+@keyframes dec-shine{from{background-position:-60% 0}to{background-position:160% 0}}
+.dec-stars.pop b{display:inline-block;font-weight:inherit;animation:dec-star .45s cubic-bezier(.3,1.8,.5,1) both;animation-delay:calc(.35s + var(--i,0) * .22s)}
+@keyframes dec-star{0%{transform:scale(0) rotate(-90deg);opacity:0}100%{transform:none;opacity:1}}
+.dec-reward{position:relative;overflow:visible}
+.dec-sparks{position:absolute;left:50%;top:30%;width:0;height:0;pointer-events:none}
+.dec-sparks i{position:absolute;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--gold2);box-shadow:0 0 8px var(--gold);opacity:0;animation:dec-spark .9s ease-out both;animation-delay:calc(.3s + var(--d,0s))}
+.dec-sparks i:nth-child(3n){background:var(--teal);box-shadow:0 0 8px var(--teal)}.dec-sparks i:nth-child(4n){background:var(--pink);box-shadow:0 0 8px var(--pink)}
+@keyframes dec-spark{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1.2)}100%{opacity:0;transform:rotate(var(--a)) translateX(90px) scale(.3)}}
+.dec-medal{animation:dec-in .4s both,dec-bob 4s ease-in-out infinite;animation-delay:calc(var(--i,0) * .08s),calc(var(--i,0) * -1s);transition:transform .2s,box-shadow .2s,border-color .2s}
+.dec-medal:hover{transform:translateY(-4px) scale(1.04);box-shadow:0 0 18px rgba(226,176,74,.35)}
+.dec-medal .dec-glyph{animation:dec-glow 3s ease-in-out infinite;animation-delay:calc(var(--i,0) * -.7s)}
+@keyframes dec-bob{50%{translate:0 -4px}}
+@keyframes dec-glow{50%{filter:drop-shadow(0 0 6px var(--dglow,rgba(250,222,140,.6)))}}
+.dec-intro .dec-big{animation:dec-rise .8s ease-out both}
+@keyframes dec-rise{from{opacity:0;transform:translateY(14px);filter:blur(3px)}}
+.dec-tile{transition:transform .08s}.dec-tile:active{transform:scale(.9)}
+.c.dec-no{animation:dec-shake .35s}
+@media (prefers-reduced-motion:reduce){.dec-board *,.dec-board *::after{animation:none!important;transition:none!important}}
 `;
