@@ -1,6 +1,6 @@
 // Opt-in saved birth profiles (Cloudflare KV, AES-GCM sealed with ORACLE_KEY) and the "enter your birth data" modal.
 import { seal, open } from "./seal.js";
-import { parseBirth } from "./birthplace.js";
+import { parseBirth, toIso, dmy } from "./birthplace.js";
 
 // Which option names each birth-data command uses, and which of them it needs before it can run.
 const FULL = { date: "date", time: "time", place: "place", need: ["date", "place", "time"] };
@@ -27,7 +27,7 @@ export async function loadProfile(env, userId) {
 export async function saveProfile(env, userId, p, { merge = true } = {}) {
   const old = merge ? (await loadProfile(env, userId)) || {} : {};
   const keep = (k) => (p[k] !== undefined && p[k] !== "" ? p[k] : old[k]);
-  const date = keep("date"), sameDate = !p.date || p.date === old.date;
+  const date = toIso(keep("date")) || keep("date"), sameDate = !p.date || toIso(p.date) === old.date; // stored year-first; typed DD/MM/YYYY
   const out = { date, time: p.time !== undefined ? (p.time || "unknown") : sameDate ? old.time || "unknown" : "unknown", place: keep("place"), name: keep("name"), saved: Date.now() };
   for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
   await env.PROFILES.put(kvKey(userId), await seal(out, env.ORACLE_KEY));
@@ -65,7 +65,7 @@ export async function birthModal(env, name, options, f) {
   const id = crypto.randomUUID().slice(0, 12), need = f.need || ["date", "place", "time"];
   if (env.PROFILES) await env.PROFILES.put("pending:" + id, await seal({ name, options }, env.ORACLE_KEY), { expirationTtl: 900 });
   const row = (custom_id, label, placeholder, required, max_length, value) => ({ type: 1, components: [{ type: 4, custom_id, label, style: 1, placeholder, required, max_length, ...(value ? { value: String(value).slice(0, max_length) } : {}) }] });
-  const rows = [row("date", "Birth date (year-month-day)", "1990-04-09", true, 10, options[f.date])];
+  const rows = [row("date", "Birth date (DD/MM/YYYY)", "09/04/1990", true, 10, options[f.date] ? dmy(options[f.date]) : "")];
   if (need.includes("time")) rows.push(row("time", "Birth time (leave blank if unknown)", "14:30 or 2:30 pm", false, 8, options[f.time]));
   if (need.includes("place")) rows.push(row("place", "Birth town or city, country", "Phoenix, USA", true, 100, options[f.place]));
   if (need.includes("name")) rows.push(row("name", "Full birth name (as on your birth certificate)", "Mary Ann Smith", true, 100, options[f.name]));
@@ -99,7 +99,7 @@ export const profileCommand = {
   description: "Save your birth details so the oracle's readings fill them in for you",
   options: [
     { type: 1, name: "set", description: "Save or update your birth details (blank fields keep what's saved)", options: [
-      { type: 3, name: "date", description: "Birth date, year-month-day (1990-04-09)", max_length: 10 },
+      { type: 3, name: "date", description: "Birth date, DD/MM/YYYY (09/04/1990)", max_length: 10 },
       { type: 3, name: "place", description: "Birth town or city, country", max_length: 100 },
       { type: 3, name: "time", description: "Birth time (14:30 or 2:30 pm). Leave out if unknown", max_length: 8 },
       { type: 3, name: "name", description: "Full birth name, for /numerology", max_length: 100 },

@@ -29,6 +29,7 @@ import { cipherdesk, cipherdeskCodex } from "./cipherdesk/room.js";
 import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
 import { bench, benchCodex } from "./bench/room.js";
+import { commissions, commissionsCodex } from "./commissions/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -36,6 +37,7 @@ import { stars as starLore, starsCodex } from "./stars/room.js";
 import { room as duel, duelCodex } from "./duel/room.js";
 import { rummy, rummyCodex } from "./rummy/room.js";
 import { watch, watchCodex } from "./watch/room.js";
+import { comet, cometCodex } from "./comet/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
@@ -67,6 +69,7 @@ import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./m
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
+import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
@@ -356,7 +359,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -392,7 +395,7 @@ function choose(sys) {
   } else {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
     const field = (id, label, ph, val, req) => `<label for="${id}">${label}<input id="${id}" ${req ? "required" : ""} placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
-    const rows = [field("d", "Birth date", "1990-04-09", p.date, true)];
+    const rows = [field("d", "Birth date (DD/MM/YYYY)", "09/04/1990", dmy(p.date || ""), true)];
     if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
@@ -424,7 +427,7 @@ async function reveal(sys, options, question = "") {
   try {
     const mod = MODS[sys.command];
     if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
+    [r] = await Promise.all([mod.run(options, { user: state.name, birthDetail: true }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
   document.body.classList.remove("trance"); refreshEnergy(); cap(sys.emoji + " " + sys.label);
   if (err) {
@@ -814,7 +817,7 @@ function drawBook() {
 const profKey = (pr) => JSON.stringify(pr || null);
 function chartsPages(p) {
   const pr = state.profile, rows = storedRows(p, { hasProfile: !!pr, signedIn: !!state.token });
-  const saved = pr ? `<dl class="mc-dl"><dt>Birth date</dt><dd>${esc(pr.date || "")}</dd><dt>Birth time</dt><dd>${esc(pr.time && pr.time !== "unknown" ? pr.time : "unknown")}</dd><dt>Birth place</dt><dd>${esc(pr.place || "not saved")}</dd><dt>Birth name</dt><dd>${esc(pr.name || "not saved")}</dd>${pr.saved ? `<dt>Saved</dt><dd>${new Date(pr.saved).toLocaleDateString()}</dd>` : ""}</dl>` : `<p class="bk-empty">No birth details saved.</p>`;
+  const saved = pr ? `<dl class="mc-dl"><dt>Birth date</dt><dd>${esc(dmy(pr.date || ""))}</dd><dt>Birth time</dt><dd>${esc(pr.time && pr.time !== "unknown" ? pr.time : "unknown")}</dd><dt>Birth place</dt><dd>${esc(pr.place || "not saved")}</dd><dt>Birth name</dt><dd>${esc(pr.name || "not saved")}</dd>${pr.saved ? `<dt>Saved</dt><dd>${new Date(pr.saved).toLocaleDateString()}</dd>` : ""}</dl>` : `<p class="bk-empty">No birth details saved.</p>`;
   const left = pageHead("🔭 My charts", "Your personal data: what is kept, where, and how to remove it") + saved
     + `<div class="mc-store">${rows.map(([k, what, from, where, del]) => `<div class="mc-row"><b>${k}</b><span>${esc(what)}</span><small>From: ${esc(from)} · Kept: ${esc(where)} · Remove: ${esc(del)}</small></div>`).join("")}</div>
     <div class="choices"><button class="c small" type="button" id="mc-del" ${pr ? "" : "disabled"}>🗑️ Delete my saved birth details</button><button class="c small" type="button" id="mc-clear">🧹 Clear this device's Journal</button></div>

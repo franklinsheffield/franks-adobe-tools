@@ -57,7 +57,8 @@ export function writeIn(script, text) {
 
 /** A Gregorian date ("YYYY-MM-DD") in the Maya calendar, or null. */
 export function mayaOf(iso) {
-  const m = /^(-?\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(String(iso || "").trim()); if (!m) return null;
+  const t = String(iso || "").trim(), dd = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t); // DD/MM/YYYY as typed, or year-first
+  const m = dd ? [t, dd[3], dd[2], dd[1]] : /^(-?\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(t); if (!m) return null;
   const [y, mo, d] = [+m[1], +m[2], +m[3]]; if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   const r = mayaDate({ year: y, month: mo, day: d });
   return r.days < 0 ? null : r;

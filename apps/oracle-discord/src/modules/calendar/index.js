@@ -9,7 +9,7 @@ export const command = {
   name: "calendar",
   description: "Today in the Maya, Egyptian and Celtic calendars, plus the next festival and the next eclipse",
   options: [
-    { type: 3, name: "date", description: "Any date as year-month-day (default: today)", min_length: 8, max_length: 11 },
+    { type: 3, name: "date", description: "Any date as DD/MM/YYYY (default: today)", min_length: 8, max_length: 11 },
     { type: 5, name: "private", description: "Only you see the card (default: posted to the channel)" },
   ],
 };
@@ -59,7 +59,7 @@ export function readingEmbeds(d) {
 export async function run(o = {}, ctx = {}) {
   const now = ctx.now || new Date();
   const j = o.date ? E.parseYmd(o.date) : E.jdnOf({ year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate() });
-  if (j == null) throw new Error("That date doesn't turn the wheels. Use year-month-day, like 2012-12-21.");
+  if (j == null) throw new Error("That date doesn't turn the wheels. Use DD/MM/YYYY, like 21/12/2012.");
   const d = calendarDay(j);
   const png = await cardPng({ title: "The Keeper's Desk", subtitle: `${E.fmt(j, true)} in the Maya, Egyptian and Celtic calendars`, tag: "Calendar Keeper · real calendars, real sky", body: body(d),
     facts: [["Tzolk'in", d.m.tz], ["Egyptian", d.e.short], ["Next festival", d.nf.f.name.split(" ")[0]], ["Next eclipse", E.fmt(d.ecl.jdn)]] });

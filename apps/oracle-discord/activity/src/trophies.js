@@ -24,6 +24,7 @@ export const TROPHIES = [
   { id: "duel", game: "Element Duel", name: "Elemental Crown", art: "crown", need: 1 },
   { id: "rummy", game: "Constellation Rummy", name: "Star Hand", art: "cards", need: 1 },
   { id: "memory", game: "Grimoire Memory", name: "Sealed Grimoire", art: "book", need: 1 },
+  { id: "comet", game: "Comet Hunter", name: "Halley's Plate", art: "astro", need: 3, how: ["Clear Spot the mover", "Clear Comet or Messier object", "Clear Predict a return", "A perfect run at every level"] },
   { id: "watch", game: "The Night Watch", name: "Brass Eyepiece", art: "astro", need: 3, how: ["Log 3 observations", "Measure 3 plates", "Deliver 3 Almanac Desk jobs", "A perfect round at every step"] },
   { id: "flametest", game: "Flame Test Lab", name: "Bunsen's Burner", art: "burner", need: 3 },
   { id: "inscriptions", game: "Inscription Tray", name: "Scribe's Loupe", art: "loupe", need: 3 },
@@ -31,6 +32,7 @@ export const TROPHIES = [
   { id: "minerals", game: "Mineral Cabinet", name: "Collector's Geode", art: "geode", need: 3 },
   { id: "casefiles", game: "Case Files", name: "Investigator's Lens", art: "lens", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
+  { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
   const n = t.need, w = n === 1 ? "Win" : `Win ${n} rounds`;
@@ -57,8 +59,10 @@ export const LINES = {
   memory: "The Sealed Grimoire opens only for minds like yours. Remember this moment.",
   flametest: "Bunsen's Burner, in your colours. Every flame you read was a real element.",
   bench: "The Golden Crucible. Every discovery in it was real chemistry.",
+  commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
   cipherdesk: "The Black Chamber Key. Every secret on the desk came back in plain words.",
+  comet: "Halley's Plate. He predicted a return and so did you. Comets keep appointments.",
   minerals: "The Collector's Geode. Crack it open: crystals, and your name on the label.",
   casefiles: "The Investigator's Lens. Every ghost you looked through it had a method.",
 };
@@ -132,6 +136,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     cipherkey: `<circle cx="34" cy="38" r="16" ${F}/><circle cx="34" cy="38" r="7" fill="none" stroke="${lo}" stroke-width="3"/><g class="tr-rot"><path d="M48 46 L80 72 M66 60 l6 -6 M72 66 l6 -6" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     loupe: `<path d="M24 30 Q50 22 70 30 L70 74 L24 74Z" ${F}/><path d="M32 40 h26 M32 48 h20 M32 56 h24" stroke="${lo}" stroke-width="2" stroke-linecap="round"/><g class="tr-rot"><circle cx="62" cy="40" r="14" fill="rgba(255,255,255,.18)" stroke="${mid}" stroke-width="4"/><path d="M72 50 L84 64" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     geode: `<path d="M22 54 Q20 26 50 20 Q80 26 78 54 Q76 76 50 78 Q24 76 22 54Z" ${F}/><path d="M32 52 Q32 34 50 30 Q68 34 68 52 Q66 68 50 70 Q34 68 32 52Z" fill="#7a4ad0" opacity=".85"/><path class="tr-gem" d="M42 52 L50 36 L58 52 L50 64Z" fill="#c8a8ff"/><path d="M36 56 L44 46 L46 60Z M56 46 L64 54 L56 62Z" fill="#e6d8ff" opacity=".8"/>`,
+    seal: `<path d="M38 56 L30 84 L40 78 L46 86 L50 60Z" fill="#b8322a"/><path d="M62 56 L70 84 L60 78 L54 86 L50 60Z" fill="#8a2420"/><circle cx="50" cy="44" r="24" ${F}/><circle cx="50" cy="44" r="16" fill="none" stroke="${lo}" stroke-width="2"/><path class="tr-glyph" d="M40 50 L42 38 L50 46 L58 38 L60 50Z" fill="${lo}"/>`,
     crucible: `<path d="M26 34 L74 34 L66 74 Q64 80 56 80 L44 80 Q36 80 34 74Z" ${F}/><rect x="22" y="28" width="56" height="8" rx="3" ${F}/><path d="M34 46 L66 46 L63 60 L37 60Z" fill="#ffcf6a" opacity=".85"/><circle class="tr-bub" cx="46" cy="50" r="2.5" fill="#fff" opacity=".8"/><path class="tr-flame" d="M40 92 Q46 82 50 92 Q54 82 60 92Z" fill="#ff8a3a"/>`,
     mortar: `<path class="tr-pestle" d="M58 44 L74 14" stroke="${mid}" stroke-width="7" stroke-linecap="round"/><path d="M24 46 L76 46 Q74 74 50 76 Q26 74 24 46Z" ${F}/><rect x="22" y="42" width="56" height="6" rx="3" ${F}/><path d="M36 42 Q40 36 44 42 M48 42 Q52 34 56 42" fill="#7ad16a"/>`,
   };
