@@ -1,3 +1,4 @@
+import { equippedBack } from "../cardbacks.js";
 // Constellation Rummy rules (pure, no DOM). You play the Oracle. Each turn: draw one card (deck or the top discard),
 // lay down sets or add cards to sets on the table, then discard one. Sets: 3 or 4 stars of one constellation, and from
 // Level 2 also 3+ stars of the same spectral class from different constellations. Empty your hand to go out.
@@ -143,16 +144,6 @@ export function settle(p, g) {
   return { xp, essence, win: s.win, tie: s.tie, firstWin, best, newCons, newFull, score: s };
 }
 
-// ---- store: card backs ----
-export const KIND = "rummyback";
-export const BACKS = [
-  { id: "cb-midnight", name: "Midnight star back", note: "Navy and gold, an eight-pointed star", price: 0 },
-  { id: "cb-astrolabe", name: "Brass astrolabe", note: "The rete turns: astrolabes measured star heights for 2,000 years", price: 60 },
-  { id: "cb-zodiac", name: "Zodiac wheel", note: "The 12 zodiac constellations the Sun passes through, slowly turning", price: 80 },
-  { id: "cb-nebula", name: "Orion Nebula", note: "Drifting glow of the star nursery in Orion's sword", price: 100 },
-  { id: "cb-aurora", name: "Aurora", note: "Rippling green light: solar particles striking oxygen high in the air", price: 100 },
-  { id: "cb-atlas", name: "Old star atlas", note: "Parchment and ink, in the style of 1600s celestial atlases", price: 120 },
-  { id: "cb-pulsar", name: "Pulsar", note: "A spinning neutron star sweeping its beam, flash after flash", price: 140 },
-];
-export const backOf = (p) => (BACKS.some((b) => b.id === p[KIND]) && (p[KIND] === "cb-midnight" || (p.owned || []).includes(p[KIND])) ? p[KIND] : "cb-midnight");
+// ---- card backs: chosen on the Essence store's Cards shelf (cardbacks.js), shared by every deck in the Chamber ----
+export const backOf = (p) => equippedBack(p) || "cb-midnight";
 export { CONS };

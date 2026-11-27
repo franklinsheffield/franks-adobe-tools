@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { DECKS, deckById, ALL_CARDS, cardByKey } from "../activity/src/memory/deck.js";
 import { TIERS, TITLES, starsFor, pickPairs, deal, flip, hide, peek, settle, room, learnedCount, keyOf } from "../activity/src/memory/engine.js";
 import { HOOKS } from "../activity/src/memory/guide.js";
-import { shop, BACKS, backOf } from "../activity/src/memory/shop.js";
-import { registerShelf, STORE, ensureFree, buy } from "../activity/src/store.js";
+import { OWN_BACK, backOf, backHtml } from "../activity/src/memory/shop.js";
+import { STORE, ensureFree, buy } from "../activity/src/store.js";
 import { fresh } from "../activity/src/game.js";
 
 const seeded = (s = 1) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
@@ -93,12 +93,10 @@ test("Memory settle: rewards, best stars, learned signs, titles", () => {
   assert.equal(TITLES[TITLES.length - 1].at, ALL_CARDS.length);
 });
 
-test("Memory shelf: card backs in the Essence store", () => {
-  registerShelf(shop);
-  assert.ok(BACKS.length >= 6 && BACKS[0].price === 0);
-  for (const b of BACKS) { assert.match(b.id, /^gm-/); assert.ok(STORE.some((s) => s.id === b.id && s.kind === "cardback")); assert.ok(b.look.bg && b.look.ink && b.look.emblem); }
-  const p = ensureFree(fresh()); assert.ok(p.owned.includes("gm-starlit"));
-  p.essence = 500; assert.ok(buy(p, "gm-lapis")); p.cardback = "gm-lapis";
-  assert.equal(backOf(p), BACKS.find((b) => b.id === "gm-lapis").look);
-  assert.equal(backOf({}), BACKS[0].look);
+test("Memory card backs follow the store's Cards shelf", () => {
+  const p = ensureFree(fresh()); assert.equal(p.cardback, "cb-deck");
+  assert.equal(backOf(p), OWN_BACK); assert.equal(backOf({}), OWN_BACK); assert.ok(backHtml(OWN_BACK).includes("<svg"));
+  p.essence = 500; assert.ok(buy(p, "cb-lapis")); p.cardback = "cb-lapis";
+  assert.equal(backOf(p).unified, "cb-lapis"); assert.match(backHtml(backOf(p)), /class="cbk"/);
+  assert.ok(!STORE.some((s) => /^gm-/.test(s.id)));
 });

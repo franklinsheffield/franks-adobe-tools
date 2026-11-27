@@ -116,7 +116,7 @@ html,body{height:100%;margin:0;background:var(--night);color:var(--fg);font:15px
 .k-float{animation:kf 4s ease-in-out infinite}
 @keyframes kf{50%{transform:translateY(-8px)}}
 .rest .k-only{display:none}
-.rest [class*="k-"]{animation:none!important}
+.rest [class*="k-"]:not([class*="cbk-"]){animation:none!important}
 .casting [style*="--d"]{animation-delay:var(--d)}
 .casting .k-drop{animation:drop .9s cubic-bezier(.3,.1,.5,1) both;animation-delay:var(--d)}
 @keyframes drop{0%{transform:translateY(-230px);opacity:0}10%{opacity:1}70%{transform:translateY(0)}82%{transform:translateY(-12px)}100%{transform:translateY(0)}}
@@ -642,3 +642,66 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 /* showcase pins beside the stats */
 .tr-pins{display:inline-flex;gap:2px;padding:0 2px;border:0;background:none;cursor:pointer;vertical-align:middle}
 .tr-pin .tr-svg{width:20px;height:20px}
+
+/* ---- Card backs (cardbacks.js): one animated SVG back for every deck ---- */
+.cbk .cbk-spin{transform-box:view-box;transform-origin:30px 42px;animation:cbk-spin 16s linear infinite}
+.cbk .cbk-spin.fast{animation-duration:2.4s}
+.cbk .cbk-pulse,.cbk .cbk-ring,.cbk .cbk-blink{transform-box:fill-box;transform-origin:center}
+.cbk .cbk-pulse{animation:cbk-pulse 2.4s ease-in-out infinite}
+.cbk .cbk-ring{animation:cbk-ring 2s ease-out infinite;animation-delay:var(--d,0s)}
+.cbk .cbk-blink{animation:cbk-blink 5s ease-in-out infinite}
+.cbk .cbk-twk{animation:cbk-twk 3s ease-in-out infinite;animation-delay:var(--d,0s)}
+.cbk .cbk-glow{opacity:.3;animation:cbk-glow 2.4s ease-in-out infinite;animation-delay:var(--d,0s)}
+.cbk .cbk-shoot{opacity:0;animation:cbk-shoot 6s ease-in infinite}
+.cbk .cbk-dash{stroke-dasharray:7 70;animation:cbk-dash 3s linear infinite}
+.cbk .cbk-drift{animation:cbk-drift 9s ease-in-out infinite alternate;animation-delay:var(--d,0s)}
+.cbk .cbk-sweep{animation:cbk-sweep 4.5s ease-in-out infinite}
+@keyframes cbk-spin{to{transform:rotate(360deg)}}
+@keyframes cbk-pulse{50%{transform:scale(1.25);opacity:.75}}
+@keyframes cbk-ring{from{transform:scale(.6);opacity:.9}to{transform:scale(3.2);opacity:0}}
+@keyframes cbk-blink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(.08)}}
+@keyframes cbk-twk{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes cbk-glow{0%,100%{opacity:.3}40%{opacity:1}}
+@keyframes cbk-shoot{0%,70%{opacity:0;transform:translate(0,0)}74%{opacity:1}100%{opacity:0;transform:translate(34px,17px)}}
+@keyframes cbk-dash{to{stroke-dashoffset:-154}}
+@keyframes cbk-drift{from{transform:translate(-5px,-4px)}to{transform:translate(6px,5px)}}
+@keyframes cbk-sweep{0%,55%{transform:translateX(0)}100%{transform:translateX(105px)}}
+@media (prefers-reduced-motion: reduce){.cbk *{animation:none!important}.cbk .cbk-glow,.cbk .cbk-shoot{opacity:1}}
+/* ---- Essence store 2: departments, shelves, item cards ---- */
+.depts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+.dept{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;border:1px solid rgba(250,222,140,.25);background:rgba(46,30,104,.35);color:inherit;font:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+.dept b{font-family:var(--display,Cinzel,serif);font-size:.92em;white-space:nowrap}
+.dept small{opacity:.7;font-size:.72em}
+.dept:hover{transform:translateY(-2px);box-shadow:0 0 12px rgba(250,222,140,.35)}
+.dept.on{border-color:var(--gold,#E2B04A);background:rgba(226,176,74,.2);box-shadow:0 0 0 1px rgba(226,176,74,.4) inset}
+.dept-blurb{margin:8px 0 2px;font-size:.88em;opacity:.85}
+.shop.grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.shop-card{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid rgba(250,222,140,.2);border-radius:12px;background:rgba(46,30,104,.25);animation:shop-in .35s ease-out both;animation-delay:calc(var(--i,0) * 35ms);transition:transform .15s,box-shadow .15s,border-color .15s}
+.shop-card:hover{transform:translateY(-2px);border-color:rgba(250,222,140,.55);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.shop-card.on{border-color:var(--gold,#E2B04A);box-shadow:0 0 0 1px rgba(226,176,74,.45) inset,0 0 12px rgba(226,176,74,.25)}
+.shop-card.try{border-color:#66E0C8;box-shadow:0 0 12px rgba(102,224,200,.35)}
+.shop-card .sc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.shop-card .sc-body b{font-size:.95em}
+.shop-card .sc-body .note{font-size:.8em;line-height:1.25}
+.shop-card .sc-acts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:3px}
+.shop-card .sc-acts>*{text-align:center;justify-content:center}
+.shop-card .sc-tag{font-size:.7em;opacity:.75}
+@keyframes shop-in{from{opacity:0;transform:translateY(8px)}}
+.th{flex:none;width:46px;height:62px;border-radius:8px;display:grid;place-items:center;position:relative;overflow:hidden;border:1px solid rgba(250,222,140,.3);background:radial-gradient(circle at 50% 40%,#2e1e68,#0d0718);font-size:1.5rem}
+.th-robe::before{content:"";position:absolute;inset:6px 4px 0;background:linear-gradient(160deg,var(--a),var(--b));clip-path:polygon(50% 0,92% 42%,100% 100%,0 100%,8% 42%)}
+.th-robe::after{content:"";position:absolute;left:50%;top:42%;width:14px;height:13px;transform:translateX(-50%);background:var(--t);clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 0 3px var(--t))}
+.th-cloth{background:radial-gradient(circle at 50% 45%,var(--a),var(--b))}
+.th-cloth::after{content:"";width:26px;height:26px;border-radius:50%;border:1.5px solid var(--t);box-shadow:0 0 0 3px transparent,0 0 0 4px var(--t);opacity:.85}
+.th-orb::after{content:"";width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#c9a0ff 25%,#6a2fc0 60%,#1d0a44);box-shadow:0 0 10px #b07cff;animation:cbk-pulse 3s ease-in-out infinite}
+.th-flame::before{content:"";position:absolute;left:50%;bottom:5px;width:12px;height:28px;margin-left:-6px;border-radius:2px;background:var(--w)}
+.th-flame::after{content:"";position:absolute;left:50%;bottom:33px;width:10px;height:16px;margin-left:-5px;border-radius:50% 50% 50% 50%/65% 65% 35% 35%;background:var(--f);box-shadow:0 0 10px 3px var(--h);animation:th-flick .9s ease-in-out infinite alternate}
+@keyframes th-flick{from{transform:scale(1,1) rotate(-3deg)}to{transform:scale(.88,1.12) rotate(3deg)}}
+.th-vibe{background:radial-gradient(circle at 28% 30%,var(--a) 0 3px,transparent 4px),radial-gradient(circle at 70% 55%,var(--b) 0 2.5px,transparent 3.5px),radial-gradient(circle at 40% 78%,var(--a) 0 2px,transparent 3px),#120a24}
+@media (max-width:640px){.depts{grid-template-columns:repeat(auto-fit,minmax(96px,1fr))}.shop.grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){.shop-card,.th-orb::after,.th-flame::after{animation:none}}
+/* the Cards shelf: the chosen back fanned out on the table */
+.table.cb-show{background:radial-gradient(circle at 50% 60%,var(--cloth1,#5a2a8a),var(--cloth3,#170a2e) 85%)}
+.cb-fan{position:absolute;inset:0}
+.cb-fan i{position:absolute;left:50%;top:50%;width:21%;aspect-ratio:60/84;margin:-17% 0 0 -10.5%;transform-origin:50% 135%;transform:rotate(var(--r));border-radius:7px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.6);animation:cb-fanin .6s cubic-bezier(.2,.9,.3,1.1) calc(var(--i) * 80ms) both;transition:transform .2s}
+.cb-fan i:hover{transform:rotate(var(--r)) translateY(-9%)}
+@keyframes cb-fanin{from{opacity:0;transform:rotate(0deg) translateY(30%)}}

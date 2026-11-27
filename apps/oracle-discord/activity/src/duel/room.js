@@ -8,6 +8,7 @@ import { EL, FAMILY, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
 import { sceneSvg, kindOf, KIND } from "./scene.js";
+import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
 import { SFX } from "./sfx.js";
@@ -64,7 +65,7 @@ export const room = {
     let g = null, L = LEVELS[0], gen = 0, fx = null, hintId = null, busy = false;
     const live = (my) => my === gen && state.inRoom === "duel";
     const later = (ms, fn) => { const my = gen; setTimeout(() => live(my) && fn(), ms); };
-    const look = () => lookOf(state.prog);
+    const look = () => ({ ...lookOf(state.prog), uni: equippedBack(state.prog) });
     const draw = () => { tableEl.className = "table duel"; tableEl.innerHTML = sceneSvg({ look: look(), g, fx }); };
     const statsTop = () => { const n = codexCount(state.prog), t = titleOf(n), nx = nextTitle(n);
       return `<div class="cx-top"><b>⚛️ ${esc(t.name)}</b> · ${n} / ${COMPOUNDS.length} compounds in your Codex${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
@@ -97,11 +98,11 @@ export const room = {
       gen++; g = null; fx = null; draw(); cap("🧪 Lab supplies");
       say(msg || pick(SHELF_TALK.open).replace("{name}", state.name));
       const lk = look();
-      ui(`<div class="cx-top">💎 ${state.prog.essence || 0} Essence</div>${SLOTS.map(([slot, label]) => `<div class="group">${label}</div><div class="choices col">${SHOP.filter((s) => s.slot === slot).map((s) => {
+      ui(`<div class="cx-top">💎 ${state.prog.essence || 0} Essence</div>${lk.uni ? `<div class="note">🃏 Your card back from the store's Cards shelf is on every deck, this one included. Pick "Each deck's own" there to deal with these.</div>` : ""}${SLOTS.map(([slot, label]) => `<div class="group">${label}</div><div class="choices col">${SHOP.filter((s) => s.slot === slot).map((s) => {
         const own = owns(state.prog, s.id), on = lk[slot] === s.id;
         return `<button class="c" type="button" data-buy="${s.id}" ${on ? "disabled" : ""}>${on ? "✓ " : ""}<b>${esc(s.name)}</b> <span class="note">· ${own ? (on ? "in use" : "owned, tap to use") : s.price + " 💎"} · ${esc(s.note)}</span></button>`; }).join("")}</div>`).join("")}
         <div class="choices"><button class="c" type="button" id="du-lobby">⚛️ Back to Element Duel</button></div>`);
-      $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onmouseenter = () => { const it = shopItem(b.dataset.buy); tableEl.innerHTML = sceneSvg({ look: { ...look(), [it.slot]: it.id }, g: null }); },
+      $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onmouseenter = () => { const it = shopItem(b.dataset.buy); tableEl.innerHTML = sceneSvg({ look: { ...look(), [it.slot]: it.id, ...(it.slot === "back" ? { uni: "" } : {}) }, g: null }); },
         b.onclick = () => { const r = buyOrUse(state.prog, b.dataset.buy);
           if (r === "poor") return shop("Not enough Essence yet. Win a few duels and come back.");
           if (r) { saveProgress(); showStats(); r === "bought" ? SFX.discover() : SFX.place(2); shop(r === "bought" ? pick(SHELF_TALK.buy).replace("{item}", shopItem(b.dataset.buy).name) : "Swapped in."); } }));

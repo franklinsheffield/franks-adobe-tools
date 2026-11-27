@@ -12,7 +12,8 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
-import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
+import { CARD_BACK, cardBackSvg } from "./cardbacks.js";
+import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, departments, deptOf, kindLabel, goodsOf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
@@ -377,40 +378,59 @@ function applyLook(over = {}) {
 // ---- the Essence store ----
 let trying = null; // a store item being tried on: { kind, id }
 const pickLine = (pool, vars) => { const opts = pool.filter((l) => l !== pickLine.last); const l = opts[Math.floor(Math.random() * opts.length)] || pool[0]; pickLine.last = l; return l.replace(/\{item\}/g, vars.item || "").replace(/\{name\}/g, state.name); };
+const emojiOf = (kind) => kindLabel(kind).split(" ")[0];
+/** A small picture of a store item for its card: the real card back, or swatches made from the item's own colours. */
+function thumb(it) {
+  const k = it.kind;
+  if (k === "cardback") return it.id === "cb-deck" ? `<span class="th">🂠</span>` : `<span class="th th-card">${cardBackSvg(it.id)}</span>`;
+  if (k === "outfit" && it.hood) return `<span class="th th-robe" style="--a:${it.hood[0]};--b:${it.hood[1]};--t:${it.trim}"></span>`;
+  if (k === "cloth" && it.c) return `<span class="th th-cloth" style="--a:${it.c[0]};--b:${it.c[2]};--t:${it.ink || EARNED_INK[it.id] || "#E2B04A"}"></span>`;
+  if (k === "orb") return `<span class="th th-orb" style="filter:${it.f || "none"}"></span>`;
+  if (k === "flame" && it.wax) return `<span class="th th-flame" style="--w:${it.wax[0]};--f:${it.flame[1]};--h:${it.halo}"></span>`;
+  if (k === "vibe" && it.stars) return `<span class="th th-vibe" style="--a:${it.stars[0]};--b:${it.stars[1]}"></span>`;
+  return `<span class="th">${emojiOf(k)}</span>`;
+}
+const ACTIVE_KINDS = ["voice", "vibe", "persona"]; // "Active" reads better than "Wearing" for these
+/** The store: five departments, each with its shelves; `tab` is the open shelf (a kind, or "haunted"). */
 function showStore(tab = "outfit", opener = null) {
   clearReading(); cap(trying ? "👁 Trying on: " + (lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
-  const p = state.prog;
+  const p = state.prog, depts = departments(), dept = deptOf(tab);
   say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
-  const tabs = KINDS.map(([k, label]) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${label}</button>`).join("");
-  const goods = [...(tab === "cloth" || tab === "orb" ? UNLOCKS.filter((u) => u.kind === tab).map((u) => ({ ...u, earned: true })) : []), ...STORE.filter((s) => s.kind === tab)];
-  const rows = goods.map((it) => { const own = owns(it.id), on = p[tab] === it.id;
-    const act = on ? `<button class="c small" type="button" disabled>✓ ${tab === "voice" || tab === "vibe" || tab === "persona" ? "Active" : "Wearing"}</button>`
+  const earnedOf = (k) => (k === "cloth" || k === "orb" ? UNLOCKS.filter((u) => u.kind === k).map((u) => ({ ...u, earned: true })) : []);
+  const goodsFor = (k) => [...earnedOf(k), ...goodsOf(k)];
+  const deptBtns = depts.filter((d) => d.kinds.length).map((d) => { const all = d.kinds.filter((k) => k !== "haunted").flatMap(goodsFor), have = all.filter((it) => owns(it.id)).length;
+    return `<button class="dept${d.id === dept.id ? " on" : ""}" type="button" data-tab="${d.kinds[0]}" title="${esc(d.blurb)}"><b>${d.label}</b><small>${have} / ${all.length} owned</small></button>`; }).join("");
+  const tabs = dept.kinds.length > 1 ? `<div class="choices tabs">${dept.kinds.map((k) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${kindLabel(k)}</button>`).join("")}</div>` : "";
+  const cards = goodsFor(tab).map((it, i) => { const k = it.kind, own = owns(it.id), on = p[k] === it.id, tri = trying && trying.id === it.id;
+    const act = on ? `<button class="c small" type="button" disabled>✓ ${ACTIVE_KINDS.includes(k) ? "Active" : "Wearing"}</button>`
       : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
       : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
-    const tri = trying && trying.id === it.id;
-    const tryBtn = tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : tab === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
-    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}${it.note ? `<span class="note"> · ${esc(it.note)}</span>` : ""}</span>${tryBtn}${act}</div>`; }).join("");
+    const tryBtn = k === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : k === "persona" ? `<button class="c small" type="button" data-hearp="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
+    return `<div class="shop-card${on ? " on" : ""}${tri ? " try" : ""}" style="--i:${i}">${thumb(it)}<div class="sc-body"><b>${esc(it.name)}</b>${tab === "haunted" ? `<span class="sc-tag">${kindLabel(k)}</span>` : ""}${it.note ? `<span class="note">${esc(it.note)}</span>` : ""}<div class="sc-acts">${tryBtn}${act}</div></div></div>`; }).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
     <div class="cx-top"><b>💎 ${p.essence} Essence</b> · readings left today: ${left === Infinity ? "unlimited" : left}
       ${left === Infinity ? "" : `<button class="c small" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading today (💎 ${DAY_PASS})</button>`}</div>
     <div class="note">Daily readings by rank: ${DAILY.filter((d, i) => i < 4).map((d) => `${d.rank} ${d.n === Infinity ? "unlimited" : d.n}`).join(" · ")}. The /oracle commands in chat are always unlimited.</div>
-    <div class="choices tabs">${tabs}</div><div class="shop">${rows}</div>`);
-  const talk = (kind, act, it) => pickLine((SHOP_TALK[kind] || SHOP_TALK.outfit)[act], { item: it ? it.name : "" });
+    <div class="depts">${deptBtns}</div><div class="dept-blurb">${dept.label}: ${esc(dept.blurb)}.${tab === "cardback" ? " The back you pick is dealt in tarot, Lenormand, the Science is Magic deck, Grimoire Memory, Constellation Rummy and Element Duel." : ""}</div>
+    ${tabs}<div class="shop grid">${cards}</div>`);
+  const talk = (kind, act, it) => pickLine(((SHOP_TALK[kind] || SHOP_TALK.outfit)[act]) || SHOP_TALK.outfit[act], { item: it ? it.name : "" });
   $("back").onclick = () => { trying = null; applyLook(); greet(); };
   applyLook(trying ? { [trying.kind]: trying.id } : {});
-  if (tab === "cardback") table.rest(["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]); // show a deck wearing the back
-  const sh = shelf(tab); if (sh && sh.preview && trying && trying.kind === tab) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
+  if (tab === "cardback") { const bid = trying && trying.kind === "cardback" ? trying.id : p.cardback;
+    if (CARD_BACK[bid]) { const t = $("table"); t.className = "table cb-show"; t.innerHTML = `<div class="cb-fan">${[-2, -1, 0, 1, 2].map((r, i) => `<i style="--r:${r * 13}deg;--i:${i}">${cardBackSvg(bid)}</i>`).join("")}</div>`; } // the back, fanned out
+    else { showStore.deck = showStore.deck || ["tarot", "lenormand", "magicdeck"][Math.floor(Math.random() * 3)]; table.rest(showStore.deck); } }
+  const sh = trying ? shelf(trying.kind) : null; if (sh && sh.preview) sh.preview(trying.id, { table, tableEl: $("table"), cap, esc });
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
-    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(tab, "tryon", it)); }));
+    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(it.kind, "tryon", it)); }));
   if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
-  $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
-  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); showStore(tab, talk(tab, "tryon", lookItem(b.dataset.w))); }));
+  $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore.deck = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
+  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); const it = lookItem(b.dataset.w); showStore(tab, talk(it.kind, "tryon", it)); }));
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); showStore(tab, talk(tab, "buy", it)); } }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); showStore(tab, talk(it.kind, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }

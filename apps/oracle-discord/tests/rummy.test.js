@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { Constellation } from "astronomy-engine";
 import { STARS, STAR_NAMES } from "../activity/src/stars/sky.gen.js";
 import { CARDS, CARD, CONS, CLASSES, LEVELS } from "../activity/src/rummy/deck.js";
-import { newGame, setType, fits, draw, layDown, layOff, discard, tally, oracleTurn, settle, pts, room, BACKS, backOf, KIND } from "../activity/src/rummy/engine.js";
+import { newGame, setType, fits, draw, layDown, layOff, discard, tally, oracleTurn, settle, pts, room, backOf } from "../activity/src/rummy/engine.js";
 import { GUIDE } from "../activity/src/rummy/guide.js";
 
 test("deck: 48 real stars, 4 per constellation, in the right constellation", () => {
@@ -72,7 +72,6 @@ test("rewards: first win pays more, progress kept, card backs", () => {
   const r = settle(p, g); assert.ok(r.win && r.firstWin); assert.deepEqual(r.newFull, ["Ori"]);
   assert.equal(r.essence, 4 + 10 + 3); assert.equal(room(p).wins[1], 1);
   const r2 = settle(p, g); assert.equal(r2.firstWin, false); assert.equal(r2.essence, 4);
-  assert.equal(BACKS.filter((b) => b.price === 0).length, 1);
-  assert.equal(backOf({ [KIND]: "cb-pulsar", owned: [] }), "cb-midnight"); assert.equal(backOf({ [KIND]: "cb-pulsar", owned: ["cb-pulsar"] }), "cb-pulsar");
+  assert.equal(backOf({}), "cb-midnight"); assert.equal(backOf({ cardback: "cb-deck" }), "cb-midnight"); assert.equal(backOf({ cardback: "cb-pulsar" }), "cb-pulsar");
   assert.ok(GUIDE.sections.length >= 5);
 });
