@@ -32,10 +32,20 @@ export function localToUtc({ year, month, day, hour = 12, minute = 0 }, zone) {
   return new Date(t);
 }
 
-/** Parse "1990-04-09" and "14:30" / "2:30 pm". */
+/** Dates are typed as DD/MM/YYYY (Frank 2026-11-27); "/", "." or "-" between the parts. A year-first date
+ *  (YYYY-MM-DD, how saved profiles are stored) is still read. Returns "YYYY-MM-DD" or null. */
+export function toIso(s) {
+  const t = String(s ?? "").trim(), y = t.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/), d = t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  const m = y ? [y[1], y[2], y[3]] : d ? [d[3], d[2], d[1]] : null;
+  return m ? `${m[0]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : null;
+}
+/** "1990-04-09" -> "09/04/1990" for showing and prefilling forms. Anything else is returned unchanged. */
+export const dmy = (iso) => { const m = String(iso ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso ?? ""); };
+export const DATE_HINT = "DD/MM/YYYY, like 09/04/1990";
+/** Parse "09/04/1990" (or "1990-04-09") and "14:30" / "2:30 pm". */
 export function parseBirth(dateStr, timeStr) {
-  const d = String(dateStr).trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!d) throw new Error("Date must look like 1990-04-09 (year-month-day).");
+  const iso = toIso(dateStr), d = iso && iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!d) throw new Error("Date must look like 09/04/1990 (DD/MM/YYYY).");
   const t = String(timeStr || "").trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
   if (!t) throw new Error("Time must look like 14:30 or 2:30 pm.");
   let hour = +t[1]; const minute = +(t[2] || 0);

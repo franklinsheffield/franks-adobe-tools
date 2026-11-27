@@ -11,7 +11,7 @@ export const command = {
   description: "Your core numbers from birth name and date (Pythagorean), with a Science is Magic reading",
   options: [
     { type: 3, name: "name", description: "Full birth name as on your birth certificate (uses /profile if left out)", max_length: 100 },
-    { type: 3, name: "date", description: "Birth date as year-month-day (uses /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses /profile if left out)", min_length: 8, max_length: 10 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
     { type: 5, name: "show_name", description: "Print your name and its letter values on the card (default: hidden)" },
   ],

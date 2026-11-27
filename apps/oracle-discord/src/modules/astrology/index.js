@@ -8,7 +8,7 @@ import { analyse } from "./insight.js";
 import { SUN, MOON, RISING, planetLine, aspectLine, elementLine, formula } from "./text.js";
 
 const CHART_OPTS = [
-  { type: 3, name: "date", description: "Birth date, year-month-day (1990-07-14). Blank = saved profile or form", required: false },
+  { type: 3, name: "date", description: "Birth date, DD/MM/YYYY (14/07/1990). Blank = saved profile or form", required: false },
   { type: 3, name: "place", description: "Birth town or city (Phoenix, AZ). Blank = saved profile or form", required: false },
   { type: 3, name: "time", description: "Birth time (08:45 or 8:45 am). Leave out if unknown", required: false },
   { type: 3, name: "name", description: "Name shown on the chart", required: false },

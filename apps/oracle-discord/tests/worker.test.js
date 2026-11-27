@@ -43,7 +43,7 @@ test("birth modal: prefilled, short custom_id, blank time = unknown", async () =
   assert.equal(needsForm(o, f), true);
   const m = await birthModal(env, "astrology", o, f);
   assert.equal(m.type, 9); assert.ok(m.data.custom_id.length < 100);
-  assert.equal(m.data.components[0].components[0].value, "1990-04-09");
+  assert.equal(m.data.components[0].components[0].value, "09/04/1990");
   const it = { data: { custom_id: m.data.custom_id, components: [
     { components: [{ custom_id: "date", value: "1990-04-09" }] }, { components: [{ custom_id: "time", value: "" }] },
     { components: [{ custom_id: "place", value: "Phoenix" }] }, { components: [{ custom_id: "save", value: "Yes" }] }] } };
@@ -53,7 +53,7 @@ test("birth modal: prefilled, short custom_id, blank time = unknown", async () =
   assert.equal(await fromModal(env, it), null); // one use only
   const h = {}; fillFromProfile(h, fieldsFor("humandesign", h), { date: "1990-04-09", time: "unknown", place: "Phoenix" });
   assert.equal(needsForm(h, fieldsFor("humandesign", h)), false);
-  assert.match(checkBirth({ date: "09/04/1990", place: "x y" }), /year-month-day/);
+  assert.equal(checkBirth({ date: "09/04/1990", place: "x y" }), null); assert.match(checkBirth({ date: "1990/04", place: "x y" }), /DD\/MM\/YYYY/);
 });
 
 test("profile is stored sealed", async () => {

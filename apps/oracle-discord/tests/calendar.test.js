@@ -161,5 +161,5 @@ test("/calendar card: today in three calendars, next festival and eclipse", asyn
   const { deskSvg } = await import("../activity/src/calendar/desk.js");
   const s = C.staticDesk(deskSvg(d.j, { bg: ["#000", "#111"], gear: "#fff", gear2: "#888", ink: "#000", ring: "#ff0", text: "#fff" }));
   assert.ok(!s.includes("data-to=")); assert.ok(!/style="transform:rotate/.test(s));
-  await assert.rejects(C.run({ date: "2026-02-30" }), /year-month-day/);
+  await assert.rejects(C.run({ date: "2026-02-30" }), /DD\/MM\/YYYY/);
 });
