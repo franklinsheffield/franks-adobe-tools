@@ -39,6 +39,7 @@ export const TROPHIES = [
   { id: "mentalist", game: "The Mentalist", name: "Silk Blindfold", art: "blindfold", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
   { id: "fireworks", game: "Fireworks Workshop", name: "Golden Rocket", art: "rocket", need: 2, how: ["Win Level 1", "Win Level 2", "Win a Level 3 show", "A perfect Level 3 show"] },
+  { id: "fregoli", game: "The Same Person", name: "Fregoli's Mask", art: "mask", meta: true, how: ["Find 4 Dossier clues", "Find 9 Dossier clues", "Find 14 Dossier clues", "Find all 17 Dossier clues"] },
   { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
@@ -77,6 +78,7 @@ export const LINES = {
   casefiles: "The Investigator's Lens. Every ghost you looked through it had a method.",
   workshop: "The Golden Top Hat. Every trick under it is one a real medium used, and now you know how.",
   bookings: "The Star Turn Ticket. Your name at the top of the bill, and not one spirit on the payroll.",
+  fregoli: "Fregoli's Mask. Five hosts, one face, and you saw through every hat. Fregoli himself never got caught that badly.",
   darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
   mentalist: "The Silk Blindfold. You never read a mind in it, only the audience, and that was the whole act.",
 };
@@ -110,6 +112,10 @@ export function recordWin(p, id, level, { won = true, perfect = false } = {}) {
   if (tier === 3 && [1, 2, 3].every((n) => r.perfect[n])) tier = 4;
   return raise(p, id, tier);
 }
+
+/** The Dossier (hosts/disguise.js): Fregoli's Mask rises with clues found (4, 9, 14, all 17). */
+export const CLUE_TIERS = [4, 9, 14, 17];
+export function recordClues(p, n) { return raise(p, "fregoli", CLUE_TIERS.reduce((t, need, i) => (n >= need ? i + 1 : t), 0)); }
 
 /** After a reading: the Crystal Eye counts readings, and Prismatic needs every system read. */
 export function recordReading(p, systemCount) {
@@ -146,6 +152,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     cards: `<g transform="rotate(-14 50 70)"><rect x="28" y="20" width="26" height="40" rx="3" ${F}/></g><g transform="rotate(14 50 70)"><rect x="46" y="20" width="26" height="40" rx="3" ${F}/></g><rect x="37" y="16" width="26" height="42" rx="3" ${F}/><path class="tr-gem" d="M50 26 L53 34 L61 34 L55 39 L57 47 L50 42 L43 47 L45 39 L39 34 L47 34Z" fill="#0b0818"/><rect x="45" y="62" width="10" height="17" ${F}/>`,
     book: `<path d="M26 22 L50 28 L74 22 L74 66 L50 72 L26 66Z" ${F}/><path d="M50 28 L50 72" stroke="${lo}" stroke-width="1.5"/><g class="tr-rot"><circle cx="62" cy="46" r="7" fill="none" stroke="${lo}" stroke-width="1.6"/><path d="M62 39 L62 53 M55 46 L69 46" stroke="${lo}" stroke-width="1.2"/></g><path d="M34 36 L44 38 M34 44 L44 46 M34 52 L44 54" stroke="${lo}" stroke-width="1.4"/><rect x="45" y="72" width="10" height="7" ${F}/>`,
     burner: `<path class="tr-flame" d="M50 8 C62 24 60 36 50 44 C40 36 38 24 50 8Z" fill="#66E0C8" opacity=".85"/><path d="M50 22 C56 30 55 36 50 40 C45 36 44 30 50 22Z" fill="#fff" opacity=".7"/><rect x="44" y="44" width="12" height="28" rx="2" ${F}/><rect x="40" y="58" width="20" height="6" rx="2" ${F}/><rect x="30" y="72" width="40" height="7" rx="3" ${F}/>`,
+    mask: `<path d="M18 40 Q34 28 50 38 Q66 28 82 40 Q84 58 68 62 Q56 62 50 52 Q44 62 32 62 Q16 58 18 40Z" ${F}/><ellipse cx="35" cy="46" rx="7" ry="5" fill="#0b0818"/><ellipse cx="65" cy="46" rx="7" ry="5" fill="#0b0818"/><g class="tr-swing"><path d="M50 52 L50 80" stroke="${mid}" stroke-width="3" stroke-linecap="round"/></g><path class="tr-gem" d="M26 36 Q34 32 42 36" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`,
     trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
     blindfold: `<path d="M14 44 Q50 30 86 44 L86 56 Q50 44 14 56 Z" ${F}/><path d="M20 54 Q14 68 22 80" stroke="${lo}" stroke-width="4" fill="none"/><path d="M28 52 Q26 70 34 82" stroke="${lo}" stroke-width="3" fill="none"/><circle class="tr-gem" cx="50" cy="44" r="5" fill="#fff" opacity=".7"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,

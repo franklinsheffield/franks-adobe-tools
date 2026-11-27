@@ -10,7 +10,7 @@ const winAll = (p, upTo = 3) => { for (const t of GAMES) for (let L = 1; L <= up
 
 test("the credits roll once, after every game is finished on every level", () => {
   const p = {};
-  assert.equal(GAMES.length, TROPHIES.length - 1); assert.ok(!GAMES.some((t) => t.id === "oracle"));
+  assert.equal(GAMES.length, TROPHIES.filter((t) => !t.meta).length - 1); assert.ok(!GAMES.some((t) => t.id === "oracle"));
   winAll(p, 2); assert.equal(mastered(p), false); assert.equal(checkMastery(p), false); assert.equal(hasCrown(p), false);
   assert.deepEqual(masteryCount(p), { done: GAMES.length * 2, of: GAMES.length * 3 });
   for (const t of GAMES.slice(1)) for (let i = 0; i < t.need; i++) recordWin(p, t.id, 3, { won: true });

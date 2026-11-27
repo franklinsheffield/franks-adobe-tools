@@ -7,7 +7,7 @@ import { TRACKS } from "./music.js";
 
 export const CREDITS_SONG = "dont-judge-a-space-kid";
 /** The games (every trophy but the Crystal Eye, which counts readings). */
-export const GAMES = TROPHIES.filter((t) => t.id !== "oracle");
+export const GAMES = TROPHIES.filter((t) => t.id !== "oracle" && !t.meta);
 
 /** Levels (1-3) of a game the member has finished. */
 export function levelsDone(p, id) {
