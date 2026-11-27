@@ -109,3 +109,17 @@ export function checkout() {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
     o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.15); });
 }
+
+/** Ba-dum tss: two tom hits and a cymbal, for the Stand-up personality's punchlines. */
+export function rimshot() {
+  if (muted || !ctx || ctx.state !== "running") return;
+  const t0 = ctx.currentTime + 0.05;
+  [[170, 0], [120, 0.16]].forEach(([f, dt]) => { const t = t0 + dt, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine";
+    o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.25); });
+  const len = 0.9, n = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+  const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = n; hp.type = "highpass"; hp.frequency.value = 6000; g.gain.value = 0.45;
+  src.connect(hp); hp.connect(g); g.connect(out); src.start(t0 + 0.34);
+}

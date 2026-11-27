@@ -41,3 +41,29 @@ test("every reading system has a vibe, every product kind has dialogue", async (
   const p = { owned: [] }; ensureFree(p);
   assert.ok(p.owned.includes("chamber"));
 });
+
+test("personalities: every one has full line pools and a store item", async () => {
+  const { PERSONAS, personaQuip, deliver, line } = await import("../activity/src/personas.js");
+  const { STORE } = await import("../activity/src/store.js");
+  for (const [id, P] of Object.entries(PERSONAS)) {
+    assert.ok(STORE.find((s) => s.id === id && s.kind === "persona"), id);
+    if (!P) continue;
+    for (const k of ["greet", "ask", "cast", "reveal", "pre", "post"]) assert.ok(P[k].length >= 2, id + k);
+    assert.ok(P.jokes.length >= 12, id);
+    const heard = []; const seen = new Set(); for (let i = 0; i < P.jokes.length; i++) seen.add(personaQuip(id, "Frank", heard));
+    assert.equal(seen.size, P.jokes.length, id + " no repeats");
+    assert.ok(line(P, "reveal", { result: "Hexagram 1" }).includes("Hexagram 1"), id);
+    assert.ok(deliver(id, "Yes.", { name: "Frank" }).includes("Yes."));
+  }
+});
+
+import { IDLE, idleLine } from "../activity/src/idle.js";
+import { PERSONAS } from "../activity/src/personas.js";
+test("every personality has 15 idle lines; first 3 lead in order, then no repeats", () => {
+  for (const id of Object.keys(PERSONAS)) {
+    assert.equal(IDLE[id]?.length, 15, id);
+    const used = [], got = Array.from({ length: 15 }, (_, k) => idleLine(id, k, used, "Ana"));
+    assert.deepEqual(got.slice(0, 3), IDLE[id].slice(0, 3).map((t) => t.replace(/\{name\}/g, "Ana")));
+    assert.equal(new Set(got).size, 15, id);
+  }
+});
