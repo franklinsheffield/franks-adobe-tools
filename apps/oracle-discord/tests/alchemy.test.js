@@ -125,6 +125,20 @@ test("deadly gases and real-life hazards: kinds, gas scene, and safety gear that
   for (const id of ["al-goggles", "al-shield", "al-hood", "al-kit"]) { const it = SHOP.find((t) => t.id === id); assert.equal(it.slot, "gear"); assert.ok(it.price > 0 && it.guards.length);
     assert.ok(sceneSvg({ look: { ...DEFAULT_LOOK, gear: id }, flames: 3, saved: "#9fd8ff" }).includes("al-gear lit"), id); }
 });
+test("free play: every product can be made from the full shelf, hazards first, first finds pay once", async () => {
+  const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
+  const { experiment, logPlay, gridOf, FINDS, FIND_PTS } = await import("../activity/src/alchemy/logic.js");
+  assert.equal(FINDS.length, RECIPES.length + DISCOVERIES.length);
+  for (const x of FINDS) assert.equal(experiment(x.make, x.op).find?.id, x.id, x.id);
+  assert.equal(experiment(["vitriol", "water"], "dissolve").hazard.id, "acidwater");
+  assert.ok(experiment(["gold", "salt"], "heat").nothing); assert.equal(experiment([], "heat"), null);
+  const p = { xp: 0, essence: 0 }, cin = experiment(["sulfur", "mercury"], "sublime");
+  const a = logPlay(p, cin); assert.ok(a.first); assert.equal(a.xp, FIND_PTS); assert.deepStrictEqual(a.newEls, ["Hg", "S"]);
+  const b = logPlay(p, cin); assert.ok(!b.first); assert.equal(b.xp, 0);
+  logPlay(p, experiment(["mercury"], "distil")); logPlay(p, experiment(["mercury"], "distil"));
+  const g = gridOf(p); assert.equal(g.total, FINDS.length + HAZARDS.length); assert.equal(g.got, 2);
+  assert.ok(gridOf({}).got === 0);
+});
 test("apothecary: free items owned, buying spends Essence and puts it on the bench", () => {
   const p = { essence: 70, owned: [] };
   assert.ok(owns(p, "al-alembic")); assert.ok(!owns(p, "al-pelican"));
