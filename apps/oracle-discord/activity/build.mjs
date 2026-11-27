@@ -30,4 +30,6 @@ for (const f of ["index.html", "chamber.css"]) copyFileSync(new URL("src/" + f, 
 for (const f of ["Cinzel-Regular.otf", "Cinzel-Black.otf"]) if (existsSync(new URL("fonts/" + f, app))) copyFileSync(new URL("fonts/" + f, app), new URL("assets/" + f, dist));
 for (const f of ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "NotoSansEgyptianHieroglyphs-Subset.ttf", "NotoSansRunic-Subset.ttf", "NotoSerifSC-Subset.ttf"]) copyFileSync(new URL("assets/fonts/" + f, app), new URL("assets/" + f, dist));
 copyFileSync(new URL("assets/oracle.png", app), new URL("assets/oracle.png", dist));
+// Vibe fonts (SIL Open Font License, from Fontsource), latin subsets.
+for (const f of readdirSync(new URL("src/fonts/", here))) if (f.endsWith(".woff2")) copyFileSync(new URL("src/fonts/" + f, here), new URL("assets/" + f, dist));
 console.log("Oracle Chamber built:", MODULES.join(", "));

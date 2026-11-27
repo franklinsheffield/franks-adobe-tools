@@ -1,7 +1,7 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
-import { makeTable, fitSvg } from "./table.js";
+import { makeTable, fitSvg, setTableDecor } from "./table.js";
 import { unlockVoice, blip, isMuted, setMuted } from "./voice-sfx.js";
 import { available, systemByKey, optionsFor } from "../../src/oracle/systems.js";
 import { greeting, askLine, speech } from "../../src/oracle/voice.js";
@@ -12,8 +12,9 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
-import { STORE, KINDS, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
-import { setVoiceStyle, sampleVoice } from "./voice-sfx.js";
+import { STORE, KINDS, SHOP_TALK, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
+import { setVoiceStyle, sampleVoice, checkout } from "./voice-sfx.js";
+import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,16 +25,27 @@ const state = { name: "traveller", userId: "guest", token: null, profile: PREVIE
 // ---- the Oracle and her sky ----
 $("teller").innerHTML = `<svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${sigilRingSvg({ cx: 200, cy: 200, r: 196, id: "t" })}${figureSvg({ id: "t" })}</svg>`;
 const table = makeTable($("table"), { reduced });
-// Layers the Essence store's avatars draw into: behind the hood, on the hood, on the face, and in front.
+// Layers the Essence store draws into: elemental effects behind, on and in front of the Oracle; avatar extras
+// behind the hood, on the hood, on the face and in front; and a slot in the iris for a star-shaped pupil.
 (() => {
   const svg = $("teller").querySelector("svg"), body = svg.querySelector(".o-body"), NS = "http://www.w3.org/2000/svg";
-  const g = (id) => { const e = document.createElementNS(NS, "g"); e.id = id; return e; };
+  const g = (id, attrs = {}) => { const e = document.createElementNS(NS, "g"); e.id = id; for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
   const defs = document.createElementNS(NS, "defs");
   defs.innerHTML = `<clipPath id="t-hoodclip"><path d="M200 14 C214 60 252 150 290 236 C316 296 340 348 368 400 L32 400 C60 348 84 296 110 236 C148 150 186 60 200 14Z"/></clipPath>
-    <pattern id="t-nemes" width="400" height="22" patternUnits="userSpaceOnUse"><rect width="400" height="11" fill="#E2B04A"/><rect y="11" width="400" height="11" fill="#1d3a8e"/></pattern>`;
+    <pattern id="t-nemes" width="400" height="22" patternUnits="userSpaceOnUse"><rect width="400" height="11" fill="#E2B04A"/><rect y="11" width="400" height="11" fill="#1d3a8e"/></pattern>
+    <linearGradient id="fx-firegrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff7a1a"/><stop offset="1" stop-color="#ff3b1a" stop-opacity="0"/></linearGradient>
+    <linearGradient id="fx-flamegrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff4a1a"/><stop offset=".55" stop-color="#ffa63d"/><stop offset="1" stop-color="#fff3b0" stop-opacity=".9"/></linearGradient>`;
   svg.prepend(defs);
-  body.prepend(g("av-back")); body.children[2].after(g("av-hood"));
+  body.before(g("fx-back"));
+  body.prepend(g("av-back")); body.children[2].after(g("av-hood")); $("av-hood").after(g("fx-robe", { "clip-path": "url(#t-hoodclip)" }));
   svg.querySelector('[clip-path="url(#t-faceclip)"]').append(g("av-face")); body.append(g("av-front"));
+  svg.querySelector(".o-iris").append(g("av-pupil"));
+  svg.append(g("fx-front"));
+  // Remember which parts of the hands are skin, edge and nail, so avatars can recolour them.
+  svg.querySelectorAll('.o-hands [fill="#3a2a5c"]').forEach((e) => (e.dataset.skin = "fill"));
+  svg.querySelectorAll('.o-hands [stroke="#3a2a5c"]').forEach((e) => (e.dataset.skin = "stroke"));
+  svg.querySelectorAll('.o-hands [stroke="#E2B04A"]').forEach((e) => (e.dataset.edge = "1"));
+  svg.querySelectorAll(".o-hands .o-nail").forEach((e) => (e.dataset.r = e.getAttribute("r")));
 })();
 const CAST = {
   iching: "Six coins leave my hand… spinning… falling…", runes: "I loosen the pouch. Let the stones choose themselves…",
@@ -42,11 +54,12 @@ const CAST = {
   numerology: "Your numbers gather, and reduce, and reveal…", chinesezodiac: "The great wheel of twelve is turning…",
   mayan: "Thirteen and twenty, the sacred gears, interlock…", egyptian: "Ra rises over the pyramids for you…", celtic: "Your tree is growing out of the old calendar…",
 };
+let starColors = ["#FADE8C", "#66E0C8"];
 const cv = $("stars"), cx = cv.getContext("2d"); let stars = [];
 function sizeSky() { const r = cv.getBoundingClientRect(); cv.width = r.width * devicePixelRatio; cv.height = r.height * devicePixelRatio;
   stars = Array.from({ length: 110 }, () => ({ x: Math.random(), y: Math.random() * 0.75, r: Math.random() * 1.4 + 0.3, p: Math.random() * 6 })); }
 function drawSky(t) { cx.clearRect(0, 0, cv.width, cv.height);
-  for (const s of stars) { cx.globalAlpha = 0.35 + 0.35 * Math.sin(t / 900 + s.p); cx.fillStyle = s.p > 5 ? "#66E0C8" : "#FADE8C"; cx.beginPath(); cx.arc(s.x * cv.width, s.y * cv.height, s.r * devicePixelRatio, 0, 7); cx.fill(); }
+  for (const s of stars) { cx.globalAlpha = 0.35 + 0.35 * Math.sin(t / 900 + s.p); cx.fillStyle = s.p > 5 ? starColors[1] : starColors[0]; cx.beginPath(); cx.arc(s.x * cv.width, s.y * cv.height, s.r * devicePixelRatio, 0, 7); cx.fill(); }
   if (!reduced) requestAnimationFrame(drawSky); }
 sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 
@@ -238,6 +251,8 @@ function showStats() {
   $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>`;
 }
 
+const EARNED_DESIGN = { velvet: "", starchart: "constellations", goldleaf: "filigree", moonlit: "moonphases", obsidian: "obsidian" };
+const EARNED_INK = { starchart: "#c9d4ff", goldleaf: "#FFF3C4", moonlit: "#e9f0ff", obsidian: "#b06cff" };
 const owns = (id) => state.prog.unlocked.includes(id) || (state.prog.owned || []).includes(id);
 const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
@@ -245,54 +260,72 @@ function wear(id) {
   state.prog[u.kind] = id; saveProgress(); applyLook();
 }
 function applyLook(over = {}) {
-  const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg");
-  const c = lookItem(p.cloth) || UNLOCKS[0], o = lookItem(p.orb), fl = item(p.flame), out = item(p.outfit) || item("midnight"), av = item(p.avatar) || item("classic");
+  const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
+  const c = lookItem(p.cloth) || UNLOCKS[0], o = lookItem(p.orb), fl = item(p.flame) || item("goldflame"), out = item(p.outfit) || item("midnight"), av = item(p.avatar) || item("classic");
+  const vibe = item(p.vibe) || item("chamber"), A = AVATAR_LOOK[av.id] || AVATAR_LOOK.classic;
+  // table: cloth colours and design, candles
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
-  document.documentElement.style.setProperty("--orb-filter", o ? o.f : "none");
-  document.documentElement.style.setProperty("--flame-filter", fl ? fl.f : "none");
+  const design = c.design || EARNED_DESIGN[c.id] || "", ink = c.ink || EARNED_INK[c.id] || "#E2B04A";
+  setTableDecor({ design: design && CLOTH_DESIGN[design] ? CLOTH_DESIGN[design](ink) : "", ink, wax: fl.wax, flame: fl.flame, halo: fl.halo, detail: fl.detail || "" });
+  table.refresh();
+  root.style.setProperty("--orb-filter", o ? o.f : "none");
+  // robe: colours, trim and its element
   const stops = (id, cols) => svg.querySelectorAll(`#${id} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
   stops("t-hood", out.hood);
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { e.dataset.trim = "1"; e.setAttribute("stroke", out.trim); });
-  stops("t-face", av.face || ["#FFE7A0", "#E9B947", "#8C5E17"]);
-  stops("t-iris", av.iris || ["#FFB3E2", "#FF4FB3", "#B8157A"]);
-  $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = av.front || "";
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (e.closest(".o-hands")) return; e.dataset.trim = "1"; e.setAttribute("stroke", out.trim); });
+  const fx = robeFx(out.element); $("fx-back").innerHTML = fx.back; $("fx-robe").innerHTML = fx.robe; $("fx-front").innerHTML = fx.front;
+  // avatar: face, eye, pupil, hands and extras
+  stops("t-face", A.face); stops("t-iris", A.iris);
+  const lid = svg.querySelector(".o-lid path"); lid.setAttribute("fill", A.white);
+  const pupil = svg.querySelector(".o-iris ellipse"); pupil.setAttribute("rx", A.pupil[0]); pupil.setAttribute("ry", A.pupil[1]);
+  $("av-pupil").innerHTML = A.star ? STAR_PUPIL : "";
+  svg.querySelectorAll("[data-skin]").forEach((e) => e.setAttribute(e.dataset.skin, A.hands.skin));
+  svg.querySelectorAll(".o-hands [data-edge]").forEach((e) => e.setAttribute("stroke", A.hands.edge));
+  svg.querySelectorAll(".o-hands .o-nail").forEach((e) => { e.setAttribute("fill", A.hands.nail); e.setAttribute("r", (e.dataset.r * A.hands.nailR).toFixed(1)); });
+  $("teller").dataset.hands = A.handFx || ""; $("teller").dataset.element = out.element || "";
+  $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = (av.front || "") + (A.eye || "");
+  // vibe: theme, fonts, background, star colours
+  root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
   const v = item(p.voice); setVoiceStyle(v ? v.v : null);
 }
 
 // ---- the Essence store ----
 let trying = null; // a store item being tried on: { kind, id }
-function showStore(tab = "outfit") {
+const pickLine = (pool, vars) => { const opts = pool.filter((l) => l !== pickLine.last); const l = opts[Math.floor(Math.random() * opts.length)] || pool[0]; pickLine.last = l; return l.replace(/\{item\}/g, vars.item || "").replace(/\{name\}/g, state.name); };
+function showStore(tab = "outfit", line = null) {
   clearReading(); cap(trying ? "👁 Trying on: " + (lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog;
-  say(p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket.");
+  say(line || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
   const tabs = KINDS.map(([k, label]) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${label}</button>`).join("");
   const goods = [...(tab === "cloth" || tab === "orb" ? UNLOCKS.filter((u) => u.kind === tab).map((u) => ({ ...u, earned: true })) : []), ...STORE.filter((s) => s.kind === tab)];
   const rows = goods.map((it) => { const own = owns(it.id), on = p[tab] === it.id;
-    const act = on ? `<button class="c small" type="button" disabled>✓ Wearing</button>`
+    const act = on ? `<button class="c small" type="button" disabled>✓ ${tab === "voice" || tab === "vibe" ? "Active" : "Wearing"}</button>`
       : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
       : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
       : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
     const tri = trying && trying.id === it.id;
-    const tryBtn = tab === "voice" || on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
-    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}</span>${tryBtn}${tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : ""}${act}</div>`; }).join("");
+    const tryBtn = tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : on ? "" : `<button class="c small${tri ? " on" : ""}" type="button" data-try="${it.id}">${tri ? "✓ Trying on" : "👁 Try on"}</button>`;
+    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}${it.note ? `<span class="note"> · ${esc(it.note)}</span>` : ""}</span>${tryBtn}${act}</div>`; }).join("");
   const left = readsLeft(p, rankOf(p.xp).name);
   ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
     <div class="cx-top"><b>💎 ${p.essence} Essence</b> · readings left today: ${left === Infinity ? "unlimited" : left}
       ${left === Infinity ? "" : `<button class="c small" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading today (💎 ${DAY_PASS})</button>`}</div>
     <div class="note">Daily readings by rank: ${DAILY.filter((d, i) => i < 4).map((d) => `${d.rank} ${d.n === Infinity ? "unlimited" : d.n}`).join(" · ")}. The /oracle commands in chat are always unlimited.</div>
     <div class="choices tabs">${tabs}</div><div class="shop">${rows}</div>`);
+  const talk = (kind, act, it) => pickLine(SHOP_TALK[kind][act], { item: it ? it.name : "" });
   $("back").onclick = () => { trying = null; applyLook(); greet(); };
   applyLook(trying ? { [trying.kind]: trying.id } : {});
   $("ui").querySelectorAll("[data-try]").forEach((b) => (b.onclick = () => { const it = lookItem(b.dataset.try);
-    trying = trying && trying.id === it.id ? null : { kind: it.kind, id: it.id }; showStore(tab); }));
-  if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); chime(1); showStats(); showStore(tab); } };
-  $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => showStore(b.dataset.tab)));
-  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); showStore(tab); }));
-  $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); sampleVoice(); setTimeout(() => setVoiceStyle(cur ? cur.v : null), 700); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { if (buy(p, b.dataset.buy)) { trying = null; chime(2); wear(b.dataset.buy); saveProgress(); showStats(); showStore(tab); } }));
+    const off = trying && trying.id === it.id; trying = off ? null : { kind: it.kind, id: it.id }; showStore(tab, off ? talk(tab, "open") : talk(tab, "tryon", it)); }));
+  if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); checkout(); showStats(); showStore(tab, "One more reading, coming right up. The glass thanks you for your patronage."); } };
+  $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { trying = null; showStore(b.dataset.tab, talk(b.dataset.tab, "open")); }));
+  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { trying = null; wear(b.dataset.w); showStore(tab, talk(tab, "tryon", lookItem(b.dataset.w))); }));
+  $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); showStore(tab, talk(tab, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
+function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
 $("store-btn").onclick = () => showStore();
 
 function showCodex() {
@@ -330,7 +363,7 @@ async function loadProgress() {
     const j = await fetch(api("/api/progress"), { headers: { authorization: "Bearer " + state.token } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
     if (j && j.progress && j.progress.v === 1) p = merge(p, { ...fresh(), ...j.progress });
   }
-  state.prog = p || fresh(); applyLook(); showStats();
+  state.prog = p || fresh(); ensureFree(state.prog); applyLook(); showStats();
 }
 
 function layArt(files) {

@@ -5,13 +5,31 @@
 const G = { gold: "#E2B04A", light: "#FADE8C", pink: "#FF4FB3", teal: "#66E0C8", cream: "#F3E3C3", dark: "#160b2c" };
 const f1 = (n) => Number(n.toFixed(1));
 
+// What the Essence store has put on the table: a cloth design, and the candles' wax, flame and detail.
+let DECOR = { design: "", ink: G.gold, wax: ["#efe3cf", "#d8c8ad"], flame: ["#fff", G.light, "#ff8a3d"], halo: G.light, detail: "" };
+export function setTableDecor(d) { DECOR = { ...DECOR, ...d }; }
+function candleDetail(x, top, h) {
+  const w = DECOR.wax[1], b = top + h;
+  switch (DECOR.detail) {
+    case "drips": return `<path d="M${x - 8} ${top + 2} q2 10 0 16 q-1 4 2 4 q3 0 2 -6 q-1 -8 1 -12 M${x + 5} ${top + 2} q1 6 0 9 q0 3 2 3 q2 -1 1 -5" fill="${w}" stroke="${w}" stroke-width="1.5"/>`;
+    case "sigil": return `<path d="M${x} ${top + 6} v${h - 12} M${x - 4} ${top + 10} l8 6 l-8 6 M${x - 5} ${b - 8} h10" stroke="#c0392b" stroke-width="1.3" fill="none"/><path d="M${x - 8} ${top + 1} q1 8 -1 12 q2 2 3 -2 q0 -5 0 -9" fill="#8a0f1e"/>`;
+    case "eye": return `<path d="M${x - 6} ${top + h / 2} q6 -6 12 0 q-6 6 -12 0Z" fill="none" stroke="#7a1a52" stroke-width="1.2"/><circle cx="${x}" cy="${top + h / 2}" r="1.8" fill="#7a1a52"/>`;
+    case "dish": return `<ellipse cx="${x}" cy="${b + 2}" rx="18" ry="5" fill="#b8862a" stroke="#7a4f12"/><path d="M${x + 18} ${b + 1} q8 -2 8 4 q-1 4 -7 2" fill="none" stroke="#b8862a" stroke-width="2.5"/>`;
+    case "skull": return `<g transform="translate(${x} ${b + 2})"><path d="M-14 -2 C-15 -18 15 -18 14 -2 C14 4 9 6 8 10 L-8 10 C-9 6 -14 4 -14 -2Z" fill="#efe6d2" stroke="#8a7d62" stroke-width="1"/><ellipse cx="-6" cy="-1" rx="3.6" ry="4" fill="#2a2018"/><ellipse cx="6" cy="-1" rx="3.6" ry="4" fill="#2a2018"/><path d="M0 3 l-2 4 h4Z" fill="#2a2018"/><path d="M-5 10 v-3 M-1.5 10 v-3 M2 10 v-3 M5.5 10 v-3" stroke="#8a7d62" stroke-width=".8"/></g>`;
+    case "wisp": return `<path class="t-wisp" d="M${x} ${top - 22} c-6 -8 6 -14 0 -22 c-5 -6 4 -12 1 -18" fill="none" stroke="#cfe6ff" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;
+    default: return "";
+  }
+}
+const candle = (x, top, h, t2) => `<g class="t-candle"><ellipse cx="${x}" cy="122" rx="30" ry="12" fill="url(#tb-halo)"/>${DECOR.detail === "skull" ? candleDetail(x, top, h) : ""}<rect x="${x - 8}" y="${top}" width="16" height="${h}" rx="3" fill="${DECOR.wax[0]}"/><path d="M${x - 6} ${top + 2} q2 8 0 12 M${x + 4} ${top + 2} q-1 6 1 10" stroke="${DECOR.wax[1]}" stroke-width="2" fill="none"/>${DECOR.detail === "skull" ? "" : candleDetail(x, top, h)}
+  <path class="t-flame${t2 ? " t2" : ""}" d="M${x} ${top - 20} C${x + 6} ${top - 10} ${x + 6} ${top - 4} ${x} ${top} C${x - 6} ${top - 4} ${x - 6} ${top - 10} ${x} ${top - 20}Z" fill="url(#tb-flame)"/><circle class="t-flicker${t2 ? " t2" : ""}" cx="${x}" cy="${top - 8}" r="22" fill="url(#tb-halo)"/></g>`;
+
 function tableSvg(inner) {
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 <defs>
   <radialGradient id="tb-cloth" cx="50%" cy="65%" r="75%"><stop offset="0" style="stop-color:var(--cloth1,#5a2a8a)"/><stop offset=".55" style="stop-color:var(--cloth2,#36185e)"/><stop offset="1" style="stop-color:var(--cloth3,#170a2e)"/></radialGradient>
   <linearGradient id="tb-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1248"/><stop offset="1" stop-color="#0d0618"/></linearGradient>
-  <radialGradient id="tb-flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="${G.light}"/><stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/></radialGradient>
-  <radialGradient id="tb-halo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${G.light}" stop-opacity=".45"/><stop offset="1" stop-color="${G.light}" stop-opacity="0"/></radialGradient>
+  <radialGradient id="tb-flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="${DECOR.flame[0]}"/><stop offset=".4" stop-color="${DECOR.flame[1]}"/><stop offset="1" stop-color="${DECOR.flame[2]}" stop-opacity="0"/></radialGradient>
+  <radialGradient id="tb-halo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${DECOR.halo}" stop-opacity=".45"/><stop offset="1" stop-color="${DECOR.halo}" stop-opacity="0"/></radialGradient>
   <radialGradient id="tb-coin" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#FFF1B8"/><stop offset=".5" stop-color="${G.gold}"/><stop offset="1" stop-color="#8a5c16"/></radialGradient>
   <radialGradient id="tb-stone" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#e9e4f2"/><stop offset=".6" stop-color="#a39cb8"/><stop offset="1" stop-color="#5e5674"/></radialGradient>
   <radialGradient id="tb-bone" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#fff8e6"/><stop offset=".7" stop-color="#e6d2a6"/><stop offset="1" stop-color="#b89a62"/></radialGradient>
@@ -23,15 +41,13 @@ function tableSvg(inner) {
 <path d="M22 300 L64 104 Q200 88 336 104 L378 300Z" fill="url(#tb-cloth)"/>
 <path d="M64 104 Q200 88 336 104" fill="none" stroke="${G.gold}" stroke-width="2"/>
 <path d="M22 300 L64 104 M378 300 L336 104" stroke="${G.gold}" stroke-width="1.2" opacity=".6"/>
-<g class="t-sigil" fill="none" stroke="${G.gold}" opacity=".38">
+${DECOR.design ? `<g class="t-design" fill="none" stroke="${DECOR.ink}" stroke-width="1.4" opacity=".72" transform="translate(200 204) scale(.84 .42) translate(-200 -200)">${DECOR.design}</g>` : `<g class="t-sigil" fill="none" stroke="${G.gold}" opacity=".38">
   <ellipse cx="200" cy="200" rx="150" ry="74" stroke-width="1.4"/><ellipse cx="200" cy="200" rx="132" ry="64" stroke-width=".8" stroke-dasharray="3 6"/>
   <ellipse cx="200" cy="200" rx="64" ry="31" stroke-width=".8"/>
   <path d="M50 200 H350 M200 126 V274" stroke-width=".6" opacity=".6"/>
-</g>
-<g class="t-candle"><ellipse cx="84" cy="122" rx="30" ry="12" fill="url(#tb-halo)"/><rect x="76" y="96" width="16" height="30" rx="3" fill="#efe3cf"/><path d="M78 98 q2 8 0 12 M88 98 q-1 6 1 10" stroke="#d8c8ad" stroke-width="2" fill="none"/>
-  <path class="t-flame" d="M84 76 C90 86 90 92 84 96 C78 92 78 86 84 76Z" fill="url(#tb-flame)"/><circle class="t-flicker" cx="84" cy="88" r="22" fill="url(#tb-halo)"/></g>
-<g class="t-candle"><ellipse cx="316" cy="122" rx="30" ry="12" fill="url(#tb-halo)"/><rect x="308" y="102" width="16" height="24" rx="3" fill="#efe3cf"/>
-  <path class="t-flame t2" d="M316 82 C322 92 322 98 316 102 C310 98 310 92 316 82Z" fill="url(#tb-flame)"/><circle class="t-flicker t2" cx="316" cy="94" r="22" fill="url(#tb-halo)"/></g>
+</g>`}
+${candle(84, 96, 30)}
+${candle(316, 102, 24, true)}
 <g id="tb-cast">${inner}</g>
 </svg>`;
 }
@@ -133,8 +149,10 @@ const idle = () => `<g class="k-float"><path d="M200 150 L222 184 L200 238 L178 
 const scene = (key) => (SCENES[key] || sparkle)();
 
 export function makeTable(el, { reduced = false } = {}) {
-  const set = (inner, cls) => { el.className = "table " + (cls || ""); el.innerHTML = tableSvg(inner); };
+  let last = ["", ""];
+  const set = (inner, cls) => { last = [inner, cls]; el.className = "table " + (cls || ""); el.innerHTML = tableSvg(inner); };
   return {
+    refresh() { if (!el.querySelector(".art-card")) set(...last); },
     idle() { set(idle(), "idle"); },
     /** Tools at rest for the chosen system. */
     rest(key) { set(scene(key), "rest"); },

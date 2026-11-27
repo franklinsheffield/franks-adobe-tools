@@ -34,13 +34,18 @@ export function blip(ch, { final = false } = {}) {
   if (muted || !ctx || ctx.state !== "running") return;
   const t = ctx.currentTime, code = ch.toLowerCase().charCodeAt(0) || 97;
   const vowel = "aeiou".includes(ch.toLowerCase());
-  const V = style, pitch = V.base + (code % 7) * V.step + (vowel ? V.vowel : 0), dur = final ? V.dur + 0.075 : V.dur;
+  const V = style, wob = V.wobble ? (Math.random() - 0.5) * V.wobble : 0;
+  const pitch = Math.max(40, V.base + (code % 7) * V.step + (vowel ? V.vowel : 0) + wob), dur = final ? V.dur + 0.075 : V.dur;
   const osc = ctx.createOscillator(); osc.type = V.type;
-  osc.frequency.setValueAtTime(pitch, t);
-  if (final) osc.frequency.exponentialRampToValueAtTime(pitch * 0.7, t + dur);
-  const env = ctx.createGain(); env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(0.5, t + 0.004);
-  env.gain.setValueAtTime(0.5, t + dur * 0.6); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = V.lp;
+  osc.frequency.setValueAtTime(V.meow ? pitch * 0.8 : pitch, t);
+  if (V.meow) { osc.frequency.linearRampToValueAtTime(pitch * 1.25, t + dur * 0.45); osc.frequency.linearRampToValueAtTime(pitch * 0.75, t + dur); }
+  else if (final) osc.frequency.exponentialRampToValueAtTime(pitch * 0.7, t + dur);
+  else if (V.sweep) osc.frequency.exponentialRampToValueAtTime(pitch * V.sweep, t + dur);
+  if (V.vib) { const lfo = ctx.createOscillator(), depth = ctx.createGain(); lfo.frequency.value = V.vib; depth.gain.value = V.vibDepth || 10;
+    lfo.connect(depth); depth.connect(osc.frequency); lfo.start(t); lfo.stop(t + dur + 0.01); }
+  const env = ctx.createGain(); env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(V.gain || 0.5, t + 0.004);
+  env.gain.setValueAtTime(V.gain || 0.5, t + dur * 0.6); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const lp = ctx.createBiquadFilter(); lp.type = V.band ? "bandpass" : "lowpass"; lp.frequency.value = V.band || V.lp; if (V.band) lp.Q.value = 4;
   osc.connect(lp); lp.connect(env); env.connect(out);
   osc.start(t); osc.stop(t + dur + 0.01);
 }
@@ -86,4 +91,21 @@ export function deepen() {
   o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(220, t + 0.5);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
   o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.6);
+}
+
+/** The checkout sound: coins clink into the till, the drawer rattles, and the register bell rings. */
+export function checkout() {
+  if (muted || !ctx || ctx.state !== "running") return;
+  const t0 = ctx.currentTime;
+  [0, 0.07, 0.13].forEach((dt, i) => { const t = t0 + dt, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "triangle";
+    o.frequency.setValueAtTime(2200 + i * 260, t); o.frequency.exponentialRampToValueAtTime(3100 + i * 200, t + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.1); });
+  const n = ctx.createBuffer(1, ctx.sampleRate * 0.18, ctx.sampleRate), d = n.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * (i % 900 < 450 ? 1 : 0.3);
+  const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain(); src.buffer = n; bp.type = "bandpass"; bp.frequency.value = 1800; ng.gain.value = 0.5;
+  src.connect(bp); bp.connect(ng); ng.connect(out); src.start(t0 + 0.2);
+  [[1568, 0.42], [2093, 0.42], [2637, 0.5]].forEach(([f, dt]) => { const t = t0 + dt, o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.15); });
 }

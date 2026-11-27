@@ -41,7 +41,7 @@ export const UNLOCKS = [
 ];
 
 export const fresh = () => ({ v: 1, xp: 0, readings: 0, tokens: 0, streak: 0, best: 0, last: "", systems: {}, codex: {}, unlocked: ["velvet", "amethyst"], cloth: "velvet", orb: "amethyst",
-  essence: 0, owned: ["midnight", "classic", "goldflame", "classic-voice"], outfit: "midnight", avatar: "classic", flame: "goldflame", voice: "classic-voice", day: null });
+  essence: 0, owned: ["midnight", "classic", "goldflame", "classic-voice"], outfit: "midnight", avatar: "classic", flame: "goldflame", voice: "classic-voice", vibe: "chamber", day: null, heard: [] });
 
 const today = (d = new Date()) => d.toLocaleDateString("en-CA");
 const yesterday = (d = new Date()) => today(new Date(d.getTime() - 86400000));

@@ -6,18 +6,24 @@
 @font-face{font-family:"DejaVu Sans";src:url(assets/DejaVuSans-Bold.ttf) format("truetype");font-weight:700}
 @font-face{font-family:"Noto Sans Egyptian Hieroglyphs";src:url(assets/NotoSansEgyptianHieroglyphs-Subset.ttf) format("truetype")}
 @font-face{font-family:"Noto Sans Runic";src:url(assets/NotoSansRunic-Subset.ttf) format("truetype")}
+@font-face{font-family:"IM Fell English";src:url(assets/im-fell-english-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Uncial Antiqua";src:url(assets/uncial-antiqua-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Metamorphous";src:url(assets/metamorphous-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"VT323";src:url(assets/vt323-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Orbitron";src:url(assets/orbitron-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Cormorant Garamond";src:url(assets/cormorant-garamond-latin-400-normal.woff2) format("woff2");font-display:swap}
 @font-face{font-family:"Noto Serif SC";src:url(assets/NotoSerifSC-Subset.ttf) format("truetype")}
 :root{--night:#07050f;--navy:#161030;--deep:#1e1640;--purple:#2E1E68;--gold:#E2B04A;--gold2:#FADE8C;--teal:#66E0C8;--pink:#FF4FB3;--fg:#ECE6FA;--muted:#A79FC4;--line:#3a2f6e;
   --display:"Cinzel",Georgia,serif;--body:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--night);color:var(--fg);font:15px/1.5 var(--body);overflow:hidden}
 .stage{position:relative;height:100%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:50% 50%;gap:10px;padding:10px;
-  background:radial-gradient(60% 55% at 25% 25%,#34196a 0%,#160c33 55%,var(--night) 100%)}
+  background:var(--bg-stage,radial-gradient(60% 55% at 25% 25%,#34196a 0%,#160c33 55%,var(--night) 100%))}
 .stars{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .pane{position:relative;min-height:0;min-width:0;border:1px solid rgba(226,176,74,.55);border-radius:14px;overflow:hidden;
   box-shadow:inset 0 0 40px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4)}
-.oracle-pane{background:radial-gradient(70% 70% at 50% 45%,#3a1f72 0%,#1b0f3a 60%,#0c0620 100%)}
-.table-pane{background:radial-gradient(80% 60% at 50% 20%,#2a1548 0%,#120a24 70%,#08040f 100%)}
+.oracle-pane{background:var(--bg-oracle,radial-gradient(70% 70% at 50% 45%,#3a1f72 0%,#1b0f3a 60%,#0c0620 100%))}
+.table-pane{background:var(--bg-table,radial-gradient(80% 60% at 50% 20%,#2a1548 0%,#120a24 70%,#08040f 100%))}
 .box{grid-column:1 / -1;position:relative;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;
   background:rgba(14,10,32,.95);border:1px solid var(--gold);border-radius:14px;padding:12px 16px 18px;display:block}
 .box-head{position:sticky;top:-12px;margin:-12px -16px 8px;padding:10px 16px 6px;background:rgba(14,10,32,.98);display:flex;align-items:center;justify-content:space-between;z-index:2;border-bottom:1px solid rgba(58,47,110,.6)}
@@ -97,6 +103,7 @@ html,body{height:100%;margin:0;background:var(--night);color:var(--fg);font:15px
 .table{position:absolute;inset:0}
 .table>svg{position:absolute;inset:0;width:100%;height:100%}
 .table svg [class*="k-"],.table svg [class^="t-"]{transform-box:fill-box;transform-origin:center}
+.table svg .t-design{transform-box:view-box;transform-origin:0 0}
 .t-flame{animation:flame .35s ease-in-out infinite alternate;transform-origin:50% 100%}
 .t-flame.t2{animation-duration:.42s}
 @keyframes flame{to{transform:scale(.88,1.1) skewX(4deg)}}
@@ -259,3 +266,92 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .shop-row.on{border-color:var(--gold,#E2B04A);box-shadow:0 0 0 1px rgba(226,176,74,.35) inset}
 .tabs .on{border-color:var(--gold,#E2B04A);background:rgba(226,176,74,.18)}
 .table .t-flicker{filter:var(--flame-filter,none)}
+
+/* ---- elemental robe effects (looks.js robeFx) ---- */
+.teller [class^="fx-"],.teller [class*=" fx-"]{transform-box:fill-box;transform-origin:center}
+.fx-pulse{animation:fxpulse 2.4s ease-in-out infinite}
+@keyframes fxpulse{50%{opacity:.08}}
+.teller .fx-flame{transform-origin:50% 100%;animation:fxflame .45s ease-in-out infinite alternate;animation-delay:var(--d)}
+@keyframes fxflame{to{transform:scale(.85,1.35)}}
+.fx-rise{animation:fxrise var(--t,2.6s) linear infinite;animation-delay:var(--d)}
+@keyframes fxrise{0%{transform:translate(0,0);opacity:0}15%{opacity:1}100%{transform:translate(var(--x),var(--h,-200px));opacity:0}}
+.fx-smoke{opacity:.6}
+.fx-wave{animation:fxwave 3s linear infinite;animation-delay:var(--d)}
+@keyframes fxwave{to{transform:translateX(100px)}}
+.fx-drip{animation:fxdrip 1.8s ease-in infinite;animation-delay:var(--d)}
+@keyframes fxdrip{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(40px);opacity:0}}
+.fx-vine{stroke-dasharray:420;animation:fxvine 7s ease-in-out infinite alternate;animation-delay:var(--d)}
+@keyframes fxvine{0%{stroke-dashoffset:420}60%,100%{stroke-dashoffset:0}}
+.fx-leaf{animation:fxleaf 2.6s ease-in-out infinite alternate;animation-delay:var(--d)}
+@keyframes fxleaf{to{transform:rotate(14deg) scale(1.15)}}
+.teller .fx-orbit{transform-box:view-box;transform-origin:200px 260px;animation:fxorbit 9s linear infinite}
+.teller .fx-slow{animation-duration:16s}
+@keyframes fxorbit{to{transform:rotate(360deg)}}
+.fx-fall{animation:fxfall 6s linear infinite;animation-delay:var(--d)}
+@keyframes fxfall{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:1}100%{transform:translate(var(--x),360px) rotate(540deg);opacity:0}}
+.teller .fx-swirl{transform-box:view-box;transform-origin:200px 230px;animation:fxorbit 6s linear infinite}
+.teller .fx-rev{animation-direction:reverse;animation-duration:8s}
+.fx-drift{animation:fxdrift 8s linear infinite;animation-delay:var(--d)}
+@keyframes fxdrift{0%{transform:translate(-60px,0);opacity:0}10%,90%{opacity:1}100%{transform:translate(360px,40px) rotate(40deg);opacity:0}}
+.fx-zap{opacity:0;animation:fxzap 1.7s steps(1) infinite;animation-delay:var(--d);filter:drop-shadow(0 0 3px #66E0C8)}
+@keyframes fxzap{0%{opacity:1}6%{opacity:0}9%{opacity:.9}14%,100%{opacity:0}}
+.fx-spark,.fx-twinkle{animation:fxtw 1.3s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes fxtw{50%{opacity:.1}}
+.teller .fx-rays{transform-box:view-box;transform-origin:200px 200px;animation:fxorbit 40s linear infinite}
+/* avatar hands */
+.teller[data-hands="embers"] .o-hands{filter:drop-shadow(0 0 4px #ff6a1a)}
+.teller[data-hands="glow"] .o-hands{filter:drop-shadow(0 0 5px #e9f0ff)}
+.teller[data-hands="stars"] .o-hands{filter:drop-shadow(0 0 5px #6a7cff)}
+.teller[data-hands="stars"] .o-nail{animation:fxtw 1s ease-in-out infinite}
+.teller[data-hands="bands"] .o-hands{filter:drop-shadow(0 0 3px #E2B04A)}
+.teller[data-hands="claws"] .o-nail{filter:drop-shadow(0 0 1px #000)}
+.t-wisp{animation:fxtw 2.4s ease-in-out infinite}
+.shop-row .note{font-size:.82em}
+
+/* ---- vibes: one per reading tradition (colours, fonts, backgrounds) ---- */
+[data-vibe="v-iching"]{--gold:#b8322a;--gold2:#f4efe2;--teal:#9fd4b0;--fg:#f4efe2;--muted:#b9b2a2;--line:#4a4a3e;--display:"Cormorant Garamond",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:linear-gradient(180deg,#1c1f1c 0%,#2c3330 55%,#0e100f 100%);
+  --bg-oracle:radial-gradient(60% 40% at 30% 90%,#3e4a44 0%,transparent 70%),radial-gradient(50% 35% at 75% 95%,#56625b 0%,transparent 70%),linear-gradient(180deg,#d9d3c2 0%,#9fa59a 60%,#3a403b 100%);
+  --bg-table:radial-gradient(18% 14% at 85% 18%,#b8322a 0 40%,transparent 42%),linear-gradient(180deg,#2d3430,#111412)}
+[data-vibe="v-runes"]{--gold:#9fd8ff;--gold2:#e8fbff;--teal:#7affd4;--fg:#e8f6ff;--muted:#9bb2c4;--line:#2a4058;--display:"Metamorphous",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:linear-gradient(180deg,#04101e 0%,#0a2a3e 60%,#020810 100%);
+  --bg-oracle:radial-gradient(80% 30% at 40% 20%,rgba(80,255,190,.35),transparent 70%),radial-gradient(60% 25% at 70% 32%,rgba(140,120,255,.3),transparent 70%),linear-gradient(180deg,#06182c,#0b2a40 70%,#dfe9f2 100%);
+  --bg-table:linear-gradient(180deg,#0b2236,#030a14)}
+[data-vibe="v-oraclebones"]{--gold:#c98a3a;--gold2:#f3e2c3;--teal:#d8a06a;--fg:#f6ead2;--muted:#c4ab88;--line:#5a3e22;--display:"IM Fell English",serif;--body:"IM Fell English",Georgia,serif;
+  --bg-stage:radial-gradient(60% 60% at 50% 40%,#4a2c14 0%,#1e1008 70%,#0a0503 100%);
+  --bg-oracle:repeating-linear-gradient(115deg,transparent 0 38px,rgba(0,0,0,.18) 38px 40px),radial-gradient(70% 70% at 50% 45%,#7a5530 0%,#3a2410 70%,#140a04 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#5a3a1e 0%,#24140a 70%,#0c0604 100%)}
+[data-vibe="v-ifa"]{--gold:#E2B04A;--gold2:#fff6e0;--teal:#7fb0ff;--fg:#fff6e0;--muted:#b8b0d8;--line:#2a2a6a;--display:"Cinzel",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:radial-gradient(circle at 20% 30%,rgba(255,246,224,.08) 0 3px,transparent 4px) 0 0/34px 34px,linear-gradient(160deg,#0c1048,#1a1a6e 60%,#06072a);
+  --bg-oracle:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 8px,transparent 8px 16px),radial-gradient(70% 70% at 50% 45%,#2a3a9e 0%,#121660 60%,#070a30 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#6a3a1e 0%,#2a160a 70%,#0c0604 100%)}
+[data-vibe="v-astrology"]{--gold:#E2B04A;--gold2:#FADE8C;--teal:#c9d4ff;--fg:#eef1ff;--muted:#a6b0d8;--line:#28305e;--display:"Cinzel",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:radial-gradient(ellipse at 50% 120%,#1d3a8e 0%,#0b1640 45%,#02040f 100%);
+  --bg-oracle:radial-gradient(circle at 50% 50%,transparent 0 120px,rgba(226,176,74,.25) 121px 122px,transparent 123px 170px,rgba(226,176,74,.18) 171px 172px,transparent 173px),radial-gradient(70% 70% at 50% 45%,#1e2f7a 0%,#0b1640 60%,#02040f 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#1a2a6a 0%,#0a1236 70%,#02040f 100%)}
+[data-vibe="v-humandesign"]{--gold:#66E0C8;--gold2:#c8fff5;--teal:#FF4FB3;--fg:#e8fffb;--muted:#8fc4bb;--line:#1f4f4a;--display:"Orbitron",sans-serif;--body:system-ui,sans-serif;
+  --bg-stage:linear-gradient(rgba(102,224,200,.08) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,rgba(102,224,200,.08) 1px,transparent 1px) 0 0/28px 28px,#06121a;
+  --bg-oracle:radial-gradient(60% 60% at 50% 50%,rgba(255,79,179,.25),transparent 70%),linear-gradient(rgba(102,224,200,.12) 1px,transparent 1px) 0 0/20px 20px,#081a22;
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#0f3a40 0%,#06161a 70%,#020608 100%)}
+[data-vibe="v-numerology"]{--gold:#2aff6a;--gold2:#b8ffc8;--teal:#7dff8a;--fg:#d8ffe0;--muted:#6fbf80;--line:#145a26;--display:"VT323",monospace;--body:"VT323",monospace;
+  --bg-stage:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 2px,transparent 2px 4px),#020a04;
+  --bg-oracle:repeating-linear-gradient(90deg,rgba(42,255,106,.07) 0 14px,transparent 14px 28px),radial-gradient(70% 70% at 50% 45%,#0a3a18 0%,#03140a 70%,#000 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#0a2a14 0%,#020a04 70%,#000 100%)}
+[data-vibe="v-numerology"] body{font-size:18px}
+[data-vibe="v-chinesezodiac"]{--gold:#ffd27a;--gold2:#fff0c0;--teal:#ff8a5a;--fg:#fff3e0;--muted:#f0b89a;--line:#7a1a12;--display:"Cinzel",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:radial-gradient(circle at 15% 20%,rgba(255,74,61,.5) 0 22px,transparent 40px),radial-gradient(circle at 85% 15%,rgba(255,74,61,.45) 0 20px,transparent 38px),linear-gradient(180deg,#3a0606,#6a0c0c 60%,#1e0202);
+  --bg-oracle:radial-gradient(70% 70% at 50% 45%,#a01818 0%,#5a0808 60%,#200202 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#7a1010 0%,#3a0404 70%,#140000 100%)}
+[data-vibe="v-mayan"]{--gold:#4ad6b8;--gold2:#d9fff2;--teal:#E2B04A;--fg:#eafff6;--muted:#9cc8b8;--line:#1e5246;--display:"Metamorphous",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:linear-gradient(180deg,#06231c,#0f3d2e 60%,#031410);
+  --bg-oracle:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 2px,transparent 2px 26px),repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 2px,transparent 2px 52px),radial-gradient(70% 70% at 50% 45%,#5a7a66 0%,#2a4436 60%,#0c1a14 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#1e5246 0%,#0a2a22 70%,#03100c 100%)}
+[data-vibe="v-egyptian"]{--gold:#E2B04A;--gold2:#FADE8C;--teal:#6a9cff;--fg:#fff4dc;--muted:#d8bf90;--line:#1d3a8e;--display:"Cinzel",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:linear-gradient(180deg,#1d2a6e 0%,#c9603a 62%,#e9b06a 66%,#7a4a1e 100%);
+  --bg-oracle:linear-gradient(180deg,#2a3a8e 0%,#e0804a 70%,#d9a85a 72%,#8a5a26 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#1d3a8e 0%,#0b1640 70%,#02040f 100%)}
+[data-vibe="v-celtic"]{--gold:#c9e86a;--gold2:#efffd0;--teal:#7ad65a;--fg:#f0ffe6;--muted:#a8c49a;--line:#2d5a2a;--display:"Uncial Antiqua",serif;--body:"Cormorant Garamond",Georgia,serif;
+  --bg-stage:radial-gradient(80% 50% at 50% 100%,rgba(230,255,230,.18),transparent 70%),linear-gradient(180deg,#0e2a12,#1e4a22 60%,#071408);
+  --bg-oracle:radial-gradient(60% 30% at 50% 85%,rgba(230,255,230,.25),transparent 70%),radial-gradient(70% 70% at 50% 45%,#2d6b2a 0%,#143a16 60%,#061408 100%);
+  --bg-table:radial-gradient(80% 60% at 50% 20%,#3a5a22 0%,#1a2e10 70%,#081004 100%)}
+[data-vibe] .say,[data-vibe] .c{font-family:var(--body)}

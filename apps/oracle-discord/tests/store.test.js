@@ -26,3 +26,18 @@ test("readings earn Essence; the store sells each item once", () => {
 test("every kind has a free starter or earned option", () => {
   for (const k of ["outfit", "avatar", "flame", "voice"]) assert.ok(STORE.some((s) => s.kind === k && s.price === 0), k);
 });
+
+test("every reading system has a vibe, every product kind has dialogue", async () => {
+  const { STORE, KINDS, SHOP_TALK, ensureFree } = await import("../activity/src/store.js");
+  const { CLOTH_DESIGN, AVATAR_LOOK, robeFx } = await import("../activity/src/looks.js");
+  for (const k of ["iching", "runes", "oraclebones", "ifa", "astrology", "humandesign", "numerology", "chinesezodiac", "mayan", "egyptian", "celtic"])
+    assert.ok(STORE.find((i) => i.id === "v-" + k && i.kind === "vibe"), k);
+  for (const [k] of KINDS) for (const m of ["open", "tryon", "buy"]) assert.ok(SHOP_TALK[k]?.[m]?.length >= 3, k + m);
+  for (const i of STORE) {
+    if (i.kind === "cloth" && i.design) assert.equal(typeof CLOTH_DESIGN[i.design], "function", i.id);
+    if (i.kind === "avatar") assert.ok(AVATAR_LOOK[i.id], i.id);
+    if (i.kind === "outfit") { const fx = robeFx(i.element); assert.ok(fx.back || fx.robe || fx.front, i.id); }
+  }
+  const p = { owned: [] }; ensureFree(p);
+  assert.ok(p.owned.includes("chamber"));
+});
