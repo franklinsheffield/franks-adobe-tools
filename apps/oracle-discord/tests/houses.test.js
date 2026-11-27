@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier"];
+const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");

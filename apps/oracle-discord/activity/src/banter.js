@@ -305,6 +305,18 @@ export const BANTER = {
     pirate: G("Mixin' powders! Careful, that one's for the cannons.", "Smelt it hot, like the sun on the Spanish Main!", "A new treasure from the pot! Into the chest!", "Arr, nothin'. Just smoke and a smell o' bilge."),
     influencer: G("Experiment vlog! Rate this combo one to ten!", "This crucible is giving cottagecore alchemist.", "New discovery unlocked! Adding it to my highlights.", "Flop era. Deleting that one from the grid."),
   },
+  leadgold: {
+    mystic: G("Every element is a number. Change the number, change the world.", "The alchemists sought this for two thousand years. Breathe.", "Gold from lead. The old dream wakes, made of real nuclei.", "The nucleus keeps its secret today. It will speak again."),
+    deadpan: G("Protons out. Neutrons out. Gold. Expensive gold.", "Alpha: minus two protons. Not hard. Still people miss it.", "Gold atoms made. Worth roughly nothing. Well done.", "That was lead. It stayed lead. Very lead of it."),
+    drama: G("TRANSMUTATION! The forbidden art, darling!", "A BETA DECAY! A neutron becomes a PROTON! Scandalous!", "GOLD! Real GOLD! The alchemists RISE from their graves!", "The nucleus REFUSES! How DARE it be so stable!"),
+    standup: G("Lead into gold. Like my career, but with physics.", "Uranium takes 4.5 billion years. Like my landlord on repairs.", "Made gold! A few thousand atoms. Retirement plan sorted.", "Turned gold back into regrets. Classic me."),
+    grumpy: G("Alchemists wasted centuries on this. Do it properly.", "Alpha is four mass units. Four. Write it down.", "Fine. Gold. Don't spend it all in one atom.", "Wrong decay. The chart doesn't lie, you do."),
+    sports: G("Nucleus on the field! Protons ready! GO!", "Beta decay down the wing! Neutron to proton!", "GOLD MEDAL! Literally GOLD! Atomic number 79!", "Fumbled the decay! Back to the bench, team!"),
+    conspiracy: G("Why did they hide transmutation for centuries? Think.", "CERN made gold in 2025 and nobody's rich. Suspicious.", "Gold-197! Now we know why Fort Knox has an accelerator.", "Bismuth won't budge. Big Lead got to it first."),
+    bard: G("Of lead and gold the old alchemists sang in vain!", "One neutron turns, and lo, a proton is reborn!", "From humble lead the golden nucleus is won!", "The nucleus held firm, and gold slipped through the song."),
+    pirate: G("Gold from lead? Shiver me timbers, I'm listening!", "Arr, the treasure's hid in the nucleus, matey.", "GOLD! Ha! Fill the hold, lads, fill the hold!", "No gold this time. Walk the plank, ye bismuth."),
+    influencer: G("Live from the particle accelerator! Smash that like!", "Okay so beta decay is literally a glow-up for neutrons.", "Made gold in a lab. Swipe up for my atomic jewellery!", "The nucleus left me on read. Rude."),
+  },
   fireworks: {
     mystic: G("Fire remembers the metal it was born from. Watch.", "Every star in the sky was a salt in a jar first.", "Your sky bloomed true. The metals sang their colours.", "The shell spoke in the wrong colour. Listen closer."),
     deadpan: G("Metal salt, oxidiser, fuse. Then loud.", "Blue is hard. Everyone says so. Including me.", "It went up. It was the right colour. Good.", "That was not the colour on the order sheet."),
