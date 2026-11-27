@@ -1,5 +1,6 @@
 // /celtic: Celtic tree sign and ogham letter (Graves' tree calendar, a modern reconstruction), plus your fire festival season.
-import { parseBirth } from "../../birthplace.js";
+import { parseBirth, geocode } from "../../birthplace.js";
+import { optionalMoment, dayReckoning } from "../../moment.js";
 import { TREES, NAMELESS, FESTIVALS } from "./data.js";
 import { analyse } from "./insight.js";
 import { withInsight } from "../../insight.js";
@@ -10,6 +11,8 @@ export const command = {
   description: "Your Celtic tree sign and ogham letter (a modern reconstruction) from your birth date",
   options: [
     { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "time", description: "Birth time, local clock (optional: day or night birth, day boundary)", max_length: 8 },
+    { type: 3, name: "place", description: "Birth town or city, country (optional, with the time)", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
 };
@@ -89,11 +92,15 @@ export async function run(o, ctx = {}) {
   if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
   const b = parseBirth(o.date, "12:00");
   const tr = treeFor(b.month, b.day), fest = festivalSeason(b.month, b.day);
+  const timed = !o.time_unknown && !!(o.time && String(o.time).trim());
+  const moment = await optionalMoment(o, (known) => parseBirth(o.date, known ? o.time : "12:00"), ctx, geocode), reck = dayReckoning(moment);
+  const extra = { moment, reck, detail: !!(o.private || ctx.birthDetail), timed };
+  if (reck && reck.afterSunset) extra.alt = treeFor(reck.fromSunset.month, reck.fromSunset.day);
   const n = ctx.now || new Date(), tdy = treeFor(n.getUTCMonth() + 1, n.getUTCDate());
   const today = tdy === NAMELESS ? TREES[0] : tdy;
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Celtic Tree Sign", subtitle: `${tr.tree} · reading for ${who}`, tag: "Graves' tree calendar · modern reconstruction", body: body(tr, today),
     facts: [["Tree", tr.tree], ["Ogham", `${tr.letter}`], ["Tree month", rangeOf(tr)], ["Fire festival", fest.name]] });
-  const ins = analyse(tr, fest, today, b, who);
-  return { embeds: withInsight(readingEmbeds(tr, fest, today, { who }), ins), analysis: ins.analysis, files: [{ name: "celtic.png", data: png }], ephemeral: !!o.private, reading: { tree: tr.tree, ogham: tr.letter, festival: fest.name }, headline: `${tr.tree} (${tr.letter})` };
+  const ins = analyse(tr, fest, today, b, who, extra);
+  return { embeds: withInsight(readingEmbeds(tr, fest, today, { who }), ins), analysis: ins.analysis, files: [{ name: "celtic.png", data: png }], ephemeral: !!o.private, reading: { tree: tr.tree, ogham: tr.letter, festival: fest.name }, moment, headline: `${tr.tree} (${tr.letter})` };
 }

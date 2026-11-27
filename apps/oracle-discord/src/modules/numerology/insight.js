@@ -58,6 +58,7 @@ export function analyse(r, showName, who) {
   ];
 
   const method = [
+    "Numerology uses only the calendar date and the letters of the name. Birth time and birthplace change nothing here, except that the date is the calendar date at the birthplace.",
     "Pythagorean table: A=1 to I=9, then J=1 again, and so on. Each number is added digit by digit until one digit remains (11, 22 and 33 are kept).",
     "Adding digits until one remains gives the remainder on division by 9 (\"casting out nines\"), which is why Soul Urge plus Personality always reduces to the same root as Expression.",
     `If totals were evenly spread, each root from 1 to 9 would turn up about 1 time in 9 (11%). Sharing a Life Path with ${who === "you" ? "you" : who} is therefore common: roughly 1 person in 9.`,
