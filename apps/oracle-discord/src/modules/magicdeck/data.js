@@ -47,7 +47,7 @@ const RAW = {
     ["The Filter", ["leaving behind", "sorting", "clarity"], "Let the useful part through and leave the grounds behind.", "Coffee filters let dissolved flavour through and hold the grounds back."],
     ["The Elixir", ["wish", "satisfaction", "reward"], "The thing you hoped for, in a small bottle. Enjoy it.", "Alchemists searching for an elixir of life developed real lab methods like distillation."],
     ["The Explosion", ["overload", "too much", "spectacle"], "Too much at once makes a beautiful mess. Add less next time.", "Fireworks get their colours from metals: strontium for red, copper for blue, sodium for yellow."],
-    ["Keeper of Potions", ["bold", "inventive", "mastery"], "A master experimenter. Take the clever risk, with safety goggles.", "Rosalind Franklin's X-ray image, Photo 51, helped reveal the double helix of DNA."],
+    ["Keeper of Potions", ["bold", "inventive", "mastery"], "A master experimenter. Take the clever risk, with safety goggles.", "Photo 51, an X-ray image made in Rosalind Franklin's lab with her student Raymond Gosling, helped reveal DNA's double helix."],
   ],
   stars: [
     ["The Spark of Light", ["inspiration", "idea", "new path"], "A bright idea arrives. Write it down before it fades.", "Sunlight takes about 8 minutes 20 seconds to reach Earth."],
