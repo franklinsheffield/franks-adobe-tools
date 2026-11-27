@@ -21,7 +21,7 @@ export function oracleMessages(r, options = {}, user = "traveller", env = {}, ra
   const embeds = r.embeds.map((e) => ({ ...e }));
   let content = r.content || "";
   if (options.via_oracle && embeds.length) {
-    content = ("🔮 *" + speech(env.COMMAND, user, embeds[0], rand) + "*").slice(0, 1900) + (content ? "\n" + content : "");
+    content = ("🔮 *" + speech(env.COMMAND, user, embeds[0], rand, r.headline) + "*").slice(0, 1900) + (content ? "\n" + content : "");
     embeds[0].author = author(env);
   }
   const msgs = pack(embeds).map((embeds) => ({ embeds }));
