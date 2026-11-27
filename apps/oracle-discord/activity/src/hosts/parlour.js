@@ -76,7 +76,7 @@ export const PARLOUR_RELICS = [
 ];
 
 /** The Spirit Trumpet Gramophone: Madame Rook's own player for the shared music pool (classes tt, tt-disc). */
-export function gramophoneSvg(t, playing) {
+export function gramophoneSvg(t, playing, prog = {}) {
   const disc = t ? `<g transform="translate(46 50) scale(.8)">${vinylSvg(t, 100).replace(/<svg[^>]*>|<\/svg>/g, "")}</g>` : `<circle cx="86" cy="90" r="40" fill="#26262c"/>`;
   return `<svg class="tt gr${playing ? " playing" : ""}" viewBox="0 0 260 190" aria-hidden="true">
   <defs><linearGradient id="gr-horn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EDE8F7"/><stop offset=".5" stop-color="#C3A6FF"/><stop offset="1" stop-color="#5B3A8A"/></linearGradient>
@@ -89,6 +89,7 @@ export function gramophoneSvg(t, playing) {
   <path class="gr-horn" d="M182 56 L200 50 L256 4 L256 100 L200 64 Z" fill="url(#gr-horn)" stroke="#5B3A8A" stroke-width="1.5"/>
   <ellipse cx="256" cy="52" rx="4" ry="48" fill="#2A0F24" opacity=".8"/>
   <g class="gr-notes">${[0, 1, 2].map((i) => `<text class="gr-n gr-n${i}" x="${236 - i * 10}" y="${40 + i * 12}" font-size="12" fill="#FFE3A3">♪</text>`).join("")}</g>
+  ${finaleDone(prog || {}) ? `<g class="gr-curtain"><title>Curtain Call: the Final Séance is solved</title><rect x="52" y="140" width="98" height="26" rx="4" fill="#E2B04A" stroke="#FFF1B8" stroke-width="1.4"/><text x="101" y="158" font-size="13" text-anchor="middle" fill="#2A0F24" font-family="Georgia,serif" font-style="italic">Curtain Call</text></g>` : ""}
   <circle class="tt-led" cx="30" cy="168" r="4" fill="${playing ? "#C3A6FF" : "#3a3a3a"}"/>
   <path d="M206 182V160q0 -8 6 -12l-3 -8q8 0 10 8l-1 12v22z" fill="#FFF6EE" opacity=".9"/><path class="gr-flame" d="M210 140q4 -10 0 -16q-4 6 0 16z" fill="#FFE3A3"/>
 </svg>`;

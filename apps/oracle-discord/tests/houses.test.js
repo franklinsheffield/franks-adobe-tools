@@ -276,3 +276,9 @@ test("Parlour M7: six new relics with art, and the gold cameo after the Final SÃ
   for (const r of NEW_PARLOUR_RELICS) { const x = parlour.relics.find((y) => y.id === r.id); assert.ok(x && x.price === r.price && x.art().includes("<") && x.w > 0, r.id); }
   assert.equal(new Set(parlour.relics.map((r) => r.id)).size, parlour.relics.length);
 });
+
+test("Parlour finale: gold cameo and the Curtain Call label on the gramophone", async () => {
+  const { gramophoneSvg } = await import("../activity/src/hosts/parlour.js");
+  assert.ok(!gramophoneSvg(null, false, {}).includes("Curtain Call"));
+  assert.ok(gramophoneSvg(null, false, { houses: { parlour: { finale: { done: true } } } }).includes("Curtain Call"));
+});
