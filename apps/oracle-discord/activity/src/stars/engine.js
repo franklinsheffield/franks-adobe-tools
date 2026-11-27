@@ -192,6 +192,11 @@ export function settle(p, run, fable) {
   if (out.score > prev) { out.best = !!prev; out.xp = out.essence = out.score - prev; r.found[k] = out.score; }
   return out;
 }
+// ---- the Daily Constellation: one figure and one starting sky for the whole server each UTC day (daily.js seed) ----
+/** Today's constellation for a daily seed. Played on level 2 (no figures), from the same starting view for everyone. */
+export const dailyPick = (seed) => DECK[seed % DECK.length];
+/** Fastest draw wins: 500 for finishing, +10 per second left on the clock, −50 per mistake (never below 100). 0 if not drawn. */
+export const dailyScore = (run, left) => (run.done && !run.revealed ? Math.max(100, 500 + Math.round(left * 10) - 50 * run.mistakes) : 0);
 export const fablesHeard = (p) => room(p).heard.length;
 export const FABLE_COUNT = DECK.reduce((n, g) => n + g.fables.length, 0);
 
