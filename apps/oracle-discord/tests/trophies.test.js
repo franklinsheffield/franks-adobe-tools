@@ -28,3 +28,8 @@ test("trophies: every game room reports to the Trophy Case", async () => {
   for (const r of ["seance", "decoder", "alchemy", "timeline", "stars", "calendar", "grimoire", "duel", "memory", "rummy"])
     assert.match(readFileSync(new URL(`../activity/src/${r}/room.js`, import.meta.url), "utf8"), new RegExp(`trophy\\?\\.\\("${r}"`), r);
 });
+
+test("trophies: no trophy name contains a tier's name", async () => {
+  const T = await import("../activity/src/trophies.js");
+  for (const t of T.TROPHIES) for (const x of T.TIERS.slice(1)) assert.ok(!new RegExp(`\\b${x.name}\\b`, "i").test(t.name + " " + (T.LINES[t.id] || "")), `${t.name} mentions ${x.name}`);
+});
