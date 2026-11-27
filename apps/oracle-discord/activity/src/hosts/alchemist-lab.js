@@ -18,10 +18,10 @@ export function labSceneHtml(at = Date.now(), { prog = {}, motes = 14, rnd = Mat
   const d = new Date(at), h = d.getHours(), heat = athanorHeat(h), fire = mix("#6a1206", "#ffd27a", heat), hh = ((h + 11) % 12) + 1;
   const owned = (((prog.houses || {}).alchemist || {}).relics || []).includes("st-athanor"); // the relic athanor takes its place
   const jar = ([name, f, col], i) => { const x = 3 + (i % 4) * 24, y = i < 4 ? 4 : 38;
-    return `<g><title>${name} (${f})</title><rect x="${x}" y="${y + 6}" width="18" height="22" rx="3" fill="${col}" opacity=".7" stroke="#e8d6b0" stroke-opacity=".5"/><rect x="${x + 3}" y="${y + 2}" width="12" height="5" rx="1" fill="#6b4a2a"/>
+    return `<g class="mb-hot" data-tap="jar-${i}"><title>${name} (${f})</title><rect x="${x}" y="${y + 6}" width="18" height="22" rx="3" fill="${col}" opacity=".7" stroke="#e8d6b0" stroke-opacity=".5"/><rect x="${x + 3}" y="${y + 2}" width="12" height="5" rx="1" fill="#6b4a2a"/>
       <rect x="${x + 1.5}" y="${y + 13}" width="15" height="10" fill="#f3e6c6"/><text x="${x + 9}" y="${y + 17.4}" font-size="3.3" text-anchor="middle" fill="#3a2410" font-family="Georgia,serif">${name}</text><text x="${x + 9}" y="${y + 21.6}" font-size="3.6" text-anchor="middle" fill="#7a1a10" font-family="Georgia,serif">${f}</text></g>`; };
   const shelf = `<svg class="lab-jars" viewBox="0 0 100 68" aria-hidden="true">${REAGENTS.map(jar).join("")}<rect x="0" y="32" width="100" height="3" fill="#5a3a1e"/><rect x="0" y="66" width="100" height="2.5" fill="#5a3a1e"/></svg>`;
-  const hood = `<svg class="lab-hood" viewBox="0 0 80 104" aria-hidden="true"><rect x="30" y="0" width="20" height="12" fill="#5a4a3a"/><rect x="4" y="10" width="72" height="90" rx="4" fill="#2a1d14" stroke="#C88A3A" stroke-width="2"/>
+  const hood = `<svg class="lab-hood mb-hot" data-tap="hood" viewBox="0 0 80 104" aria-hidden="true"><rect x="30" y="0" width="20" height="12" fill="#5a4a3a"/><rect x="4" y="10" width="72" height="90" rx="4" fill="#2a1d14" stroke="#C88A3A" stroke-width="2"/>
     <rect x="10" y="18" width="60" height="56" fill="#9fd4f2" opacity=".12" stroke="#e8d6b0" stroke-opacity=".5"/><path d="M10 46 H70" stroke="#C88A3A" stroke-width="2"/>
     <g class="lab-hflask"><path d="M36 70 V58 L30 46 H50 L44 58 V70Z" transform="translate(0 0)" fill="#66E0C8" fill-opacity=".35" stroke="#e8d6b0" stroke-width="1"/><circle class="lab-hb" cx="39" cy="66" r="1.2" fill="#C9FFF2"/><circle class="lab-hb" style="--d:.7s" cx="42" cy="64" r="1" fill="#C9FFF2"/></g>
     <g class="lab-cloud"><ellipse cx="26" cy="34" rx="16" ry="10" fill="#8a8580"/><ellipse cx="44" cy="28" rx="18" ry="12" fill="#a29c96"/><ellipse cx="56" cy="40" rx="14" ry="10" fill="#7a7570"/><ellipse cx="38" cy="50" rx="22" ry="12" fill="#6a6560"/></g>
@@ -127,7 +127,7 @@ body[data-house="alchemist"] .o-hands .o-nail{fill:var(--glove2)}body[data-house
 .teller.hv-sooty .hv-soot{opacity:1;animation:hv-wipe 3.2s ease-in both}@keyframes hv-wipe{0%,55%{opacity:1}100%{opacity:0}}
 .lab-hood{position:absolute;left:3%;top:4%;width:clamp(56px,15%,104px);opacity:.92;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))}
 .lab-cloud{opacity:0;transition:opacity 1.2s}.scene.clouded .lab-cloud{opacity:.95}.scene.clouded .lab-cloud ellipse{animation:lab-roil 2s ease-in-out infinite alternate}@keyframes lab-roil{to{transform:translate(2px,-2px)}}
-.lab-jars{position:absolute;right:2%;top:40%;width:clamp(78px,22%,150px);opacity:.85}
+.scene .mb-hot{pointer-events:auto;cursor:pointer}.lab-jars{position:absolute;right:2%;top:40%;width:clamp(78px,22%,150px);opacity:.85}
 .lab-athanor{position:absolute;left:3%;top:52%;width:clamp(40px,11%,78px);opacity:.92}
 .lab-fire{animation:hr-flick .45s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
 .lab-bench{position:absolute;left:0;right:0;bottom:0;height:7%;background:linear-gradient(#6a3e1e,#2e1a0c);border-top:2px solid #C88A3A;opacity:.85}

@@ -107,16 +107,16 @@ export const secrets = {
   items: MARGINALIA.map(({ line, ...m }) => m),
   /** kind: home | poke | emote | result | tap. data shapes per hosts/secrets.js; read defensively. */
   event(kind, data = {}, api) {
-    const find = (id) => api.find(id, lineOf(id));
+    const find = (id, extra = "") => api.find(id, lineOf(id) + extra), at = data.at ?? api.at;
     if (kind === "tap") {
       const { tap, count = 1 } = data, rule = ON_TAP[tap];
-      if (rule && count >= rule[1]) find(rule[0]);
+      if (tap === "bell") find("hours", ` The bell now rings for ${officeOf(hourOf(at))}.`);
+      else if (rule && count >= rule[1]) find(rule[0]);
       if (tap === "page" && lastTap === "cat") find("paws");
       if (tap === "inkwell" && lastTap === "quill") find("pentrial");
-      if (tap === "bell") api.say?.(`The bell rings for ${officeOf(hourOf(data.at))}.`);
       lastTap = tap;
     } else if (kind === "home") {
-      const h = hourOf(data.at); if (h >= 17 && h < 21) find("dark");
+      const h = hourOf(at); if (h >= 17 && h < 21) find("dark");
     } else if (kind === "poke") {
       pokes = Math.max(pokes + 1, data.count || 0); if (pokes >= 5) find("kissed");
     } else if (kind === "result") {

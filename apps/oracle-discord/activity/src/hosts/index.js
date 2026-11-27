@@ -12,6 +12,7 @@ import { observatory } from "./observatory.js";
 import { parlour } from "./parlour.js";
 import { scriptorium } from "./scriptorium.js";
 import { tokensLeft, houseRelicsHtml, tokenIcon, TOKEN_CSS } from "./tokens.js";
+import { SECRETS_CSS } from "./secrets.js";
 
 export const HOSTS = [oracle, alchemist, observatory, parlour, scriptorium];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
@@ -54,7 +55,7 @@ export function dressHouse(doc = document) {
   doc.title = h === oracle ? "Oracle Chamber" : h.house;
   const sp = doc.querySelector(".speaker"); if (sp) sp.textContent = h.name.toUpperCase();
   const t = doc.getElementById("teller"); if (t && h !== oracle) t.setAttribute("aria-label", `${h.name}, ${h.house}'s host`);
-  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + (h.css || ""); doc.head.appendChild(st); }
+  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + SECRETS_CSS + (h.css || "") + ((h.menuBg && h.menuBg.css) || "") + `body{--house-accent:${h.accent}}`; doc.head.appendChild(st); }
 }
 /** Paint the host onto a copy of the shared figure (the teller, or the door's portrait). */
 export function paintHost(svg, prog, id = "t") {

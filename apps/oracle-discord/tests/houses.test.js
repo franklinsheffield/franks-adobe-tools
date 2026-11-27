@@ -169,3 +169,20 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   setHost(null);
 });
 test("the Parlour and the Scriptorium are routed from their channels", () => { assert.equal(hostFor({ channelId: "1575977181622829158" }).id, "parlour"); assert.equal(hostFor({ channelId: "1575977195048927232" }).id, "scriptorium"); });
+
+test("hidden features per House: the Alchemist's 13 finds pay once, count in her own drawer, and the menu background has hotspots", async () => {
+  const { findSecret, secretCount, secretsPanelHtml, ALL_BONUS, tapCount } = await import("../activity/src/hosts/secrets.js");
+  const { alchemist } = await import("../activity/src/hosts/alchemist.js");
+  const S = alchemist.secrets.items; assert.equal(S.length, 13); assert.equal(new Set(S.map((x) => x.id)).size, 13);
+  const p = {}; const r = findSecret(p, alchemist, "aurum"); assert.ok(r && p.essence === 20); assert.equal(findSecret(p, alchemist, "aurum"), null, "pays once");
+  assert.deepEqual(p.houses.alchemist.sec, ["aurum"]); assert.equal(secretCount(p, alchemist), 1);
+  findSecret(p, alchemist, "midnight"); assert.equal(p.houses.alchemist.got, 1, "rare finds pay the House token");
+  for (const s of S) findSecret(p, alchemist, s.id); assert.ok(p.houses.alchemist.secAll); assert.equal(p.houses.alchemist.got, 1 + 2 + 2 + ALL_BONUS.token);
+  assert.match(secretsPanelHtml({}, alchemist, (x) => x), /0 of 13 found/);
+  const found = []; const api = (at) => ({ prog: {}, at, find: (id) => found.push(id) });
+  alchemist.secrets.event("home", { at: 0 }, api(new Date(2026, 9, 23, 0, 30).getTime())); assert.deepEqual(found.sort(), ["midnight", "moleday"]);
+  found.length = 0; alchemist.secrets.event("tap", { tap: "gear", count: 3 }, api(0)); alchemist.secrets.event("poke", { zone: "orb", count: 5 }, api(0)); assert.deepEqual(found, ["gears", "overflow"]);
+  const html = alchemist.menuBg.html(0, {}); assert.match(html, /data-tap="gear"/); assert.match(html, /data-tap="au"/);
+  assert.match(alchemist.scene(0, { motes: 0 }), /data-tap="hood"/); assert.match(alchemist.scene(0, { motes: 0 }), /data-tap="jar-7"/);
+  assert.equal(tapCount("x", 0), 1); assert.equal(tapCount("x", 500), 2); assert.equal(tapCount("x", 5000), 1);
+});

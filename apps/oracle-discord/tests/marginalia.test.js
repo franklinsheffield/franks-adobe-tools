@@ -16,7 +16,7 @@ test("menu background: day and night render, hot spots tagged, reduced motion ho
 test("20 marginalia, each findable, each with a real-fact line", () => {
   assert.equal(MARGINALIA.length, 20); assert.equal(secrets.items.length, 20); assert.equal(new Set(MARGINALIA.map((m) => m.id)).size, 20);
   for (const m of MARGINALIA) { assert.ok(m.line.length > 50 && m.hint && m.e && m.pay.token > 0, m.id); assert.ok(!("line" in secrets.items.find((i) => i.id === m.id))); }
-  _reset(); const got = []; const api = { find: (id, line) => { if (!got.includes(id)) got.push(id); assert.ok(line); }, say() {} };
+  _reset(); const got = []; const api = { find: (id, line) => { if (!got.includes(id)) got.push(id); assert.ok(line); } };
   const tap = (t, n = 1) => { for (let c = 1; c <= n; c++) secrets.event("tap", { tap: t, count: c }, api); };
   tap("cat", 3); tap("page"); tap("snail"); tap("mouse", 2); tap("quill", 5); tap("inkwell"); tap("book", 3); tap("page", 6);
   for (const t of ["frame", "shells", "bell", "worm", "drollery", "hand"]) tap(t); tap("candle", 7);
