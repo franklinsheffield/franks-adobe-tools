@@ -9,7 +9,7 @@ import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
 import { LEVELS, DECK, ALL, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
   pickFable, quizChoices, answer, settle, drawPts, quizPts, startView, figureEdges, figureStars, figureCentre, toScreen, toSky, pan, zoom, onScreen,
-  nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT } from "./engine.js";
+  nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -30,9 +30,9 @@ const bvColour = (bv) => bv < 0 ? "#a9c4ff" : bv < 0.3 ? "#e8eeff" : bv < 0.6 ? 
 class Sky {
   constructor(host, o) {
     this.host = host; this.o = o; this.view = o.view; this.t0 = performance.now(); this.fx = []; this.alive = true;
-    host.innerHTML = `<canvas class="sl-cv"></canvas>${o.controls ? `<div class="sl-ctl"><button type="button" data-z="0.8" aria-label="Zoom in">＋</button><button type="button" data-z="1.25" aria-label="Zoom out">－</button></div><div class="sl-arrow" hidden>➤</div>` : ""}`;
+    host.innerHTML = `<canvas class="sl-cv"></canvas>${o.controls ? `<div class="sl-ctl"><button type="button" data-z="0.8" aria-label="Zoom in">＋</button><button type="button" data-z="1.25" aria-label="Zoom out">－</button></div><div class="sl-arrow" hidden>➤</div><div class="sl-ballw"><canvas class="sl-ball" aria-label="Sky ball: drag to turn the sky"></canvas><span>drag to turn</span></div>` : ""}${o.timer ? `<div class="sl-time"><i></i><b></b></div>` : ""}`;
     this.cv = host.querySelector("canvas"); this.cv.sky = this; this.cx = this.cv.getContext("2d");
-    this.mw = document.createElement("canvas");
+    this.mw = document.createElement("canvas"); this.ball = host.querySelector(".sl-ball"); if (this.ball) this.ballInput();
     const loop = () => { if (!this.alive || !this.cv.isConnected) { this.alive = false; return; } this.draw(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
@@ -82,6 +82,8 @@ class Sky {
     }
     c.globalAlpha = 1;
     if (run) this.drawRun(c, P, t);
+    if (this.ball) this.drawBall(P);
+    if (o.timer) this.drawTimer(now);
     // effects: miss flashes, hint edges, sparkles, meteors
     this.fx = this.fx.filter((f) => now - f.at < f.dur);
     for (const f of this.fx) { const k = (now - f.at) / f.dur;
@@ -120,6 +122,44 @@ class Sky {
       const w = c.measureText(o.label).width + 20, y = Math.min(this.h - 30, p.Y + 40); c.fillStyle = "rgba(11,8,32,.82)"; c.strokeStyle = P.gold; c.lineWidth = 1;
       c.beginPath(); c.roundRect ? c.roundRect(p.X - w / 2, y - 16, w, 24, 6) : c.rect(p.X - w / 2, y - 16, w, 24); c.fill(); c.stroke(); c.fillStyle = P.gold; c.fillText(o.label, p.X, y + 1); }
   }
+  /** The perspective ball: the celestial sphere seen from outside, turned to match the view. */
+  drawBall(P) {
+    const b = this.ball, dpr = Math.min(2, window.devicePixelRatio || 1), S = 92;
+    if (b.width !== S * dpr) { b.width = b.height = S * dpr; }
+    const c = b.getContext("2d"), R = S / 2 - 4, cx = S / 2, v = this.view, R0 = Math.PI / 180, ra0 = v.ra * R0, d0 = v.dec * R0;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, S, S);
+    const g = c.createRadialGradient(cx - R * 0.35, cx - R * 0.35, R * 0.1, cx, cx, R); g.addColorStop(0, "#2a3f8f"); g.addColorStop(1, "#060a24");
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cx, R, 0, 7); c.fill();
+    const pt = (ra, de) => { const a = ra * R0 - ra0, cd = Math.cos(de * R0), z = Math.sin(d0) * Math.sin(de * R0) + Math.cos(d0) * cd * Math.cos(a);
+      return { x: cx - R * cd * Math.sin(a), y: cx - R * (Math.cos(d0) * Math.sin(de * R0) - Math.sin(d0) * cd * Math.cos(a)), z }; };
+    const line = (pts, col, w) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); let pen = false;
+      for (const [r, d] of pts) { const q = pt(r, d); if (q.z < 0) { pen = false; continue; } if (pen) c.lineTo(q.x, q.y); else c.moveTo(q.x, q.y); pen = true; } c.stroke(); };
+    for (let d = -60; d <= 60; d += 30) line(Array.from({ length: 73 }, (_, i) => [i * 5, d]), d ? "rgba(140,170,255,.35)" : "rgba(250,222,140,.7)", d ? 0.8 : 1.2);
+    for (let r = 0; r < 360; r += 30) line(Array.from({ length: 37 }, (_, i) => [r, -90 + i * 5]), "rgba(140,170,255,.3)", 0.8);
+    for (const [txt, de] of [["N", 90], ["S", -90]]) { const q = pt(0, de); if (q.z > 0.05) { c.fillStyle = "#FADE8C"; c.font = "700 10px sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(txt, q.x, q.y); } }
+    const f = Math.min(0.9, Math.tan(((v.fov || 45) * R0) / 2)) * R; c.strokeStyle = P.gold; c.lineWidth = 1.4; c.strokeRect(cx - f * 0.66, cx - f * 0.5, f * 1.32, f);
+    c.strokeStyle = "rgba(250,222,140,.8)"; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cx, R, 0, 7); c.stroke();
+    const hl = c.createRadialGradient(cx - R * 0.4, cx - R * 0.45, 0, cx - R * 0.4, cx - R * 0.45, R * 0.6); hl.addColorStop(0, "rgba(255,255,255,.25)"); hl.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = hl; c.beginPath(); c.arc(cx, cx, R, 0, 7); c.fill();
+  }
+  /** Drag the ball to turn the sky; it keeps a little spin when let go. */
+  ballInput() {
+    const b = this.ball; let last = null, vel = [0, 0], tLast = 0;
+    b.addEventListener("pointerdown", (e) => { e.stopPropagation(); b.setPointerCapture(e.pointerId); last = [e.clientX, e.clientY]; vel = [0, 0]; tLast = performance.now(); this.spinning = false; });
+    b.addEventListener("pointermove", (e) => { if (!last) return; const dx = e.clientX - last[0], dy = e.clientY - last[1], now = performance.now();
+      this.view = spin(this.view, dx, dy); vel = [(dx / Math.max(8, now - tLast)) * 16, (dy / Math.max(8, now - tLast)) * 16]; last = [e.clientX, e.clientY]; tLast = now; });
+    const up = () => { if (!last) return; last = null; if (reducedMotion() || Math.hypot(...vel) < 1.5) return;
+      this.spinning = true; const step = () => { if (!this.spinning || !this.alive) return; vel = [vel[0] * 0.9, vel[1] * 0.9]; this.view = spin(this.view, vel[0], vel[1]);
+        if (Math.hypot(...vel) > 0.2) requestAnimationFrame(step); else this.spinning = false; }; step(); };
+    b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up);
+  }
+  /** The countdown bar along the top of the sky. */
+  drawTimer(now) {
+    const T = this.o.timer, el = this.host.querySelector(".sl-time"); if (!el) return;
+    const left = Math.max(0, T.paused != null ? T.paused : (T.end - now) / 1000), k = left / T.total;
+    el.querySelector("i").style.width = `${k * 100}%`; el.querySelector("b").textContent = `⏳ ${Math.ceil(left)}s`;
+    el.classList.toggle("low", left <= 15 && T.paused == null);
+  }
   meteor() { this.fx.push({ kind: "meteor", at: performance.now(), dur: 900, x: this.w * (0.5 + Math.random() * 0.5), y: this.h * Math.random() * 0.4 }); }
   /** Glide the view to a new centre and zoom. */
   glide(to, ms = 1100, done) { const from = { ...this.view }, t0 = performance.now(); let dra = to.ra - from.ra; if (dra > 180) dra -= 360; if (dra < -180) dra += 360;
@@ -127,13 +167,13 @@ class Sky {
       this.view = { ra: (from.ra + dra * e + 360) % 360, dec: from.dec + (to.dec - from.dec) * e, fov: from.fov + ((to.fov || from.fov) - from.fov) * e };
       if (k < 1 && this.alive) requestAnimationFrame(step); else if (done) done(); };
     if (reducedMotion()) { this.view = { ...to }; if (done) done(); } else step(); }
-  /** Pointer handling (a line starts only within 12 px of a star, so dense sky can still be dragged): drag empty sky to roam, drag or tap star to star to draw, wheel or pinch to zoom. */
+  /** Pointer handling on the sky itself: drawing (drag or tap star to star) and zoom (wheel or pinch) only. Turning the sky is the ball's job, so a stray drag never moves it. Without a ball (the store preview) empty-sky drags still pan. */
   input(onTapStar, onDragLine) {
     const cv = this.cv, pts = new Map(); let mode = null, startStar = null, last = null, moved = 0, pinch = null;
     const at = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); const p = at(e); pts.set(e.pointerId, p);
       if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), fov: this.view.fov }; mode = "pinch"; this.o.rubber = null; return; }
-      const st = nearestStar(this.vis || [], p[0], p[1], 12); startStar = st; mode = st ? "draw" : "pan"; last = p; moved = 0; });
+      const st = nearestStar(this.vis || [], p[0], p[1], 16); startStar = st; mode = st ? "draw" : this.ball ? "idle" : "pan"; last = p; moved = 0; });
     cv.addEventListener("pointermove", (e) => { if (!pts.has(e.pointerId)) return; const p = at(e); pts.set(e.pointerId, p);
       if (mode === "pinch" && pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); this.view = zoom({ ...this.view, fov: pinch.fov }, pinch.d / Math.max(10, d)); return; }
       moved += Math.hypot(p[0] - last[0], p[1] - last[1]);
@@ -143,7 +183,7 @@ class Sky {
       if (mode === "pinch") { if (!pts.size) mode = null; return; }
       if (mode === "draw") { const end = nearestStar(this.vis || [], p[0], p[1], 22); this.o.rubber = null;
         if (moved > 8 && end && end.s[4] !== startStar.s[4]) onDragLine(startStar.s, end.s); else if (moved <= 8) onTapStar(startStar.s); }
-      else if (mode === "pan" && moved <= 6) onTapStar(null);
+      else if ((mode === "pan" || mode === "idle") && moved <= 6) onTapStar(null);
       mode = null; };
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.view = zoom(this.view, e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
@@ -157,6 +197,13 @@ const CSS = `
 .sl-ctl{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .sl-ctl button{width:34px;height:34px;border-radius:50%;border:1px solid rgba(250,222,140,.6);background:rgba(11,8,32,.75);color:#FADE8C;font-size:18px;cursor:pointer}
 .sl-ctl button:active{box-shadow:0 0 12px rgba(120,200,255,.8)}
+.sl-ballw{position:absolute;left:8px;bottom:30px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:2px}
+.sl-ball{width:92px;height:92px;cursor:grab;touch-action:none;border-radius:50%;box-shadow:0 0 14px rgba(250,222,140,.35)}.sl-ball:active{cursor:grabbing;box-shadow:0 0 18px rgba(120,200,255,.8)}
+.sl-ballw span{font-size:10px;color:#FADE8C;opacity:.8;text-shadow:0 0 4px #000;pointer-events:none}
+.sl-time{position:absolute;left:8px;right:52px;top:8px;height:18px;z-index:2;border:1px solid rgba(250,222,140,.6);border-radius:9px;background:rgba(11,8,32,.7);overflow:hidden;pointer-events:none}
+.sl-time i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#c9a24a,#FADE8C);opacity:.55;transition:width .2s linear}
+.sl-time b{position:relative;display:block;text-align:center;font:600 11px/18px sans-serif;color:#fff;text-shadow:0 0 3px #000}
+.sl-time.low{border-color:#ff5a7a;animation:sl-pulse .6s ease-in-out infinite}.sl-time.low i{background:#ff5a7a}
 .sl-arrow{position:absolute;z-index:2;width:24px;height:24px;color:#FADE8C;font-size:22px;line-height:24px;text-align:center;text-shadow:0 0 8px #FADE8C;animation:sl-pulse 1s ease-in-out infinite;pointer-events:none}
 @keyframes sl-pulse{50%{opacity:.45}}
 .sl-shape{display:flex;align-items:center;gap:10px;margin:6px 0}.sl-shape svg{width:96px;height:72px;border:1px solid var(--line,#3a2f6a);border-radius:8px;background:rgba(7,11,36,.8)}
@@ -164,7 +211,7 @@ const CSS = `
 .sl-shake{animation:sl-shake .45s ease-in-out}@keyframes sl-shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .sl-facts{display:grid;gap:4px;margin:6px 0;font-size:.85rem}.sl-facts span{border:1px solid var(--line,#3a2f6a);border-radius:8px;padding:5px 8px;background:rgba(22,16,48,.6)}
 .sl-fable{font-style:italic;color:var(--muted,#b9b2cc);font-size:.85rem;margin:4px 0}
-@media (prefers-reduced-motion: reduce){.sl-arrow,.sl-lant,.sl-shake{animation:none}}
+@media (prefers-reduced-motion: reduce){.sl-time.low,.sl-arrow,.sl-lant,.sl-shake{animation:none}}
 `;
 function styleOnce() { if (document.getElementById("sl-style")) return; const st = document.createElement("style"); st.id = "sl-style"; st.textContent = CSS; document.head.append(st); }
 
@@ -226,13 +273,20 @@ export const stars = {
 
     function search(L, g) {
       const run = start(g, L), fi = pickFable(state.prog, g), fable = g.fables[fi];
-      const sky = mount({ view: startView(g, run.seed), figures: L.guide === "lines", photo: L.n === 3, run, g, dome: true, controls: true });
+      const total = timeFor(g, L), timer = { total, end: performance.now() + total * 1000 + 1300, paused: null };
+      const sky = mount({ view: startView(g, run.seed), figures: L.guide === "lines", photo: L.n === 3, run, g, dome: true, controls: true, timer });
+      const stopClock = () => { if (timer.paused == null) timer.paused = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(tick); };
+      let warned = false;
+      const tick = setInterval(() => { if (!sky.alive) return clearInterval(tick); if (timer.paused != null) return;
+        const left = (timer.end - performance.now()) / 1000;
+        if (left <= 15 && !warned) { warned = true; say(pick(["The stars are fading. Hurry.", "Fifteen breaths left before dawn.", "Quickly now, the night is ending."])); }
+        if (left <= 0) timeUp(); }, 250);
       domeOpen(); clearReading(); cap(`${g.emoji} Find and draw ${g.name}`);
       let told = 0;
       const status = (extra) => {
         const st = starsFor(run.mistakes);
         ui(`<div class="cx-top">Level ${L.n} · lines ${run.drawn.length} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
-          <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Drag the sky to roam. Tap a star, then the next star of the figure, or drag from star to star.</div></div>
+          <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Turn the sky with the ball (bottom left). Tap a star, then the next star of the figure, or drag from star to star. Beat the clock.</div></div>
           ${told ? `<div class="sl-fable">📜 ${esc(fable.c)}: “${esc(fable.t)}”</div>` : ""}${extra || ""}
           <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a mistake)</button>${guideBtn}<button class="c small" type="button" id="sl-reveal">Show me</button><button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
         $("sl-hint").onclick = () => { const [ra, de] = figureCentre(g), p = toScreen(sky.view, sky.w, sky.h, ra, de), inView = p.front && p.X > 0 && p.Y > 0 && p.X < sky.w && p.Y < sky.h;
@@ -241,8 +295,8 @@ export const stars = {
             status(); say(pick(["Follow the golden arrow.", "That way, traveller. The arrow knows.", "Not here. Follow my arrow across the sky."])); return; }
           const e = hintEdge(run, g); if (!e) return; const A = starByHip(e[0]), B = starByHip(e[1]);
           sky.fx.push({ kind: "hint", a: [A[0], A[1]], b: [B[0], B[1]], at: performance.now(), dur: 3500 }); status(); };
-        $("sl-reveal").onclick = () => reveal();
-        $("sl-leave").onclick = () => lobby(false); wireGuide();
+        $("sl-reveal").onclick = () => { stopClock(); reveal(); };
+        $("sl-leave").onclick = () => { stopClock(); lobby(false); }; wireGuide();
       };
       const tell = () => { const n = partsTold(run, fable.parts.length);
         if (n > told) { const first = !told, from = told; told = n;
@@ -254,7 +308,7 @@ export const stars = {
           status(); if (!told) say(pick([`Hmm. ${nameOf(b) ? nameOf(b) + " is" : "That star is"} in ${conName(b[5])}. Keep looking.`, "Not that line. The stars shake their heads.", "That isn't part of it. Look again."])); return; }
         ping(b[2]); sky.o.sel = b[4]; sky.o.chain = true;
         if (r === "again") return;
-        if (r === "done") return complete();
+        if (r === "done") { stopClock(); return complete(); }
         tell(); status();
       };
       sky.input((s) => {
@@ -278,6 +332,14 @@ export const stars = {
         const rest = fable.parts.slice(told); told = fable.parts.length;
         const pages = [...(rest.length ? [rest.join(" ")] : []), "And now, what astronomers know.", ...g.science];
         status(); talkThrough(pages, () => facts());
+      }
+      function timeUp() {
+        stopClock(); timer.paused = 0; run.lost = true; sky.o.sel = null; sky.o.rubber = null;
+        const sv = tableEl; sv.classList.remove("sl-shake"); void sv.offsetWidth; sv.classList.add("sl-shake");
+        darkness(); sky.o.label = g.name;
+        for (const [a, b] of figureEdges(g)) { const k = edgeKey(a, b); if (!run.drawn.includes(k)) run.drawn.push(k); }
+        centreOn(); cap(`${g.emoji} ${g.name}: time's up`);
+        talkThrough([`Dawn breaks and the stars fade. Time's up. Here is ${g.name}, so you'll know it next time.`, fable.parts.slice(told).join(" ") || "That was the whole story.", ...g.science], () => facts(true));
       }
       function reveal() {
         run.done = false; darkness(); sky.o.sel = null; sky.o.label = g.name;
@@ -306,7 +368,7 @@ export const stars = {
       say(line);
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
       if (run.done) bits.push(`${"★".repeat(starsFor(run.mistakes))}${"☆".repeat(3 - starsFor(run.mistakes))} drawing ${drawPts(run)} + quiz ${quizPts(run)} = ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${prog().found[keyOf(L, g)]}`}`);
-      else bits.push("revealed, not drawn");
+      else bits.push(run.lost ? "⏳ time ran out" : "revealed, not drawn");
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🔭 Star title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
         <div class="choices"><button class="c main" type="button" id="sl-go">🔭 Next constellation</button><button class="c" type="button" id="sl-again">↻ Draw it again (another fable)</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp) chime(2);

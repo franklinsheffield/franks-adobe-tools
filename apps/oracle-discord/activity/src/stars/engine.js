@@ -54,6 +54,13 @@ export function pan(v, w, h, X0, Y0, X1, Y1) {
   let dra = a[0] - b[0]; if (dra > 180) dra -= 360; if (dra < -180) dra += 360;
   return { ...v, ra: (((v.ra + dra) % 360) + 360) % 360, dec };
 }
+/** Turn the sky with the perspective ball: dragging the ball right brings the eastern sky (higher RA) round to the middle, dragging down brings the north. */
+export function spin(v, dx, dy, degPerPx = 1.2) {
+  const dec = Math.max(-89, Math.min(89, v.dec + dy * degPerPx));
+  return { ...v, ra: (((v.ra + (dx * degPerPx) / Math.max(0.25, Math.cos(v.dec * D))) % 360) + 360) % 360, dec };
+}
+/** Seconds on the clock to find and draw a figure: a base per level plus time per line. */
+export const timeFor = (g, L) => [[90, 8], [75, 7], [60, 6]][L.n - 1].reduce((a, b, i) => (i ? a + b * figureEdges(g).length : b), 0);
 export const zoom = (v, f) => ({ ...v, fov: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (v.fov || 45) * f)) });
 
 /** Bright stars on screen: [{ s, X, Y }]. */

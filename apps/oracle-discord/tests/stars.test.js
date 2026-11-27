@@ -5,7 +5,7 @@ import { Constellation } from "astronomy-engine";
 import { STARS, LINES, FIGURES, FAINT, MILKY_WAY, STAR_NAMES } from "../activity/src/stars/sky.gen.js";
 import { LEVELS, DECK, ALL, keyOf, project, toScreen, toSky, pan, zoom, ZOOM_MIN, ZOOM_MAX, onScreen, nearestStar, sep, starByHip,
   figureEdges, figureStars, figureCentre, startView, start, attempt, hintEdge, starsFor, partsTold, pickFable, quizChoices, answer,
-  settle, scoreOf, foundCount, bestMonth, seenFrom, galacticEquator, THEMES, themeOf, KIND, FABLE_COUNT, fablesHeard } from "../activity/src/stars/engine.js";
+  settle, scoreOf, foundCount, spin, timeFor, bestMonth, seenFrom, galacticEquator, THEMES, themeOf, KIND, FABLE_COUNT, fablesHeard } from "../activity/src/stars/engine.js";
 import { GUIDE } from "../activity/src/stars/guide.js";
 
 const g = (id) => DECK.find((x) => x.id === id);
@@ -135,4 +135,15 @@ test("store shelf and study guide", () => {
   assert.equal(themeOf({ stars: "st-atlas", owned: ["st-atlas"] }), "st-atlas");
   assert.ok(GUIDE.sections.length >= 8);
   assert.match(GUIDE.sections[0].p.join(" "), /draw/);
+});
+
+test("sky ball turns the sky; the clock fits the figure", () => {
+  const v = { ra: 100, dec: 10, fov: 45 };
+  assert.ok(spin(v, 10, 0).ra > v.ra, "dragging the ball right brings the eastern sky round");
+  assert.ok(spin(v, 0, 10).dec > v.dec, "dragging down brings the north");
+  assert.equal(spin({ ra: 355, dec: 0 }, 10, 0).ra, 7);
+  assert.equal(spin(v, 0, 500).dec, 89); assert.equal(spin(v, 0, -500).dec, -89);
+  for (const L of LEVELS) for (const c of DECK) { const t = timeFor(c, L); assert.ok(t >= 60 && t <= 200, `${c.id} L${L.n}: ${t}`); }
+  assert.ok(timeFor(g("sco"), LEVELS[0]) > timeFor(g("cru"), LEVELS[0]), "bigger figures get more time");
+  assert.ok(timeFor(g("ori"), LEVELS[2]) < timeFor(g("ori"), LEVELS[0]), "higher levels are tighter");
 });
