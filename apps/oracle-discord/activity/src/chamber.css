@@ -1962,3 +1962,33 @@ body.cu-8bit #stage{animation:cu-8bit 3s steps(6)}
 }
 .stage{grid-template-rows:56% 44%}
 @media (max-width:560px){.stage{grid-template-rows:44% 56%}.music-bar input[type=range]{display:none}}
+
+/* text feed: follows the speech, folds to 2 lines (▾/▴), quick save (+), and a secret behind it */
+.oracle-pane{--fh:50%}@media (max-width:560px){.oracle-pane{--fh:62%}}
+.oracle-pane .feed{height:var(--fh);transition:height .3s ease}
+.oracle-pane.feed-mini{--fh:calc(2.8rem + 16px)}.oracle-pane.feed-mini .feed{padding-top:6px;-webkit-mask-image:none;mask-image:none;overflow:hidden}
+@media (max-width:560px){.oracle-pane.feed-mini{--fh:calc(2.6rem + 12px)}}
+.feed-bar{position:absolute;left:8px;right:8px;bottom:var(--fh);z-index:8;display:flex;justify-content:space-between;pointer-events:none;transition:bottom .3s ease;margin-bottom:-6px}
+.feed-btn{pointer-events:auto;width:26px;height:26px;padding:0;border-radius:50%;font:700 15px/1 system-ui,sans-serif;color:#E2B04A;background:rgba(10,6,26,.72);border:1px solid rgba(226,176,74,.7);cursor:pointer;display:grid;place-items:center;transition:transform .2s,box-shadow .2s}
+.feed-btn:hover,.feed-btn:focus-visible{box-shadow:0 0 8px rgba(102,224,255,.7);outline:none}.feed-btn:active{transform:scale(.9)}
+#feed-save.saved{animation:fs-pop .6s ease-out}@keyframes fs-pop{40%{transform:scale(1.3) rotate(90deg);box-shadow:0 0 12px #7fe0a0;color:#7fe0a0}}
+.feed-secret{position:absolute;right:16%;bottom:17%;z-index:7;padding:6px;border:0;background:none;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .6s .2s}
+.feed-mini .feed-secret{opacity:.55;pointer-events:auto;animation:fsec 3.6s ease-in-out infinite}.feed-secret:hover{opacity:1}
+@keyframes fsec{50%{filter:drop-shadow(0 0 6px #ff4fae);opacity:.85}}
+@media (prefers-reduced-motion:reduce){.oracle-pane .feed,.feed-bar{transition:none}.feed-mini .feed-secret,#feed-save.saved{animation:none}}
+
+/* the Continue dock: floats in the box's bottom-left corner, its own look on every theme; ⤢ expands the box to full screen */
+.dock{grid-column:1 / -1;grid-row:2;align-self:end;justify-self:start;z-index:9;margin:0 0 10px 10px;display:flex;gap:6px;pointer-events:none}.dock:empty{display:none}
+.dock .cont{pointer-events:auto;all:unset;pointer-events:auto;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;
+  font:700 14px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#0b0718;
+  background:linear-gradient(120deg,#66E0FF,#b98cff 55%,#ff4fae);box-shadow:0 0 0 2px rgba(255,255,255,.85),0 4px 16px rgba(255,79,174,.45),0 0 18px rgba(102,224,255,.45);
+  animation:cont-in .3s ease-out both,cont-glow 2.2s ease-in-out .4s infinite}
+.dock .cont:hover,.dock .cont:focus-visible{filter:brightness(1.12);transform:translateY(-1px)}.dock .cont:active{transform:scale(.95)}
+.dock .cont.skip{padding:6px 12px;font-size:11px;color:#e8f4ff;background:rgba(10,6,26,.8);box-shadow:0 0 0 1px rgba(102,224,255,.6);animation:cont-in .3s ease-out both}
+@keyframes cont-in{from{opacity:0;transform:translateX(-10px)}}@keyframes cont-glow{50%{box-shadow:0 0 0 2px #fff,0 4px 22px rgba(255,79,174,.7),0 0 28px rgba(102,224,255,.7)}}
+.stage:has(.dock:not(:empty)) .box{padding-bottom:50px}
+.full-btn{flex:0 0 auto;min-width:28px}
+body.box-full #box{position:fixed;inset:8px;z-index:40;max-height:none}
+body.box-full .dock{position:fixed;left:18px;bottom:18px;margin:0;z-index:41}
+@media (prefers-reduced-motion:reduce){.dock .cont{animation:none}}
+.stage>#box{grid-row:2}
