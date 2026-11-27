@@ -38,6 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { BOOKS, bookOf, coverSvg, bookShop, addLog, byDay, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
@@ -239,7 +240,7 @@ function openStudy(roomId, back) {
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
-registerShelf(recordShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+registerShelf(recordShop); registerShelf(bookShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -320,6 +321,7 @@ async function reveal(sys, options, question = "") {
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   const lore = codexNotes(state.prog, sys.key, r);
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
+  logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`);
   useRead(state.prog); const gain = record(state.prog, sys.key, r); musicNews(); saveProgress(); showStats(); trophyNews(recordReading(state.prog, available(MODULES).length));
   const a = answer(question, text, state.name, r.analysis);
   const pages = [{ text: words, mood: "wow" }, { text: deliver(pid(), a.line, { name: state.name }), mood: question ? moodForTone(a.tone) : "think" },
@@ -492,6 +494,7 @@ function thumb(it) {
   if (k === "cardback") return it.id === "cb-deck" ? `<span class="th">🂠</span>` : `<span class="th th-card">${cardBackSvg(it.id)}</span>`;
   if (k === "outfit" && it.hood) return `<span class="th th-robe" style="--a:${it.hood[0]};--b:${it.hood[1]};--t:${it.trim}"></span>`;
   if (k === "cloth" && it.c) return `<span class="th th-cloth" style="--a:${it.c[0]};--b:${it.c[2]};--t:${it.ink || EARNED_INK[it.id] || "#E2B04A"}"></span>`;
+  if (k === "book") { const b = BOOKS.find((x) => x.id === it.id); if (b) return `<span class="th th-book">${coverSvg(b, "", "th")}</span>`; }
   if (k === "record") return `<span class="th th-rec">${vinylSvg(trackOf(it.id), 46)}</span>`;
   if (k === "ghost") return `<span class="th th-ghost"><svg viewBox="110 0 180 210" aria-hidden="true"><defs><linearGradient id="sc-sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#c9c4e6" stop-opacity=".75"/></linearGradient></defs><g class="sc-gb sg-${it.id}">${ghostBody(it.id)}</g></svg></span>`;
   if (k === "orb") return `<span class="th th-orb" style="filter:${it.f || "none"}"></span>`;
@@ -540,33 +543,14 @@ function showStore(tab = "outfit", opener = null) {
   $("ui").querySelectorAll("[data-hearp]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.hearp), Q = persona(it.id);
     say(`${talk("persona", "tryon", it)} ${line(Q, "greet", { name: state.name }) || greeting(state.name)} ${personaQuip(it.id, state.name, []) || quip("iching", state.name, [])}`); }));
   $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); say(talk("voice", "tryon", item(b.dataset.hear)), () => setVoiceStyle(cur ? cur.v : null)); }));
-  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { const it = item(b.dataset.buy); if (buy(p, it.id)) { logEvent("buy", "💎", `Bought ${it.name} for ${it.price} Essence`); trying = null; checkout(); wear(it.id); saveProgress(); showStats(); burst(); mood.emote("love", { quiet: true }); showStore(tab, talk(it.kind, "buy", it)); } }));
   if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
 $("store-btn").onclick = () => showStore();
 
-function showCodex() {
-  clearReading(); cap("📜 Codex"); table.idle();
-  const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
-  say(p.readings ? `Your Codex, ${state.name}. Everything the Chamber has shown you, kept.` : "Your Codex is empty. Every reading writes into it.");
-  const sys = available(MODULES);
-  const rows = sys.map((s) => { const d = CODEX[s.key], have = (p.codex[s.key] || []), n = have.length, t = d ? d.total : 0;
-    return `<div class="cx"><div class="cx-h"><span>${s.emoji} ${esc(s.label)}</span><span class="note">${n} / ${t} ${d ? esc(d.label) : ""}</span></div>
-      <div class="bar"><i style="width:${t ? Math.min(100, (n / t) * 100) : 0}%"></i></div>${n ? `<div class="chips">${have.map((x) => s.key === "magicdeck" && EXPLAIN[x] ? `<button type="button" class="chip-x" data-mx="${esc(x)}" title="Open the explainer">🔬 ${esc(x)}</button>` : `<span>${esc(x)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
-  const look = (kind) => UNLOCKS.filter((u) => u.kind === kind).map((u) => { const own = p.unlocked.includes(u.id), on = p[kind] === u.id;
-    return `<button class="c wear${on ? " on" : ""}" type="button" data-w="${u.id}" ${own ? "" : "disabled"} title="${esc(u.how)}">${own ? (on ? "✓ " : "") : "🔒 "}${esc(u.name)}<span class="note"> · ${esc(u.how)}</span></button>`; }).join("");
-  ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
-    <div class="cx-top"><b>🏅 ${esc(rk.name)}</b> · ${p.xp} ✦${nx ? ` · ${nx.at - p.xp} ✦ to ${esc(nx.name)}` : ""} · 🔥 ${liveStreak(p)} days (best ${p.best}) · 🌙 ${p.tokens} · ${p.readings} readings</div>
-    <div class="group">Ranks</div><div class="note">${RANKS.map((r) => `${r.name} ${r.at}✦`).join(" → ")}</div>
-    <div class="group">Collection</div>${rows}${ROOMS.filter((r) => r.codexHtml).map((r) => r.codexHtml(p, esc)).join("")}
-    <div class="group">Table cloth</div><div class="choices">${look("cloth")}</div>
-    <div class="group">Crystal ball</div><div class="choices">${look("orb")}</div>`);
-  $("back").onclick = greet;
-  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { wear(b.dataset.w); showCodex(); }));
-  $("ui").querySelectorAll("[data-mx]").forEach((b) => (b.onclick = () => explainCard(b.dataset.mx)));
-}
+function showCodex() { return openBook("codex"); }
 /** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */
 function explainCard(name) {
   const c = MAGIC_DECK.find((x) => x.n === name), x = EXPLAIN[name]; if (!c || !x) return;
@@ -575,9 +559,104 @@ function explainCard(name) {
   ui(`<div class="choices"><button class="c" type="button" id="mx-back">◂ Back to the Codex</button></div>
     <article class="emb teal mx-page"><h2>✦ ${esc(name)} · ${esc(su.n)} ${c.num === "K" ? "Keeper" : c.num}</h2><p><i>${esc(c.kw.join(", "))}</i></p>
       <h3>The card</h3><p>${esc(c.up)}</p><h3>🔬 The fact</h3><p>${esc(c.fact)}</p><h3>The science</h3><p>${esc(x.sci)}</p><h3>Why it fits</h3><p>${esc(x.link)}</p></article>`);
-  $("mx-back").onclick = showCodex;
+  $("mx-back").onclick = () => openBook("codex");
 }
-$("codex-btn").onclick = showCodex;
+// ---- Your Grimoire (book.js): the member's book, holding the Codex, the Journal (a log by day, timestamped) and Patterns ----
+const logKey = () => "oracle-log:" + state.userId;
+const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()) || "null"); if (Array.isArray(L)) return L; } catch { /* none */ }
+  // first open: bring in the readings saved before the Journal kept a log
+  return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
+function logEvent(k, e, t, ref = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref))); } catch { /* storage full or blocked */ } }
+const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
+function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("cover"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
+function openBook(sec = "codex") {
+  const old = $("book"); if (old) old.remove();
+  const b = bookOf(state.prog); BK.sec = sec; BK.entry = null;
+  const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
+  el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
+    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
+      <button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
+    <div class="bk-book"><div class="bk-pages"><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
+      <div class="bk-leaf" id="bk-leaf" aria-hidden="true"></div></div>
+      <div class="bk-cover" id="bk-cover" aria-hidden="true">${coverSvg(b, "Your Grimoire")}</div></div></div>`;
+  document.body.append(el); drawBook();
+  $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); };
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; })));
+  el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
+  bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); $("bk-x").focus();
+}
+/** Turn a page: the leaf sweeps over, and the new pages are drawn under it halfway through. */
+function turnTo(change, back = false) {
+  if (BK.busy) return; const leaf = $("bk-leaf"); if (!leaf) return;
+  if (reduced) { change(); drawBook(); return; }
+  BK.busy = true; bookSfx("page"); leaf.className = "bk-leaf" + (back ? " back" : " turn");
+  setTimeout(() => { change(); drawBook(); }, 330); setTimeout(() => { leaf.className = "bk-leaf"; BK.busy = false; }, 700);
+}
+function drawBook() {
+  const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
+  document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : codexPages(p, sys);
+  L.innerHTML = lh; R.innerHTML = rh; R.scrollTop = 0;
+  const on = (sel, fn) => document.querySelectorAll("#book " + sel).forEach((b) => (b.onclick = () => fn(b)));
+  on("[data-bs]", (b) => turnTo(() => { BK.sys = b.dataset.bs; BK.entry = null; }));
+  on("[data-be]", (b) => turnTo(() => { BK.entry = b.dataset.be; }));
+  on("[data-bback]", () => turnTo(() => { BK.entry = null; }, true));
+  on("[data-day]", (b) => { const older = BK.day && b.dataset.day < BK.day; turnTo(() => { BK.day = b.dataset.day; }, !older); });
+  on("[data-open]", (b) => openSaved(+b.dataset.open));
+  on("[data-w]", (b) => { wear(b.dataset.w); drawBook(); });
+}
+const pageHead = (t, sub = "") => `<h3 class="bk-h">${t}</h3>${sub ? `<div class="bk-sub">${sub}</div>` : ""}`;
+function codexPages(p, sys) {
+  const rk = rankOf(p.xp), nx = nextRank(p.xp);
+  if (!BK.sys) BK.sys = (sys.find((s) => (p.codex[s.key] || []).length) || sys[0] || {}).key || "rooms";
+  const row = (k, label, n, t) => `<button type="button" class="bk-row${BK.sys === k ? " on" : ""}" data-bs="${k}"><span>${label}</span>${t ? `<small>${n} / ${t}</small><i style="--p:${t ? Math.min(100, (n / t) * 100) : 0}%"></i>` : ""}</button>`;
+  const left = pageHead("📜 The Codex", `🏅 ${esc(rk.name)} · ${p.xp} ✦${nx ? ` · ${nx.at - p.xp} ✦ to ${esc(nx.name)}` : ""} · ${p.readings} readings`)
+    + `<div class="bk-list">${sys.map((s) => { const d = CODEX[s.key]; return row(s.key, `${s.emoji} ${esc(s.label)}`, (p.codex[s.key] || []).length, d ? d.total : 0); }).join("")}
+      ${row("rooms", "🎲 Game rooms")}${row("looks", "🏅 Ranks and earned looks")}</div>`;
+  let right = "";
+  if (BK.sys === "rooms") right = pageHead("🎲 Game rooms") + `<div class="bk-rooms">${ROOMS.filter((r) => r.codexHtml).map((r) => r.codexHtml(p, esc)).join("") || `<p class="bk-empty">Play a game room to fill these pages.</p>`}</div>`;
+  else if (BK.sys === "looks") {
+    const look = (kind) => UNLOCKS.filter((u) => u.kind === kind).map((u) => { const own = p.unlocked.includes(u.id), on = p[kind] === u.id;
+      return `<button class="c small wear${on ? " on" : ""}" type="button" data-w="${u.id}" ${own ? "" : "disabled"} title="${esc(u.how)}">${own ? (on ? "✓ " : "") : "🔒 "}${esc(u.name)}</button>`; }).join("");
+    right = pageHead("🏅 Ranks and earned looks") + `<p class="bk-note">${RANKS.map((r) => `${r.name} ${r.at}✦`).join(" → ")}</p><h4>Table cloths</h4><div class="choices">${look("cloth")}</div><h4>Crystal balls</h4><div class="choices">${look("orb")}</div>`;
+  } else {
+    const s = sys.find((x) => x.key === BK.sys), d = CODEX[BK.sys], have = p.codex[BK.sys] || [], seen = (p.seen || {})[BK.sys] || {};
+    if (BK.entry && s) {
+      const n = BK.entry, c = BK.sys === "magicdeck" ? MAGIC_DECK.find((x) => x.n === n) : null, x = c ? EXPLAIN[n] : null;
+      right = `<button type="button" class="bk-back" data-bback="1">◂ ${esc(s.label)}</button>` + pageHead(`${s.emoji} ${esc(n)}`, `Drawn ${seen[n] || 1} time${(seen[n] || 1) === 1 ? "" : "s"} in your readings`)
+        + (c ? `<p><i>${esc(c.kw.join(", "))}</i></p><h4>The card</h4><p>${esc(c.up)}</p><h4>🔬 The fact</h4><p>${esc(c.fact)}</p>${x ? `<h4>The science</h4><p>${esc(x.sci)}</p><h4>Why it fits</h4><p>${esc(x.link)}</p>` : ""}`
+          : `<p class="bk-note">Part of your ${esc(s.label)} collection. Draw it again in a reading to read its full meaning.</p>`);
+    } else if (s) {
+      const t = d ? d.total : have.length, lock = Math.max(0, t - have.length), shown = Math.min(lock, 48);
+      right = pageHead(`${s.emoji} ${esc(s.label)}`, `${have.length} of ${t} ${d ? esc(d.label) : ""} collected`)
+        + `<div class="bk-grid">${have.map((n) => `<button type="button" class="bk-entry" data-be="${esc(n)}"><b>${esc(n)}</b>${seen[n] > 1 ? `<small>×${seen[n]}</small>` : ""}</button>`).join("")}${Array.from({ length: shown }, () => `<span class="bk-entry locked" aria-hidden="true">?</span>`).join("")}</div>
+        ${lock > shown ? `<p class="bk-note">…and ${lock - shown} more still hidden.</p>` : ""}${have.length ? "" : `<p class="bk-empty">Nothing yet. A ${esc(s.label)} reading writes its first page.</p>`}`;
+    }
+  }
+  return [left, right];
+}
+function journalPages() {
+  const days = byDay(loadLog());
+  if (!days.length) return [pageHead("🗓️ The Journal"), `<p class="bk-empty">Blank pages. Every reading, game, trophy and saved reading is written here by day, with the time.</p>`];
+  if (!BK.day || !days.some((d) => d.day === BK.day)) BK.day = days[0].day;
+  const left = pageHead("🗓️ The Journal", `${days.length} day${days.length === 1 ? "" : "s"} written`) + `<div class="bk-list">${days.slice(0, 60).map((d) => `<button type="button" class="bk-row${d.day === BK.day ? " on" : ""}" data-day="${d.day}"><span>${esc(dayLabel(d.day))}</span><small>${d.entries.length} entr${d.entries.length === 1 ? "y" : "ies"}</small></button>`).join("")}</div>`;
+  const D = days.find((d) => d.day === BK.day);
+  const right = pageHead(esc(dayLabel(D.day)), D.day) + `<ol class="bk-log">${D.entries.map((x) => `<li class="k-${x.k}"><time datetime="${new Date(x.at).toISOString()}">${esc(timeOf(x.at))}</time><span class="e">${x.e}</span><span class="t">${esc(x.t)}${x.k === "save" && x.ref ? ` <button type="button" class="c small" data-open="${x.ref}">Open</button>` : ""}</span></li>`).join("")}</ol>`;
+  return [left, right];
+}
+function patternPages(p, sys) {
+  const log = loadLog(), top = topDrawn(p), hrs = hoursOf(log), hmax = Math.max(1, ...Object.values(hrs));
+  const used = sys.filter((s) => (p.systems || {})[s.key]).sort((a, b) => p.systems[b.key] - p.systems[a.key]), smax = Math.max(1, ...used.map((s) => p.systems[s.key]));
+  const bar = (label, n, max) => `<div class="bk-bar"><span>${label}</span><i style="--p:${(n / max) * 100}%"></i><b>${n}</b></div>`;
+  const left = pageHead("📊 Patterns", "What your own data shows") + `<p class="bk-note">${p.readings} reading${p.readings === 1 ? "" : "s"} · ${Object.keys(p.codex || {}).reduce((n, k) => n + (p.codex[k] || []).length, 0)} Codex entries · ${byDay(log).length} day${byDay(log).length === 1 ? "" : "s"} in the Journal · best streak ${p.best} day${p.best === 1 ? "" : "s"}</p>
+    <h4>Systems you read most</h4>${used.length ? used.slice(0, 8).map((s) => bar(`${s.emoji} ${esc(s.label)}`, p.systems[s.key], smax)).join("") : `<p class="bk-empty">No readings yet.</p>`}`;
+  const right = `<h4>Drawn most often</h4>${top.length ? top.map((t) => { const s = sys.find((x) => x.key === t.sys); return bar(`${s ? s.emoji : "✦"} ${esc(t.name)}`, t.c, top[0].c); }).join("") : `<p class="bk-empty">Repeats show up here once you have a few readings.</p>`}
+    <h4>When you read</h4>${Object.entries(hrs).map(([k, n]) => bar(k, n, hmax)).join("")}
+    <p class="bk-note">Random draws repeat by chance. A card that comes up often is a pattern in your data, which can be read as meaningful or as luck. Your Grimoire shows both counts.</p>`;
+  return [left, right];
+}
+$("grimoire-btn").onclick = () => openBook("codex");
+if (PREVIEW) window.__bookTest = (sec) => openBook(sec);
 
 // Progress: this device always; the member's Discord account too when signed in (newest by reading count wins).
 let pushT = null;
@@ -621,19 +700,15 @@ const loadJournal = () => { try { return JSON.parse(localStorage.getItem(jKey())
 function saveJournal({ sys, r, words }) {
   const entry = { at: Date.now(), key: sys.key, label: sys.label, emoji: sys.emoji, title: r.embeds[0].title || sys.label, words,
     embeds: r.embeds, files: (r.files || []).map(svgOf).filter(Boolean) };
-  try { localStorage.setItem(jKey(), JSON.stringify([entry, ...loadJournal()].slice(0, 20))); } catch {}
+  try { localStorage.setItem(jKey(), JSON.stringify([entry, ...loadJournal()].slice(0, 60))); } catch {}
+  logEvent("save", "📖", `Saved a ${sys.label} reading: ${String(entry.title).replace(/^\P{L}+/u, "")}`, entry.at);
 }
-$("journal-btn").onclick = () => {
-  const j = loadJournal(); clearReading(); table.idle(); cap("");
-  say(j.length ? `Your journal, ${state.name}. The last ${j.length} reading${j.length > 1 ? "s" : ""} I gave you.` : "Your journal is empty. Ask me something first.");
-  ui(`<div class="jl">${j.map((e, i) => `<button class="c" type="button" data-j="${i}">${e.emoji} ${esc(String(e.title).replace(/^\P{L}+/u, ""))} · <span class="note">${new Date(e.at).toLocaleDateString()}</span></button>`).join("")}</div>
-    <div class="choices"><button class="c" type="button" id="back">Back</button></div>`);
-  $("ui").querySelectorAll("[data-j]").forEach((b) => (b.onclick = () => { const e = j[+b.dataset.j];
-    cap(e.emoji + " " + e.label); layArt(e.files || []); say(e.words); ui(`<div class="choices"><button class="c" type="button" id="back">✦ Another reading</button></div>`); $("back").onclick = greet;
-    showReading({ r: { embeds: e.embeds } }); }));
-  $("back").onclick = greet;
-};
-
+/** Open a saved reading (from the Grimoire's Journal) in the reading pane. */
+function openSaved(at) {
+  const e = loadJournal().find((x) => x.at === at); if (!e) return; closeBook();
+  cap(e.emoji + " " + e.label); layArt(e.files || []); say(e.words); ui(`<div class="choices"><button class="c" type="button" id="back">✦ Another reading</button><button class="c" type="button" id="bk-again">📖 Back to Your Grimoire</button></div>`);
+  $("back").onclick = greet; $("bk-again").onclick = () => openBook("journal"); showReading({ r: { embeds: e.embeds } });
+}
 // ---- voice: unlock on the first click; mute toggle ----
 addEventListener("pointerdown", unlockVoice, { capture: true });
 addEventListener("keydown", unlockVoice, { capture: true });
@@ -690,13 +765,14 @@ function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="but
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
+  { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`); }
   mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
-  if (!n) return;
+  if (!n) return; { const t = TROPHIES.find((x) => x.id === n.id); if (t) logEvent("trophy", "🏆", `${n.from ? "Upgraded" : "Won"} the ${t.name}: ${TIERS[n.tier].name}`); }
   if (n.pay) award(0, n.pay); saveProgress(); showStats();
   tq.push(n); if (!tShowing) setTimeout(nextCollect, reduced ? 0 : 1200);
 }
@@ -798,6 +874,7 @@ setInterval(() => { const tm = document.querySelector(".rp-time"); if (tm && pla
 /** Check the record tasks; announce any record unlocked just now. */
 function musicNews(silent = false) {
   const fresh = checkUnlocks(state.prog); if (!fresh.length) return; saveProgress(); player.refresh(); if (silent) return;
+  for (const x of fresh) logEvent("record", "🎵", `New record: ${x.title}`);
   chime(2); const t = fresh[0]; mood.bubble(`New record: ${t.title}! ${fresh.length > 1 ? `And ${fresh.length - 1} more. ` : ""}Find it in the record player.`, 4200, "🎵");
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tcase").hidden && $("tcollect").hidden) $("tcase-x").click(); });

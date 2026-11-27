@@ -195,7 +195,7 @@ export const shelf = (kind) => SHELVES.find((x) => x.kind === kind) || null;
  *  Ghosts also shows every haunted item from other shelves (items tagged ghost: true). */
 export const DEPTS = [
   { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["outfit", "avatar", "voice", "persona"] },
-  { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, the light and the music", kinds: ["vibe", "cloth", "orb", "flame", "record"] },
+  { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
   { id: "rooms", label: "🎲 Game rooms", blurb: "Looks for each game", kinds: [] },
