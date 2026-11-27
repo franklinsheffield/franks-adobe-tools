@@ -10,8 +10,11 @@ export const MOODS = {
   laugh: { ms: 1700, fx: ["🎵", "✨", "🎵"] }, wow: { ms: 1300, fx: ["❗"] }, curious: { ms: 1500, fx: ["❓"] }, think: { ms: 2200, fx: ["💭"] },
   nod: { ms: 1300, fx: [] }, shake: { ms: 1200, fx: [] }, wink: { ms: 900, fx: ["✨"] }, flinch: { ms: 650, fx: ["💫"] },
   sad: { ms: 2600, fx: ["💧"] }, sulk: { ms: 2600, fx: ["💨"] }, smug: { ms: 2300, fx: ["✨"] }, angry: { ms: 2200, fx: ["💢", "💢"] },
-  sleepy: { ms: 0, fx: ["💤"] },
+  sleepy: { ms: 0, fx: ["💤"] }, nervous: { ms: 1800, fx: ["💦"] }, dizzy: { ms: 2400, fx: ["💫", "⭐", "💫"] },
 };
+/** The emoji for each mood: it pops over her hood, rides on her speech bubble and sits by her name in the text box. */
+export const MOOD_EMOJI = { joy: "😄", cheer: "🥳", love: "😍", laugh: "😂", wow: "😲", curious: "🧐", think: "🤔", nod: "👍", shake: "🙅", wink: "😉", flinch: "😖",
+  sad: "😢", sulk: "😒", smug: "😏", angry: "😤", sleepy: "😴", nervous: "😅", dizzy: "😵" };
 /** Rooms where you play against the Oracle: she sulks when you win and gloats when you lose. */
 export const VS_ROOMS = ["duel", "rummy"];
 /** The Oracle's face when a game ends. */
@@ -35,7 +38,7 @@ export const POKE = {
   wake: ["I was resting my eye.", "Wha—! I wasn't asleep. I was foreseeing.", "Oh! {name}. How long was I out?", "Five more minutes of eternity…"],
 };
 /** After this many quick pokes she gets cross, then sulks. */
-export const pokeMood = (zone, count) => (count >= 8 ? "sulk" : count >= 5 ? "angry" : zone === "eye" ? "flinch" : zone === "orb" ? "wow" : zone === "hands" ? "joy" : "curious");
+export const pokeMood = (zone, count) => (count >= 8 ? "sulk" : count >= 5 ? "angry" : count >= 3 && zone === "hood" ? "nervous" : zone === "eye" ? "flinch" : zone === "orb" ? "wow" : zone === "hands" ? "joy" : "curious");
 export function pokeLine(zone, count, name = "traveller", rand = Math.random) {
   const pool = POKE[count >= 8 ? "sulk" : count >= 5 ? "angry" : zone] || POKE.hood;
   return pool[Math.floor(rand() * pool.length)].replace(/\{name\}/g, name);
@@ -53,9 +56,31 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
   lid.after(lids);
   svg.querySelector("defs").insertAdjacentHTML("beforeend", `<clipPath id="m-eyeclip"><path d="M158 152 Q200 121 242 152 Q200 180 158 152Z"/></clipPath>`);
   brow.insertAdjacentHTML("afterend", `<path class="o-tear" d="M228 164 q5 9 0 13 q-5 -4 0 -13Z" fill="#9fdcff" stroke="#fff" stroke-width=".8"/>`);
+  // anime-style expression marks (manpu): drawn once, shown per mood by chamber.css
+  const star = (x, y, r, c = "#fff") => `<path d="M${x} ${y - r} Q${x} ${y} ${x + r} ${y} Q${x} ${y} ${x} ${y + r} Q${x} ${y} ${x - r} ${y} Q${x} ${y} ${x} ${y - r}Z" fill="${c}"/>`;
+  lids.insertAdjacentHTML("afterend", `<g class="o-eyealt">
+    <path class="e-happy" d="M168 158 Q200 126 232 158" fill="none" stroke="#1a0b06" stroke-width="7" stroke-linecap="round"/>
+    <path class="e-scrunch" d="M172 138 L216 152 L172 166" fill="none" stroke="#1a0b06" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="e-spiral" d="M200 152 m0 0 a4 4 0 1 1 4 4 a8 8 0 1 1 -12 -6 a13 13 0 1 1 20 12 a17 17 0 0 1 -26 4" fill="none" stroke="#2a0420" stroke-width="3.2" stroke-linecap="round"/>
+    <path class="e-heart" d="M200 163 C184 151 187 139 195 139 C198 139 200 142 200 144 C200 142 202 139 205 139 C213 139 216 151 200 163Z" fill="#ff2f8f" stroke="#fff" stroke-width="1.5"/>
+    <g class="e-stars">${star(193, 146, 7)}${star(208, 158, 4.5)}${star(206, 143, 3)}</g>
+    <g class="e-glint">${star(234, 134, 11, "#fff")}${star(234, 134, 5, "#FADE8C")}</g></g>`);
+  const rays = Array.from({ length: 14 }, (_, i) => { const a = (i / 14) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), r0 = 118 + (i % 2) * 10; return `<path d="M${(200 + c * r0).toFixed(0)} ${(150 + s * r0 * 0.9).toFixed(0)} L${(200 + c * (r0 + 34)).toFixed(0)} ${(150 + s * (r0 + 34) * 0.9).toFixed(0)}"/>`; }).join("");
+  svg.insertAdjacentHTML("beforeend", `<g class="o-manpu" aria-hidden="true">
+    <g class="mp-shock" stroke="#fff" stroke-width="4" stroke-linecap="round">${rays}</g>
+    <g class="mp-spark">${star(118, 96, 12, "#FADE8C")}${star(288, 84, 9, "#fff")}${star(96, 190, 7, "#fff")}${star(306, 176, 11, "#FADE8C")}${star(150, 40, 6, "#fff")}</g>
+    <g class="mp-vein" fill="none" stroke="#ff2a2a" stroke-width="5" stroke-linecap="round"><path d="M250 58 q8 6 2 14 M266 58 q-8 6 -2 14 M250 90 q8 -6 2 -14 M266 90 q-8 -6 -2 -14"/></g>
+    <g class="mp-sweat"><path d="M286 96 q12 20 0 27 q-12 -7 0 -27Z" fill="#8fd4ff" stroke="#fff" stroke-width="1.6"/><path d="M282 114 q2 5 6 5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></g>
+    <g class="mp-gloom" stroke="#5b6fb8" stroke-width="3" stroke-linecap="round" opacity=".9"><path d="M178 78 v30 M189 70 v44 M200 66 v50 M211 70 v44 M222 78 v30"/></g>
+    <g class="mp-blush"><ellipse cx="164" cy="184" rx="15" ry="7" fill="#ff7fb0" opacity=".55"/><ellipse cx="236" cy="184" rx="15" ry="7" fill="#ff7fb0" opacity=".55"/><path d="M154 188 l5 -9 M162 189 l5 -9 M170 188 l5 -9 M226 188 l5 -9 M234 189 l5 -9 M242 188 l5 -9" stroke="#ff4f93" stroke-width="2" stroke-linecap="round"/></g>
+    <g class="mp-snot"><circle cx="222" cy="176" r="11" fill="#bfe9ff" fill-opacity=".55" stroke="#fff" stroke-width="1.5"/><circle cx="218" cy="172" r="2.5" fill="#fff"/></g>
+    <g class="mp-dots" fill="#fff"><circle cx="262" cy="92" r="4"/><circle cx="276" cy="86" r="4"/><circle cx="290" cy="80" r="4"/></g>
+    <g class="mp-cloud" fill="#3a3f66" opacity=".85"><circle cx="262" cy="64" r="11"/><circle cx="276" cy="58" r="13"/><circle cx="291" cy="65" r="10"/><path d="M262 78 q4 6 -2 10 M276 78 q4 7 -2 12 M290 78 q4 6 -2 10" stroke="#8fd4ff" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>
+  </g>`);
+  const big = document.createElement("b"); big.className = "emote-big"; big.setAttribute("aria-hidden", "true");
   const fx = document.createElement("div"); fx.className = "emote"; fx.setAttribute("aria-hidden", "true");
   const bub = document.createElement("div"); bub.className = "o-bubble"; bub.hidden = true; bub.setAttribute("aria-live", "polite");
-  teller.append(fx, bub);
+  teller.append(fx, big, bub);
 
   let cur = "", timer = null, bubT = null, flickT = null, zzz = null, trackT = null;
   const puff = (glyphs) => { if (reduced || !glyphs.length) return;
@@ -70,21 +95,22 @@ export function initMood(teller, { reduced = false, name = () => "traveller", bu
     clear(); cur = mood; teller.dataset.mood = mood; teller.classList.remove("tracking"); teller.style.removeProperty("--lx"); teller.style.removeProperty("--ly");
     tell(); void teller.offsetWidth; // restart the pose's animations when the same mood repeats
     if (opts.fx !== false) puff(M.fx);
+    if (!reduced && opts.fx !== false && mood !== "sleepy") { big.textContent = MOOD_EMOJI[mood] || ""; big.classList.remove("in"); void big.offsetWidth; big.classList.add("in"); }
     if (!opts.quiet) emoteSfx(mood);
-    if (opts.say) bubble(opts.say);
+    if (opts.say) bubble(opts.say, 2600, MOOD_EMOJI[mood]);
     const ms = opts.ms ?? M.ms; if (ms) timer = setTimeout(clear, ms);
     if (mood === "sleepy" && !reduced) zzz = setInterval(() => puff(["💤"]), 2800);
   }
   /** A quick twitch of the face on "!", "?" or "…" while she talks. */
   function flick(kind) { if (!kind || cur) return; clearTimeout(flickT); teller.dataset.flick = kind; flickT = setTimeout(() => delete teller.dataset.flick, 420); }
   /** A little speech bubble by the hood, for asides that must not replace what is in the text box. */
-  function bubble(text, ms = 2600) { clearTimeout(bubT); bub.textContent = text; bub.hidden = false; bub.classList.remove("in"); void bub.offsetWidth; bub.classList.add("in");
+  function bubble(text, ms = 2600, emoji = "") { clearTimeout(bubT); bub.textContent = text; if (emoji) { const e = document.createElement("span"); e.className = "be"; e.textContent = emoji; bub.append(e); } bub.hidden = false; bub.classList.remove("in"); void bub.offsetWidth; bub.classList.add("in");
     [...text.replace(/[^\p{L}]/gu, "").slice(0, 7)].forEach((c, i) => setTimeout(() => blip(c, { final: i === 6 }), 120 + i * 60));
     bubT = setTimeout(() => { bub.hidden = true; }, ms + text.length * 28); }
   const sleep = () => { if (cur !== "sleepy") emote("sleepy"); };
   /** Any input wakes her with a start. Returns true if she was asleep. */
   let wokeAt = 0;
-  const wake = () => { if (cur !== "sleepy") return false; wokeAt = Date.now(); emote("wow", { say: pokeLine("wake", 0, name()) }); return true; };
+  const wake = () => { if (cur !== "sleepy") return false; wokeAt = Date.now(); emote("nervous", { say: pokeLine("wake", 0, name()) }); return true; };
 
   // the eye follows the pointer (and drifts back to its idle wander when the pointer rests)
   if (!reduced) addEventListener("pointermove", (e) => {

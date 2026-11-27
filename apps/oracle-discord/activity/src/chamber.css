@@ -817,3 +817,51 @@ body.fl-vibe::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:
 @keyframes fl-face{0%{filter:brightness(3.2)}100%{filter:brightness(1)}}
 @keyframes fl-cloth{0%{transform:scale(1)}30%{transform:scale(1.035,.985)}60%{transform:scale(.99,1.012)}100%{transform:scale(1)}}
 @keyframes fl-vibe{0%{opacity:0;transform:scale(.3)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+
+/* ---- Anime-style expression marks (mood.js o-manpu / o-eyealt) and mood emoji ---- */
+.teller .o-manpu>*,.teller .o-eyealt>*{opacity:0;transform-box:fill-box;transform-origin:center;pointer-events:none}
+.teller .mp-shock{transform-box:view-box;transform-origin:200px 150px}
+/* eyes */
+.teller[data-mood="laugh"] .o-lid,.teller[data-mood="laugh"] .o-lidtop,.teller[data-mood="laugh"] .o-lidbot,.teller[data-mood="laugh"] .o-eyeglow{opacity:0}
+.teller[data-mood="laugh"] .e-happy{opacity:1;animation:mp-bob .15s linear infinite}
+.teller[data-mood="flinch"] .o-lid,.teller[data-mood="flinch"] .o-eyeglow{opacity:0}.teller[data-mood="flinch"] .e-scrunch{opacity:1;animation:mp-pop .25s cubic-bezier(.3,1.8,.5,1)}
+.teller[data-mood="dizzy"] .o-iris{opacity:0}.teller[data-mood="dizzy"] .e-spiral{opacity:1;animation:spin 1s linear infinite}
+.teller[data-mood="dizzy"] .o-body{animation:m-sway 1.2s ease-in-out infinite}.teller[data-mood="dizzy"] .o-brow{transform:translateY(-4px) rotate(6deg)}
+.teller[data-mood="love"] .o-iris{opacity:0}.teller[data-mood="love"] .e-heart{opacity:1;animation:mp-beat .5s ease-in-out infinite}
+.teller[data-mood="joy"] .e-stars,.teller[data-mood="cheer"] .e-stars{opacity:1;animation:mp-twinkle .5s ease-in-out infinite alternate}
+.teller[data-mood="joy"],.teller[data-mood="cheer"]{--is:1.3}
+.teller[data-mood="smug"] .e-glint,.teller[data-mood="wink"] .e-glint{opacity:1;animation:mp-glint .9s ease-out}
+/* marks around the hood */
+.teller[data-mood="wow"] .mp-shock{opacity:1;animation:mp-shock .5s ease-out}
+.teller[data-mood="cheer"] .mp-shock{opacity:.7;stroke:#FADE8C;animation:mp-shock .6s ease-out 3}
+.teller[data-mood="joy"] .mp-spark,.teller[data-mood="cheer"] .mp-spark,.teller[data-mood="love"] .mp-spark,.teller[data-mood="smug"] .mp-spark{opacity:1}
+.teller[data-mood] .mp-spark>*{transform-box:fill-box;transform-origin:center;animation:mp-twinkle .45s ease-in-out infinite alternate}
+.teller[data-mood] .mp-spark>*:nth-child(2n){animation-delay:-.2s}
+.teller[data-mood="angry"] .mp-vein{opacity:1;animation:mp-throb .3s ease-in-out infinite}
+.teller[data-mood="nervous"] .mp-sweat,.teller[data-mood="flinch"] .mp-sweat,.teller[data-mood="shake"] .mp-sweat{opacity:1;animation:mp-sweat 1.6s ease-in forwards}
+.teller[data-mood="nervous"] .o-brow{transform:translateY(-5px) scaleY(1.2)}.teller[data-mood="nervous"]{--is:.85;--mx:-5px}
+.teller[data-mood="nervous"] .o-body{animation:m-tremble .12s linear 8}.teller[data-mood="nervous"] .o-lidbot{transform:translateY(-6px)}
+.teller[data-mood="sad"] .mp-gloom,.teller[data-mood="sulk"] .mp-gloom{opacity:1;animation:mp-gloom .5s ease-out}
+.teller[data-mood="sulk"] .mp-cloud{opacity:1;animation:mp-cloud 1.4s ease-in-out infinite}
+.teller[data-mood="love"] .mp-blush,.teller[data-mood="joy"] .mp-blush,.teller[data-mood="smug"] .mp-blush,.teller[data-mood="nervous"] .mp-blush{opacity:1}
+.teller[data-mood="sleepy"] .mp-snot{opacity:1;transform-origin:20% 20%;animation:mp-snot 4s ease-in-out infinite}
+.teller[data-mood="think"] .mp-dots{opacity:1}.teller[data-mood="think"] .mp-dots circle{animation:mp-dot 1s ease-in-out infinite}
+.teller[data-mood="think"] .mp-dots circle:nth-child(2){animation-delay:.18s}.teller[data-mood="think"] .mp-dots circle:nth-child(3){animation-delay:.36s}
+@keyframes mp-bob{50%{transform:translateY(-2px)}}
+@keyframes mp-pop{from{transform:scale(.3)}}
+@keyframes mp-beat{50%{transform:scale(1.3)}}
+@keyframes mp-twinkle{from{transform:scale(.5) rotate(0deg);opacity:.5}to{transform:scale(1.15) rotate(20deg);opacity:1}}
+@keyframes mp-glint{0%{transform:scale(0) rotate(-40deg);opacity:1}40%{transform:scale(1.4) rotate(10deg);opacity:1}100%{transform:scale(0) rotate(60deg);opacity:0}}
+@keyframes mp-shock{0%{transform:scale(.6);opacity:0}30%{transform:scale(1.05);opacity:1}100%{transform:scale(1.2);opacity:0}}
+@keyframes mp-throb{50%{transform:scale(1.3)}}
+@keyframes mp-sweat{0%{transform:translateY(-12px);opacity:0}20%{opacity:1}100%{transform:translateY(46px);opacity:0}}
+@keyframes mp-gloom{from{transform:translateY(-16px);opacity:0}}
+@keyframes mp-cloud{50%{transform:translateY(4px)}}
+@keyframes mp-snot{0%,100%{transform:scale(.35)}55%{transform:scale(1.25)}}
+@keyframes mp-dot{50%{transform:translateY(-6px);opacity:.4}}
+@keyframes m-sway{0%,100%{transform:rotate(-3deg) translateX(-4px)}50%{transform:rotate(3deg) translateX(4px)}}
+.emote-big{position:absolute;left:50%;top:-1%;font-size:clamp(26px,4.6vw,48px);transform:translateX(-50%) scale(0);opacity:0;pointer-events:none;z-index:2;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6))}
+.emote-big.in{animation:mp-big 1.5s cubic-bezier(.3,1.7,.5,1) forwards}
+@keyframes mp-big{0%{transform:translateX(-50%) scale(0) rotate(-20deg);opacity:0}18%{transform:translateX(-50%) scale(1.25) rotate(6deg);opacity:1}30%{transform:translateX(-50%) scale(1)}80%{transform:translateX(-50%) scale(1);opacity:1}100%{transform:translateX(-50%) translateY(-14px) scale(.8);opacity:0}}
+.o-bubble .be{position:absolute;right:-12px;top:-16px;font-size:1.7em;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));animation:mp-pop .3s cubic-bezier(.3,1.8,.5,1)}
+.speaker[data-emo]:not([data-emo=""])::after{content:" " attr(data-emo);font-size:1.25em;letter-spacing:0}

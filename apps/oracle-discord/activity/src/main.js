@@ -34,7 +34,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
-import { initMood, moodForOutcome, moodForTone, flickFor } from "./mood.js";
+import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -97,7 +97,7 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 // and the creature's eye and face pulse while it speaks.
 let typing = null;
 const bused = []; // banter lines already said this visit (banter.js)
-const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: () => refreshEnergy(),
+const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: (m) => { refreshEnergy(); const sp = document.querySelector(".speaker"); if (sp) sp.dataset.emo = MOOD_EMOJI[m] || ""; },
   onPoke: (zone, count) => (count < 5 && Math.random() < 0.5 ? banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null) });
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
@@ -124,6 +124,7 @@ function flourish(kind) {
   const cls = { outfit: "fl-robe", avatar: "fl-avatar", orb: "orb-flare", flame: "fl-flame", cloth: "fl-cloth", vibe: "fl-vibe", persona: "fl-avatar" }[kind]; if (!cls) return;
   const el = kind === "flame" || kind === "cloth" ? $("table-pane") : kind === "vibe" ? document.body : $("teller");
   el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 1100);
+  if (kind === "outfit") setTimeout(() => mood.emote("dizzy", { quiet: true }), 500); // the twirl leaves her seeing stars
   if (kind === "outfit" || kind === "cloth" || kind === "vibe") whoosh(); else if (kind === "flame") ignite(); else if (kind === "orb") emoteSfx("orb");
 }
 // Blow out a candle on the table: it smokes, she notices, and it relights itself.
@@ -268,7 +269,7 @@ async function reveal(sys, options, question = "") {
   document.body.classList.remove("trance"); refreshEnergy(); cap(sys.emoji + " " + sys.label);
   if (err) {
     table.rest(sys.key);
-    mood.emote("sad");
+    mood.emote("nervous");
     say("The glass clouds over. " + (err.message || "Something went wrong."));
     ui(`<div class="choices"><button class="c main" type="button" id="again">Try again</button><button class="c" type="button" id="back">Choose another</button></div>`);
     $("again").onclick = () => choose(sys); $("back").onclick = greet; return;

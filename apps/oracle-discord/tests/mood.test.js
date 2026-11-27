@@ -2,14 +2,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MOODS, VS_ROOMS, moodForOutcome, moodForTone, flickFor, POKE, pokeMood, pokeLine } from "../activity/src/mood.js";
+import { MOOD_EMOJI, MOODS, VS_ROOMS, moodForOutcome, moodForTone, flickFor, POKE, pokeMood, pokeLine } from "../activity/src/mood.js";
 import { EMOTE_SFX } from "../activity/src/voice-sfx.js";
 
 const css = readFileSync(new URL("../activity/src/chamber.css", import.meta.url), "utf8");
 
 test("every mood has a pose and a sound", () => {
   assert.ok(Object.keys(MOODS).length >= 14);
-  for (const m of Object.keys(MOODS)) { assert.ok(css.includes(`[data-mood="${m}"]`), m + " is posed in chamber.css"); assert.ok(EMOTE_SFX[m]?.length, m + " has a sound"); }
+  for (const m of Object.keys(MOODS)) { assert.ok(css.includes(`[data-mood="${m}"]`), m + " is posed in chamber.css"); assert.ok(EMOTE_SFX[m]?.length, m + " has a sound"); assert.ok(MOOD_EMOJI[m], m + " has an emoji"); }
+  for (const mark of ["mp-shock", "mp-vein", "mp-sweat", "mp-gloom", "mp-blush", "mp-snot", "mp-spark", "e-happy", "e-heart", "e-spiral", "e-stars", "e-glint", "e-scrunch"]) assert.ok(css.includes("." + mark), mark);
   for (const f of ["ex", "q", "dots"]) assert.ok(css.includes(`[data-flick="${f}"]`));
   assert.equal(flickFor("!"), "ex"); assert.equal(flickFor("?"), "q"); assert.equal(flickFor("…"), "dots"); assert.equal(flickFor("a"), null);
 });
