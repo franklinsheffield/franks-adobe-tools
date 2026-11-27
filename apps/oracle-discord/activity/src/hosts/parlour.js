@@ -149,7 +149,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const parlour = {
   id: "parlour", name: "Madame Rook", house: "The Séance Parlour", emoji: "🕯️", accent: "#C3A6FF",
   channelIds: ["1575977181622829158"], // #🕯️-parlour
-  readings: false, rooms: ["seance", "timeline"], daily: "timeline",
+  readings: false, rooms: ["casefiles", "seance", "timeline"], daily: "timeline",
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
@@ -172,6 +172,7 @@ export const parlour = {
       "Houdini could hold his breath for over three minutes in practice. I can hold a dramatic pause for about four seconds."],
   },
   banter: {
+    casefiles: G("Look for the method, darling. Every spirit leaves a mechanism.", "Houdini exposed fake mediums in his 1924 book, A Magician Among the Spirits.", "Solved! Another ghost unmasked. The Society would applaud.", "Not quite. The trick hides where you aren't looking, darling."),
     seance: G("Mind the clues, darling. The spirit is someone real, from the history books.", "Listen... a rap. No, that's the pipes. Read the clue.", "Named! The spirit can rest. It was never here, but still.", "Not that one. History is fussier than any ghost."),
     timeline: G("Order matters. Tricks have a family tree, like everything else.", "Conjurors were around long before séances. Mind the dates.", "In order! A history fit for a playbill, {name}.", "Out of order. Even the past gets shuffled sometimes."),
   },
