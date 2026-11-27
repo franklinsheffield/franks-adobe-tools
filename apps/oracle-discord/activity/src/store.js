@@ -71,11 +71,11 @@ export const STORE = [
   { id: "bell", kind: "voice", name: "Glass bell", note: "Every word rings like crystal", price: 90, v: { type: "sine", base: 660, step: 55, vowel: 110, dur: 0.08, lp: 6000 } },
   { id: "robot", kind: "voice", name: "Lab robot", note: "Beep-boop precision", price: 120, v: { type: "square", base: 220, step: 110, vowel: 0, dur: 0.035, lp: 1800 } },
   { id: "chipmunk", kind: "voice", name: "Chipmunk oracle", note: "Tiny, fast and extremely excited", price: 70, v: { type: "square", base: 900, step: 70, vowel: 90, dur: 0.028, lp: 6000, sweep: 1.25 } },
-  { id: "ghost", kind: "voice", name: "Ghostly wail", note: "Ooooo… every syllable haunts", price: 80, v: { type: "sine", base: 320, step: 22, vowel: 40, dur: 0.13, lp: 3000, vib: 6, vibDepth: 28, sweep: 1.3, gain: 0.6 } },
+  { id: "ghost-voice", kind: "voice", name: "Ghostly wail", note: "Ooooo… every syllable haunts", price: 80, v: { type: "sine", base: 320, step: 22, vowel: 40, dur: 0.13, lp: 3000, vib: 6, vibDepth: 28, sweep: 1.3, gain: 0.6 } },
   { id: "duck", kind: "voice", name: "Prophetic duck", note: "Quack-based divination", price: 80, v: { type: "sawtooth", base: 560, step: 30, vowel: 50, dur: 0.075, lp: 2400, band: 1400, sweep: 0.55, gain: 0.8 } },
   { id: "goblin", kind: "voice", name: "Goblin grumble", note: "Low, gravelly and a little rude", price: 80, v: { type: "sawtooth", base: 105, step: 18, vowel: 25, dur: 0.065, lp: 1200, vib: 32, vibDepth: 22 } },
   { id: "kazoo", kind: "voice", name: "Kazoo of fate", note: "Destiny, but buzzy", price: 90, v: { type: "sawtooth", base: 300, step: 26, vowel: 40, dur: 0.065, lp: 3600, band: 900, vib: 11, vibDepth: 9, gain: 0.8 } },
-  { id: "cat", kind: "voice", name: "Meow-racle", note: "Every word is a little meow", price: 90, v: { type: "triangle", base: 560, step: 40, vowel: 80, dur: 0.11, lp: 4200, meow: true, gain: 0.6 } },
+  { id: "meow-voice", kind: "voice", name: "Meow-racle", note: "Every word is a little meow", price: 90, v: { type: "triangle", base: 560, step: 40, vowel: 80, dur: 0.11, lp: 4200, meow: true, gain: 0.6 } },
   { id: "wizard", kind: "voice", name: "Tipsy wizard", note: "Wobbly, wise and slightly off-key", price: 100, v: { type: "square", base: 250, step: 24, vowel: 40, dur: 0.06, lp: 2000, wobble: 140, vib: 4, vibDepth: 30 } },
   { id: "alien", kind: "voice", name: "Alien transmission", note: "Greetings, Earth seeker. Bleep.", price: 120, v: { type: "sine", base: 880, step: 90, vowel: 0, dur: 0.05, lp: 7000, sweep: 2, vib: 40, vibDepth: 180 } },
   // Vibes: colour theme, fonts and backgrounds as one set (chamber.css [data-vibe])
@@ -149,7 +149,14 @@ export const SHOP_TALK = {
   },
 };
 export const FREE = STORE.filter((s) => s.price === 0).map((s) => s.id);
-export function ensureFree(p) { p.owned = p.owned || []; for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
+/** Old saves: the voices "cat" and "ghost" shared ids with the Cat avatar and Ghost orb. A save that uses or owned them as voices moves to the new ids. */
+const RENAMED_VOICES = { cat: "meow-voice", ghost: "ghost-voice" };
+function migrateIds(p) {
+  for (const [old, now] of Object.entries(RENAMED_VOICES)) {
+    if (p.voice === old) { p.voice = now; if (!p.owned.includes(now)) p.owned.push(now); }
+  }
+}
+export function ensureFree(p) { p.owned = p.owned || []; migrateIds(p); for (const id of STORE.filter((s) => s.price === 0).map((s) => s.id)) if (!p.owned.includes(id)) p.owned.push(id); for (const [k, id] of [["outfit", "midnight"], ["avatar", "classic"], ["flame", "goldflame"], ["voice", "classic-voice"], ["persona", "mystic"], ["vibe", "chamber"]]) if (!p[k]) p[k] = id; return p; }
 export const item = (id) => STORE.find((s) => s.id === id);
 export function buy(p, id) {
   const it = item(id); if (!it || p.owned.includes(id) || (p.essence || 0) < it.price) return false;
