@@ -3,7 +3,7 @@
 const S = 'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
 export const GLYPH = {
   gold: `<circle cx="20" cy="20" r="12" ${S}/><circle cx="20" cy="20" r="2.6" fill="currentColor"/>`,
-  silver: `<path d="M24 7 A13 13 0 1 0 24 33 A10.5 10.5 0 1 1 24 7 Z" fill="currentColor"/>`,
+  silver: `<path d="M25 7 A13 13 0 1 0 25 33 A20 20 0 0 1 25 7 Z" fill="currentColor"/>`,
   mercury: `<path d="M13 5 A7 6 0 0 0 27 5" ${S}/><circle cx="20" cy="16" r="7" ${S}/><path d="M20 23 V37 M14 31 H26" ${S}/>`,
   copper: `<circle cx="20" cy="13" r="8.5" ${S}/><path d="M20 21.5 V37 M13 30 H27" ${S}/>`,
   iron: `<circle cx="16" cy="24" r="9" ${S}/><path d="M22.5 17.5 L33 7 M25 7 H33 V15" ${S}/>`,

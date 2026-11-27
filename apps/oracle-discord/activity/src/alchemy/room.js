@@ -8,6 +8,7 @@ import { NOTEBOOK } from "./guide.js";
 import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { sceneSvg } from "./scene.js";
 import { CSS } from "./style.js";
+import * as sfx from "./sfx.js";
 import { LEVELS, ALL, FLAMES, keyOf, room as labOf, solvedCount, titleOf, nextTitle, byId, nextOf, start, options, moreClue, readSymbol, transmute, hintOf, nameIt, settle, opsFor, PER_FLAME, NAME_PTS } from "./logic.js";
 
 const rot = (a, id) => { const k = [...id].reduce((n, c) => n + c.charCodeAt(0), 0) % a.length; return [...a.slice(k), ...a.slice(0, k)]; };
@@ -33,7 +34,7 @@ export const alchemy = {
 
     // ---- lobby ----
     function lobby(first) {
-      clearReading(); cap("⚗️ The Alchemist's Lab"); draw({ shelf: ["mercury", "sulfur", "salt", "aquafortis", "vitriol", "gold"] });
+      sfx.ambience(() => tableEl.classList.contains("alchemy")); clearReading(); cap("⚗️ The Alchemist's Lab"); draw({ shelf: ["mercury", "sulfur", "salt", "aquafortis", "vitriol", "gold"] });
       say(first && !lab().plays
         ? `Welcome to the laboratory, ${state.name}. Alchemists hunted for the philosopher's stone and never found it, but they invented the lab, and their recipes became chemistry. Start at level one to learn their symbols. Then light the furnace and follow their real recipes. Everything you mix here is true history.`
         : `The furnace is warm, ${state.name}. What shall we work on?`);
@@ -46,30 +47,30 @@ export const alchemy = {
       $("al-shop").onclick = shop; $("back").onclick = greet;
     }
     function toggle(what, btn, label) {
-      const rb = $("reading-body"), on = !rb.querySelector(".al-" + what);
+      const rb = $("reading-body"), on = !rb.querySelector(".al-" + what); sfx.page();
       rb.innerHTML = on ? (what === "book" ? notebookHtml(esc) : periodicHtml(P(), esc)) : "";
       if (btn) btn.textContent = on ? "✕ Close" : label;
       if (on) rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    const begin = (L, x) => (L.n === 1 ? read(L, x, start(x, L)) : bench(L, x, start(x, L), [], null));
+    const begin = (L, x) => { sfx.whoosh(); return L.n === 1 ? read(L, x, start(x, L)) : bench(L, x, start(x, L), [], null); };
 
     // ---- level 1: read the symbol ----
-    function read(L, x, run, line) {
-      clearReading(); cap(`⚗️ Level 1 · what is this symbol?`); draw({ glyph: x.glyph, flames: run.flames });
+    function read(L, x, run, line, fx = {}) {
+      clearReading(); cap(`⚗️ Level 1 · what is this symbol?`); draw({ glyph: x.glyph, flames: run.flames, ...fx });
       say(line || pick(["An old page from a recipe book. What does this symbol stand for?", "The margin of a 16th-century manuscript. Which substance is this?", "Every alchemist knew this sign. Do you?"]));
       ui(`${flameBar(run, L)}<div class="clues">${x.clues.slice(0, run.clues).map((c, i) => `<div class="clue"><b>📜 Clue ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>
         <div class="choices col">${options(x).map((o) => `<button class="c" type="button" data-o="${o.id}" ${run.wrong.includes(o.id) ? "disabled" : ""}>${run.wrong.includes(o.id) ? "✗ " : ""}${esc(o.name)}</button>`).join("")}</div>
         <div class="choices">${run.clues < x.clues.length && run.flames > 1 ? `<button class="c" type="button" id="al-clue">📜 Another clue (🔥 1)</button>` : ""}<button class="c small" type="button" id="al-leave">Leave the bench</button></div>`);
-      if ($("al-clue")) $("al-clue").onclick = () => { if (moreClue(run, x)) read(L, x, run, "Here, another line from the margin."); };
+      if ($("al-clue")) $("al-clue").onclick = () => { if (moreClue(run, x)) { sfx.page(); sfx.snuff(); read(L, x, run, "Here, another line from the margin.", { snuff: true }); } };
       $("al-leave").onclick = () => lobby(false);
       $("ui").querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => {
         const r = readSymbol(run, x, b.dataset.o);
-        if (r === "right") { chime(2); spark(); draw({ glyph: x.glyph, flames: run.flames, glow: true, liquid: "#FADE8C", label: `${x.name} · ${x.modern}` }); cap(`${x.name} · ${x.modern}`);
+        if (r === "right") { sfx.transmute(); spark(); draw({ glyph: x.glyph, flames: run.flames, glow: true, liquid: "#FADE8C", label: `${x.name} · ${x.modern}` }); cap(`${x.name} · ${x.modern}`);
           talkThrough([`Yes! That is ${x.name.toLowerCase()}${x.tag ? `, the sign of ${x.tag === "Element" ? "one of the four elements" : x.tag}` : ""}.`, x.fact], () => finish(L, x, run)); }
-        else if (r === "out") { chime(0); draw({ glyph: x.glyph, flames: 0, label: x.name });
+        else if (r === "out") { sfx.wrong(); sfx.snuff(); draw({ glyph: x.glyph, flames: 0, label: x.name, snuff: true, fizzle: true });
           talkThrough([`The furnace goes cold. This was ${x.name.toLowerCase()}.`, x.fact], () => finish(L, x, run)); }
-        else if (r === "wrong") { chime(0); read(L, x, run, pick(FIZZLE)); }
+        else if (r === "wrong") { sfx.wrong(); sfx.snuff(); read(L, x, run, pick(FIZZLE), { snuff: true, fizzle: true }); }
       }));
     }
 
@@ -87,30 +88,31 @@ export const alchemy = {
       bits.push(j.opRight ? "the operation is right" : "the operation is wrong");
       return `<div class="note al-fb">🔍 Last try: ${bits.join(" · ")}.</div>`;
     }
-    function bench(L, x, run, sel, op, line) {
+    function bench(L, x, run, sel, op, line, fx = {}) {
       const intro = L.n === 3 ? `${x.who}, ${x.when}` : "From the old books";
       if (!line && !run.tries && !run.hints.length) clearReading();
-      cap(`⚗️ Level ${L.n} · ${L.n === 3 ? x.who : "a recipe"}`); draw({ flames: run.flames, shelf: x.shelf, chips: sel, liquid: sel.length ? REAGENTS[sel[sel.length - 1]].c : null });
+      cap(`⚗️ Level ${L.n} · ${L.n === 3 ? x.who : "a recipe"}`); draw({ flames: run.flames, shelf: x.shelf, chips: sel, liquid: sel.length ? REAGENTS[sel[sel.length - 1]].c : null, ...fx });
       say(line || (L.n === 3 ? `It is ${x.when}. You are ${x.who}. Your task: ${x.goal.toLowerCase()}.` : `The recipe: ${x.goal.toLowerCase()}. Pick the reagents and the operation.`));
       ui(`${flameBar(run, L)}<div class="clues"><div class="clue"><b>${L.n === 3 ? "🧑‍🔬" : "📜"} ${esc(intro)}</b><span>${esc(x.goal)}</span></div>${hintText(x, run)}</div>${feedback(run.last)}
         <div class="group">Reagents (choose up to 3)</div><div class="al-shelf">${x.shelf.map((id) => reagentBtn(id, sel.includes(id))).join("")}</div>
         <div class="group">Operation</div><div class="al-ops">${opsFor(L).map((k) => `<button class="c al-op${op === k ? " on" : ""}" type="button" data-op="${k}" title="${esc(OPS[k].what)}" aria-pressed="${op === k}">${OPS[k].emoji} ${esc(OPS[k].name)}</button>`).join("")}</div>
         <div class="choices"><button class="c main" type="button" id="al-go" ${sel.length && op ? "" : "disabled"}>⚗️ Transmute</button>${run.flames > 1 ? `<button class="c" type="button" id="al-hint">📓 Notebook hint (🔥 1)</button>` : ""}<button class="c small" type="button" id="al-leave">Leave the bench</button></div>`);
-      $("ui").querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => { const id = b.dataset.r, s = sel.includes(id) ? sel.filter((i) => i !== id) : sel.length < 3 ? [...sel, id] : sel; bench(L, x, run, s, op, " "); }));
-      $("ui").querySelectorAll("[data-op]").forEach((b) => (b.onclick = () => bench(L, x, run, sel, b.dataset.op, `${OPS[b.dataset.op].name}: ${OPS[b.dataset.op].what}`)));
+      $("ui").querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => { const id = b.dataset.r, s = sel.includes(id) ? sel.filter((i) => i !== id) : sel.length < 3 ? [...sel, id] : sel, added = s.length > sel.length;
+        sfx.clink(x.shelf.indexOf(id)); if (added) sfx.pour(); bench(L, x, run, s, op, " ", added ? { pour: REAGENTS[id].c } : {}); }));
+      $("ui").querySelectorAll("[data-op]").forEach((b) => (b.onclick = () => { const k = b.dataset.op; (k === "dissolve" ? sfx.bubble : k === "electrolyse" ? sfx.zap : sfx.whoosh)(); bench(L, x, run, sel, k, `${OPS[k].name}: ${OPS[k].what}`); }));
       $("al-leave").onclick = () => lobby(false);
-      if ($("al-hint")) $("al-hint").onclick = () => { if (hintOf(run, x)) { chime(1); bench(L, x, run, sel, op, "You flip through the notebook…"); } };
+      if ($("al-hint")) $("al-hint").onclick = () => { if (hintOf(run, x)) { sfx.page(); sfx.snuff(); bench(L, x, run, sel, op, "You flip through the notebook…", { snuff: true }); } };
       $("al-go").onclick = () => {
         const r = transmute(run, x, sel, op);
         if (r === "right") return success(L, x, run);
-        if (r === "out") { chime(0); draw({ flames: 0, shelf: x.shelf, liquid: "#3a3a3a", label: x.product });
+        if (r === "out") { sfx.fizzle(); sfx.snuff(); draw({ flames: 0, shelf: x.shelf, liquid: "#3a3a3a", label: x.product, fizzle: true, snuff: true });
           return talkThrough([`The last flame dies. Here is how it was really done: ${x.make.map((i) => REAGENTS[i].name.toLowerCase()).join(" with ")}, then ${OPS[x.op].name.toLowerCase()}.`, x.story, x.science], () => finish(L, x, run)); }
-        if (r === "wrong") { chime(0); bench(L, x, run, sel, op, pick(FIZZLE)); }
+        if (r === "wrong") { sfx.fizzle(); sfx.snuff(); bench(L, x, run, sel, op, pick(FIZZLE), { fizzle: true, snuff: true }); }
       };
     }
     const eqCard = (x) => `<div class="al-eq"><b>${esc(x.product)}</b><code>${esc(x.eq)}</code></div>`;
     function success(L, x, run) {
-      chime(2); spark(); cap(`✨ ${x.product}`);
+      sfx.transmute(); spark(); cap(`✨ ${x.product}`);
       draw({ flames: run.flames, shelf: x.shelf, chips: x.make, liquid: x.colour, glow: true, label: x.product });
       if (L.n === 3) return talkThrough([`It works! ${x.story}`], () => askFind(L, x, run));
       talkThrough([`It works! ${x.product}.`, x.story, x.science], () => finish(L, x, run));
@@ -118,7 +120,7 @@ export const alchemy = {
     function askFind(L, x, run) {
       say(`So, ${state.name}: what had ${x.who} really found?`);
       ui(`${flameBar(run, L)}<div class="choices col">${rot(x.options, x.id).map((o) => `<button class="c" type="button" data-a="${x.options.indexOf(o)}">${esc(o)}</button>`).join("")}</div><div class="note">One try · +${NAME_PTS * L.mult} if you're right.</div>`);
-      $("ui").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => { const ok = nameIt(run, x, x.options[+b.dataset.a]); chime(ok ? 2 : 0);
+      $("ui").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => { const ok = nameIt(run, x, x.options[+b.dataset.a]); ok ? sfx.transmute() : sfx.wrong();
         talkThrough([ok ? `Exactly: ${x.answer.toLowerCase()}.` : `Not quite. It was ${x.answer.toLowerCase()}.`, x.science], () => finish(L, x, run)); }));
     }
 
@@ -134,7 +136,7 @@ export const alchemy = {
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${els}${titled ? `<div class="up">⚗️ Lab title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
         ${L.n > 1 ? eqCard(x) : `<div class="al-eq"><b>${esc(x.name)}</b><code>${esc(x.modern)}</code></div>`}
         <div class="choices"><button class="c main" type="button" id="al-next">⚗️ Next Level ${L.n} work</button>${run.won ? "" : `<button class="c" type="button" id="al-again">↻ Try again</button>`}<button class="c" type="button" id="al-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-      if (titled || aw.rankUp || r.newEls.length) spark();
+      if (titled || aw.rankUp || r.newEls.length) spark(); if (titled || aw.rankUp) chime(2);
       $("al-next").onclick = () => begin(L, nextOf(P(), L, x.id));
       if ($("al-again")) $("al-again").onclick = () => begin(L, x);
       $("al-lobby").onclick = () => lobby(false); $("back").onclick = greet;
@@ -150,7 +152,7 @@ export const alchemy = {
         <div class="choices"><button class="c" type="button" id="al-lobby">⚗️ Back to the bench</button></div>`);
       $("ui").querySelectorAll("[data-b]").forEach((b) => (b.onclick = () => { const r = buyOrUse(P(), b.dataset.b);
         if (r === "poor") return shop("Not enough Essence yet. Finish a few works at the furnace and come back.");
-        if (r) { saveProgress(); showStats(); chime(r === "bought" ? 2 : 1); shop(r === "bought" ? "A fine purchase. It's on your bench." : "Swapped in."); } }));
+        if (r) { saveProgress(); showStats(); r === "bought" ? sfx.coins() : sfx.clink(2); shop(r === "bought" ? "A fine purchase. It's on your bench." : "Swapped in."); } }));
       $("al-lobby").onclick = () => lobby(false);
     }
 
