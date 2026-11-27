@@ -1,6 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
-import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS } from "./music.js";
+import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
@@ -720,6 +720,8 @@ function openCase(focus = null, view = null) {
     <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
       <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
       ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
+    ${(() => { const t = player.current, own = TRACKS.filter((x) => hasTrack(p, x)).length;
+      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
     <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);
