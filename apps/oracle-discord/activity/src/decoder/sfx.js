@@ -61,6 +61,11 @@ export const SFX = {
   stars: (n) => { for (let i = 0; i < n; i++) { tone(1319 + i * 220, 0.35 + i * 0.22, 0.25, { type: "square", g: 0.14 }); tone(2637 + i * 440, 0.36 + i * 0.22, 0.2, { g: 0.08 }); } },
   /** A right answer to the meaning question. */
   right: () => { tone(784, 0, 0.18, { type: "triangle", g: 0.3 }); tone(1047, 0.09, 0.3, { type: "triangle", g: 0.3 }); },
+  /** Cards: a riffle and a deal of n cards, one drawn card, a card flicked from the hand, the ink running dry. */
+  deal: (n = 5) => { for (let k = 0; k < 18; k++) noise(k * 0.02, 0.02, { f: 3400 + Math.random() * 1200, q: 1.2, g: 0.3 }); for (let i = 0; i < Math.min(8, n); i++) noise(0.45 + i * 0.07, 0.07, { f: 2300, q: 0.7, g: 0.28 }); },
+  draw: () => { noise(0, 0.1, { f: 2600, q: 0.6, g: 0.35 }); noise(0.09, 0.03, { f: 1200, q: 2, g: 0.4 }); },
+  flick: () => noise(0, 0.06, { f: 3200, q: 0.9, g: 0.3 }),
+  dry: () => { tone(330, 0, 0.5, { type: "triangle", to: 110, g: 0.3 }); noise(0.1, 0.3, { f: 500, type: "lowpass", g: 0.25, fall: 1 }); },
   /** A tap on a tile or button (very soft). */
   tap: () => tone(1200, 0, 0.04, { type: "triangle", g: 0.08 }),
 };

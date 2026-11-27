@@ -106,5 +106,33 @@ export const CSS = `
 @keyframes dec-rise{from{opacity:0;transform:translateY(14px);filter:blur(3px)}}
 .dec-tile{transition:transform .08s}.dec-tile:active{transform:scale(.9)}
 .c.dec-no{animation:dec-shake .35s}
-@media (prefers-reduced-motion:reduce){.dec-board *,.dec-board *::after{animation:none!important;transition:none!important}}
+
+/* ---- the card game: glyph cards on the table, the hand, the deck, ink ---- */
+.dec-cardtable{display:flex;flex-direction:column;align-items:center;max-width:100%}
+.dec-cardtable .dec-cell:not(.sep){border:1px solid var(--dink2,var(--gold));border-radius:8px;background:var(--dcard,rgba(22,16,48,.85));margin:3px;padding:6px 5px 2px;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.dec-cardtable .dec-cell.now{border-color:var(--teal);box-shadow:0 0 0 2px rgba(102,224,200,.35),0 0 16px rgba(102,224,200,.35);transform:translateY(-4px)}
+.dec-cardtable .dec-strip.cartouche{border:none}.dec-cardtable .dec-strip.cartouche::before,.dec-cardtable .dec-strip.cartouche::after{display:none}
+.dec-cardtable.deal .dec-cell{animation:dec-dealin .45s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:calc(var(--n,0) * 40ms)}
+@keyframes dec-dealin{from{opacity:0;transform:translate(-40px,-60px) rotate(-14deg) scale(.7)}}
+.dec-play{display:flex;align-items:flex-end;gap:10px;margin:4px 0 2px}
+.dec-deck{position:relative;flex:0 0 66px;height:92px;border:0;background:none;padding:0;cursor:pointer;color:var(--fg)}
+.dec-deck .dec-back{position:absolute;inset:0;border:1px solid var(--gold);border-radius:9px;background:repeating-linear-gradient(45deg,rgba(226,176,74,.18) 0 4px,transparent 4px 9px),radial-gradient(circle at 50% 45%,#3a2a80,#161030);box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.dec-deck .dec-back:first-child{transform:translate(3px,-3px) rotate(3deg)}
+.dec-deck b{position:absolute;top:28px;left:0;right:0;font-family:var(--display);font-size:1.3rem;color:var(--gold2);text-shadow:0 1px 3px #000}
+.dec-deck small{position:absolute;bottom:-17px;left:-6px;right:-6px;font-size:.66rem;color:var(--muted);white-space:nowrap}
+.dec-deck:hover:not(:disabled) .dec-back:last-of-type{transform:translateY(-5px)}.dec-deck .dec-back{transition:transform .15s}
+.dec-deck:disabled{opacity:.45;cursor:default}
+.dec-hand{display:flex;flex:1;min-width:0;gap:6px;overflow-x:auto;padding:10px 4px 6px}
+.dec-hcard{flex:0 0 58px;height:84px;border:1px solid var(--gold);border-radius:9px;background:linear-gradient(170deg,#fff8e4,#ecd9a8);color:#2a1a08;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.45);transition:transform .15s,box-shadow .15s;transform:rotate(calc((var(--i,0) - 2) * 2deg))}
+.dec-hcard b{line-height:1;font-family:inherit;font-weight:800;font-size:1.6rem;letter-spacing:.02em;text-transform:none}.dec-hcard.num b{font-size:1.7rem}
+.dec-hcard:hover,.dec-hcard:focus-visible{transform:translateY(-10px) rotate(0);box-shadow:0 8px 16px rgba(0,0,0,.5),0 0 12px rgba(250,222,140,.5)}
+.dec-hcard.fresh{animation:dec-draw .4s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:calc(var(--i,0) * 50ms)}
+@keyframes dec-draw{from{opacity:0;transform:translateX(-70px) rotate(-20deg) scale(.7)}}
+.dec-hcard.hinted{box-shadow:0 0 0 3px var(--teal),0 0 18px var(--teal);transform:translateY(-10px)}
+.dec-flying{position:fixed;z-index:50;margin:0;pointer-events:none;transition:transform .3s cubic-bezier(.5,0,.6,1),opacity .3s;transform:none}
+.dec-inkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:24px 0 4px}
+.dec-ink{display:inline-flex;gap:3px}.dec-ink i{width:10px;height:14px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:rgba(255,255,255,.12);border:1px solid var(--line);transition:background .3s}
+.dec-ink i.on{background:radial-gradient(circle at 35% 30%,#7fb8ff,#1d3f9a);border-color:#7fb8ff;box-shadow:0 0 5px rgba(127,184,255,.6)}
+@media (max-width:560px){.dec-hcard{flex-basis:48px;height:70px}.dec-hcard b{font-size:1.2rem}.dec-deck{flex-basis:54px;height:76px}.dec-deck b{top:22px}}
+@media (prefers-reduced-motion:reduce){.dec-board *,.dec-board *::after,.dec-hand *{animation:none!important;transition:none!important}}
 `;

@@ -120,3 +120,26 @@ test("Decoder has a sound for every script and moment, and stays silent without 
   const { CSS } = await import("../activity/src/decoder/style.js");
   for (const a of ["dec-carve", "dec-wave", "dec-star", "dec-spark", "prefers-reduced-motion"]) assert.ok(CSS.includes(a), a);
 });
+
+
+test("Scribe's Hand: every decode level is winnable by a perfect scribe, and mistakes cost ink", async () => {
+  const { deal, playCard, drawCard, needed, inkFor, HAND, HAND_MAX } = await import("../activity/src/decoder/engine.js");
+  const { room } = await import("../activity/src/decoder/room.js");
+  assert.equal(room.row, "cards");
+  for (const l of LEVELS.filter((x) => x.kind === "decode")) {
+    let wins = 0;
+    for (let s = 0; s < 40; s++) {
+      const g = deal(l, "t" + s); assert.equal(g.hand.length, HAND); assert.equal(g.ink, inkFor(l));
+      const all = [...g.hand, ...g.deck].map((c) => c.v);
+      for (const v of target(l)) assert.ok(all.includes(v), `${l.id} deck has ${v}`);
+      for (let n = 0; n < 400 && !g.lost; n++) { const c = g.hand.find((x) => x.v === needed(l, g));
+        if (c) { if (playCard(l, g, c.id).done) { wins++; break; } } else assert.ok(drawCard(l, g), `${l.id} can draw`);
+        assert.ok(g.hand.length <= HAND_MAX); }
+    }
+    assert.equal(wins, 40, `${l.id} always winnable`);
+  }
+  const l = LEVELS.find((x) => x.id === "r1"), g = deal(l, "x"), ink = g.ink, bad = g.hand.find((c) => c.v !== needed(l, g)) || { id: -1 };
+  if (bad.id >= 0) { assert.equal(playCard(l, g, bad.id).ok, false); assert.equal(g.ink, ink - 2); assert.equal(g.misses, 1); }
+  while (!g.lost) { const c = g.hand.find((x) => x.v !== needed(l, g)); if (!c) { if (!drawCard(l, g)) break; continue; } playCard(l, g, c.id); }
+  assert.ok(g.lost || g.ink <= 1, "running dry loses the level");
+});
