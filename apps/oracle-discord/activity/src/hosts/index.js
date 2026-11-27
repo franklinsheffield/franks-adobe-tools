@@ -7,11 +7,9 @@
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
 import { observatory } from "./observatory.js";
-import { parlour } from "./parlour.js";
-import { scriptorium } from "./scriptorium.js";
 import { tokensLeft, houseRelicsHtml, TOKEN_CSS } from "./tokens.js";
 
-export const HOSTS = [oracle, alchemist, observatory, parlour, scriptorium];
+export const HOSTS = [oracle, alchemist, observatory];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
 
 /** Which House this launch is in: ?house=<id> (preview and local dev) wins, then the Discord channel, then the Oracle. */

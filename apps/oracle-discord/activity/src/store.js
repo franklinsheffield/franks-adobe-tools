@@ -213,7 +213,7 @@ export const DEPTS = [
   { id: "featured", label: "✨ Featured", blurb: "This week's picks at 20% off, a rare find some weeks, full sets and mystery boxes", kinds: ["featured", "seasonal", "sets", "boxes"] },
   { id: "oracle", label: "🔮 The Oracle", blurb: "How I look, sound and joke", kinds: ["creator", "outfit", "avatar", "voice", "persona"] },
   { id: "moon", label: "🌙 Moon relics", blurb: "Permanent relics for the Chamber and the familiars, paid in 🌙 moon tokens won from game levels", kinds: ["moon"] },
-  { id: "houses", label: "🏠 House hosts", blurb: "Looks for the hosts of the other Houses (each channel has its own)", kinds: ["lens", "starmap", "trickcard", "ink"] },
+  { id: "houses", label: "🏠 House hosts", blurb: "Looks for the hosts of the other Houses (each channel has its own)", kinds: ["lens", "starmap"] },
   { id: "chamber", label: "🏛️ The Chamber", blurb: "The room, the table, your Grimoire, the light and the music", kinds: ["vibe", "book", "cloth", "gem", "orb", "flame", "record"] },
   { id: "cards", label: "🃏 Cards", blurb: "One back for every deck in every card game", kinds: ["cardback"] },
   { id: "ghosts", label: "👻 Ghosts", blurb: "Who rises at your séance, and the candles that call it", kinds: ["ghost", "seancecandle"] },
