@@ -82,7 +82,7 @@ const long = (txt, max = 300) => { if (txt.length <= max) return [txt]; const re
 export function deeperPages(r, question, lore = []) {
   const out = []; let n = 0;
   const chunk = (txt, max = 300) => { const res = []; let cur = ""; for (const s of sentences(txt)) { if ((cur + " " + s).length > max && cur) { res.push(cur); cur = ""; } cur = cur ? cur + " " + s : s; } if (cur) res.push(cur); return res; };
-  lore.forEach((l, i) => out.push(i ? l : `Compared with your Codex. ${l}`));
+  lore.forEach((l) => out.push(l)); // personal examinations first, one per "Go deeper" (out.exams)
   const A = r.analysis;
   if (A) {
     (A.data || []).forEach((d, i) => long(d).forEach((c, j) => out.push(!i && !j ? `The data first. ${c}` : c)));
@@ -102,5 +102,6 @@ export function deeperPages(r, question, lore = []) {
       parts.slice(1).forEach((c) => out.push(c));
     }
   }
+  out.exams = lore.length;
   return out;
 }
