@@ -1,0 +1,2 @@
+NotoSerifSC-Subset.ttf: Noto Serif SC Bold (Google), SIL Open Font License 1.1, subset to the ~130 characters the Chinese zodiac and oracle bone cards use (stems, branches, animals, oracle words).
+NotoSansEgyptianHieroglyphs-Subset.ttf and NotoSansRunic-Subset.ttf: Noto Sans (Google), SIL Open Font License 1.1, subset to the glyphs the Egyptian and rune cards use.
