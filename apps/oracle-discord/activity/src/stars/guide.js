@@ -54,6 +54,7 @@ export const GUIDE = {
       "Precession also explains why the Southern Cross, once seen from ancient Greece, is now hidden there, and why Sirius's rising no longer matches the Nile flood.",
     ] },
     { h: "Star-hopping", p: [
+      "Practise it in the <b>🧭 Star-hops</b> routes: the Pointers to Polaris, arc to Arcturus and on to Spica, Orion's Belt to Sirius and Aldebaran, the Summer Triangle, the leaky Dipper to Regulus, Pegasus to Andromeda and Perseus, the Winter Hexagon, and the Pointers to the Southern Cross.",
       "Astronomers find faint things by <b>hopping</b> from bright patterns they know. From the Big Dipper: follow the Pointers to <b>Polaris</b>; arc along the handle to <b>Arcturus</b>, then speed on to <b>Spica</b>; follow the Pointers the other way to <b>Regulus</b>.",
       "From Orion: follow the belt down to <b>Sirius</b> and up to <b>Aldebaran</b> and the Pleiades.",
       "In summer, the <b>Summer Triangle</b> of Vega, Deneb and Altair spans the Milky Way. In the south, the two Pointers lead to the Southern Cross.",
