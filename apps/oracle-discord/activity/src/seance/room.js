@@ -3,6 +3,7 @@
 // historical scientists and magicians. First say magic, science or both, then name it: type it for the real challenge,
 // or ask for four to pick from. Rules in logic.js, decks in practices.js and ghosts.js. Mounted via ROOMS (main.js).
 import { FIELDS } from "./ghosts.js";
+import { shop, candleLook } from "./shop.js";
 import { CANDLES, LEVELS, ALL, keyOf, perCandle, fieldPts, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, settle, optionById, answersOf, PICK_COST } from "./logic.js";
 
 const an = (n) => (/^[aeiou]/i.test(n) ? "an " : "a ") + n.charAt(0).toLowerCase() + n.slice(1);
@@ -17,7 +18,8 @@ const NOT_IN_POOL = "That isn't one of the answers in the pool below. Pick the c
 const UNKNOWN = ["The spirits don't recognise that name. Try a full name, or check the spelling. No candle lost.", "Hmm. Nobody by that name is answering tonight. No candle lost."];
 
 /** The séance table in the Chamber's table pane: candles (lit or out), the ghost, and its reveal. */
-function sceneSvg(g, run, revealed = false) {
+function sceneSvg(g, run, revealed = false, candle) {
+  const fl = candleLook(candle);
   const lit = run ? run.candles : CANDLES, xs = [84, 136, 200, 264, 316];
   const candles = xs.map((x, i) => { const on = i < lit, y = i === 0 || i === 4 ? 214 : i === 2 ? 226 : 221;
     return `<g class="sc-candle${on ? "" : " out"}"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf"/>
@@ -28,8 +30,8 @@ function sceneSvg(g, run, revealed = false) {
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 <defs><radialGradient id="sc-room" cx="50%" cy="70%" r="70%"><stop offset="0" stop-color="#3a1f5e"/><stop offset="1" stop-color="#07040f"/></radialGradient>
 <radialGradient id="sc-cloth" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#5a1830"/><stop offset="1" stop-color="#1e050c"/></radialGradient>
-<radialGradient id="sc-halo"><stop offset="0" stop-color="#FADE8C" stop-opacity=".5"/><stop offset="1" stop-color="#FADE8C" stop-opacity="0"/></radialGradient>
-<radialGradient id="sc-flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#FADE8C"/><stop offset="1" stop-color="#ff8a3d"/></radialGradient>
+<radialGradient id="sc-halo"><stop offset="0" stop-color="${fl.halo}" stop-opacity=".5"/><stop offset="1" stop-color="${fl.halo}" stop-opacity="0"/></radialGradient>
+<radialGradient id="sc-flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="${fl.mid}"/><stop offset="1" stop-color="${fl.tip}"/></radialGradient>
 <linearGradient id="sc-sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#c9c4e6" stop-opacity=".75"/></linearGradient></defs>
 <rect x="-600" y="-400" width="1600" height="1100" fill="#07040f"/><rect x="-200" width="800" height="300" fill="url(#sc-room)"/>
 <ellipse cx="200" cy="236" rx="168" ry="50" fill="url(#sc-cloth)" stroke="#E2B04A" stroke-width="2"/>
@@ -53,13 +55,15 @@ const INTRO = {
   3: "A famous name is knocking. Each clue is a true fact from their life and work.",
 };
 
+shop.draw = (id) => sceneSvg(null, null, false, id);
+
 export const seance = {
-  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️",
+  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️", shop,
   blurb: "Guess what kind of science or magic the ghost practised",
   open(ctx) {
     const { $, esc, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     const prog = () => seanceOf(state.prog);
-    const draw = (g, run, rev) => { tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(g, run, rev); };
+    const draw = (g, run, rev) => { tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(g, run, rev, state.prog[shop.kind]); };
     const stats = () => { const n = solvedCount(state.prog), t = titleOf(n), nx = nextTitle(n);
       return `<div class="cx-top"><b>🕯️ ${esc(t.name)}</b> · ${n} / ${ALL.length} ghosts named${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
 

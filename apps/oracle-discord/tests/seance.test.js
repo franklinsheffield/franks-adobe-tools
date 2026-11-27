@@ -82,3 +82,12 @@ test("merge keeps room progress (plays count with readings)", () => {
   const a = { ...fresh(), readings: 2 }, b = fresh(); room(b).plays = 5;
   assert.equal(activity(b), 5); assert.equal(merge(a, b), b);
 });
+
+test("Séance shelf: candle flames from real flame tests, one free", async () => {
+  const { shop, CANDLE_LOOK, candleLook, DEFAULT_CANDLE } = await import("../activity/src/seance/shop.js");
+  assert.equal(shop.kind, "seancecandle");
+  assert.equal(shop.items.filter((x) => x.price === 0).length, 1);
+  for (const it of shop.items) { assert.ok(it.id.startsWith("sc-") && CANDLE_LOOK[it.id], it.id); assert.ok(it.name && it.note, it.id); }
+  assert.equal(candleLook("nope"), CANDLE_LOOK[DEFAULT_CANDLE]);
+  for (const k of ["open", "tryon", "buy"]) assert.ok(shop.talk[k].length);
+});
