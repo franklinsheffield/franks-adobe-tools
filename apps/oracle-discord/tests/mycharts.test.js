@@ -5,7 +5,7 @@ import { chartData, chartsHtml, storedRows } from "../activity/src/mycharts.js";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 test("My charts: every system's data from one profile, data only", async () => {
   const d = await chartData({ date: "1990-04-09", time: "14:30", place: "33.45,-112.07", name: "Mary Ann Smith" });
-  assert.deepEqual(d.map((s) => s.key), ["humandesign", "astrology", "numerology", "chinesezodiac", "mayan", "egyptian", "celtic"]);
+  assert.deepEqual(d.map((s) => s.key), ["moment", "humandesign", "astrology", "numerology", "chinesezodiac", "mayan", "egyptian", "celtic"]);
   for (const s of d) assert.ok(!s.error && s.rows.length, s.key);
   const row = (k, l) => d.find((s) => s.key === k).rows.find((r) => r[0] === l)[1];
   for (const l of ["Type", "Authority", "Profile", "Defined centres", "Open centres"]) assert.ok(row("humandesign", l));
