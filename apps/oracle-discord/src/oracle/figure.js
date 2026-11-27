@@ -23,6 +23,37 @@ export function sigilRingSvg({ cx = 200, cy = 200, r = 190, id = "o" } = {}) {
   return s + `</g>`;
 }
 
+// One hand cupping the left side of the crystal ball (the right hand is this one mirrored). Each finger is its own
+// group pivoting on its knuckle (o-f1..o-f4, o-thumb) so the Chamber can make the fingers move one by one.
+// Fingers: [knuckle, bend control, tip], tips resting just off the ball's rim (ball centre 200,304, r 48).
+const FINGERS = [
+  [[151, 303], [157, 285], [161, 268], 7.2],
+  [[144, 301], [147, 279], [151, 259], 7.6],
+  [[137, 302], [137, 281], [140, 264], 7.2],
+  [[130, 306], [127, 292], [128, 278], 6.2],
+]
+function hand(id, side) {
+  const skin = "#3a2a5c", edge = PAL.gold, nail = PAL.pink;
+  const finger = ([k, c, t, w], i) => {
+    const d = `M${k[0]} ${k[1]} Q${c[0]} ${c[1]} ${t[0]} ${t[1]}`;
+    return `<g class="o-f o-f${i + 1}" style="transform-origin:${k[0]}px ${k[1]}px">
+    <path d="${d}" fill="none" stroke="${edge}" stroke-width="${w + 2.6}" stroke-linecap="round"/>
+    <path d="${d}" fill="none" stroke="${skin}" stroke-width="${w}" stroke-linecap="round"/>
+    <path d="${d}" fill="none" stroke="#6d58a0" stroke-width="1.4" stroke-linecap="round" opacity=".55" transform="translate(-1 -1.5)"/>
+    <circle class="o-nail" cx="${t[0]}" cy="${t[1]}" r="${(w / 3.4).toFixed(1)}" fill="${nail}"/></g>`;
+  };
+  return `<g class="o-hand o-hand${side}">
+  <path d="M124 350 C119 332 121 314 127 302 C134 296 148 295 155 301 C159 316 159 334 153 350Z" fill="${skin}" stroke="${edge}" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M131 318 C137 326 145 326 151 320" stroke="#6d58a0" stroke-width="1.3" fill="none" opacity=".6"/>
+  ${FINGERS.map(finger).reverse().join("")}
+  <g class="o-f o-thumb" style="transform-origin:152px 330px">
+    <path d="M152 330 Q166 326 167 310" fill="none" stroke="${edge}" stroke-width="10.2" stroke-linecap="round"/>
+    <path d="M152 330 Q166 326 167 310" fill="none" stroke="${skin}" stroke-width="7.6" stroke-linecap="round"/>
+    <circle class="o-nail" cx="167" cy="310" r="2.4" fill="${nail}"/></g>
+  <circle cx="141" cy="296" r="2.6" fill="${side === "L" ? PAL.light : PAL.teal}" stroke="#7a4f12" stroke-width=".8"/>
+</g>`;
+}
+
 /** The creature alone, drawn in a 400 x 400 box: hood apex at (200,16), eye at (200,150), crystal ball at (200,304) r 48. */
 export function figureSvg({ id = "o" } = {}) {
   const P = PAL;
@@ -88,17 +119,7 @@ export function figureSvg({ id = "o" } = {}) {
   <ellipse cx="183" cy="284" rx="14" ry="8" fill="#fff" opacity=".45" transform="rotate(-25 183 284)"/>
   <circle cx="221" cy="324" r="3" fill="#fff" opacity=".5"/>
 </g>
-<g class="o-hands" fill="url(#${id}-skin)" stroke="${P.gold}" stroke-width="1.4" stroke-linejoin="round">
-  <g transform="translate(-14 12)"><g class="o-handL">
-    <path d="M146 322 C142 306 146 292 156 286 C160 282 166 284 166 290 L164 300 C168 288 176 280 182 282 C187 284 186 290 182 296 L172 312 C178 304 186 300 190 302 C194 305 191 311 186 316 L176 330 C182 326 188 326 189 330 C190 335 184 340 176 344 C166 350 154 346 150 338Z"/>
-    <path d="M150 338 C140 330 138 318 146 322" fill="none"/>
-    <circle cx="176" cy="292" r="3" fill="${P.gold}" stroke="none"/>
-  </g></g>
-  <g transform="translate(400 0) scale(-1 1) translate(-14 12)"><g class="o-handR">
-    <path d="M146 322 C142 306 146 292 156 286 C160 282 166 284 166 290 L164 300 C168 288 176 280 182 282 C187 284 186 290 182 296 L172 312 C178 304 186 300 190 302 C194 305 191 311 186 316 L176 330 C182 326 188 326 189 330 C190 335 184 340 176 344 C166 350 154 346 150 338Z"/>
-    <circle cx="186" cy="309" r="3" fill="${P.pink}" stroke="none"/>
-  </g></g>
-</g>
+<g class="o-hands">${hand(id, "L")}<g transform="translate(400 0) scale(-1 1)">${hand(id, "R")}</g></g>
 <g class="o-mist" filter="url(#${id}-soft)">
   <ellipse cx="110" cy="388" rx="120" ry="26" fill="url(#${id}-mist)"/><ellipse cx="290" cy="392" rx="130" ry="24" fill="url(#${id}-mist)"/><ellipse cx="200" cy="378" rx="110" ry="20" fill="url(#${id}-mist)" opacity=".8"/>
 </g>
