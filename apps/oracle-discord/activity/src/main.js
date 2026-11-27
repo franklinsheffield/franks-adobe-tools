@@ -10,7 +10,7 @@ import { makeTable, fitSvg, setTableDecor } from "./table.js";
 import { unlockVoice, blip, isMuted, setMuted } from "./voice-sfx.js";
 import { available, systemByKey, optionsFor } from "../../src/oracle/systems.js";
 import { greeting, askLine, speech } from "../../src/oracle/voice.js";
-import { fieldsFor } from "../../src/profiles.js";
+import { fieldsFor, missingOptional, accuracyWarning } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
 import { MODS } from "./modules.gen.js";
 import { startDiscord, inDiscord, api } from "./discord.js";
@@ -459,23 +459,24 @@ function choose(sys) {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
     const field = (id, label, ph, val, req) => `<label for="${id}">${label}<input id="${id}" ${req ? "required" : ""} placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
     const rows = [field("d", "Birth date (DD/MM/YYYY)", "09/04/1990", dmy(p.date || ""), true)];
-    if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
-    if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
-    if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
-    const opt = f.opt || []; // optional extras: asked for, never required
-    if (opt.includes("time")) rows.push(field("t", "Birth time (optional, adds depth)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
-    if (opt.includes("place")) rows.push(field("p", "Birth town or city (optional)", "Phoenix, USA", p.place, false));
+    const opt = f.opt || [], has = (k) => need.includes(k) || opt.includes(k); // only the birthday is required
+    if (has("time")) rows.push(field("t", "Birth time (optional, more accurate)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
+    if (has("place")) rows.push(field("p", "Birth town or city (optional, more accurate)", "Phoenix, USA", p.place, need.includes("place")));
+    if (has("name")) rows.push(field("n", "Full birth name (optional, more accurate)", "Mary Ann Smith", p.name, need.includes("name")));
     rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
     ui(`<div class="form" id="f">${rows.join("")}</div>
       <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
+      <div class="note" id="acc" role="alert" hidden></div>
       <div class="note">${PREVIEW ? PREVIEW.note + " " : state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
+    let warned = "";
     $("f").onsubmit = (e) => { e.preventDefault();
       const o = optionsFor(sys), v = (id) => ($(id) ? $(id).value.trim() : "");
       o[f.date] = v("d");
-      if (need.includes("place")) o[f.place] = v("p");
-      if (need.includes("name")) o[f.name] = v("n");
-      if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
-      for (const [k, id] of [["time", "t"], ["place", "p"]]) if (opt.includes(k) && v(id)) o[f[k]] = v(id);
+      for (const [k, id] of [["time", "t"], ["place", "p"], ["name", "n"]]) if (has(k) && v(id)) o[f[k]] = v(id);
+      if (has("time") && !v("t")) o.time_unknown = true;
+      // first try with optional fields empty: warn about accuracy and wait; the same blanks a second time go ahead
+      const missing = missingOptional(o, f), key = missing.join();
+      if (missing.length && warned !== key) { warned = key; const a = $("acc"); a.hidden = false; a.textContent = "⚠️ " + accuracyWarning(missing) + " Fill them in, or press Reveal again to go ahead."; $("go").textContent = "✦ Reveal anyway"; return; }
       reveal(sys, o, v("bq")); };
   }
   bindGo("f");

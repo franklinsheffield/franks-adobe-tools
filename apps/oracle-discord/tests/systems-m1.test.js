@@ -95,9 +95,10 @@ test("profile form asks only what each system needs", async () => {
   class KV { m = new Map(); async get(k) { return this.m.get(k) ?? null; } async put(k, v) { this.m.set(k, v); } async delete(k) { this.m.delete(k); } }
   const env = { PROFILES: new KV(), ORACLE_KEY: Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64") };
   const f = fieldsFor("numerology", {});
-  assert.deepEqual(f.need, ["date", "name"]);
+  assert.deepEqual(f.need, ["date"]); assert.deepEqual(f.opt, ["name"]);
   const o = {}; fillFromProfile(o, f, { date: "1990-01-01", time: "unknown", place: "Phoenix" });
-  assert.equal(needsForm(o, f), true); // name missing
+  assert.equal(needsForm(o, f), false); // a saved profile is not asked again for the optional name
+  assert.equal(needsForm({ date: "01/01/1990" }, f), true); // typed just now with the name empty: the form offers it once
   const m = await birthModal(env, "numerology", o, f);
   assert.deepEqual(m.data.components.map((r) => r.components[0].custom_id), ["date", "name", "save"]);
   const it = { data: { custom_id: m.data.custom_id, components: [{ components: [{ custom_id: "date", value: "1990-01-01" }] }, { components: [{ custom_id: "name", value: "Ada King" }] }, { components: [{ custom_id: "save", value: "y" }] }] } };

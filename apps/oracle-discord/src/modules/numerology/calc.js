@@ -78,12 +78,13 @@ export function pinnacles(b, lp) {
 
 /** Full numerology profile. birth: { year, month, day }, today: Date. */
 export function numerology(name, birth, today = new Date()) {
-  const lp = lifePath(birth), ex = nameNumber(name, "all"), su = nameNumber(name, "vowels"), pe = nameNumber(name, "consonants");
+  const nameless = !/\p{L}/u.test(String(name || "")); // no birth name: the date numbers still stand, the name numbers are left out
+  const lp = lifePath(birth), ex = nameless ? null : nameNumber(name, "all"), su = nameless ? null : nameNumber(name, "vowels"), pe = nameless ? null : nameNumber(name, "consonants");
   const nowY = today.getUTCFullYear();
   // The personal year runs birthday to birthday in some schools, calendar year in most; we use the calendar year.
   const py = personalYear(birth, nowY), pm = personalMonth(py.value, today.getUTCMonth() + 1);
-  const maturity = reduce(reduce(lp.value, true).value + ex.value);
+  const maturity = nameless ? { value: null } : reduce(reduce(lp.value, true).value + ex.value);
   const age = nowY - birth.year - ((today.getUTCMonth() + 1 < birth.month || (today.getUTCMonth() + 1 === birth.month && today.getUTCDate() < birth.day)) ? 1 : 0);
   const pins = pinnacles(birth, lp.value), current = pins.find((p) => p.to == null || age <= p.to);
-  return { name, birth, lifePath: lp, expression: ex, soulUrge: su, personality: pe, birthday: birthday(birth), personalYear: py, personalMonth: pm, maturity: maturity.value, pinnacles: pins, current, age, letters: letterTable(name) };
+  return { name, nameless, birth, lifePath: lp, expression: ex, soulUrge: su, personality: pe, birthday: birthday(birth), personalYear: py, personalMonth: pm, maturity: maturity.value, pinnacles: pins, current, age, letters: nameless ? [] : letterTable(name) };
 }

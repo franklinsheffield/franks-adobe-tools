@@ -30,7 +30,8 @@ function body(r, showName) {
   <text x="330" y="${lp > 9 ? 400 : 410}" font-family="Cinzel" font-weight="900" font-size="${lp > 9 ? 190 : 230}" fill="url(#goldfill)" text-anchor="middle" filter="url(#glow)">${lp}</text>
   <text x="330" y="462" font-family="Cinzel" font-weight="900" font-size="30" fill="${PAL.light}" text-anchor="middle">${esc(t.name.toUpperCase())}</text>
   <text x="330" y="650" font-size="20" fill="${PAL.mute}" text-anchor="middle">${esc(t.kw.join(" · "))}</text>`;
-  const tiles = [["Expression", r.expression], ["Soul Urge", r.soulUrge], ["Personality", r.personality], ["Birthday", { value: r.birthday.value }]];
+  const tiles = r.nameless ? [["Birthday", { value: r.birthday.value }], ["Personal Year", { value: r.personalYear.value }], ["Personal Month", { value: r.personalMonth }], ["Pinnacle now", { value: r.current.pinnacle }]]
+    : [["Expression", r.expression], ["Soul Urge", r.soulUrge], ["Personality", r.personality], ["Birthday", { value: r.birthday.value }]];
   tiles.forEach(([k, v], i) => {
     const x = 700 + (i % 2) * 400, y = 10 + Math.floor(i / 2) * 230, n = v.value, arche = N[n] ? N[n].name : N[r.birthday.reduced].name;
     s += `<rect x="${x}" y="${y}" width="370" height="200" rx="18" fill="${PAL.ink}" fill-opacity="0.55" stroke="${PAL.gold}" stroke-opacity="0.5"/>
@@ -51,7 +52,7 @@ function body(r, showName) {
   });
   const ax = x0 + Math.min(1, Math.max(0, r.age) / span) * w;
   s += `<path d="M${ax},${y0 - 6} l-8,-12 h16 z" fill="${PAL.teal}"/>`;
-  if (showName) {
+  if (showName && !r.nameless) {
     let x = 700, y = 625; const cell = 34;
     s += `<text x="700" y="${y - 16}" font-size="17" letter-spacing="3" fill="${PAL.teal}">NAME · <tspan fill="${PAL.gold}">vowels gold</tspan> · consonants violet</text>`;
     for (const word of r.letters) {
@@ -79,19 +80,19 @@ export function readingEmbeds(r, { who = "you" } = {}) {
   const main = {
     title: `🔢 Numerology · Life Path ${label(r.lifePath)}`, color: GOLD,
     description: `*${lp.name}: ${lp.kw.join(", ")}.*`,
-    fields: [pos("lifePath"), pos("expression"), pos("soulUrge"), pos("personality"),
+    fields: [pos("lifePath"), ...(r.nameless ? [{ name: "✍️ No birth name given", value: "This reading uses the birth date only: Life Path, Birthday, the personal year and the pinnacles. Expression, Soul Urge, Personality and Maturity come from the letters of the full birth name and are left out, so about half of the usual chart is missing." }] : [pos("expression"), pos("soulUrge"), pos("personality")]),
       { name: `🎂 Birthday · ${r.birthday.value}`, value: `Born on the ${ord(r.birthday.value)}: ${BIRTHDAY[r.birthday.value]}. Tradition reads the birth day as a talent that stays available whatever the path.` }],
     image: { url: "attachment://numerology.png" }, footer: FOOTER,
   };
   const cur = r.current;
-  const blend = blendLine(r);
+  const blend = r.nameless ? `With the date alone there is one core number, **${r.lifePath.value}** (${lp.name}). The blend of path, tools and motive needs the birth name.` : blendLine(r);
   const timing = {
     title: `⏳ Timing · Personal Year ${r.personalYear.value}`, color: TEAL,
     fields: [
       { name: `📅 ${r.personalYear.year}: Personal Year ${r.personalYear.value}`, value: `${PERSONAL_YEAR[r.personalYear.value]}\nThis month (Personal Month ${r.personalMonth}): ${PERSONAL_MONTH[r.personalMonth]}.` },
       { name: `⛰️ Pinnacle ${cur.n} of 4 · ${cur.pinnacle}${cur.to != null ? ` (age ${cur.from} to ${cur.to})` : ` (age ${cur.from} on)`}`, value: `${cap(N[cur.pinnacle].pin)}.\n**Challenge ${cur.challenge}:** ${CHALLENGE[cur.challenge]}.` },
       { name: "🧩 All four pinnacles", value: r.pinnacles.map((p) => `${p === cur ? "▶" : "·"} **${p.pinnacle}** (age ${p.from}${p.to != null ? `–${p.to}` : "+"}): ${N[p.pinnacle].pin}`).join("\n") },
-      { name: `🌱 Maturity number · ${r.maturity}`, value: `What grows stronger after about 40: ${N[r.maturity].gift}. ${N[r.maturity].name} energy ripens late and steadies everything else.` },
+      ...(r.nameless ? [] : [{ name: `🌱 Maturity number · ${r.maturity}`, value: `What grows stronger after about 40: ${N[r.maturity].gift}. ${N[r.maturity].name} energy ripens late and steadies everything else.` }]),
     ],
     footer: FOOTER,
   };
@@ -99,8 +100,8 @@ export function readingEmbeds(r, { who = "you" } = {}) {
     title: "⚗️ Putting it together", color: GOLD,
     fields: [
       { name: "🔬 Core blend", value: cut(blend) },
-      { name: "✨ Gifts", value: [...new Set([r.lifePath, r.expression, r.soulUrge].map((v) => N[v.value].gift))].map((g) => `• ${g}`).join("\n") },
-      { name: "🌑 Shadow side", value: [...new Set([r.lifePath, r.expression, r.soulUrge].map((v) => N[v.value].shadow))].map((g) => `• ${g}`).join("\n") },
+      { name: "✨ Gifts", value: [...new Set([r.lifePath, r.expression, r.soulUrge].filter(Boolean).map((v) => N[v.value].gift))].map((g) => `• ${g}`).join("\n") },
+      { name: "🌑 Shadow side", value: [...new Set([r.lifePath, r.expression, r.soulUrge].filter(Boolean).map((v) => N[v.value].shadow))].map((g) => `• ${g}`).join("\n") },
     ],
     footer: { text: `${FOOTER.text} · Pythagorean system · reading for ${who}` },
   };
@@ -124,13 +125,13 @@ function blendLine(r) {
 
 /** Discord options -> { embeds, files, ephemeral }. */
 export async function run(o, ctx = {}) {
-  if (!o.date || !o.name) throw new Error("I need your full birth name and birth date. Add them, or save them once with /profile set.");
+  if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
   const b = parseBirth(o.date, "12:00");
-  const r = numerology(o.name, b, ctx.now || new Date());
+  const r = numerology(o.name || "", b, ctx.now || new Date());
   const who = ctx.user ? `@${ctx.user}` : "you";
-  const subtitle = o.show_name ? `${o.name} · ${b.day} ${MONTHS[b.month - 1]} ${b.year}` : `Personal numbers for ${who}`;
+  const subtitle = o.show_name && !r.nameless ? `${o.name} · ${b.day} ${MONTHS[b.month - 1]} ${b.year}` : `Personal numbers for ${who}`;
   const png = await cardPng({ title: "Numerology", subtitle, tag: "Pythagorean · masters 11 22 33 kept", body: body(r, !!o.show_name), H: 1000,
-    facts: [["Personal year", `${r.personalYear.value} · ${r.personalYear.year}`], ["Personal month", r.personalMonth], ["Pinnacle", `${r.current.pinnacle} · age ${r.current.from}${r.current.to != null ? "–" + r.current.to : "+"}`], ["Maturity", r.maturity]] });
+    facts: [["Personal year", `${r.personalYear.value} · ${r.personalYear.year}`], ["Personal month", r.personalMonth], ["Pinnacle", `${r.current.pinnacle} · age ${r.current.from}${r.current.to != null ? "–" + r.current.to : "+"}`], ...(r.nameless ? [] : [["Maturity", r.maturity]])] });
   const ins = analyse(r, !!o.show_name, who);
   return { embeds: withInsight(readingEmbeds(r, { who }), ins), analysis: ins.analysis, files: [{ name: "numerology.png", data: png }], ephemeral: !!o.private, reading: r,
     headline: `Life Path ${label(r.lifePath)} · ${N[r.lifePath.value].name}` };

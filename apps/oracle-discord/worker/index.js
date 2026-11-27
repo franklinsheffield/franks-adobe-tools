@@ -2,7 +2,7 @@
 // Verifies Discord's signature, defers the reply, seals the options and starts the GitHub Actions reading job.
 import { MODULES, isPrivate, flatten } from "../src/registry.js";
 import { seal } from "../src/seal.js";
-import { fieldsFor, loadProfile, saveProfile, deleteProfile, checkBirth, fillFromProfile, needsForm, birthModal, fromModal } from "../src/profiles.js";
+import { fieldsFor, loadProfile, saveProfile, deleteProfile, checkBirth, fillFromProfile, needsForm, birthModal, fromModal, accuracyPrompt, pendingBirth } from "../src/profiles.js";
 import { dmy } from "../src/birthplace.js";
 import { menuMessage, askModal, systemByKey } from "../src/oracle/chat.js";
 import { optionsFor } from "../src/oracle/systems.js";
@@ -77,6 +77,14 @@ export default {
         if (env.ACTIVITY_READY === "true") return json({ type: 12 }); // launch the Oracle Chamber Activity
         return say("✨ The Oracle Chamber is still being built. For now, the Oracle reads for you right here: press **Another reading**.");
       }
+      if (/^birth(go|fix):/.test(id)) { // the accuracy warning's two buttons
+        const m = await pendingBirth(env, id.split(":")[1]);
+        if (!m) return say("That form expired. Run the command again.");
+        const f = fieldsFor(m.name, m.options);
+        if (id.startsWith("birthfix:")) return json(await birthModal(env, m.name, m.options, f));
+        if (m.save && env.PROFILES) await saveProfile(env, user.id, m.profile);
+        ({ name, options } = m); options.accuracy_ok = true;
+      } else {
       if (id !== "oracle:pick") return say("That button has faded. Run /oracle again.");
       const sys = systemByKey((it.data.values || [])[0]);
       if (!sys) return say("That oracle isn't awake yet. Choose another.");
@@ -86,6 +94,7 @@ export default {
       if (f) {
         fillFromProfile(options, f, await loadProfile(env, user.id));
         if (needsForm(options, f)) return json(await birthModal(env, name, options, f));
+      }
       }
     } else if (it.type === 5 && String(it.data.custom_id).startsWith("ask:")) { // the Oracle's question form
       const sys = systemByKey(it.data.custom_id.slice(4));
@@ -97,6 +106,7 @@ export default {
       if (!m) return say("That form expired. Run the command again.");
       const bad = checkBirth({ ...m.profile, time: m.profile.time }, m.need);
       if (bad) return say("🔮 " + bad + " Run the command again to retry.");
+      if (m.missing.length && env.PROFILES) return json(await accuracyPrompt(env, m)); // warn once; "Continue anyway" carries on
       if (m.save && env.PROFILES) await saveProfile(env, user.id, m.profile);
       ({ name, options } = m);
     } else {
