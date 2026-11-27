@@ -121,3 +121,11 @@ test("Worker: /api/room needs a WebSocket, a server and a room", async () => {
   assert.strictEqual((await W.fetch(new Request("https://x/.proxy/api/room?guild=dev&room=i1", up), env)).status, 400, "dev rooms off in production");
   assert.strictEqual(await (await W.fetch(new Request("https://x/.proxy/api/room?guild=123456&room=i1", up), env)).text(), "room guild:123456");
 });
+
+test("Worker: Terms of Service and Privacy Policy pages", async () => {
+  const env = { ASSETS: { fetch: async () => new Response("asset") } };
+  for (const [p, t] of [["/terms", "Terms of Service"], ["/privacy", "Privacy Policy"]]) {
+    const r = await W.fetch(new Request("https://x" + p), env);
+    assert.match(r.headers.get("content-type"), /text\/html/); assert.match(await r.text(), new RegExp("<h1>" + t));
+  }
+});
