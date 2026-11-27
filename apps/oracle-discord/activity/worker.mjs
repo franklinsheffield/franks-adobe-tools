@@ -1,6 +1,7 @@
 // Oracle Chamber Activity Worker: serves the Chamber (static build in dist/) and two small APIs.
 //   POST /api/token   { code } -> { access_token }   (Discord sign-in; the client secret stays here)
 //   GET  /api/profile  Bearer <access_token> -> { profile } (the member's own saved /profile, opened with ORACLE_KEY)
+//   GET/PUT /api/progress  Bearer <access_token> -> { progress }  (the Chamber game layer: codex, streak, unlocks)
 import { loadProfile } from "../src/profiles.js";
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -36,6 +37,22 @@ export default {
       const me = await whoIs(token);
       if (!me || !me.id) return json({ error: "sign in first" }, 401);
       return json({ profile: await loadProfile(env, me.id) });
+    }
+    if (path === "/api/progress") {
+      const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
+      if (!env.PROFILES) return json({ error: "storage not set up" }, 503);
+      const me = await whoIs(token);
+      if (!me || !me.id) return json({ error: "sign in first" }, 401);
+      const key = "progress:" + me.id;
+      if (req.method === "GET") return json({ progress: await env.PROFILES.get(key, "json") });
+      if (req.method !== "PUT") return json({ error: "GET or PUT" }, 405);
+      const text = await req.text();
+      if (text.length > 32000) return json({ error: "too large" }, 413);
+      let p; try { p = JSON.parse(text); } catch { return json({ error: "bad json" }, 400); }
+      if (!p || typeof p !== "object" || p.v !== 1) return json({ error: "bad progress" }, 400);
+      await env.PROFILES.put(key, JSON.stringify(p));
+      return json({ ok: true });
     }
     if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, profiles: !!env.PROFILES });
     return env.ASSETS.fetch(req);

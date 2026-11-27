@@ -12,14 +12,14 @@
   <section class="pane oracle-pane" aria-label="The Oracle">
     <div id="teller" class="teller" role="img" aria-label="The Oracle: a tall black hood with a golden pyramid face and one pink eye, hands around a crystal ball"></div>
   </section>
-  <section class="pane table-pane" aria-label="The reading table">
+  <section id="table-pane" class="pane table-pane" aria-label="The reading table">
     <div id="table" class="table"></div>
     <div id="poof" class="poof" aria-hidden="true"></div>
     <div id="table-cap" class="table-cap" aria-live="polite"></div>
   </section>
   <section id="box" class="box" aria-label="The Oracle speaks">
     <div id="sr" class="sr" aria-live="polite"></div>
-    <div class="box-head"><span class="speaker">THE ORACLE</span><span class="head-btns"><button id="voice-btn" class="c small" type="button" aria-pressed="true">🔊 Voice on</button><button id="journal-btn" class="c small" type="button">📖 Journal</button></span></div>
+    <div class="box-head"><span class="speaker">THE ORACLE</span><span id="stats" class="stats"></span><span class="head-btns"><button id="codex-btn" class="c small" type="button">📜 Codex</button><button id="voice-btn" class="c small" type="button" aria-pressed="true">🔊 Voice on</button><button id="journal-btn" class="c small" type="button">📖 Journal</button></span></div>
     <div id="say" class="say" aria-hidden="true"></div>
     <div id="ui"></div>
     <div id="reading-body" class="reading-body"></div>

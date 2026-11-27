@@ -1,0 +1,83 @@
+// The Chamber's light game layer: a Codex of everything a member has drawn, a daily streak with moon tokens,
+// seeker ranks from points, and cosmetic unlocks (table cloths, crystal-ball colours). Cosmetic only: readings are
+// never gated. Progress lives in localStorage and, when signed in to Discord, on the Chamber Worker (KV), so it
+// follows the member between devices.
+
+/** What each system adds to the Codex: total possible entries, a name for them, and the entries in a reading. */
+export const CODEX = {
+  iching: { total: 64, label: "hexagrams", items: (r) => { const m = /I Ching · (\d+)/.exec(r.embeds[0].title || ""); return m ? ["Hexagram " + m[1]] : []; } },
+  runes: { total: 24, label: "runes", items: (r) => (r.reading?.runes || []).map((x) => x.name) },
+  oraclebones: { total: 60, label: "cycle days", items: (r) => (r.reading?.day ? [r.reading.day] : []) },
+  ifa: { total: 256, label: "Odù", items: (r) => (r.reading?.odu ? [r.reading.odu] : []) },
+  astrology: { total: 12, label: "Sun signs", items: (r) => { for (const f of r.embeds[0].fields || []) { const m = /Sun in (\w+)/.exec(f.name); if (m) return ["Sun in " + m[1]]; } return []; } },
+  humandesign: { total: 5, label: "types", items: (r) => { const t = (r.embeds[0].title || "").split(" · ")[1]; return t ? [t.trim()] : []; } },
+  numerology: { total: 12, label: "life paths", items: (r) => (r.reading?.lifePath ? ["Life Path " + r.reading.lifePath.value] : []) },
+  chinesezodiac: { total: 12, label: "animals", items: (r) => { const a = (r.headline || "").split(" · ")[0].split(" ").pop(); return a ? [a] : []; } },
+  mayan: { total: 20, label: "day signs", items: (r) => (r.reading?.signName ? [r.reading.signName] : []) },
+  egyptian: { total: 12, label: "gods", items: (r) => (r.reading?.god ? [r.reading.god] : []) },
+  celtic: { total: 13, label: "trees", items: (r) => (r.reading?.tree ? [r.reading.tree] : []) },
+};
+
+export const RANKS = [
+  { name: "Seeker", at: 0 }, { name: "Initiate", at: 60 }, { name: "Adept", at: 200 }, { name: "Magus", at: 500 }, { name: "Oracle-touched", at: 1200 },
+];
+export const rankOf = (xp) => RANKS.reduce((a, r) => (xp >= r.at ? r : a), RANKS[0]);
+export const nextRank = (xp) => RANKS.find((r) => r.at > xp) || null;
+
+const sysCount = (p) => Object.keys(p.systems).length;
+const codexCount = (p) => Object.values(p.codex).reduce((n, a) => n + a.length, 0);
+
+/** Cosmetics and how they're earned. kind "cloth" recolours the table; kind "orb" recolours the crystal ball. */
+export const UNLOCKS = [
+  { id: "velvet", kind: "cloth", name: "Violet velvet", how: "Yours from the start", ok: () => true, c: ["#5a2a8a", "#36185e", "#170a2e"] },
+  { id: "starchart", kind: "cloth", name: "Star chart", how: "Try 3 different systems", ok: (p) => sysCount(p) >= 3, c: ["#1d3a6e", "#122450", "#060d24"] },
+  { id: "goldleaf", kind: "cloth", name: "Gold leaf", how: "Keep a 7-day streak", ok: (p) => p.best >= 7, c: ["#8a6420", "#5a3e10", "#24180a"] },
+  { id: "moonlit", kind: "cloth", name: "Moonlit silver", how: "Collect 15 moon tokens", ok: (p) => p.tokens >= 15, c: ["#56607a", "#343a4e", "#12141e"] },
+  { id: "obsidian", kind: "cloth", name: "Obsidian", how: "Read with all 11 systems", ok: (p) => sysCount(p) >= 11, c: ["#2a2a2e", "#151518", "#050506"] },
+  { id: "amethyst", kind: "orb", name: "Amethyst", how: "Yours from the start", ok: () => true, f: "none" },
+  { id: "teal", kind: "orb", name: "Teal tide", how: "Do 5 readings", ok: (p) => p.readings >= 5, f: "hue-rotate(-115deg) saturate(1.2)" },
+  { id: "rose", kind: "orb", name: "Rose quartz", how: "Fill 25 Codex entries", ok: (p) => codexCount(p) >= 25, f: "hue-rotate(40deg) saturate(1.3) brightness(1.1)" },
+  { id: "sunfire", kind: "orb", name: "Sunfire", how: "Reach the rank of Adept", ok: (p) => p.xp >= 200, f: "hue-rotate(120deg) saturate(1.6) brightness(1.15)" },
+];
+
+export const fresh = () => ({ v: 1, xp: 0, readings: 0, tokens: 0, streak: 0, best: 0, last: "", systems: {}, codex: {}, unlocked: ["velvet", "amethyst"], cloth: "velvet", orb: "amethyst" });
+
+const today = (d = new Date()) => d.toLocaleDateString("en-CA");
+const yesterday = (d = new Date()) => today(new Date(d.getTime() - 86400000));
+
+/** Record a reading. Returns what happened, for the Oracle to announce. */
+export function record(p, key, r, now = new Date()) {
+  const out = { xp: 10, newItems: [], firstSystem: false, firstToday: false, streak: p.streak, unlocked: [], rankUp: null };
+  const before = rankOf(p.xp).name;
+  p.readings++;
+  if (!p.systems[key]) { out.firstSystem = true; out.xp += 15; }
+  p.systems[key] = (p.systems[key] || 0) + 1;
+  const def = CODEX[key], have = new Set(p.codex[key] || []);
+  if (def) for (const it of def.items(r)) if (it && !have.has(it)) { have.add(it); out.newItems.push(it); out.xp += 5; }
+  p.codex[key] = [...have];
+  const t = today(now);
+  if (p.last !== t) {
+    out.firstToday = true; out.xp += 10; p.tokens++;
+    p.streak = p.last === yesterday(now) ? p.streak + 1 : 1; p.best = Math.max(p.best, p.streak); p.last = t;
+  }
+  out.streak = p.streak;
+  p.xp += out.xp;
+  for (const u of UNLOCKS) if (!p.unlocked.includes(u.id) && u.ok(p)) { p.unlocked.push(u.id); out.unlocked.push(u); }
+  const after = rankOf(p.xp).name;
+  if (after !== before) out.rankUp = after;
+  return out;
+}
+
+/** A streak that has lapsed (no reading yesterday or today) shows as 0. */
+export const liveStreak = (p, now = new Date()) => (p.last === today(now) || p.last === yesterday(now) ? p.streak : 0);
+
+/** Keep the better of two saved copies (most readings wins; cosmetics chosen are kept from the newer). */
+export function merge(a, b) {
+  if (!a) return b; if (!b) return a;
+  return (b.readings || 0) > (a.readings || 0) ? b : a;
+}
+
+// ---- storage ----
+const lk = (id) => "oracle-progress:" + id;
+export function loadLocal(id) { try { const j = JSON.parse(localStorage.getItem(lk(id)) || "null"); return j && j.v === 1 ? { ...fresh(), ...j } : null; } catch { return null; } }
+export function saveLocal(id, p) { try { localStorage.setItem(lk(id), JSON.stringify(p)); } catch {} }
