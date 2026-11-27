@@ -94,7 +94,28 @@ export const PLACES = [
   { name: "Shanghai", tz: "Asia/Shanghai", lat: 31.23, lon: 121.47 }, { name: "Seoul", tz: "Asia/Seoul", lat: 37.57, lon: 126.98 },
   { name: "Tokyo", tz: "Asia/Tokyo", lat: 35.68, lon: 139.69 }, { name: "Perth", tz: "Australia/Perth", lat: -31.95, lon: 115.86 },
   { name: "Sydney", tz: "Australia/Sydney", lat: -33.87, lon: 151.21 }, { name: "Auckland", tz: "Pacific/Auckland", lat: -36.85, lon: 174.76 },
+  // more cities (2026-11-27): the player picks the nearest one, close enough for the sky and nothing more personal
+  { name: "Seattle", tz: "America/Los_Angeles", lat: 47.61, lon: -122.33 }, { name: "San Francisco", tz: "America/Los_Angeles", lat: 37.77, lon: -122.42 },
+  { name: "Dallas", tz: "America/Chicago", lat: 32.78, lon: -96.8 }, { name: "Houston", tz: "America/Chicago", lat: 29.76, lon: -95.37 },
+  { name: "Atlanta", tz: "America/New_York", lat: 33.75, lon: -84.39 }, { name: "Miami", tz: "America/New_York", lat: 25.76, lon: -80.19 },
+  { name: "Boston", tz: "America/New_York", lat: 42.36, lon: -71.06 }, { name: "Montreal", tz: "America/Toronto", lat: 45.5, lon: -73.57 },
+  { name: "Halifax", tz: "America/Halifax", lat: 44.65, lon: -63.57 }, { name: "Caracas", tz: "America/Caracas", lat: 10.48, lon: -66.9 },
+  { name: "Rio de Janeiro", tz: "America/Sao_Paulo", lat: -22.91, lon: -43.17 }, { name: "Lisbon", tz: "Europe/Lisbon", lat: 38.72, lon: -9.14 },
+  { name: "Edinburgh", tz: "Europe/London", lat: 55.95, lon: -3.19 }, { name: "Amsterdam", tz: "Europe/Amsterdam", lat: 52.37, lon: 4.9 },
+  { name: "Oslo", tz: "Europe/Oslo", lat: 59.91, lon: 10.75 }, { name: "Helsinki", tz: "Europe/Helsinki", lat: 60.17, lon: 24.94 },
+  { name: "Warsaw", tz: "Europe/Warsaw", lat: 52.23, lon: 21.01 }, { name: "Kyiv", tz: "Europe/Kiev", lat: 50.45, lon: 30.52 },
+  { name: "Tel Aviv", tz: "Asia/Jerusalem", lat: 32.09, lon: 34.78 }, { name: "Riyadh", tz: "Asia/Riyadh", lat: 24.71, lon: 46.68 },
+  { name: "Tehran", tz: "Asia/Tehran", lat: 35.69, lon: 51.39 }, { name: "Karachi", tz: "Asia/Karachi", lat: 24.86, lon: 67.01 },
+  { name: "Delhi", tz: "Asia/Kolkata", lat: 28.61, lon: 77.21 }, { name: "Kathmandu", tz: "Asia/Kathmandu", lat: 27.72, lon: 85.32 },
+  { name: "Dhaka", tz: "Asia/Dhaka", lat: 23.81, lon: 90.41 }, { name: "Jakarta", tz: "Asia/Jakarta", lat: -6.21, lon: 106.85 },
+  { name: "Kuala Lumpur", tz: "Asia/Kuala_Lumpur", lat: 3.14, lon: 101.69 }, { name: "Taipei", tz: "Asia/Taipei", lat: 25.03, lon: 121.57 },
+  { name: "Beijing", tz: "Asia/Shanghai", lat: 39.9, lon: 116.4 }, { name: "Brisbane", tz: "Australia/Brisbane", lat: -27.47, lon: 153.03 },
+  { name: "Melbourne", tz: "Australia/Melbourne", lat: -37.81, lon: 144.96 }, { name: "Cape Town", tz: "Africa/Johannesburg", lat: -33.92, lon: 18.42 },
+  { name: "Accra", tz: "Africa/Accra", lat: 5.6, lon: -0.19 }, { name: "Addis Ababa", tz: "Africa/Addis_Ababa", lat: 9.03, lon: 38.74 },
+  { name: "Casablanca", tz: "Africa/Casablanca", lat: 33.57, lon: -7.59 },
 ];
+/** A saved place, kept only if it is one of the cities (older saves could hold a precise "Your location": that is dropped). */
+export const cityOf = (p) => (p && PLACES.find((x) => x.name === p.name)) || null;
 /** The city for a time zone (exact, then same region, then London). */
 export function placeForZone(tz) {
   return PLACES.find((p) => p.tz === tz) || PLACES.find((p) => tz && p.tz.split("/")[0] === tz.split("/")[0]) || PLACES.find((p) => p.name === "London");

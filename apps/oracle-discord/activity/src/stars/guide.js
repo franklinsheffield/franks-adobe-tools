@@ -66,5 +66,23 @@ export const GUIDE = {
       "Real constellations are not equal in size, and the Sun also passes through <b>Ophiuchus</b>. Because of precession, the signs used in Western astrology have drifted almost one whole constellation away from the stars they were named after.",
       "Astronomy is the science of what stars are and how they move. Astrology is a tradition of meaning. This game teaches the stories as stories and the science as science.",
     ] },
+    { h: "The wandering stars: finding planets", p: [
+      "The Greeks called the planets <i>planētai</i>, <b>wanderers</b>: unlike the fixed stars, they drift from night to night. The <b>Planet Tracker</b> shows where the Moon and planets really are from your nearest city tonight, with a compass direction and a height in degrees.",
+      "To find one outdoors, face the direction and measure up from the horizon with your hand: a <b>fist held at arm's length covers about 10°</b>, so 30° up is about three fists. Planets always lie near the <b>ecliptic</b>, the Sun's path, and they usually shine with a <b>steadier light</b> than stars, which twinkle more.",
+      "Mercury, Venus, Mars, Jupiter and Saturn are easy to see with the naked eye. <b>Uranus</b> needs binoculars (sharp eyes can just catch it under a very dark sky) and <b>Neptune</b> always needs binoculars or a telescope. A planet close to the Sun in the sky is lost in its glare.",
+    ] },
+    { h: "Retrograde loops", p: [
+      "Every so often a planet seems to stop, slide <b>backwards</b> against the stars for weeks, then carry on. Nothing really reverses: Earth is overtaking an outer planet on the inside track (or an inner planet is overtaking us), and the change in our viewpoint makes a loop. Mars does this about every 26 months, Mercury three or four times a year.",
+      "Ptolemy explained the loops with circles on circles (epicycles); in 1543 Copernicus showed that a Sun-centred system explains them simply. When you find a planet, its dotted path shows where it travels over four months.",
+    ] },
+    { h: "Signs are not constellations", p: [
+      "Western astrology's <b>signs</b> are twelve equal 30° slices of the ecliptic, counted from the spring equinox (0° Aries). The <b>constellations</b> are real star patterns of unequal sizes. About 2,000 years ago the two roughly matched.",
+      "Earth's axis wobbles slowly (<b>precession</b>, one turn in about 26,000 years), so the equinox has slid west by almost a whole constellation. That's why the tracker often says a planet is in one sign but really in front of the stars of another.",
+    ] },
+    { h: "Rulership, dignity and aspects (tradition)", p: [
+      "These are ideas from astrological tradition, not science. Each planet <b>rules</b> one or two signs, its 'home' (domicile): Mars rules Aries and Scorpio, Venus rules Taurus and Libra. In its home it is said to be strong; in the opposite sign it is in <b>detriment</b>.",
+      "Each classical planet also has a sign of <b>exaltation</b>, where it is honoured (the Sun in Aries, the Moon in Taurus, Mercury in Virgo, Venus in Pisces, Mars in Capricorn, Jupiter in Cancer, Saturn in Libra), and the opposite sign is its <b>fall</b>. Uranus and Neptune were found by telescope, so their rulerships (Aquarius, Pisces) are modern.",
+      "<b>Aspects</b> are angles between planets along the zodiac: conjunction (0°), sextile (60°), square (90°), trine (120°) and opposition (180°), each allowed a few degrees of 'orb'.",
+    ] },
   ],
 };
