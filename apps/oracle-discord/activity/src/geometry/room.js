@@ -9,6 +9,7 @@ import { SOLIDS, faceChoices, solidSvg } from "./solids.js";
 import { GUIDE } from "./guide.js";
 import { CSS } from "./style.js";
 import { SETS, TALK, KIND, TAB, setOf } from "./shop.js";
+import * as sfx from "./sfx.js";
 
 let C = null;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -45,25 +46,45 @@ function decor(set) {
 const objSvg = (o, cls, extra = "") => o.t === "c"
   ? `<circle class="o ${cls}" cx="${f1(o.c[0])}" cy="${f1(o.c[1])}" r="${f1(o.r)}" ${extra}/>`
   : `<line class="o ${cls}" x1="${f1(o.a[0])}" y1="${f1(o.a[1])}" x2="${f1(o.b[0])}" y2="${f1(o.b[1])}" ${extra}/>`;
-/** The whole board as SVG. o = { level, board, set, sel, ghost, done, showGoal } */
-export function boardSvg({ level, board, set, sel = null, ghost = null, done = false, showGoal = false }) {
+const deg = (p, c) => (Math.atan2(p[1] - c[1], p[0] - c[0]) * 180) / Math.PI;
+/** The tool at work on a fresh object: the compass arm swinging round, or the straightedge with the pencil running along it. */
+function toolSvg(o) {
+  if (o.t === "c") { const [x, y] = o.c, a = deg(o.p, o.c);
+    return `<g class="geo-arm" pointer-events="none"><line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x + o.r)}" y2="${f1(y)}"/><circle class="geo-pin" cx="${f1(x)}" cy="${f1(y)}" r="3.5"/><circle class="geo-lead" cx="${f1(x + o.r)}" cy="${f1(y)}" r="4"/>
+      <animateTransform attributeName="transform" type="rotate" from="${f1(a)} ${f1(x)} ${f1(y)}" to="${f1(a + 360)} ${f1(x)} ${f1(y)}" dur="0.6s" fill="freeze"/>
+      <animate attributeName="opacity" from="1" to="0" begin="0.6s" dur="0.35s" fill="freeze"/></g>`; }
+  return `<g class="geo-rulerbar" pointer-events="none"><line x1="${f1(o.a[0])}" y1="${f1(o.a[1])}" x2="${f1(o.b[0])}" y2="${f1(o.b[1])}"/><animate attributeName="opacity" from="1" to="0" begin="0.45s" dur="0.4s" fill="freeze"/></g>
+    <circle class="geo-lead" r="4" pointer-events="none"><animateMotion path="M${f1(o.a[0])} ${f1(o.a[1])} L${f1(o.b[0])} ${f1(o.b[1])}" dur="0.45s" fill="freeze"/><animate attributeName="opacity" from="1" to="0" begin="0.45s" dur="0.3s" fill="freeze"/></circle>`;
+}
+/** A burst of little stars from the middle of the figure when it's complete. */
+function burstSvg(level) {
+  const [x, y, w, h] = viewOf(level).split(" ").map(Number), cx = x + w / 2, cy = y + h / 2, R = Math.min(w, h) * 0.45;
+  return `<g class="geo-burst" pointer-events="none">${Array.from({ length: 18 }, (_, i) => { const a = (i / 18) * Math.PI * 2, r = R * (0.6 + (i % 3) * 0.2);
+    return `<g transform="translate(${f1(cx)} ${f1(cy)})"><path d="M0 -5 L1.4 -1.4 L5 0 L1.4 1.4 L0 5 L-1.4 1.4 L-5 0 L-1.4 -1.4Z" style="--dx:${f1(Math.cos(a) * r)}px;--dy:${f1(Math.sin(a) * r)}px;animation-delay:${(i % 4) * 0.05}s"/></g>`; }).join("")}</g>`;
+}
+/** The whole board as SVG. o = { level, board, set, sel, ghost, done, showGoal, fresh (object just drawn), before (points before it), celebrate, bloom } */
+export function boardSvg({ level, board, set, sel = null, ghost = null, done = false, showGoal = false, fresh = null, before = null, celebrate = false, bloom = false, reduced = false }) {
   const goals = goalsOf(level), pts = pointsOf(board), hit = (x) => goals.some((g) => covers(x, g));
-  const cls = ["geo-svg", done ? "done" : "", set.glow ? "glow" : "", set.chalk ? "chalk" : "", set.jewels ? "jewels" : ""].join(" ");
+  const cls = ["geo-svg", done ? "done" : "", celebrate ? "cele" : "", bloom ? "bloom" : "", set.glow ? "glow" : "", set.chalk ? "chalk" : "", set.jewels ? "jewels" : ""].join(" ");
   const style = `--geo-ink:${set.ink};--geo-given:${set.given};--geo-pt:${set.pt};--geo-done:${set.done}`;
   let jw = 0;
-  const drawn = board.drawn.map((o) => { const j = set.jewels && o.t === "c" ? set.jewels[jw++ % set.jewels.length] : null;
-    return objSvg(o, `drw${hit(o) ? " hit" : ""}${j ? " jewel" : ""}`, j ? `style="stroke:${j};fill:${j}"` : ""); }).join("");
+  const drawn = board.drawn.map((o, i) => { const j = set.jewels && o.t === "c" ? set.jewels[jw++ % set.jewels.length] : null, fr = o === fresh && !reduced;
+    const rot = fr && o.t === "c" ? ` transform="rotate(${f1(deg(o.p, o.c))} ${f1(o.c[0])} ${f1(o.c[1])})"` : "";
+    const st = [j ? `stroke:${j};fill:${j}` : "", bloom ? `--i:${i}` : ""].filter(Boolean).join(";");
+    return objSvg(o, `drw${hit(o) ? " hit" : ""}${j ? " jewel" : ""}${fr ? " fresh" : ""}`, `${fr || bloom ? 'pathLength="1"' : ""}${rot}${st ? ` style="${st}"` : ""}`); }).join("");
+  const tool = fresh && !reduced ? toolSvg(fresh) : "";
+  const isNew = (q) => before && !before.some((p) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.5);
   const given = board.given.objs.map((o) => objSvg(o, "giv")).join("");
   const goal = showGoal && !done ? goals.filter((g) => !all(board).some((o) => covers(o, g))).map((g) => objSvg(g, "goal")).join("") : "";
   const gh = ghost ? objSvg(objOf(ghost), "ghost") + [ghost.t === "c" ? ghost.c : ghost.a, ghost.t === "c" ? ghost.p : ghost.b].map((p) => `<circle class="ghost-pt" cx="${f1(p[0])}" cy="${f1(p[1])}" r="7"/>`).join("") : "";
   const labels = [...board.given.pts, ...(level.names || [])].filter((p) => p[2] && pts.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1));
   const isGiven = (q) => board.given.pts.some((p) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1);
-  const dots = pts.map((q) => `<circle class="pt${isGiven(q) ? " giv-pt" : ""}" cx="${f1(q[0])}" cy="${f1(q[1])}" r="${isGiven(q) ? 3.6 : 2.6}"/>`).join("");
+  const dots = pts.map((q) => `<circle class="pt${isGiven(q) ? " giv-pt" : ""}${isNew(q) ? " pop" : ""}" cx="${f1(q[0])}" cy="${f1(q[1])}" r="${isGiven(q) ? 3.6 : 2.6}"/>`).join("");
   const lbl = labels.map((p) => `<text class="lbl" x="${f1(p[0] + 6)}" y="${f1(p[1] - 6)}">${esc(p[2])}</text>`).join("");
   const sl = sel ? `<circle class="sel" cx="${f1(sel[0])}" cy="${f1(sel[1])}" r="8"/>` : "";
   return `<svg class="${cls}" viewBox="${viewOf(level)}" preserveAspectRatio="xMidYMid meet" style="${style}" role="img" aria-label="Drawing board: ${esc(level.title)}">
     ${decor(set)}<rect class="geo-hit" x="-600" y="-400" width="1200" height="800" fill="transparent"/>
-    <g>${goal}${given}${drawn}${gh}</g><line class="o rubber" id="geo-rubber" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/><circle class="o rubber" id="geo-rubberc" cx="0" cy="0" r="0" visibility="hidden"/>
+    <g class="${bloom && !reduced ? "geo-rot" : ""}">${goal}${given}${drawn}${gh}</g>${tool}${celebrate && !reduced ? burstSvg(level) : ""}<line class="o rubber" id="geo-rubber" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/><circle class="o rubber" id="geo-rubberc" cx="0" cy="0" r="0" visibility="hidden"/>
     <g pointer-events="none">${dots}${lbl}${sl}</g></svg>`;
 }
 function mount(set) {
@@ -90,14 +111,14 @@ const guideBtn = `<button class="c" type="button" id="geo-guide">📖 Study guid
 const wireGuide = () => { const b = $("geo-guide"); if (b) b.onclick = () => toggleGuide(b); };
 
 // ---- the room ----
-function open(ctx) { C = ctx; styleOnce(); const p = P(); if (!p.geo) p.geo = SETS[0].id; home(); }
+function open(ctx) { C = ctx; styleOnce(); sfx.unlock(); const p = P(); if (!p.geo) p.geo = SETS[0].id; home(); }
 function leave() { stopSpin(); C.greet(); }
 
 function home() {
   stopSpin(); C.clearReading(); C.cap("📐 Sacred Geometry Builder");
   const set = setOf(P()), t = mount(set), fl = byId("m2"), b = makeBoard(fl);
   fl.steps.forEach((s) => b.drawn.push(objOf(s)));
-  t.innerHTML = boardSvg({ level: fl, board: b, set, done: true });
+  t.innerHTML = boardSvg({ level: fl, board: b, set, done: true, bloom: true, reduced: C.reduced });
   const n = totalStars(P());
   C.say(n ? `Back at the drawing table. ${n} stars so far, ${titleOf(P()).name}. Choose your circle of study.`
     : "No measuring, no numbers: only a compass and a straightedge, like Euclid's students in Alexandria. Every figure on this table can be drawn that way. Choose your circle of study.");
@@ -127,9 +148,9 @@ function build(l) {
   const tier = l.tier;
   let svg = null, pts = [];
   const ghost = () => { const n = nextStep(l, st.board); if (!n || st.done) return null; return tier === 1 || st.ghostFor === n.i ? n : null; };
-  const draw = () => {
+  const draw = (fx = {}) => {
     const g = ghost(); if (tier === 1 && g) st.tool = g.t === "c" ? "compass" : "ruler";
-    t.innerHTML = boardSvg({ level: l, board: st.board, set, sel: st.sel, ghost: g, done: st.done, showGoal: tier < 3 });
+    t.innerHTML = boardSvg({ level: l, board: st.board, set, sel: st.sel, ghost: g, done: st.done, showGoal: tier < 3, reduced: C.reduced, ...fx });
     svg = t.querySelector("svg"); svg.classList.add("tool-" + st.tool); pts = pointsOf(st.board);
     svg.onpointerdown = tap; svg.onpointermove = hover; svg.onpointerleave = () => rubber(null);
     toolButtons(); status();
@@ -146,15 +167,20 @@ function build(l) {
   };
   function hover(e) { if (st.sel) rubber(snap(e)); }
   function tap(e) {
-    if (st.done) return; e.preventDefault();
+    if (st.done) return; e.preventDefault(); sfx.unlock();
     const q = snap(e);
     if (!q) { if (st.sel) { st.sel = null; draw(); } else C.cap("Tap a point: a dot where lines or circles start or cross"); return; }
-    if (!st.sel) { st.sel = q; draw(); C.cap(st.tool === "compass" ? "🧭 Centre set: now tap a point the circle passes through" : "📏 Now tap the second point"); return; }
+    if (!st.sel) { st.sel = q; draw(); sfx.tick(); C.cap(st.tool === "compass" ? "🧭 Centre set: now tap a point the circle passes through" : "📏 Now tap the second point"); return; }
     if (Math.hypot(q[0] - st.sel[0], q[1] - st.sel[1]) < 1) { st.sel = null; draw(); C.cap(`${l.emoji} ${l.title}`); return; }
+    const before = pts, was = progress(l, st.board).done;
     const o = place(st.board, st.tool, st.sel, q); st.sel = null;
-    if (!o) C.say("That one's already on the table.");
-    C.cap(`${l.emoji} ${l.title}`); draw();
-    if (progress(l, st.board).complete) finish();
+    C.cap(`${l.emoji} ${l.title}`);
+    if (!o) { C.say("That one's already on the table."); sfx.nope(); draw(); return; }
+    draw({ fresh: o, before });
+    if (o.t === "c") sfx.compass(o.r); else sfx.ruler();
+    const pr = progress(l, st.board), born = pts.filter((p) => !before.some((b) => Math.hypot(p[0] - b[0], p[1] - b[1]) < 0.5)).length;
+    if (pr.done > was) sfx.goal(pr.done - 1); else sfx.tings(born);
+    if (pr.complete) finish();
   }
   const toolButtons = () => { const c = $("geo-compass"), r = $("geo-ruler"); if (c) c.classList.toggle("on", st.tool === "compass"); if (r) r.classList.toggle("on", st.tool === "ruler"); };
   const status = () => {
@@ -166,12 +192,12 @@ function build(l) {
   C.ui(`<div class="choices geo-tools"><button class="c" type="button" id="geo-compass">🧭 Compass</button><button class="c" type="button" id="geo-ruler">📏 Straightedge</button>
     ${tier > 1 ? `<button class="c" type="button" id="geo-hint">💡 Show me</button>` : ""}<button class="c" type="button" id="geo-undo">⌫ Undo</button><button class="c" type="button" id="geo-reset">↺ Start over</button>
     ${guideBtn}<button class="c" type="button" id="geo-back">↩ Levels</button></div>`);
-  $("geo-compass").onclick = () => { st.tool = "compass"; st.sel = null; draw(); };
-  $("geo-ruler").onclick = () => { st.tool = "ruler"; st.sel = null; draw(); };
+  $("geo-compass").onclick = () => { sfx.unlock(); st.tool = "compass"; st.sel = null; draw(); };
+  $("geo-ruler").onclick = () => { sfx.unlock(); st.tool = "ruler"; st.sel = null; draw(); };
   if ($("geo-hint")) $("geo-hint").onclick = () => { const n = nextStep(l, st.board); if (!n || st.done) return;
     if (st.ghostFor !== n.i) { st.ghostFor = n.i; st.board.hints++; }
     st.tool = n.t === "c" ? "compass" : "ruler"; C.say(n.t === "c" ? "Here: put the compass point on the first glowing dot, and open it to the second." : "Here: lay the straightedge between the two glowing dots."); draw(); };
-  $("geo-undo").onclick = () => { if (st.done) return; undo(st.board); st.sel = null; draw(); };
+  $("geo-undo").onclick = () => { if (st.done) return; if (undo(st.board)) sfx.tick(); st.sel = null; draw(); };
   $("geo-reset").onclick = () => build(l);
   $("geo-guide").onclick = () => { toggleGuide($("geo-guide")); if (!$("reading-body").innerHTML) status(); };
   $("geo-back").onclick = () => tierMenu(l.tier);
@@ -179,7 +205,8 @@ function build(l) {
   draw();
 
   function finish() {
-    st.done = true; draw(); C.chime && C.chime();
+    st.done = true; sfx.complete(0.6);
+    setTimeout(() => { if (t.querySelector("svg") === svg) draw({ celebrate: true }); }, C.reduced ? 0 : 620);
     const stars = starsFor({ hints: st.board.hints, moves: st.board.moves, par: par(l) });
     C.say(`There it is: ${l.title}, drawn true. Now, what does it tell us?`);
     setTimeout(() => quiz(l, stars), 500);
@@ -193,8 +220,8 @@ function quiz(l, stars, onWrong) {
   C.ui(`<div class="geo-q"><p>${esc(q.ask)}</p><div class="choices">${order.map((i) => `<button class="c" type="button" data-a="${i}">${esc(q.choices[i])}</button>`).join("")}</div></div><div class="choices">${guideBtn}</div>`);
   wireGuide();
   $("ui").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => {
-    if (+b.dataset.a !== q.right) { b.disabled = true; onWrong && onWrong(); C.say("Not quite. Measure twice, as the masons say. Try again."); return; }
-    reward(l, typeof stars === "function" ? stars() : stars);
+    if (+b.dataset.a !== q.right) { b.disabled = true; sfx.nope(); onWrong && onWrong(); C.say("Not quite. Measure twice, as the masons say. Try again."); return; }
+    sfx.right(); reward(l, typeof stars === "function" ? stars() : stars);
   }));
 }
 function reward(l, stars) {
@@ -228,15 +255,16 @@ function solids(l) {
     `<span><b>${esc(s.name)}</b><br>${s.faces} ${esc(s.face)}, ${s.meet} at each corner<br>V ${s.v.length} · E ${s.e.length} · F ${s.faces}<br>Plato: ${esc(s.element)}</span>`).join("")}</div></div>`; };
   const ask = () => {
     const s = SOLIDS[st.i]; if (!s) { C.say(l.how[1].replace("Then: ", "Last one. ")); return quiz(l, () => quizStars(st.wrong), () => st.wrong++); }
-    st.show = st.i; if (reduced) { stopSpin(); spin = requestAnimationFrame(frame); }
+    st.show = st.i; sfx.whoosh(); const gEl = t.querySelector("#geo-solid"); if (gEl && !reduced) { gEl.classList.remove("enter"); void gEl.getBoundingClientRect(); gEl.classList.add("enter"); }
+    if (reduced) { stopSpin(); spin = requestAnimationFrame(frame); }
     C.cap(`${l.emoji} ${st.i + 1} of 5: ${s.name}`);
     C.say(st.i === 0 ? l.lesson + ` First, the ${s.name.toLowerCase()}. How many faces?` : `Next, the ${s.name.toLowerCase()}. How many faces?`);
     C.ui(`<div class="choices">${faceChoices(s).map((n) => `<button class="c" type="button" data-f="${n}">${n} faces</button>`).join("")}</div>
       <div class="choices">${guideBtn}<button class="c" type="button" id="geo-back">↩ Levels</button></div>`);
     wireGuide(); $("geo-back").onclick = () => { stopSpin(); tierMenu(l.tier); };
     $("ui").querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => {
-      if (+b.dataset.f !== s.faces) { b.disabled = true; st.wrong++; C.say("Count again. Follow one face to its neighbours, all the way round."); return; }
-      C.chime && C.chime(); st.seen.push(s); info(); C.say(`Yes, ${s.faces} ${s.face}. ${s.why}`);
+      if (+b.dataset.f !== s.faces) { b.disabled = true; st.wrong++; sfx.nope(); C.say("Count again. Follow one face to its neighbours, all the way round."); return; }
+      sfx.right(); st.seen.push(s); info(); C.say(`Yes, ${s.faces} ${s.face}. ${s.why}`);
       st.i++; C.ui(`<div class="choices"><button class="c main" type="button" id="geo-on">✦ ${st.i < 5 ? "Next solid" : "One last question"}</button></div>`); $("geo-on").onclick = ask;
     }));
   };

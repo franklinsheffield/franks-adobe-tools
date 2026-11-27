@@ -40,5 +40,22 @@ export const CSS = `
 .geo-guide p{font-size:.86rem;margin:6px 0}
 .geo-solid-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:6px 0}
 .geo-solid-info span{border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:.78rem}.geo-solid-info b{color:var(--gold2)}
+.geo-svg .drw.fresh{stroke-dasharray:1;stroke-dashoffset:1;animation:geo-trace .6s ease-in-out forwards}
+.geo-svg.chalk .drw.fresh{stroke-dasharray:1}
+.geo-svg.bloom .drw{stroke-dasharray:1;stroke-dashoffset:1;animation:geo-trace 1s ease-in-out forwards;animation-delay:calc(var(--i,0) * .11s)}
+.geo-svg .geo-rot{animation:geo-rot 120s linear infinite}
+@keyframes geo-trace{to{stroke-dashoffset:0}}
+@keyframes geo-rot{to{transform:rotate(360deg)}}
+.geo-svg .geo-arm line{stroke:var(--geo-pt);stroke-width:2;vector-effect:non-scaling-stroke;opacity:.8}
+.geo-svg .geo-pin{fill:var(--geo-given)}.geo-svg .geo-lead{fill:var(--geo-pt);filter:drop-shadow(0 0 4px var(--geo-pt))}
+.geo-svg .geo-rulerbar line{stroke:var(--geo-given);stroke-width:12;stroke-linecap:round;opacity:.28;vector-effect:non-scaling-stroke}
+.geo-svg .pt.pop{transform-box:fill-box;transform-origin:center;animation:geo-pop .5s .45s both}
+@keyframes geo-pop{0%{transform:scale(0)}60%{transform:scale(2.2)}100%{transform:scale(1)}}
+.geo-svg.cele .hit{animation:geo-glow 1.2s ease-in-out 2}
+@keyframes geo-glow{50%{stroke-width:6;filter:drop-shadow(0 0 10px var(--geo-done))}}
+.geo-svg .geo-burst path{fill:var(--geo-done);animation:geo-fly 1.3s cubic-bezier(.2,.7,.3,1) both}
+@keyframes geo-fly{0%{opacity:0;translate:0 0;scale:.3}20%{opacity:1}100%{opacity:0;translate:var(--dx) var(--dy);scale:1.2}}
+#geo-solid.enter{animation:geo-enter .6s cubic-bezier(.2,.8,.3,1.3)}
+@keyframes geo-enter{from{transform:scale(.2) rotate(-90deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){.geo-svg *{animation:none!important}}
 `;
