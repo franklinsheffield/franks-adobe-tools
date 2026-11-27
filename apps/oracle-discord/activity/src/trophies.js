@@ -37,7 +37,9 @@ export const TROPHIES = [
   { id: "workshop", game: "The Workshop", name: "Golden Top Hat", art: "tophat", need: 3 },
   { id: "bookings", game: "Bookings", name: "Star Turn Ticket", art: "ticket", need: 3 },
   { id: "darkseance", game: "The Dark Séance", name: "Spirit Trumpet", art: "trumpet", need: 3 },
+  { id: "mentalist", game: "The Mentalist", name: "Silk Blindfold", art: "blindfold", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
+  { id: "fireworks", game: "Fireworks Workshop", name: "Golden Rocket", art: "rocket", need: 2, how: ["Win Level 1", "Win Level 2", "Win a Level 3 show", "A perfect Level 3 show"] },
   { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
@@ -65,6 +67,7 @@ export const LINES = {
   memory: "The Sealed Grimoire opens only for minds like yours. Remember this moment.",
   flametest: "Bunsen's Burner, in your colours. Every flame you read was a real element.",
   bench: "The Golden Crucible. Every discovery in it was real chemistry.",
+  fireworks: "The Golden Rocket. Every colour in your sky was real chemistry.",
   commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
   messier: "The Ferret of Comets. Louis XV's name for Messier, and now yours.",
@@ -77,6 +80,7 @@ export const LINES = {
   workshop: "The Golden Top Hat. Every trick under it is one a real medium used, and now you know how.",
   bookings: "The Star Turn Ticket. Your name at the top of the bill, and not one spirit on the payroll.",
   darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
+  mentalist: "The Silk Blindfold. You never read a mind in it, only the audience, and that was the whole act.",
 };
 
 const room = (p, id) => { p.trophies = p.trophies || {}; return (p.trophies[id] = p.trophies[id] || { tier: 0, wins: {}, perfect: {} }); };
@@ -145,12 +149,14 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     book: `<path d="M26 22 L50 28 L74 22 L74 66 L50 72 L26 66Z" ${F}/><path d="M50 28 L50 72" stroke="${lo}" stroke-width="1.5"/><g class="tr-rot"><circle cx="62" cy="46" r="7" fill="none" stroke="${lo}" stroke-width="1.6"/><path d="M62 39 L62 53 M55 46 L69 46" stroke="${lo}" stroke-width="1.2"/></g><path d="M34 36 L44 38 M34 44 L44 46 M34 52 L44 54" stroke="${lo}" stroke-width="1.4"/><rect x="45" y="72" width="10" height="7" ${F}/>`,
     burner: `<path class="tr-flame" d="M50 8 C62 24 60 36 50 44 C40 36 38 24 50 8Z" fill="#66E0C8" opacity=".85"/><path d="M50 22 C56 30 55 36 50 40 C45 36 44 30 50 22Z" fill="#fff" opacity=".7"/><rect x="44" y="44" width="12" height="28" rx="2" ${F}/><rect x="40" y="58" width="20" height="6" rx="2" ${F}/><rect x="30" y="72" width="40" height="7" rx="3" ${F}/>`,
     trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
+    blindfold: `<path d="M14 44 Q50 30 86 44 L86 56 Q50 44 14 56 Z" ${F}/><path d="M20 54 Q14 68 22 80" stroke="${lo}" stroke-width="4" fill="none"/><path d="M28 52 Q26 70 34 82" stroke="${lo}" stroke-width="3" fill="none"/><circle class="tr-gem" cx="50" cy="44" r="5" fill="#fff" opacity=".7"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,
     ticket: `<path d="M18 34 H82 V44 Q76 50 82 56 V66 H18 V56 Q24 50 18 44Z" ${F}/><path d="M38 36 V64" stroke="${lo}" stroke-width="1.5" stroke-dasharray="3 3"/><path class="tr-gem" d="M60 40 L63 47 L70 47 L64 51 L66 58 L60 54 L54 58 L56 51 L50 47 L57 47Z" fill="#fff6d0"/>`,
     lens: `<circle cx="44" cy="42" r="20" ${F}/><circle cx="44" cy="42" r="13" fill="#cfe8ff" opacity=".35"/><path class="tr-gem" d="M36 34 Q40 30 46 30" stroke="#fff" stroke-width="3" fill="none"/><path d="M58 56 L76 74" stroke="#5a3a12" stroke-width="9" stroke-linecap="round"/><path d="M58 56 L76 74" stroke="#C9A24A" stroke-width="5" stroke-linecap="round"/>`,
     cipherkey: `<circle cx="34" cy="38" r="16" ${F}/><circle cx="34" cy="38" r="7" fill="none" stroke="${lo}" stroke-width="3"/><g class="tr-rot"><path d="M48 46 L80 72 M66 60 l6 -6 M72 66 l6 -6" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     loupe: `<path d="M24 30 Q50 22 70 30 L70 74 L24 74Z" ${F}/><path d="M32 40 h26 M32 48 h20 M32 56 h24" stroke="${lo}" stroke-width="2" stroke-linecap="round"/><g class="tr-rot"><circle cx="62" cy="40" r="14" fill="rgba(255,255,255,.18)" stroke="${mid}" stroke-width="4"/><path d="M72 50 L84 64" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     geode: `<path d="M22 54 Q20 26 50 20 Q80 26 78 54 Q76 76 50 78 Q24 76 22 54Z" ${F}/><path d="M32 52 Q32 34 50 30 Q68 34 68 52 Q66 68 50 70 Q34 68 32 52Z" fill="#7a4ad0" opacity=".85"/><path class="tr-gem" d="M42 52 L50 36 L58 52 L50 64Z" fill="#c8a8ff"/><path d="M36 56 L44 46 L46 60Z M56 46 L64 54 L56 62Z" fill="#e6d8ff" opacity=".8"/>`,
+    rocket: `<path d="M50 14 Q62 28 60 56 L40 56 Q38 28 50 14Z" ${F}/><path d="M40 48 L30 64 L40 60Z M60 48 L70 64 L60 60Z" ${F}/><circle cx="50" cy="34" r="6" fill="none" stroke="${lo}" stroke-width="2.5"/><path class="tr-gem" d="M44 60 Q50 78 56 60" fill="#ff9a3c" opacity=".9"/><g class="tr-rot"><path d="M20 22 l4 4 M80 22 l-4 4 M16 40 h6 M84 40 h-6" stroke="#ffd86b" stroke-width="2.5" stroke-linecap="round"/></g>`,
     seal: `<path d="M38 56 L30 84 L40 78 L46 86 L50 60Z" fill="#b8322a"/><path d="M62 56 L70 84 L60 78 L54 86 L50 60Z" fill="#8a2420"/><circle cx="50" cy="44" r="24" ${F}/><circle cx="50" cy="44" r="16" fill="none" stroke="${lo}" stroke-width="2"/><path class="tr-glyph" d="M40 50 L42 38 L50 46 L58 38 L60 50Z" fill="${lo}"/>`,
     crucible: `<path d="M26 34 L74 34 L66 74 Q64 80 56 80 L44 80 Q36 80 34 74Z" ${F}/><rect x="22" y="28" width="56" height="8" rx="3" ${F}/><path d="M34 46 L66 46 L63 60 L37 60Z" fill="#ffcf6a" opacity=".85"/><circle class="tr-bub" cx="46" cy="50" r="2.5" fill="#fff" opacity=".8"/><path class="tr-flame" d="M40 92 Q46 82 50 92 Q54 82 60 92Z" fill="#ff8a3a"/>`,
     mortar: `<path class="tr-pestle" d="M58 44 L74 14" stroke="${mid}" stroke-width="7" stroke-linecap="round"/><path d="M24 46 L76 46 Q74 74 50 76 Q26 74 24 46Z" ${F}/><rect x="22" y="42" width="56" height="6" rx="3" ${F}/><path d="M36 42 Q40 36 44 42 M48 42 Q52 34 56 42" fill="#7ad16a"/>`,

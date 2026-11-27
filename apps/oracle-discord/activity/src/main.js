@@ -32,8 +32,10 @@ import { casefiles, casefilesCodex } from "./casefiles/room.js";
 import { workshop, workshopCodex } from "./workshop/room.js";
 import { bookings, bookingsCodex } from "./bookings/room.js";
 import { darkseance, darkseanceCodex } from "./darkseance/room.js";
+import { mentalist, mentalistCodex } from "./mentalist/room.js";
 import { bench, benchCodex } from "./bench/room.js";
 import { commissions, commissionsCodex } from "./commissions/room.js";
+import { fireworks, fireworksCodex } from "./fireworks/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -203,10 +205,10 @@ function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "�
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
-  clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
+  clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
   if (!keep) $("said").innerHTML = "";
   /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { const over = el.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 14; if (over > 0) box.scrollBy({ top: over, behavior: "instant" }); };
+  const follow = () => { box.scrollTop = box.scrollHeight; };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
@@ -366,7 +368,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
