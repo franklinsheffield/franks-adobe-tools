@@ -117,3 +117,13 @@ test("Herbalist shelf: page styles in the Essence store, parchment free", () => 
   p.grimoire = "gr-vellum"; assert.equal(themeOf(p), PAGE_THEMES.vellum); assert.equal(themeOf(fresh()), PAGE_THEMES.parchment);
   for (const k of ["open", "tryon", "buy"]) assert.ok(shop.talk[k].length);
 });
+
+test("show me 4: a wrong pick costs 3 leaves, a wrong typed name costs 1", () => {
+  const L = LEVELS[0], p = L.deck[0], wrong = L.deck.find((x) => x.id !== p.id);
+  const typed = start(p, L); guessName(typed, p, wrong); assert.equal(typed.leaves, LEAVES - 1);
+  const picked = start(p, L); usePick(picked);
+  assert.equal(guessName(picked, p, wrong), "wrong"); assert.equal(picked.leaves, LEAVES - 3);
+  const other = L.deck.find((x) => x.id !== p.id && x.id !== wrong.id);
+  assert.equal(guessName(picked, p, other), "out"); assert.equal(picked.leaves, 0);
+  assert.ok(pageSvg(p, { leaves: 2, fell: 2, fellTo: 5 }).split("gr-fall").length - 1 === 3, "three leaves fall");
+});
