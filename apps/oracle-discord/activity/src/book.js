@@ -17,6 +17,7 @@ export const BOOKS = [
   { id: "bk-aurora", set: "aurora", name: "Aurora diary", note: "Aurora set: a cover that ripples green to violet, starlit pages", price: 110, cover: ["#2f9a7a", "#3a1d6e"], foil: "#c8ffe8", page: "chart", emblem: "star", clasp: "silver", fx: "holo" },
   // secret bindings: never sold, earned inside the book (secrets.js)
   { id: "bk-rune", secret: "cipher", name: "Runebound codex", note: "Slate stone covers cut with glowing runes. Earned by breaking the margin cipher.", price: 0, cover: ["#4a4f57", "#1b1e23"], foil: "#7fe3ff", page: "vellum", emblem: "rune", clasp: "steel", fx: "twinkle" },
+  { id: "bk-cipher", secret: "codes", name: "Codebreaker's folio", note: "Ink-black cloth stamped with a silver key, cipher-grid pages. Earned by breaking every coded message in the book.", price: 0, cover: ["#1f2a33", "#070b0f"], foil: "#c9d6e3", page: "grid", emblem: "key", clasp: "steel", fx: "ink" },
   { id: "bk-crown", secret: "sealed", name: "Star-crowned grimoire", note: "Black and gold, crowned with stars. Earned by opening the sealed chapter.", price: 0, cover: ["#1a1426", "#05030a"], foil: "#FADE8C", page: "night", emblem: "crown", clasp: "gold", fx: "stars" },
 ];
 export const DEFAULT_BOOK = "bk-notebook";
@@ -31,6 +32,7 @@ const EMBLEM = {
   gear: (c) => { let d = ""; for (let k = 0; k < 16; k++) { const a = (k * Math.PI) / 8, r = k % 2 ? 22 : 28; d += `${k ? "L" : "M"}${(r * Math.cos(a)).toFixed(1)} ${(r * Math.sin(a)).toFixed(1)}`; } return `<g class="bk-spin"><path d="${d}Z" fill="${c}"/><circle r="10" fill="#000" opacity=".45"/></g>`; },
   rune: (c) => `<g fill="none" stroke="${c}" stroke-width="3.2" stroke-linecap="round"><path d="M-14 -26 V26 M-14 -26 L10 -12 L-14 2 L12 26"/><circle r="30" stroke-width="1.4" opacity=".7"/></g>`,
   crown: (c) => `<path d="M-26 14 L-30 -16 L-14 -2 L0 -26 L14 -2 L30 -16 L26 14Z" fill="${c}"/><rect x="-26" y="16" width="52" height="7" rx="2" fill="${c}"/><circle cy="-26" r="3.5" fill="#fff"/>`,
+  key: (c) => `<g fill="none" stroke="${c}" stroke-width="3.2" stroke-linecap="round"><circle cx="-12" cy="0" r="11"/><circle cx="-12" cy="0" r="4"/><path d="M-1 0 H28 M18 0 V9 M24 0 V7"/></g>`,
   atom: (c) => `<g class="bk-spin" fill="none" stroke="${c}" stroke-width="3"><ellipse rx="28" ry="10"/><ellipse rx="28" ry="10" transform="rotate(60)"/><ellipse rx="28" ry="10" transform="rotate(-60)"/></g><circle r="5" fill="${c}"/>`,
 };
 /** The cover, drawn 200 x 280. */
@@ -158,4 +160,6 @@ export function bookPreviewHtml(b) {
       <div class="bkp-leaf"></div></div>
       <div class="bkp-cover">${coverSvg(b, "Your Grimoire", "bkp")}</div></div></div>`;
 }
+/** The emblem's drawing alone (for faded margin sketches). */
+export const emblemInner = (b, c = "currentColor") => (EMBLEM[b.emblem] || EMBLEM.eye)(c);
 export const emblemSvg = (b) => `<svg viewBox="-34 -34 68 68" aria-hidden="true">${(EMBLEM[b.emblem] || EMBLEM.eye)(b.foil)}</svg>`;
