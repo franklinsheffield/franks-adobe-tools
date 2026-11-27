@@ -255,3 +255,10 @@ test("Parlour Phase 1: parlour scene dims at night, bell jar, poses, reactions, 
   assert.ok(D.grantDebunker({}).owned.includes(D.DEBUNKER));
   assert.equal(parlour.scene, D.parlourSceneHtml); assert.equal(parlour.emotes, D.SEANCE_EMOTES); assert.ok(parlour.shelves.includes(D.gownShop));
 });
+
+test("Observatory Phase 4: six new relics and The Grand Orrery set", async () => {
+  const { observatory } = await import("../activity/src/hosts/observatory.js"), { SETS } = await import("../activity/src/trophies.js"), { OBS_GAMES } = await import("../activity/src/obsprog.js");
+  for (const id of ["sk-nebra", "sk-ulughbeg", "sk-h4", "sk-herschel", "sk-leavitt", "sk-blink"]) assert.ok(observatory.relics.some((r) => r.id === id), id);
+  assert.equal(new Set(observatory.relics.map((r) => r.id)).size, observatory.relics.length);
+  assert.deepEqual(SETS.find((s) => s.id === "orrery").ids, OBS_GAMES);
+});
