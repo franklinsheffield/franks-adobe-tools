@@ -7,6 +7,7 @@ import { menuBg as OBS_MENU_BG } from "../watch/menubg.js";
 import { secrets as DARK_SKY } from "../watch/darksky.js";
 import { domeSceneHtml, astrolabeSvg, propsSvg, headSvg, react, SKY_EMOTES, DOME_CSS, obsCoatOf, obsCoatShop } from "./observatory-dome.js";
 import { coatOverlay } from "./alchemist-lab.js";
+import { harmonyDone } from "../obsprog.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -119,7 +120,7 @@ function paint(svg, prog, id = "t") {
     <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
     <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
     <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
-    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>${harmonyDone(prog || {}) ? `<path class="ha-star" d="M226 126 L228.2 131.8 L234 134 L228.2 136.2 L226 142 L223.8 136.2 L218 134 L223.8 131.8Z" fill="#FADE8C"><title>The Harmony of the Spheres: complete</title></path>` : ""}</g>
     <g transform="translate(200 92)"><circle r="12" fill="#C88A3A" stroke="#6b3f12"/><circle r="8.5" fill="#0B1530"/><g class="hk-rete"><path d="M0 -8V8M-8 0H8" stroke="#E2B04A" stroke-width="1"/><circle cx="0" cy="-2" r="4.5" fill="none" stroke="#E2B04A" stroke-width="1"/></g><circle cx="0" cy="-14" r="2.6" fill="none" stroke="#C88A3A" stroke-width="1.4"/></g>
     <g class="hk-chart" transform="translate(140 204)">${chartG(M)}</g>`;
   eye.after(g);
@@ -169,7 +170,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
-  readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "stars", "calendar", "rummy"], daily: "stars",
+  readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "messier", "stars", "calendar", "rummy"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
@@ -195,6 +196,7 @@ export const observatory = {
     watch: G("Let your eyes settle. Faint things need a slow look.", "Hipparchus ranked star brightness by eye: 1st to 6th magnitude.", "Logged! Every plate needs a night someone stayed up for.", "Clouded out. Even Herschel lost nights. Try again, {name}."),
     eclipse: G("A Saros cycle is about 18 years 11 days. Eclipses repeat on it.", "Next big one: 2 August 2027, with totality over Luxor for over 6 minutes.", "Right in the shadow, {name}! Totality can last up to about 7.5 minutes.", "Clouded out. And never watch the partial phase without eclipse glasses."),
     navigator: G("Polaris sits about as high above the horizon as your latitude.", "Harrison's H4 watch solved longitude on a 1761 voyage to Jamaica.", "Landfall, {name}! A sextant and a good clock still get you home.", "Off course. The Southern Cross points toward the south celestial pole."),
+    messier: G("M1 is the Crab Nebula, the wreck of a star seen exploding in 1054.", "M31, Andromeda, is about 2.5 million light-years away, and naked-eye too.", "Logged, {name}! Messier hunted comets; his list of nuisances became a classic.", "Missed it. Many Messier objects need dark skies, far from city lights."),
     comet: G("Sweep slowly. A new comet looks like a faint fuzzy star.", "Charles Messier listed 110 fuzzy things so comet hunters could skip them.", "A comet! Report it fast. Discoverers get their name on it.", "Just a smudge, {name}. Messier made that mistake too."),
     stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
     calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),
