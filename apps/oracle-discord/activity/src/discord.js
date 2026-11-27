@@ -19,9 +19,9 @@ export async function startDiscord() {
     if (!r.ok) throw new Error("sign-in " + r.status);
     const { access_token } = await r.json();
     const auth = await sdk.commands.authenticate({ access_token });
-    return { sdk, user: auth && auth.user, token: access_token };
+    return { sdk, user: auth && auth.user, token: access_token, guildId: sdk.guildId || null };
   } catch (e) {
     console.warn("Oracle Chamber: continuing without sign-in:", e.message);
-    return { sdk, user: null, token: null };
+    return { sdk, user: null, token: null, guildId: sdk.guildId || null };
   }
 }

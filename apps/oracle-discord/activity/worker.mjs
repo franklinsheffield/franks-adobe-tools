@@ -3,7 +3,9 @@
 //   GET  /api/profile  Bearer <access_token> -> { profile } (the member's own saved /profile, opened with ORACLE_KEY)
 //   GET/PUT /api/progress  Bearer <access_token> -> { progress }  (the Chamber game layer: codex, streak, unlocks)
 //   GET/POST /api/daily/<game>  Bearer <access_token> -> today's shared daily-challenge board (src/daily.js)
+//   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
 import { loadProfile } from "../src/profiles.js";
+import { settleBoost } from "./src/boost.js";
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
@@ -52,6 +54,16 @@ async function daily(req, env, game, url) {
   return json(boardView(doc, me.id, day));
 }
 
+/** Is this member boosting the guild? The bot reads their member record (premium_since); each boost pays once. */
+export async function boostCheck(env, userId, guildId, fetchImpl = fetch) {
+  if (!env.DISCORD_BOT_TOKEN || !/^\d{5,25}$/.test(String(guildId || ""))) return { boosting: false, fresh: false, reward: 0 };
+  const r = await fetchImpl(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, { headers: { authorization: "Bot " + env.DISCORD_BOT_TOKEN } });
+  const member = r.ok ? await r.json().catch(() => null) : null;
+  const key = "boost:" + userId, out = settleBoost(member, await env.PROFILES.get(key, "json"));
+  if (out.fresh) await env.PROFILES.put(key, JSON.stringify(out.ledger));
+  return { boosting: out.boosting, fresh: out.fresh, reward: out.reward, since: out.since };
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname.replace(/^\/\.proxy/, "");
@@ -88,6 +100,16 @@ export default {
       return json({ ok: true });
     }
     if (path.startsWith("/api/daily/")) return daily(req, env, path.slice(11), url);
+    if (path === "/api/boost") {
+      if (req.method !== "POST") return json({ error: "POST only" }, 405);
+      const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
+      if (!env.PROFILES) return json({ error: "storage not set up" }, 503);
+      const me = await whoIs(token);
+      if (!me || !me.id) return json({ error: "sign in first" }, 401);
+      const { guildId } = await req.json().catch(() => ({}));
+      return json(await boostCheck(env, me.id, guildId));
+    }
     if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, profiles: !!env.PROFILES });
     return env.ASSETS.fetch(req);
   },
