@@ -8,10 +8,11 @@
 import { STARS, FAINT, MILKY_WAY, LINES } from "./sky.gen.js";
 import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
+import { HOPS, hopById, startHop, hop, hopStars, hopTime, settleHop, hopsDone, hopBest } from "./hops.js";
 import { frame, nightOf, riseSet, compass, upTonight, PLACES, placeForZone, zone, clock } from "./tonight.js";
 import { LEVELS, TONIGHT, DECK, ALL, keyOf, room as starsOf, foundCount, titleOf, nextTitle, byId, nextTarget, start, attempt, hintEdge, starsFor, partsTold,
   pickFable, quizChoices, answer, settle, drawPts, quizPts, startView, figureEdges, figureStars, figureCentre, toScreen, toSky, pan, zoom, onScreen,
-  nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
+  nearestStar, starByHip, edgeKey, galacticEquator, bestMonth, seenFrom, conName, nameOf, sep, centroid, KIND, THEMES, themeOf, fablesHeard, FABLE_COUNT, spin, timeFor } from "./engine.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -120,8 +121,8 @@ class Sky {
       c.fillRect(-half * e, 0, half, this.h); c.fillRect(half + half * e, 0, half, this.h); }
     // arrow toward the target when asked for a hint and it's off screen
     const ar = this.host.querySelector(".sl-arrow");
-    if (ar) { const show = o.arrowUntil && now < o.arrowUntil && o.g;
-      if (show) { const [ra, de] = this.centre(o.g), p = toScreen(v, this.w, this.h, ra, de), off = !p.front || p.X < 0 || p.Y < 0 || p.X > this.w || p.Y > this.h;
+    if (ar) { const show = o.arrowUntil && now < o.arrowUntil && (o.g || o.aimAt);
+      if (show) { const [ra, de] = o.aimAt || this.centre(o.g), p = toScreen(v, this.w, this.h, ra, de), off = !p.front || p.X < 0 || p.Y < 0 || p.X > this.w || p.Y > this.h;
         if (off) { const sky = toSky(v, this.w, this.h, this.w / 2, this.h / 2); let ang;
           if (p.front) ang = Math.atan2(p.Y - this.h / 2, p.X - this.w / 2); else { let dra = ra - sky[0]; if (dra > 180) dra -= 360; if (dra < -180) dra += 360; ang = Math.atan2(-(de - sky[1]), -dra); }
           const R = Math.min(this.w, this.h) / 2 - 26; ar.hidden = false; ar.style.left = `${this.w / 2 + Math.cos(ang) * R - 12}px`; ar.style.top = `${this.h / 2 + Math.sin(ang) * R - 12}px`; ar.style.transform = `rotate(${ang}rad)`;
@@ -134,7 +135,7 @@ class Sky {
     c.stroke(); c.restore();
     if (o.sel) { const A = scr(o.sel); if (A.front) { c.strokeStyle = P.gold; c.lineWidth = 1.5; c.beginPath(); c.arc(A.X, A.Y, 9 + 2 * Math.sin(t * 6), 0, 7); c.stroke();
       if (o.rubber) { c.setLineDash([4, 5]); c.beginPath(); c.moveTo(A.X, A.Y); c.lineTo(o.rubber[0], o.rubber[1]); c.stroke(); c.setLineDash([]); } } }
-    if (run.done && o.label) { const [ra, de] = this.centre(g), p = toScreen(v, this.w, this.h, ra, de); c.font = "600 14px Cinzel, Georgia, serif"; c.textAlign = "center";
+    if (run.done && o.label) { const [ra, de] = o.labelAt || this.centre(g), p = toScreen(v, this.w, this.h, ra, de); c.font = "600 14px Cinzel, Georgia, serif"; c.textAlign = "center";
       const w = c.measureText(o.label).width + 20, y = Math.min(this.h - 30, p.Y + 40); c.fillStyle = "rgba(11,8,32,.82)"; c.strokeStyle = P.gold; c.lineWidth = 1;
       c.beginPath(); c.roundRect ? c.roundRect(p.X - w / 2, y - 16, w, 24, 6) : c.rect(p.X - w / 2, y - 16, w, 24); c.fill(); c.stroke(); c.fillStyle = P.gold; c.fillText(o.label, p.X, y + 1); }
   }
@@ -301,11 +302,68 @@ export const stars = {
         : foundCount(state.prog) >= ALL.length ? `You've drawn the whole sky, ${state.name}. Draw again any time: there are more fables to hear.` : `Clear skies tonight, ${state.name}. Which sky shall we open?`);
       const lvl = (L) => { const n = foundCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
-      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
+      ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button></div>
         <div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
         <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; search(L, nextTarget(state.prog, L, prog().last)); }));
-      $("sl-tonight").onclick = () => tonight(); $("back").onclick = greet; wireGuide();
+      $("sl-tonight").onclick = () => tonight(); $("sl-hops").onclick = () => hops(); $("back").onclick = greet; wireGuide();
+    }
+
+    // ---- star-hops ----
+    function hops() {
+      clearReading(); cap("🧭 Star-hops"); const sky = mount({ view: { ra: 120, dec: 40, fov: 60 }, figures: true }); sky.input(() => {}, () => {});
+      say(pick(["Stargazers don't memorise every star. They hop: from a pattern they know to the one they want. Pick a route.", "Every route starts from something easy to find. Follow my directions star to star."]));
+      ui(`${stats()}<div class="levels">${HOPS.map((r) => { const b = hopBest(state.prog, r.id);
+        return `<button class="c level" type="button" data-hop="${r.id}"><b>${r.emoji} ${esc(r.name)}</b><span>${r.steps.length} hops · ${b ? "★".repeat(b) + "☆".repeat(3 - b) : "not yet travelled"}</span></button>`; }).join("")}</div>
+        <div class="choices">${guideBtn}<button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
+      $("ui").querySelectorAll("[data-hop]").forEach((b) => (b.onclick = () => hopRun(hopById(b.dataset.hop))));
+      $("sl-leave").onclick = () => lobby(false); wireGuide();
+    }
+    function hopRun(route) {
+      const run = startHop(route), total = hopTime(route), timer = { total, end: performance.now() + total * 1000 + 1300, paused: null };
+      const [ra0, de0] = centroid(route.start.map((h) => { const x = starByHip(h); return [x[0], x[1]]; }));
+      const sky = mount({ view: { ra: ra0, dec: Math.max(-85, Math.min(85, de0)), fov: 55 }, figures: true, run, g: null, dome: true, controls: true, timer });
+      const stopClock = () => { if (timer.paused == null) timer.paused = Math.max(0, (timer.end - performance.now()) / 1000); clearInterval(tick); };
+      let warned = false;
+      const tick = setInterval(() => { if (!sky.alive) return clearInterval(tick); if (timer.paused != null) return; const left = (timer.end - performance.now()) / 1000;
+        if (left <= 15 && !warned) { warned = true; say(pick(["Dawn is coming. Hurry.", "Fifteen breaths left."])); }
+        if (left <= 0) end(false); }, 250);
+      domeOpen(); clearReading(); cap(`${route.emoji} ${route.name}`);
+      const status = () => { const st = hopStars(run.mistakes), step = route.steps[Math.min(run.step, route.steps.length - 1)];
+        ui(`<div class="cx-top">🧭 Hop ${Math.min(run.step + 1, run.total)} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
+          <div class="note">${run.done ? esc(route.fact) : esc(step.say)}</div>
+          <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a mistake)</button>${guideBtn}<button class="c small" type="button" id="sl-leave">↩ Routes</button></div>`);
+        $("sl-hint").onclick = () => { if (run.done) return; run.mistakes++; run.hints++; shimmer(); const t = sky.star(route.steps[run.step].to[0]), prev = run.path[run.path.length - 1];
+          sky.o.aimAt = [t[0], t[1]]; sky.o.arrowUntil = performance.now() + 5000;
+          if (prev) { const A = sky.star(prev); sky.fx.push({ kind: "hint", a: [A[0], A[1]], b: [t[0], t[1]], at: performance.now(), dur: 3500 }); }
+          sky.fx.push({ kind: "spark", at2: [t[0], t[1]], at: performance.now() + 300, dur: 1400 }); status(); say(pick(["Follow the golden line.", "There. Follow my arrow if it's off the edge.", "Look where the sparks are."])); };
+        $("sl-leave").onclick = () => { stopClock(); hops(); }; wireGuide(); };
+      const tap = (s) => { if (!s || run.done) return; const prev = run.path[run.path.length - 1], r = hop(run, route, s[4]);
+        if (r === "miss") { gutter(); if (prev) { const A = sky.star(prev); sky.fx.push({ kind: "miss", a: [A[0], A[1]], b: [s[0], s[1]], at: performance.now(), dur: 700 }); }
+          tableEl.classList.remove("sl-shake"); void tableEl.offsetWidth; tableEl.classList.add("sl-shake");
+          say(`${nameOf(s) ? `That's ${nameOf(s)}, in ${conName(s[5])}.` : `That star is in ${conName(s[5])}.`} ${pick(["Not this one.", "Look again.", "Close, but no."])}`); return status(); }
+        if (!r) return; ping(s[2]); sky.o.sel = s[4];
+        if (r === "done") return end(true);
+        say(route.steps[run.step].say); status(); };
+      sky.input(tap, (a, b) => { if (!run.path.length && a[4] !== b[4]) tap(a); tap(b); });
+      say(route.steps[0].say); status();
+      function end(won) {
+        stopClock(); sky.o.sel = null; const last = sky.star(route.steps[route.steps.length - 1].to[0]);
+        if (!won) { timer.paused = 0; run.lost = true; darkness(); let prev = run.path[run.path.length - 1];
+          for (let i = run.step; i < route.steps.length; i++) { const h = route.steps[i].to[0]; if (prev) run.drawn.push(prev < h ? prev + "-" + h : h + "-" + prev); prev = h; } run.done = true; }
+        else { discover(); sky.fx.push({ kind: "spark", at2: [last[0], last[1]], at: performance.now(), dur: 1200 }); sky.meteor(); }
+        sky.o.label = nameOf(last) || route.name; sky.o.labelAt = [last[0], last[1]];
+        { const all = route.steps.map((st) => starByHip(st.to[0])), [cr, cd] = centroid(all.map((x) => [x[0], x[1]])), span = Math.max(...all.map((x) => sep(x[0], x[1], cr, cd)));
+          sky.glide({ ra: cr, dec: cd, fov: Math.max(20, Math.min(80, span * 1.3)) }, 1200); }
+        const r = settleHop(state.prog, { ...run, done: won }), aw = award(r.xp, r.essence); state.prog.rooms.stars.plays++; saveProgress(); showStats();
+        ctx.trophy?.("stars", 1, { won, perfect: won && r.stars === 3 });
+        talkThrough([won ? `${pick(["You found your way.", "Every hop true.", "That's how sailors crossed oceans."])} ${route.fact}` : `The sky fades. Here is the way, so you'll know it next time. ${route.fact}`], () => {
+          const next = HOPS[(HOPS.indexOf(route) + 1) % HOPS.length];
+          ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${won ? `${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}${r.first ? " · first time" : ""}` : "⏳ time ran out"}</div>${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
+            <div class="choices"><button class="c main" type="button" id="sl-next">${next.emoji} Next route: ${esc(next.name)}</button><button class="c" type="button" id="sl-again">↻ Try this route again</button><button class="c" type="button" id="sl-routes">🧭 All routes</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+          if (aw.rankUp) chime(2);
+          $("sl-next").onclick = () => hopRun(next); $("sl-again").onclick = () => hopRun(route); $("sl-routes").onclick = hops; $("back").onclick = greet; });
+      }
     }
 
     // ---- tonight's real sky ----
