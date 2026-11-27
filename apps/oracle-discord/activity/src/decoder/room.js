@@ -2,7 +2,7 @@
 // the reading table; the player taps sounds to decode it, answers what it means, and earns ✦ and 💎 Essence.
 // Plugs into main.js ROOMS: room.open(ctx) with ctx = { $, esc, say, ui, cap, clearReading, state, saveProgress, showStats, chime, greet, award, ... }.
 import { SCRIPTS, LEVELS, SCRIPT_ORDER, LONG_COUNT, levelsOf, byId } from "./levels.js";
-import { glyphsOf, target, taught, tiles, check, hint, starsFor, deal, playCard, drawCard, needed, INK_DRAW, INK_MISS, HAND_MAX, writeIn, mayaOf, complete, unlocked, scriptStars, dec, signOf } from "./engine.js";
+import { glyphsOf, target, taught, tiles, check, hint, starsFor, deal, playCard, drawCard, needed, INK_DRAW, INK_MISS, HAND_MAX, POWERS, POWER_ORDER, POWERS_PER_LEVEL, satchel, canPower, usePower, takePeek, writeIn, mayaOf, complete, unlocked, scriptStars, dec, signOf } from "./engine.js";
 import { FONTS } from "./fonts.gen.js";
 import { CSS } from "./style.js";
 import { GUIDES } from "./guide.js";
@@ -151,11 +151,13 @@ function strip(l, picks, { wrongAt = -1, peek = false, won = false } = {}) {
 // refills 1. Run dry and the level is lost. Rules live in engine.js (deal, playCard, drawCard).
 function puzzle(l) {
   C.clearReading(); // the study guide closes while decoding: only the codebook (one star) helps here
-  const g = deal(l, l.id + ":" + Date.now()); g.book = false; let busy = false, first = true;
+  const g = deal(l, l.id + ":" + Date.now()); g.book = false; g.noPowers = !!opts.noPowers; let busy = false, first = true, peek = null;
   const cardFace = (c) => `<button class="dec-hcard${l.script === "maya" ? " num" : ""}" type="button" data-c="${c.id}" aria-label="Play ${esc(c.v)}"><b>${esc(c.v)}</b></button>`;
   const inkRow = () => `<span class="dec-ink" aria-label="${g.ink} ink">${Array.from({ length: g.well }, (_, i) => `<i class="${i < g.ink ? "on" : ""}"></i>`).join("")}</span>`;
   const drawBoard = (wrongAt = -1) => {
-    show(`<div class="dec-cardtable${first ? " deal" : ""}">${strip(l, g.picks, { wrongAt })}</div>` + (g.book ? codebook(l) : `<div class="dec-progress">${g.picks.length} / ${target(l).length} · deck ${g.deck.length}</div>`));
+    show(`<div class="dec-cardtable${first ? " deal" : ""}">${strip(l, g.picks, { wrongAt })}</div>` + (peek ? `<div class="dec-peek"><b>🦉 The Scholar shows the top of the deck. Take one:</b><div>${peek.map((c) => `<button class="dec-hcard${l.script === "maya" ? " num" : ""}" type="button" data-pk="${c.id}"><b>${esc(c.v)}</b></button>`).join("")}</div></div>`
+      : g.book ? codebook(l) : `<div class="dec-progress">${g.picks.length} / ${target(l).length} · deck ${g.deck.length}</div>`));
+    board.querySelectorAll("[data-pk]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const c = takePeek(g, +b.dataset.pk); peek = null; play_("draw"); drawBoard(); drawHand(c ? [c.id] : []); }));
     first = false; const now = board.querySelector(".now"); now && now.scrollIntoView && now.scrollIntoView({ block: "nearest" });
   };
   const backId = equippedBack(C.state.prog), backs = () => [0, 1].map(() => `<span class="dec-back${backId ? " cb" : ""}">${backId ? cardBackSvg(backId) : ""}</span>`).join(""); // the shared 🎴 card back, if one is equipped
@@ -163,9 +165,12 @@ function puzzle(l) {
     C.ui(`<div class="dec-play"><button class="dec-deck" type="button" id="dec-draw" ${g.deck.length && g.ink >= INK_DRAW ? "" : "disabled"} aria-label="Draw a card for ${INK_DRAW} ink">
         ${backs()}<b>${g.deck.length}</b><small>Draw · ${INK_DRAW}🪶</small></button>
       <div class="dec-hand">${g.hand.map((c, i) => cardFace(c).replace('class="dec-hcard', `style="--i:${i}" class="dec-hcard${fresh.includes(c.id) ? " fresh" : ""}`)).join("")}</div></div>
+      ${g.noPowers ? "" : `<div class="dec-powers">${POWER_ORDER.map((k) => { const n = satchel(P())[k] || 0, P_ = POWERS[k];
+        return `<button class="dec-pcard ${k}" type="button" data-pw="${k}" ${canPower(P(), g, k) && !peek ? "" : "disabled"} title="${esc(P_.note)}"><span>${P_.emoji}</span><b>${esc(P_.name)}</b><small>×${n}</small></button>`; }).join("")}<span class="note">power cards · ${POWERS_PER_LEVEL - (g.powers || 0)} left this level</span></div>`}
       <div class="dec-inkbar">${inkRow()}<span class="note">ink · wrong card −${INK_MISS} · right card +1</span></div>
       <div class="choices"><button class="c" type="button" id="dec-book">${g.book ? "📖 Close codebook" : "📖 Codebook"}</button><button class="c" type="button" id="dec-hint">💡 Hint</button><button class="c" type="button" id="dec-quit">↩ Leave</button></div>`);
     $("ui").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => play(+b.dataset.c, b)));
+    $("ui").querySelectorAll("[data-pw]").forEach((b) => (b.onclick = () => power(b.dataset.pw)));
     $("dec-draw").onclick = () => { if (busy) return; const c = drawCard(l, g); if (!c) return; play_("draw"); drawHand([c.id]); drawBoard(); if (g.lost) return dry(); };
     $("dec-book").onclick = () => { play_("page"); g.book = !g.book; if (g.book) g.peeks++; drawBoard(); drawHand(); };
     $("dec-hint").onclick = () => { const v = needed(l, g); if (v == null) return; g.hints++; const c = g.hand.find((x) => x.v === v);
@@ -189,6 +194,13 @@ function puzzle(l) {
       play_("carve", l.script, g.picks.length - 1); drawBoard(); drawHand([g.hand[g.hand.length - 1]?.id]);
       if (r.done) { setTimeout(() => play_("solve"), 200); return solved(l, g); }
     });
+  };
+  const power = (k) => {
+    if (busy) return; const r = usePower(l, P(), g, k); if (!r) return; save(); play_("power", k);
+    if (k === "rosetta") { C.say(`The Rosetta card reads it for you: “${r.v}”.`); play_("carve", l.script, g.picks.length - 1); drawBoard(); drawHand();
+      if (r.done) { setTimeout(() => play_("solve"), 200); return opts.onDone ? opts.onDone(g) : solved(l, g); } return; }
+    if (k === "ink") { C.say("Fresh ink from the pot."); drawBoard(); drawHand(); return; }
+    peek = r.peek; C.say("The Scholar peers at the deck. Take the card you need."); drawBoard(); drawHand();
   };
   const dry = () => {
     show(`<div class="dec-cardtable">${strip(l, g.picks)}</div><div class="dec-done">🪶 The ink ran dry at ${g.picks.length} / ${target(l).length}.</div>`);
@@ -230,7 +242,7 @@ function reward(l, stars, why) {
   save(); C.showStats && C.showStats();
   const next = levelsOf(l.script)[levelsOf(l.script).indexOf(l) + 1];
   board.insertAdjacentHTML("beforeend", `<div class="dec-reward">${sparks()}${starRow(r.best, 3, true)}${r.newCodex ? `<div>📜 Codex: <b>${esc(r.newCodex)}</b></div>` : ""}
-    ${r.xp ? `<div>+${r.xp} ✦ · +${r.essence} 💎</div>` : `<div class="dec-note">Replay: practice only</div>`}${l.src ? `<small>Source: ${esc(l.src)}</small>` : ""}</div>`);
+    ${r.xp ? `<div>+${r.xp} ✦ · +${r.essence} 💎</div>` : `<div class="dec-note">Replay: practice only</div>`}${r.power ? `<div class="dec-gift">🎁 Power card: ${POWERS[r.power].emoji} <b>${esc(POWERS[r.power].name)}</b></div>` : ""}${l.src ? `<small>Source: ${esc(l.src)}</small>` : ""}</div>`);
   play("stars", r.best); if (r.xp && C.chime) setTimeout(() => C.chime(r.first ? 2 : 1), 300 + r.best * 220);
   C.say(why + (a.rankUp ? ` And… you've risen to ${a.rankUp}!` : ""));
   C.ui(`<div class="choices">${next ? `<button class="c main" type="button" id="dec-next">✦ Next: ${esc(next.title)}</button>` : ""}${stars < 3 ? `<button class="c" type="button" id="dec-again">↻ Try for ★★★</button>` : ""}

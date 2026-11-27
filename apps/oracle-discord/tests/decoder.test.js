@@ -143,3 +143,20 @@ test("Scribe's Hand: every decode level is winnable by a perfect scribe, and mis
   while (!g.lost) { const c = g.hand.find((x) => x.v !== needed(l, g)); if (!c) { if (!drawCard(l, g)) break; continue; } playCard(l, g, c.id); }
   assert.ok(g.lost || g.ink <= 1, "running dry loses the level");
 });
+
+
+test("power cards: earned with a new three stars, capped, two per level, each does its job", async () => {
+  const E = await import("../activity/src/decoder/engine.js");
+  const p = {}; assert.deepEqual(E.satchel(p), { rosetta: 1, ink: 1, scholar: 1 });
+  assert.ok(E.complete(p, "r1", 3).power); assert.equal(E.complete(p, "r1", 3).power, null, "only a new ★★★ earns");
+  assert.equal(E.complete(p, "r2", 2).power, null);
+  for (let i = 0; i < 30; i++) E.grantPower(p, "x" + i);
+  for (const k of E.POWER_ORDER) assert.equal(E.satchel(p)[k], E.POWER_CAP);
+  const l = LEVELS.find((x) => x.id === "o2"), g = E.deal(l, "pw");
+  const need = E.needed(l, g), r = E.usePower(l, p, g, "rosetta"); assert.ok(r.ok); assert.equal(g.picks[0], need);
+  g.ink = 2; E.usePower(l, p, g, "ink"); assert.equal(g.ink, Math.min(g.well, 5));
+  assert.equal(E.canPower(p, g, "scholar"), false, "two per level");
+  const g2 = E.deal(l, "pw2"), pk = E.usePower(l, p, g2, "scholar").peek; assert.equal(pk.length, 3);
+  const n = g2.hand.length; assert.ok(E.takePeek(g2, pk[1].id)); assert.equal(g2.hand.length, n + 1);
+  const g3 = E.deal(l, "pw3"); g3.noPowers = true; assert.equal(E.canPower(p, g3, "ink"), false, "daily has no powers");
+});

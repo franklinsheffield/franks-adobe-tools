@@ -76,7 +76,8 @@ export function complete(p, id, stars) {
   d.plays++; if (stars > before) d.solved[id] = stars;
   let newCodex = null;
   if (lvl && lvl.codex && !d.codex.includes(lvl.codex)) { d.codex.push(lvl.codex); newCodex = lvl.codex; }
-  return { first, stars, best: Math.max(stars, before), xp: gained * XP_PER_STAR + (first ? FIRST_CLEAR : 0), essence: gained * ESSENCE_PER_STAR + (first ? FIRST_CLEAR : 0), newCodex };
+  const power = stars === 3 && before < 3 ? grantPower(p, id) : null; // a power card for every new ★★★
+  return { first, stars, best: Math.max(stars, before), power, xp: gained * XP_PER_STAR + (first ? FIRST_CLEAR : 0), essence: gained * ESSENCE_PER_STAR + (first ? FIRST_CLEAR : 0), newCodex };
 }
 export const unlocked = (p, id) => { const l = byId(id), list = levelsOf(l.script), i = list.indexOf(l); return i === 0 || !!dec(p).solved[list[i - 1].id]; };
 export const scriptStars = (p, script) => levelsOf(script).reduce((n, l) => n + (dec(p).solved[l.id] || 0), 0);
@@ -122,3 +123,38 @@ export function drawCard(level, g) {
 }
 /** The sound the next glyph needs. */
 export const needed = (level, g) => target(level)[g.picks.length] ?? null;
+
+// ---- power cards: earned with ★★★, kept in a satchel (prog.rooms.decoder.powers), up to 2 used per level ----
+//   rosetta: a wild card, plays as the sound the glowing glyph needs (like the Rosetta Stone's three scripts).
+//   ink:     an ink pot, +3 ink (up to the well's size).
+//   scholar: look at the top 3 cards of the deck and take one into your hand, free.
+export const POWERS = {
+  rosetta: { emoji: "🗿", name: "Rosetta", note: "Wild: plays as the sound the glowing glyph needs" },
+  ink: { emoji: "🫙", name: "Ink pot", note: "+3 ink" },
+  scholar: { emoji: "🦉", name: "Scholar", note: "See the top 3 cards and take one free" },
+};
+export const POWER_ORDER = ["rosetta", "ink", "scholar"], POWER_CAP = 5, POWERS_PER_LEVEL = 2;
+/** The satchel; new players start with one of each so they meet them. */
+export const satchel = (p) => { const d = dec(p); d.powers ||= { rosetta: 1, ink: 1, scholar: 1 }; return d.powers; };
+/** Give a power card (which one cycles with the level, so it is repeatable in tests). Returns its kind or null when full. */
+export function grantPower(p, id = "") {
+  const s = satchel(p), start = [...String(id)].reduce((n, c) => n + c.charCodeAt(0), 0) % 3;
+  for (let k = 0; k < 3; k++) { const kind = POWER_ORDER[(start + k) % 3]; if ((s[kind] || 0) < POWER_CAP) { s[kind] = (s[kind] || 0) + 1; return kind; } }
+  return null;
+}
+/** Can this power be used now? */
+export const canPower = (p, g, kind) => !g.lost && (satchel(p)[kind] || 0) > 0 && (g.powers || 0) < POWERS_PER_LEVEL && !g.noPowers
+  && (kind !== "ink" || g.ink < g.well) && (kind !== "scholar" || g.deck.length > 0);
+/** Use a power. rosetta -> { ok, done }; ink -> { ink }; scholar -> { peek: [cards] } (then takePeek). */
+export function usePower(level, p, g, kind) {
+  if (!canPower(p, g, kind)) return null;
+  satchel(p)[kind]--; g.powers = (g.powers || 0) + 1;
+  if (kind === "rosetta") { const v = needed(level, g); g.picks.push(v); g.ink = Math.min(g.well, g.ink + INK_RIGHT); return { ok: true, done: g.picks.length === target(level).length, v }; }
+  if (kind === "ink") { g.ink = Math.min(g.well, g.ink + 3); return { ink: g.ink }; }
+  return { peek: g.deck.slice(0, 3) };
+}
+/** After a Scholar: take one of the top 3 cards into the hand (a full hand returns its oldest card under the deck). */
+export function takePeek(g, cardId) {
+  const i = g.deck.slice(0, 3).findIndex((c) => c.id === cardId); if (i < 0) return null;
+  const [c] = g.deck.splice(i, 1); if (g.hand.length >= HAND_MAX) g.deck.push(g.hand.shift()); g.hand.push(c); return c;
+}
