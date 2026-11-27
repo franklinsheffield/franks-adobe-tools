@@ -1,15 +1,16 @@
 // The Séance: Guess the Ghost, rules kept pure for tests. Progress lives in prog.rooms.seance:
 //   { plays, solved: { "<level>:<id>": bestScore }, last }
 // Each séance has 5 candles. The ghost's first clue is free; each further clue snuffs a candle, and so does each wrong
-// name. Step 1: magic, science or a bit of both (one try). Step 2: name the practice (levels 1-2) or the person
-// (level 3): typed is the challenge, "show me 4" halves the points. Points scale with the level. First identification
-// pays ✦ and 💎; replays pay only the improvement on your best.
+// name. Step 1: magic, science or a bit of both (one try). Step 2: name it. Level 1 names the kind of practice from a
+// small answer pool (a cardiologist counts as Biology); level 2 names the exact technique; level 3 names the person.
+// Typing is the challenge; "show me 4" blows out 3 candles (always leaving one). Points scale with the level. First
+// identification pays ✦ and 💎; replays pay only the improvement on your best.
 import { GHOSTS } from "./ghosts.js";
-import { GENERAL, SPECIFIC } from "./practices.js";
+import { POOL, GENERAL, SPECIFIC } from "./practices.js";
 
 /** Three levels: 1 general practices, 2 specific practices, 3 historical people. Points scale with the level. */
 export const LEVELS = [
-  { n: 1, name: "Apprentice", what: "General practices", deck: GENERAL, ask: "Which practice is this?", mult: 1 },
+  { n: 1, name: "Apprentice", what: "General practices", deck: GENERAL, pool: POOL, ask: "Which kind of science or magic did it practise?", mult: 1 },
   { n: 2, name: "Adept", what: "Specific techniques", deck: SPECIFIC, ask: "Which technique is this?", mult: 1.5 },
   { n: 3, name: "Master", what: "Historical scientists and magicians", deck: GHOSTS, ask: "Who is this?", mult: 2 },
 ];
@@ -20,7 +21,8 @@ export const TITLES = [{ at: 0, name: "Curious" }, { at: 6, name: "Medium-rare" 
 
 export const CANDLES = 5;
 export const FIELD_PTS = 5;
-export const perCandle = (mode, L = LEVELS[2]) => Math.round((mode === "pick" ? 1.5 : 3) * L.mult);
+export const PICK_COST = 3;
+export const perCandle = (mode, L = LEVELS[2]) => Math.round(3 * L.mult);
 export const fieldPts = (L = LEVELS[2]) => Math.round(FIELD_PTS * L.mult);
 
 export const room = (p) => {
@@ -47,8 +49,16 @@ export function moreClue(run, g) {
   run.shown++; run.candles--; return true;
 }
 
-/** Switch to multiple choice (halves the points for the name). */
-export const usePick = (run) => { run.mode = "pick"; };
+/** Switch to multiple choice: blows out 3 candles, always leaving one for the guess. */
+export const usePick = (run) => { if (run.mode === "pick" || run.done) return false; run.mode = "pick"; run.candles = Math.max(1, run.candles - PICK_COST); return true; };
+
+/** What a level's answers are: the pool at level 1, the deck itself at levels 2-3. */
+export const optionsOf = (L) => L.pool || L.deck;
+export const optionById = (id, L = LEVELS[2]) => optionsOf(L).find((x) => x.id === id);
+/** Is this answer right for this ghost? Level 1 accepts any pool entry in g.answers. */
+export const isRight = (g, x) => !!x && (x.id === g.id || (g.answers || []).includes(x.id));
+/** The answers a ghost accepts, as pool entries (level 1), or just the ghost. */
+export const answersOf = (g, L) => (L.pool ? g.answers.map((id) => L.pool.find((x) => x.id === id)) : [g]);
 
 const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
 function lev(a, b) {
@@ -58,31 +68,34 @@ function lev(a, b) {
   return d[a.length][b.length];
 }
 const tol = (n) => (n < 6 ? 0 : n < 10 ? 1 : 2);
-/** Which entry of a level's deck a typed name means (forgiving small typos), or null. */
-export function whoIs(text, L = LEVELS[2]) {
+/** Which answer a typed name means (forgiving small typos), or null. Level 1 matches the pool, plus the current
+ *  ghost's own job title ("cardiologist") when g is given. */
+export function whoIs(text, L = LEVELS[2], g = null) {
   const t = norm(text); if (!t) return null;
   let best = null, bd = Infinity;
-  for (const g of L.deck) for (const a of g.aliases) { const d = lev(t, norm(a)); if (d < bd) { bd = d; best = g; } }
+  const list = L.pool ? [...L.pool, ...(g ? [g] : [])] : L.deck;
+  for (const x of list) for (const a of x.aliases) { const d = lev(t, norm(a)); if (d < bd) { bd = d; best = x; } }
   if (!best) return null;
   const ok = best.aliases.some((a) => lev(t, norm(a)) <= tol(norm(a).length));
   return ok ? best : null;
 }
 
-/** Four names to choose from: the ghost and three others, preferring the same kind. Stable per ghost. */
+/** Four answers to choose from: one right one and three wrong, preferring the same kind. Stable per ghost. */
 export function choices(g, L = LEVELS[2]) {
-  const GHOSTS = L.deck;
+  const opts = optionsOf(L), right = L.pool ? answersOf(g, L)[0] : g;
   const h = [...g.id].reduce((n, c) => n * 31 + c.charCodeAt(0), 7) >>> 0;
-  const same = GHOSTS.filter((x) => x.id !== g.id && x.field === g.field), other = GHOSTS.filter((x) => x.id !== g.id && x.field !== g.field);
+  const wrong = opts.filter((x) => !isRight(g, x));
+  const same = wrong.filter((x) => x.field === g.field), other = wrong.filter((x) => x.field !== g.field);
   const pool = [...same, ...other], picks = [];
   for (let i = 0; picks.length < 3; i++) { const x = pool[(h + i * 7) % pool.length]; if (!picks.includes(x)) picks.push(x); }
-  const all = [g, ...picks], k = h % 4;
+  const all = [right, ...picks], k = h % 4;
   return [...all.slice(k), ...all.slice(0, k)];
 }
 
-/** Name the ghost (a ghost object, from whoIs or the choices). "right" | "wrong" | "out" | null. */
+/** Name the ghost (an answer from whoIs or the choices). "right" | "wrong" | "out" | null. */
 export function guessName(run, g, pick) {
   if (run.done) return null;
-  if (pick && pick.id === g.id) { run.done = true; run.won = true; return "right"; }
+  if (isRight(g, pick)) { run.done = true; run.won = true; return "right"; }
   run.wrong.push(pick ? pick.id : "?"); run.candles--;
   if (run.candles <= 0) { run.done = true; return "out"; }
   return "wrong";

@@ -76,3 +76,8 @@ test("room shelves add a store tab, items, talk, and free items", () => {
   assert.equal(ALL.find((s) => s.id === "zz-b").kind, "zz-test"); assert.ok(shelf("zz-test"));
   assert.ok(free({}).owned.includes("zz-a"));
 });
+
+test("store ids are unique; old cat/ghost voice saves migrate", () => {
+  const ids = ALL.map((s) => s.id); assert.equal(new Set(ids).size, ids.length, ids.filter((x, i) => ids.indexOf(x) !== i).join());
+  const p = free({ owned: ["cat"], voice: "cat" }); assert.equal(p.voice, "meow-voice"); assert.ok(p.owned.includes("meow-voice"));
+});
