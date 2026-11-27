@@ -12,6 +12,8 @@ import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
+import { STORE, KINDS, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
+import { setVoiceStyle, sampleVoice } from "./voice-sfx.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -22,6 +24,17 @@ const state = { name: "traveller", userId: "guest", token: null, profile: PREVIE
 // ---- the Oracle and her sky ----
 $("teller").innerHTML = `<svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${sigilRingSvg({ cx: 200, cy: 200, r: 196, id: "t" })}${figureSvg({ id: "t" })}</svg>`;
 const table = makeTable($("table"), { reduced });
+// Layers the Essence store's avatars draw into: behind the hood, on the hood, on the face, and in front.
+(() => {
+  const svg = $("teller").querySelector("svg"), body = svg.querySelector(".o-body"), NS = "http://www.w3.org/2000/svg";
+  const g = (id) => { const e = document.createElementNS(NS, "g"); e.id = id; return e; };
+  const defs = document.createElementNS(NS, "defs");
+  defs.innerHTML = `<clipPath id="t-hoodclip"><path d="M200 14 C214 60 252 150 290 236 C316 296 340 348 368 400 L32 400 C60 348 84 296 110 236 C148 150 186 60 200 14Z"/></clipPath>
+    <pattern id="t-nemes" width="400" height="22" patternUnits="userSpaceOnUse"><rect width="400" height="11" fill="#E2B04A"/><rect y="11" width="400" height="11" fill="#1d3a8e"/></pattern>`;
+  svg.prepend(defs);
+  body.prepend(g("av-back")); body.children[2].after(g("av-hood"));
+  svg.querySelector('[clip-path="url(#t-faceclip)"]').append(g("av-face")); body.append(g("av-front"));
+})();
 const CAST = {
   iching: "Six coins leave my hand… spinning… falling…", runes: "I loosen the pouch. Let the stones choose themselves…",
   oraclebones: "The bronze rod is hot. Listen… the shell answers with a crack…", ifa: "The chain falls. Eight seeds, open or closed…",
@@ -75,6 +88,7 @@ function greet() {
 }
 
 function choose(sys) {
+  if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   clearReading(); table.rest(sys.key); cap(sys.emoji + " " + sys.label);
   say(askLine(sys, state.name));
   if (sys.kind === "cast") {
@@ -105,6 +119,7 @@ function choose(sys) {
 }
 
 async function reveal(sys, options, question = "") {
+  if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question;
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
   document.body.classList.add("trance"); cap(sys.emoji + " " + (CAST[sys.key] || "The mist is moving…"));
@@ -129,10 +144,20 @@ async function reveal(sys, options, question = "") {
   const words = speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
-  const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
+  useRead(state.prog); const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
   const a = answer(question, text, state.name);
   const pages = [words, a.line, quip(sys.key, state.name, state.last.quips++)];
   talkThrough(pages, () => { afterReading(); reward(gain, sys); });
+}
+
+/** Out of Chamber readings for today: say so with style, and offer a day pass, the store, or the chat commands. */
+function outOfReadings(sys) {
+  const p = state.prog, rk = rankOf(p.xp).name, nx = nextRank(p.xp), lim = dailyLimit(rk);
+  table.rest(sys.key);
+  say(`The glass is resting, ${state.name}. A ${rk} gets ${lim} reading${lim === 1 ? "" : "s"} a day in the Chamber. Union rules for crystal balls. ${nx ? `Reach ${nx.name} for more.` : ""} A day pass buys one more, or ask me with /oracle in chat, where the line never closes.`);
+  ui(`<div class="choices"><button class="c main" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading (💎 ${DAY_PASS}, you have ${p.essence})</button><button class="c" type="button" id="shop">💎 Store</button><button class="c" type="button" id="back">✦ Back</button></div>`);
+  $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); chime(1); showStats(); choose(sys); } };
+  $("shop").onclick = () => showStore(); $("back").onclick = greet;
 }
 
 /** The menu once the Oracle has answered: go deeper, ask another question, save, or start again. */
@@ -194,7 +219,7 @@ function talkThrough(pages, done) {
 
 // ---- the game layer: rewards, stats, Codex and wardrobe ----
 function reward(g, sys) {
-  const bits = [`<b>+${g.xp} ✦</b>`];
+  const bits = [`<b>+${g.xp} ✦ · +${g.essence} 💎</b>`];
   if (g.firstSystem) bits.push(`first ${esc(sys.label)} reading`);
   if (g.newItems.length) bits.push(`new in your Codex: ${g.newItems.map(esc).join(", ")}`);
   if (g.firstToday) bits.push(`🌙 moon token · 🔥 ${g.streak}-day streak`);
@@ -209,18 +234,59 @@ function reward(g, sys) {
 function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
-  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span>`;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>`;
 }
 
+const owns = (id) => state.prog.unlocked.includes(id) || (state.prog.owned || []).includes(id);
+const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
-  const u = UNLOCKS.find((x) => x.id === id); if (!u || !state.prog.unlocked.includes(id)) return;
+  const u = lookItem(id); if (!u || !owns(id)) return;
   state.prog[u.kind] = id; saveProgress(); applyLook();
 }
 function applyLook() {
-  const c = UNLOCKS.find((x) => x.id === state.prog.cloth) || UNLOCKS[0], o = UNLOCKS.find((x) => x.id === state.prog.orb);
+  const p = state.prog, svg = $("teller").querySelector("svg");
+  const c = lookItem(p.cloth) || UNLOCKS[0], o = lookItem(p.orb), fl = item(p.flame), out = item(p.outfit) || item("midnight"), av = item(p.avatar) || item("classic");
   const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
   document.documentElement.style.setProperty("--orb-filter", o ? o.f : "none");
+  document.documentElement.style.setProperty("--flame-filter", fl ? fl.f : "none");
+  const stops = (id, cols) => svg.querySelectorAll(`#${id} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
+  stops("t-hood", out.hood);
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { e.dataset.trim = "1"; e.setAttribute("stroke", out.trim); });
+  stops("t-face", av.face || ["#FFE7A0", "#E9B947", "#8C5E17"]);
+  stops("t-iris", av.iris || ["#FFB3E2", "#FF4FB3", "#B8157A"]);
+  $("av-back").innerHTML = av.back || ""; $("av-hood").innerHTML = av.hood || ""; $("av-face").innerHTML = av.face2 || ""; $("av-front").innerHTML = av.front || "";
+  const v = item(p.voice); setVoiceStyle(v ? v.v : null);
 }
+
+// ---- the Essence store ----
+function showStore(tab = "outfit") {
+  clearReading(); cap("💎 The Essence store"); table.idle();
+  const p = state.prog;
+  say(p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket.");
+  const tabs = KINDS.map(([k, label]) => `<button class="c small${k === tab ? " on" : ""}" type="button" data-tab="${k}">${label}</button>`).join("");
+  const goods = [...(tab === "cloth" || tab === "orb" ? UNLOCKS.filter((u) => u.kind === tab).map((u) => ({ ...u, earned: true })) : []), ...STORE.filter((s) => s.kind === tab)];
+  const rows = goods.map((it) => { const own = owns(it.id), on = p[tab] === it.id;
+    const act = on ? `<button class="c small" type="button" disabled>✓ Wearing</button>`
+      : own ? `<button class="c small" type="button" data-w="${it.id}">Use</button>`
+      : it.earned ? `<span class="note">🔒 ${esc(it.how)}</span>`
+      : `<button class="c small main" type="button" data-buy="${it.id}" ${p.essence >= it.price ? "" : "disabled"}>💎 ${it.price}</button>`;
+    return `<div class="shop-row${on ? " on" : ""}"><span>${esc(it.name)}</span>${tab === "voice" ? `<button class="c small" type="button" data-hear="${it.id}">▶ Hear</button>` : ""}${act}</div>`; }).join("");
+  const left = readsLeft(p, rankOf(p.xp).name);
+  ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
+    <div class="cx-top"><b>💎 ${p.essence} Essence</b> · readings left today: ${left === Infinity ? "unlimited" : left}
+      ${left === Infinity ? "" : `<button class="c small" type="button" id="pass" ${p.essence >= DAY_PASS ? "" : "disabled"}>🎟️ Day pass: +1 reading today (💎 ${DAY_PASS})</button>`}</div>
+    <div class="note">Daily readings by rank: ${DAILY.filter((d, i) => i < 4).map((d) => `${d.rank} ${d.n === Infinity ? "unlimited" : d.n}`).join(" · ")}. The /oracle commands in chat are always unlimited.</div>
+    <div class="choices tabs">${tabs}</div><div class="shop">${rows}</div>`);
+  $("back").onclick = greet;
+  if ($("pass")) $("pass").onclick = () => { if (buyDayPass(p)) { saveProgress(); chime(1); showStats(); showStore(tab); } };
+  $("ui").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => showStore(b.dataset.tab)));
+  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { wear(b.dataset.w); showStore(tab); }));
+  $("ui").querySelectorAll("[data-hear]").forEach((b) => (b.onclick = () => { const cur = item(p.voice); setVoiceStyle(item(b.dataset.hear).v); sampleVoice(); setTimeout(() => setVoiceStyle(cur ? cur.v : null), 700); }));
+  $("ui").querySelectorAll("[data-buy]").forEach((b) => (b.onclick = () => { if (buy(p, b.dataset.buy)) { chime(2); wear(b.dataset.buy); saveProgress(); showStats(); showStore(tab); } }));
+  if (PREVIEW) { const t = document.createElement("div"); t.className = "note"; t.innerHTML = `Preview only: <button class="c small" type="button" id="tester">🧪 +500 💎 and reset today's readings</button>`; $("ui").appendChild(t);
+    $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
+}
+$("store-btn").onclick = () => showStore();
 
 function showCodex() {
   clearReading(); cap("📜 Codex"); table.idle();

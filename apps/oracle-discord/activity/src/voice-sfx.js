@@ -21,6 +21,11 @@ export function unlockVoice() {
 }
 
 export const isMuted = () => muted;
+let style = { type: "square", base: 330, step: 28, vowel: 60, dur: 0.045, lp: 2600 };
+/** Choose the Oracle's voice (a blip style from the Essence store). */
+export function setVoiceStyle(v) { if (v) style = { ...style, ...v }; }
+/** A short sample of the current voice, for the store. */
+export function sampleVoice() { [..."Hello"].forEach((c, i) => setTimeout(() => blip(c, { final: i === 4 }), i * 70)); }
 export function setMuted(m) { muted = !!m; try { localStorage.setItem(KEY, muted ? "1" : "0"); } catch {} }
 
 /** One retro "talk" blip per letter, like an old-school RPG text box: a short square-wave beep whose pitch is
@@ -29,13 +34,13 @@ export function blip(ch, { final = false } = {}) {
   if (muted || !ctx || ctx.state !== "running") return;
   const t = ctx.currentTime, code = ch.toLowerCase().charCodeAt(0) || 97;
   const vowel = "aeiou".includes(ch.toLowerCase());
-  const pitch = 330 + (code % 7) * 28 + (vowel ? 60 : 0), dur = final ? 0.12 : 0.045;
-  const osc = ctx.createOscillator(); osc.type = "square";
+  const V = style, pitch = V.base + (code % 7) * V.step + (vowel ? V.vowel : 0), dur = final ? V.dur + 0.075 : V.dur;
+  const osc = ctx.createOscillator(); osc.type = V.type;
   osc.frequency.setValueAtTime(pitch, t);
   if (final) osc.frequency.exponentialRampToValueAtTime(pitch * 0.7, t + dur);
   const env = ctx.createGain(); env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(0.5, t + 0.004);
   env.gain.setValueAtTime(0.5, t + dur * 0.6); env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2600;
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = V.lp;
   osc.connect(lp); lp.connect(env); env.connect(out);
   osc.start(t); osc.stop(t + dur + 0.01);
 }
