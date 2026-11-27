@@ -12,9 +12,9 @@ import { COMPOUNDS, BY_KEY, BY_ID, compoundsOf, keyOf, pretty, CHAINS } from "./
 
 export const START = 20, HAND = 7, GOAL = 5, SHIELD = 4, MAX_ROUNDS = 30;
 export const LEVELS = [
-  { n: 1, name: "Apprentice", what: "20 common elements, two-atom compounds, valid combos glow", mult: 1, hints: true, fizzle: 0, recycle: 7, undo: true, ai: "novice" },
-  { n: 2, name: "Chemist", what: "40 elements, real multi-atom formulas, charges must balance, no hints", mult: 1.5, hints: false, fizzle: 1, recycle: 3, undo: true, ai: "sharp" },
-  { n: 3, name: "Master", what: "52 elements, reaction chains, a cunning Oracle, no undo", mult: 2, hints: false, fizzle: 2, recycle: 2, undo: false, ai: "master" },
+  { n: 1, name: "Apprentice", what: "20 common elements, two-atom compounds, valid combos glow", mult: 1, hints: true, fizzle: 0, recycle: 7, undo: true, ai: "novice", oHand: 7 },
+  { n: 2, name: "Chemist", what: "40 elements, real multi-atom formulas, charges must balance, no hints, the Oracle holds 8 cards", mult: 1.5, hints: false, fizzle: 1, recycle: 3, undo: true, ai: "sharp", oHand: 8 },
+  { n: 3, name: "Master", what: "52 elements, reaction chains, a cunning Oracle holding 9 cards, no undo", mult: 2, hints: false, fizzle: 2, recycle: 2, undo: false, ai: "master", oHand: 9 },
 ];
 for (const L of LEVELS) { L.pool = poolOf(L.n); L.deck = compoundsOf(L.n); }
 
@@ -120,14 +120,15 @@ export function chainStep(g, side, c) {
 // ---- the duel ----
 export function newGame(level = 1, seed = Date.now()) {
   const L = LEVELS[level - 1], r = rng(seed);
-  const side = () => { const deck = deckOf(L, r); return { hp: START, deck, hand: deck.splice(0, HAND), discard: [], found: [], shield: 0, last: null, chainOk: false, chains: [], bonusHits: 0, recycled: 0, shieldUsed: false }; };
-  const g = { level, seed, r, round: 0, turn: "you", you: side(), oracle: side(), bench: [], cond: null, bonus: null, log: [], over: null };
+  const side = (n = HAND) => { const deck = deckOf(L, r); return { hp: START, deck, hand: deck.splice(0, n), discard: [], found: [], shield: 0, last: null, chainOk: false, chains: [], bonusHits: 0, recycled: 0, shieldUsed: false }; };
+  const g = { level, seed, r, round: 0, turn: "you", you: side(), oracle: side(L.oHand), bench: [], cond: null, bonus: null, log: [], over: null };
   nextRound(g); return g;
 }
 const L_ = (g) => LEVELS[g.level - 1];
 function draw(g, s) {
   const p = g[s];
-  while (p.hand.length < HAND) {
+  const size = s === "oracle" ? L_(g).oHand : HAND;
+  while (p.hand.length < size) {
     if (!p.deck.length) { if (!p.discard.length) break; p.deck = shuffle(g.r, p.discard); p.discard = []; }
     p.hand.push(p.deck.shift());
   }
@@ -227,7 +228,7 @@ export function oracleMove(g) {
   const net = (o) => o.power - o.cost * 2 - (g.you.shield ? Math.min(g.you.shield, o.power) : 0) + (!me.found.includes(o.c.id) ? (me.found.length >= GOAL - 2 ? 6 : 1) : 0) + (o.chain && o.chain.k === 0 && L.ai === "master" ? 2 : 0);
   let best;
   if (L.ai === "novice") best = pick(r, opts);
-  else if (L.ai === "sharp") best = r() < 0.6 ? opts.reduce((a, b) => (b.power > a.power ? b : a)) : pick(r, opts);
+  else if (L.ai === "sharp") best = r() < 0.75 ? opts.reduce((a, b) => (b.power > a.power ? b : a)) : pick(r, opts);
   else best = opts.reduce((a, b) => (net(b) > net(a) ? b : a));
   return { kind: "react", c: best.c, cards: cardsFor(me.hand, best.c), shield };
 }
