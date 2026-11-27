@@ -166,3 +166,36 @@ test("daily specimen: same plant all day, spoiler-free share line and board deta
   assert.equal(finishDaily(prog, DAILY_ID, { score: 99 }, "2026-11-27").first, false, "first run of the day counts");
   assert.equal(dailyState(prog, DAILY_ID, "2026-11-27").today.score, 9);
 });
+
+// ---- Herbarium (collection book) ----
+import { gardens, claimGardenPrizes, GARDEN_PRIZE } from "../activity/src/grimoire/herbarium.js";
+import { thumbSvg } from "../activity/src/grimoire/sketch.js";
+import { LEVELS as HL, keyOf as hKey } from "../activity/src/grimoire/logic.js";
+
+test("herbarium: gardens count found pages and pay each full garden once", () => {
+  const prog = { rooms: { grimoire: { solved: {} } } };
+  let gs = gardens(prog);
+  assert.equal(gs.length, HL.length);
+  assert.equal(gs.reduce((a, g) => a + g.total, 0), 76);
+  assert.ok(gs.every((g) => g.got === 0 && !g.done));
+  assert.deepEqual(claimGardenPrizes(prog), []);
+  const L = HL[0];
+  L.deck.slice(0, -1).forEach((p) => (prog.rooms.grimoire.solved[hKey(L, p)] = 10));
+  assert.deepEqual(claimGardenPrizes(prog), [], "one page short pays nothing");
+  prog.rooms.grimoire.solved[hKey(L, L.deck.at(-1))] = 10;
+  gs = gardens(prog);
+  assert.ok(gs[0].done && !gs[0].paid);
+  const won = claimGardenPrizes(prog);
+  assert.equal(won.length, 1); assert.equal(won[0].essence, GARDEN_PRIZE[1]);
+  assert.ok(gardens(prog)[0].paid);
+  assert.deepEqual(claimGardenPrizes(prog), [], "never pays twice");
+});
+
+test("herbarium: thumbnails are clean SVG, silhouettes get the ghost class", () => {
+  for (const L of HL) for (const p of L.deck) {
+    const a = thumbSvg(p), b = thumbSvg(p, false);
+    assert.ok(a.startsWith("<svg") && a.endsWith("</svg>"), p.id);
+    assert.ok(!/undefined|NaN|id="/.test(a), p.id);
+    assert.ok(b.includes("ghost") && !a.includes("ghost"), p.id);
+  }
+});
