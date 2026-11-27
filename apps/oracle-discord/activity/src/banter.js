@@ -161,6 +161,18 @@ export const BANTER = {
     pirate: G("Shoot the star, matey, and mark it true!", "Greenwich time in the box, our noon in the sky. Arr.", "Land ho! Drop anchor and break out the grog!", "Lost, blast it! Back to dead reckonin'!"),
     influencer: G("Analogue navigation is so aesthetic right now.", "This sextant is giving vintage explorer vibes.", "Landfall! Pinning this voyage to my travel board!", "Lost at sea. Not the content I wanted."),
   },
+  starparty: {
+    mystic: G("Each falling star is a grain of a comet's dream.", "Trace it home. Every streak remembers where it came from.", "You read the shower like a seer reads the stars.", "The strays fooled you. They wander without a home."),
+    deadpan: G("A meteor is a sand grain. Very fast. Very brief.", "Sporadics. No shower, no plan. Like most of us.", "Counted correctly. The IMO thanks you, probably.", "Wrong ones counted. The data weeps."),
+    drama: G("Look up! LOOK UP! There goes another one!", "Is it from the radiant? The tension is UNBEARABLE!", "A PERFECT count! The heavens applaud!", "Strays in the tally! A tragedy in one act!"),
+    standup: G("Meteor showers: the sky's free fireworks, no permit needed.", "Make a wish? Sure, it's a burning sand grain. Go on.", "Great count! You'd be the life of any star party.", "You counted a stray. The stray is very flattered."),
+    grumpy: G("Red torch only. Who brought a phone? Put it away.", "Back to the radiant, then tap. Not before.", "Fine counting. Now let your eyes rest a minute.", "You tapped every streak like a pigeon. Again."),
+    sports: G("Here they come, folks, streaking off the radiant!", "Sporadic on the left, shower on the right, great call!", "WHAT A WATCH! Clean sheet, full count!", "Tapped a stray! Penalty to the sporadics!"),
+    conspiracy: G("Why do they all come from one spot? Who's throwing them?", "Phaethon's an asteroid acting like a comet. Suspicious.", "Accurate count. They'll want your notes.", "Wrong count. Or someone moved the radiant."),
+    bard: G("A silver thread across the vault of night!", "From Perseus they fall, like arrows from a bow.", "Thy tally sings as true as any star!", "Alas, a wanderer hath slipped into thy count."),
+    pirate: G("Shootin' stars off the port bow, matey!", "Trace it back to port before ye claim it!", "A fine haul of stars for the logbook!", "Ye counted a stray, ye landlubber!"),
+    influencer: G("Meteor watch party is the vibe tonight, no filter.", "Radiant check before you tap. Learned that today.", "Perfect count! Adding this to my night routine.", "Counted strays. Not my best content, we go again."),
+  },
   messier: {
     mystic: G("Every fuzzy patch is a door left ajar in the dark.", "A hundred and ten lanterns, hung by one patient man.", "Another light written in the book. The sky remembers.", "It slipped behind the veil. It will wait for you."),
     deadpan: G("It is fuzzy. Most things in this list are fuzzy.", "Messier wanted comets. He catalogued their impostors.", "Correct. One more smudge accounted for.", "Wrong smudge. The sky has many."),

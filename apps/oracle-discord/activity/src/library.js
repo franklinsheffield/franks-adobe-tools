@@ -36,7 +36,7 @@ export const ROOM_BOOKS = {
   duel: ["artofwar", "sherman"], grimoire: ["fernie", "daniel"],
   seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"], mentalist: ["panchadasi", "crystal"],
   timeline: ["frazer", "hall"], decoder: ["emerald", "mathers"], cipherdesk: ["mathers", "emerald"], inscriptions: ["emerald", "mathers"], memory: ["cambridge", "dreams"],
-  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], navigator: ["reade", "blavatsky"], messier: ["blavatsky", "reade"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
+  stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], navigator: ["reade", "blavatsky"], messier: ["blavatsky", "reade"], starparty: ["reade", "blavatsky"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
 };
 const SHELF = ["kybalion", "hall", "crystal", "tealeaves"];
 /** Each host's way of saying it. {book}, {forum}, {name}. */

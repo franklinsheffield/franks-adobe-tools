@@ -6,11 +6,13 @@
 //   GET/POST /api/daily/<game>  Bearer <access_token> -> today's shared daily-challenge board (src/daily.js)
 //   POST /api/share  Bearer <access_token> { channelId, title, lines, color } -> { ok }  (a Grimoire page posted by the bot)
 //   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
+//   GET/POST /api/party/<star|meteor>  Bearer <access_token> { add } -> the shared Star Party / meteor count (src/starparty/shared.js)
 //   GET  /api/tables?game=&instance=  (WebSocket) -> the call's shared table for a game room (tables.mjs, multiplayer)
 import { loadProfile, deleteProfile } from "../src/profiles.js";
 import { Tables, tableRoute } from "./tables.mjs";
 export { Tables };
 import { settleBoost } from "./src/boost.js";
+import { partyKey, addToParty, partyView } from "./src/starparty/shared.js";
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
@@ -57,6 +59,25 @@ async function daily(req, env, game, url) {
     await env.PROFILES.put(key, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 8 });
   }
   return json(boardView(doc, me.id, day));
+}
+
+/** Star Party and meteor-watch counts: KV "party:star:<week>" / "party:meteor:<shower-year>" = { total, e }. */
+async function party(req, env, kind) {
+  if (kind !== "star" && kind !== "meteor") return json({ error: "unknown party" }, 404);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
+  if (!env.PROFILES) return json({ error: "storage not set up" }, 503);
+  const me = await whoIs(token);
+  if (!me || !me.id) return json({ error: "sign in first" }, 401);
+  const key = partyKey(kind);
+  if (!key) return json({ key: null, total: 0, count: 0, top: [], you: 0 });
+  if (req.method === "GET") return json(partyView(await env.PROFILES.get(key, "json"), me.id, key));
+  if (req.method !== "POST") return json({ error: "GET or POST" }, 405);
+  const b = await req.json().catch(() => null);
+  const before = await env.PROFILES.get(key, "json"), was = JSON.stringify(before);
+  const doc = addToParty(before, kind, { id: me.id, name: me.global_name || me.username }, b && b.add);
+  if (JSON.stringify(doc) !== was) await env.PROFILES.put(key, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 60 });
+  return json(partyView(doc, me.id, key));
 }
 
 /** Is this member boosting the guild? The bot reads their member record (premium_since); each boost pays once. */
@@ -120,6 +141,7 @@ export default {
       return json({ ok: true });
     }
     if (path.startsWith("/api/daily/")) return daily(req, env, path.slice(11), url);
+    if (path.startsWith("/api/party/")) return party(req, env, path.slice(11));
     if (path === "/api/boost") {
       if (req.method !== "POST") return json({ error: "POST only" }, 405);
       const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
