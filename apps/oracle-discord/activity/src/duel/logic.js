@@ -9,6 +9,7 @@
 // Progress lives in prog.rooms.duel: { plays, wins: {1,2,3}, played: {1,2,3}, codex: { id: 1 }, chains: { id: 1 }, look, seen }.
 import { EL, poolOf, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_KEY, BY_ID, compoundsOf, keyOf, pretty, CHAINS } from "./compounds.js";
+import { RIVAL, rivalTaste, RIVAL_PRIZE } from "./rivals.js";
 
 export const START = 20, HAND = 7, GOAL = 5, SHIELD = 4, MAX_ROUNDS = 30;
 export const LEVELS = [
@@ -118,16 +119,17 @@ export function chainStep(g, side, c) {
 }
 
 // ---- the duel ----
-export function newGame(level = 1, seed = Date.now()) {
-  const L = LEVELS[level - 1], r = rng(seed);
-  const side = (n = HAND) => { const deck = deckOf(L, r); return { hp: START, deck, hand: deck.splice(0, n), discard: [], found: [], shield: 0, last: null, chainOk: false, chains: [], bonusHits: 0, recycled: 0, shieldUsed: false }; };
-  const g = { level, seed, r, round: 0, turn: "you", you: side(), oracle: side(L.oHand), bench: [], cond: null, bonus: null, log: [], over: null };
-  nextRound(g); return g;
+export function newGame(level = 1, seed = Date.now(), rival = null) {
+  const L = LEVELS[level - 1], r = rng(seed), rv = level === 3 ? RIVAL[rival] || null : null;
+  const extra = (deck) => { if (rv) for (const s of rv.fav) if (L.pool.some((e) => e.s === s)) for (let k = 0; k < (rv.copies ?? 2); k++) deck.push({ id: ++uid, s }); return rv ? shuffle(r, deck) : deck; };
+  const side = (n = HAND, mine = false) => { const deck = mine ? extra(deckOf(L, r)) : deckOf(L, r); return { hp: START, deck, hand: deck.splice(0, n), discard: [], found: [], shield: 0, last: null, chainOk: false, chains: [], bonusHits: 0, recycled: 0, shieldUsed: false }; };
+  const g = { level, seed, r, round: 0, turn: "you", rival: rv ? rv.id : null, you: side(), oracle: side(L.oHand + (rv?.hand || 0), true), oMax: START + (rv?.hp || 0), bench: [], cond: null, bonus: null, log: [], over: null };
+  g.oracle.hp = g.oMax; nextRound(g); return g;
 }
 const L_ = (g) => LEVELS[g.level - 1];
 function draw(g, s) {
   const p = g[s];
-  const size = s === "oracle" ? L_(g).oHand : HAND;
+  const size = s === "oracle" ? L_(g).oHand + ((g.rival && RIVAL[g.rival].hand) || 0) : HAND;
   while (p.hand.length < size) {
     if (!p.deck.length) { if (!p.discard.length) break; p.deck = shuffle(g.r, p.discard); p.discard = []; }
     p.hand.push(p.deck.shift());
@@ -225,7 +227,7 @@ export function oracleMove(g) {
   };
   if (!opts.length) return recycleJunk();
   if (L.ai === "novice" && r() < 0.2) return recycleJunk();
-  const net = (o) => o.power - o.cost * 2 - (g.you.shield ? Math.min(g.you.shield, o.power) : 0) + (!me.found.includes(o.c.id) ? (me.found.length >= GOAL - 2 ? 6 : 1) : 0) + (o.chain && o.chain.k === 0 && L.ai === "master" ? 2 : 0);
+  const net = (o) => o.power - o.cost * 2 - (g.you.shield ? Math.min(g.you.shield, o.power) : 0) + (!me.found.includes(o.c.id) ? (me.found.length >= GOAL - 2 ? 6 : 1) : 0) + (o.chain && o.chain.k === 0 && L.ai === "master" ? 2 : 0) + rivalTaste(RIVAL[g.rival], o.c, me.found);
   let best;
   if (L.ai === "novice") best = pick(r, opts);
   else if (L.ai === "sharp") best = r() < 0.75 ? opts.reduce((a, b) => (b.power > a.power ? b : a)) : pick(r, opts);
@@ -276,6 +278,8 @@ export function settle(p, g) {
   const newChains = g.you.chains.filter((id) => !r.chains[id]); for (const id of newChains) r.chains[id] = 1;
   const xp = won ? Math.round((12 + 2 * g.you.found.length) * L.mult) : 3 + g.you.found.length;
   const essence = (won ? Math.round(10 * L.mult) : 0) + newCodex.length * 2 + g.you.bonusHits * 3 + newChains.length * 10;
-  return { xp, essence, newCodex, newChains, won };
+  let newRival = null;
+  if (won && g.rival) { const rv = (r.rivals ||= {}); if (!rv[g.rival]) newRival = g.rival; rv[g.rival] = (rv[g.rival] || 0) + 1; }
+  return { xp, essence: essence + (newRival ? RIVAL_PRIZE : 0), newCodex, newChains, won, newRival };
 }
 export { COMPOUNDS, BY_ID, CHAINS, pretty };
