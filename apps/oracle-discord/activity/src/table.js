@@ -8,7 +8,7 @@ const f1 = (n) => Number(n.toFixed(1));
 function tableSvg(inner) {
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 <defs>
-  <radialGradient id="tb-cloth" cx="50%" cy="65%" r="75%"><stop offset="0" stop-color="#5a2a8a"/><stop offset=".55" stop-color="#36185e"/><stop offset="1" stop-color="#170a2e"/></radialGradient>
+  <radialGradient id="tb-cloth" cx="50%" cy="65%" r="75%"><stop offset="0" style="stop-color:var(--cloth1,#5a2a8a)"/><stop offset=".55" style="stop-color:var(--cloth2,#36185e)"/><stop offset="1" style="stop-color:var(--cloth3,#170a2e)"/></radialGradient>
   <linearGradient id="tb-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1248"/><stop offset="1" stop-color="#0d0618"/></linearGradient>
   <radialGradient id="tb-flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="${G.light}"/><stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/></radialGradient>
   <radialGradient id="tb-halo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${G.light}" stop-opacity=".45"/><stop offset="1" stop-color="${G.light}" stop-opacity="0"/></radialGradient>

@@ -9,12 +9,15 @@ import { fieldsFor } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
 import { MODS } from "./modules.gen.js";
 import { startDiscord, inDiscord, api } from "./discord.js";
+import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
+import { chime, trance, deepen } from "./voice-sfx.js";
+import { answer, quip, deeperPages } from "./answer.js";
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const PREVIEW = window.ORACLE_PREVIEW || null; // set only by the standalone preview page (build-preview.mjs)
-const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null };
+const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null, prog: fresh() };
 
 // ---- the Oracle and her sky ----
 $("teller").innerHTML = `<svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${sigilRingSvg({ cx: 200, cy: 200, r: 196, id: "t" })}${figureSvg({ id: "t" })}</svg>`;
@@ -63,7 +66,9 @@ const clearReading = () => { $("reading-body").innerHTML = ""; $("box").scrollTo
 function greet() {
   clearReading(); table.idle(); cap("");
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
-  say(greeting(state.name));
+  const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
+  say(greeting(state.name) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  showStats();
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast").map(btn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
@@ -75,7 +80,7 @@ function choose(sys) {
   if (sys.kind === "cast") {
     ui(`<form class="form one" id="f"><label for="q">Your question (optional)<input id="q" maxlength="200" autocomplete="off" placeholder="What do I need to know about…"></label></form>
       <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>`);
-    $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(); reveal(sys, optionsFor(sys, q ? { [sys.ask || "question"]: q } : {})); };
+    $("f").onsubmit = (e) => { e.preventDefault(); const q = $("q").value.trim(); reveal(sys, optionsFor(sys, q ? { [sys.ask || "question"]: q } : {}), q); };
     setTimeout(() => $("q").focus(), 50);
   } else {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
@@ -84,7 +89,8 @@ function choose(sys) {
     if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
-    ui(`<form class="form${rows.length === 1 ? " one" : ""}" id="f">${rows.join("")}</form>
+    rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
+    ui(`<form class="form" id="f">${rows.join("")}</form>
       <div class="choices"><button class="c main" type="submit" form="f">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
       <div class="note">${PREVIEW ? PREVIEW.note + " " : state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
     $("f").onsubmit = (e) => { e.preventDefault();
@@ -93,20 +99,23 @@ function choose(sys) {
       if (need.includes("place")) o[f.place] = v("p");
       if (need.includes("name")) o[f.name] = v("n");
       if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
-      reveal(sys, o); };
+      reveal(sys, o, v("bq")); };
   }
   $("back").onclick = greet;
 }
 
-async function reveal(sys, options) {
-  ui(""); clearReading(); document.body.classList.add("gazing");
-  say(CAST[sys.key] || "Mmm… the mist is moving…");
+async function reveal(sys, options, question = "") {
+  ui(""); clearReading(); state.q = question;
+  // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
+  document.body.classList.add("trance"); cap(sys.emoji + " " + (CAST[sys.key] || "The mist is moving…"));
+  clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
+  trance(3);
   let r, err;
   try {
     const mod = MODS[sys.command];
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key)]);
+    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key), wait(3000)]);
   } catch (e) { err = e; }
-  document.body.classList.remove("gazing");
+  document.body.classList.remove("trance"); cap(sys.emoji + " " + sys.label);
   if (err) {
     table.rest(sys.key);
     say("The glass clouds over. " + (err.message || "Something went wrong."));
@@ -118,14 +127,137 @@ async function reveal(sys, options) {
   const files = (r.files || []).map(svgOf).filter(Boolean);
   layArt(files);
   const words = speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
-  state.last = { sys, r, words, files };
-  say(words, () => {
-    ui(`<div class="choices"><button class="c main" type="button" id="save">📖 Save to journal</button><button class="c" type="button" id="back">✦ Another reading</button>${files.length ? `<button class="c" type="button" id="big">🔍 Enlarge the art</button>` : ""}</div>`);
-    $("save").onclick = (e) => { saveJournal(state.last); e.target.textContent = "✓ Saved"; e.target.disabled = true; };
-    $("back").onclick = greet;
-    if ($("big")) $("big").onclick = () => zoom(files[0]);
-    showReading(state.last);
-  });
+  const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
+  state.last = { sys, r, words, files, text, deeper: deeperPages(r, question), di: 0, quips: 0 };
+  const gain = record(state.prog, sys.key, r); saveProgress(); showStats();
+  const a = answer(question, text, state.name);
+  const pages = [words, a.line, quip(sys.key, state.name, state.last.quips++)];
+  talkThrough(pages, () => { afterReading(); reward(gain, sys); });
+}
+
+/** The menu once the Oracle has answered: go deeper, ask another question, save, or start again. */
+function afterReading() {
+  const L = state.last, more = L.di < L.deeper.length;
+  ui(`<div class="choices"><button class="c main" type="button" id="deeper" ${more ? "" : "disabled"}>🔮 ${more ? "Go deeper" : "That's the bottom of the well"}</button><button class="c" type="button" id="askq">❓ Ask another question</button><button class="c" type="button" id="save">📖 Save to journal</button><button class="c" type="button" id="back">✦ Another reading</button>${L.files.length ? `<button class="c" type="button" id="big">🔍 Enlarge the art</button>` : ""}</div>
+    <details class="written"><summary>📜 The full written reading</summary><div id="written"></div></details>`);
+  $("deeper").onclick = goDeeper;
+  $("askq").onclick = askAgain;
+  $("save").onclick = (e) => { saveJournal(L); e.target.textContent = "✓ Saved"; e.target.disabled = true; };
+  $("back").onclick = greet;
+  if ($("big")) $("big").onclick = () => zoom(L.files[0]);
+  showReading(L, $("written"));
+}
+
+/** Go deeper: the Oracle keeps talking about the same reading, two parts at a time, with the odd aside. */
+function goDeeper() {
+  const L = state.last; deepen();
+  const pages = L.deeper.slice(L.di, L.di + 2); L.di += pages.length;
+  if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
+  if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
+  else pages.push(quip(L.sys.key, state.name, L.quips++));
+  talkThrough(pages, afterReading);
+}
+
+/** Ask another question: cast systems cast again; birth systems answer from the same chart. */
+function askAgain() {
+  const L = state.last;
+  ui(`<form class="form one" id="qf"><label for="q2">What else would you like to know?<input id="q2" maxlength="200" autocomplete="off" placeholder="Should I…, When will…, What do I need to…"></label></form>
+    <div class="choices"><button class="c main" type="submit" form="qf">✦ Ask</button><button class="c" type="button" id="cancel">Never mind</button></div>`);
+  setTimeout(() => $("q2").focus(), 50);
+  $("cancel").onclick = afterReading;
+  $("qf").onsubmit = (e) => { e.preventDefault(); const q = $("q2").value.trim(); if (!q) return;
+    if (L.sys.kind === "cast") { reveal(L.sys, optionsFor(L.sys, { [L.sys.ask || "question"]: q }), q); return; }
+    clearTimeout(typing); state.q = q; document.body.classList.add("trance"); trance(2); $("say").textContent = "…"; ui("");
+    setTimeout(() => { document.body.classList.remove("trance");
+      talkThrough([answer(q, L.text, state.name).line, quip(L.sys.key, state.name, L.quips++)], afterReading); }, reduced ? 0 : 2000);
+  };
+}
+
+let talkKey = null;
+function talkThrough(pages, done) {
+  let i = 0;
+  const next = () => {
+    if (i >= pages.length) { removeEventListener("keydown", talkKey); talkKey = null; done(); return; }
+    const page = pages[i++], last = i >= pages.length;
+    ui(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
+    $("skip").onclick = () => { clearTimeout(typing); i = pages.length; next(); };
+    say(page, () => {
+      ui(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
+      $("more").onclick = next; $("skip").onclick = () => { i = pages.length; next(); };
+    });
+  };
+  if (talkKey) removeEventListener("keydown", talkKey);
+  talkKey = (e) => { if ((e.key === " " || e.key === "Enter") && $("more") && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) { e.preventDefault(); $("more").click(); } };
+  addEventListener("keydown", talkKey);
+  next();
+}
+
+// ---- the game layer: rewards, stats, Codex and wardrobe ----
+function reward(g, sys) {
+  const bits = [`<b>+${g.xp} ✦</b>`];
+  if (g.firstSystem) bits.push(`first ${esc(sys.label)} reading`);
+  if (g.newItems.length) bits.push(`new in your Codex: ${g.newItems.map(esc).join(", ")}`);
+  if (g.firstToday) bits.push(`🌙 moon token · 🔥 ${g.streak}-day streak`);
+  const el = document.createElement("div"); el.className = "reward";
+  el.innerHTML = `<div>${bits.join(" · ")}</div>` + (g.rankUp ? `<div class="up">🏅 You are now <b>${esc(g.rankUp)}</b></div>` : "") +
+    g.unlocked.map((u) => `<div class="up">✨ Unlocked ${u.kind === "cloth" ? "table cloth" : "crystal ball"}: <b>${esc(u.name)}</b> <button class="c small" type="button" data-wear="${u.id}">Use it</button></div>`).join("");
+  $("ui").appendChild(el);
+  el.querySelectorAll("[data-wear]").forEach((b) => (b.onclick = () => { wear(b.dataset.wear); b.textContent = "✓ On"; b.disabled = true; }));
+  if (g.rankUp || g.unlocked.length || g.newItems.length) { chime(g.rankUp || g.unlocked.length ? 2 : 1); $("table-pane").classList.remove("sparkle"); void $("table-pane").offsetWidth; $("table-pane").classList.add("sparkle"); }
+}
+
+function showStats() {
+  const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
+  const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
+  $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens">🌙 ${p.tokens}</span>`;
+}
+
+function wear(id) {
+  const u = UNLOCKS.find((x) => x.id === id); if (!u || !state.prog.unlocked.includes(id)) return;
+  state.prog[u.kind] = id; saveProgress(); applyLook();
+}
+function applyLook() {
+  const c = UNLOCKS.find((x) => x.id === state.prog.cloth) || UNLOCKS[0], o = UNLOCKS.find((x) => x.id === state.prog.orb);
+  const t = $("table"); c.c.forEach((v, i) => t.style.setProperty(`--cloth${i + 1}`, v));
+  document.documentElement.style.setProperty("--orb-filter", o ? o.f : "none");
+}
+
+function showCodex() {
+  clearReading(); cap("📜 Codex"); table.idle();
+  const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
+  say(p.readings ? `Your Codex, ${state.name}. Everything the Chamber has shown you, kept.` : "Your Codex is empty. Every reading writes into it.");
+  const sys = available(MODULES);
+  const rows = sys.map((s) => { const d = CODEX[s.key], have = (p.codex[s.key] || []), n = have.length, t = d ? d.total : 0;
+    return `<div class="cx"><div class="cx-h"><span>${s.emoji} ${esc(s.label)}</span><span class="note">${n} / ${t} ${d ? esc(d.label) : ""}</span></div>
+      <div class="bar"><i style="width:${t ? Math.min(100, (n / t) * 100) : 0}%"></i></div>${n ? `<div class="chips">${have.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""}</div>`; }).join("");
+  const look = (kind) => UNLOCKS.filter((u) => u.kind === kind).map((u) => { const own = p.unlocked.includes(u.id), on = p[kind] === u.id;
+    return `<button class="c wear${on ? " on" : ""}" type="button" data-w="${u.id}" ${own ? "" : "disabled"} title="${esc(u.how)}">${own ? (on ? "✓ " : "") : "🔒 "}${esc(u.name)}<span class="note"> · ${esc(u.how)}</span></button>`; }).join("");
+  ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
+    <div class="cx-top"><b>🏅 ${esc(rk.name)}</b> · ${p.xp} ✦${nx ? ` · ${nx.at - p.xp} ✦ to ${esc(nx.name)}` : ""} · 🔥 ${liveStreak(p)} days (best ${p.best}) · 🌙 ${p.tokens} · ${p.readings} readings</div>
+    <div class="group">Ranks</div><div class="note">${RANKS.map((r) => `${r.name} ${r.at}✦`).join(" → ")}</div>
+    <div class="group">Collection</div>${rows}
+    <div class="group">Table cloth</div><div class="choices">${look("cloth")}</div>
+    <div class="group">Crystal ball</div><div class="choices">${look("orb")}</div>`);
+  $("back").onclick = greet;
+  $("ui").querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { wear(b.dataset.w); showCodex(); }));
+}
+$("codex-btn").onclick = showCodex;
+
+// Progress: this device always; the member's Discord account too when signed in (newest by reading count wins).
+let pushT = null;
+function saveProgress() {
+  saveLocal(state.userId, state.prog);
+  if (!state.token) return;
+  clearTimeout(pushT);
+  pushT = setTimeout(() => fetch(api("/api/progress"), { method: "PUT", headers: { authorization: "Bearer " + state.token, "content-type": "application/json" }, body: JSON.stringify(state.prog) }).catch(() => {}), 400);
+}
+async function loadProgress() {
+  let p = loadLocal(state.userId);
+  if (state.token) {
+    const j = await fetch(api("/api/progress"), { headers: { authorization: "Bearer " + state.token } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    if (j && j.progress && j.progress.v === 1) p = merge(p, { ...fresh(), ...j.progress });
+  }
+  state.prog = p || fresh(); applyLook(); showStats();
 }
 
 function layArt(files) {
@@ -142,8 +274,8 @@ function md(s) {
     .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/__(.+?)__/g, "<u>$1</u>").replace(/\*(.+?)\*/g, "<i>$1</i>").replace(/<br><blockquote>/g, "<blockquote>").replace(/<\/blockquote><br>/g, "</blockquote>");
 }
 const svgOf = (f) => { const t = f.svg || (f.data ? new TextDecoder().decode(f.data) : ""); return /^\s*(<\?xml|<svg)/.test(t) ? t.replace(/<script[\s\S]*?<\/script>/gi, "") : null; };
-function showReading({ r }) {
-  $("reading-body").innerHTML = r.embeds.map((e) => `<article class="emb${e.color === 0x66E0C8 ? " teal" : ""}">${e.title ? `<h2>${md(e.title)}</h2>` : ""}${e.description ? `<p>${md(e.description)}</p>` : ""}
+function showReading({ r }, el = $("reading-body")) {
+  el.innerHTML = r.embeds.map((e) => `<article class="emb${e.color === 0x66E0C8 ? " teal" : ""}">${e.title ? `<h2>${md(e.title)}</h2>` : ""}${e.description ? `<p>${md(e.description)}</p>` : ""}
       ${(e.fields || []).map((f) => `<h3>${md(f.name)}</h3><p>${md(f.value)}</p>`).join("")}${e.footer ? `<footer>${esc(e.footer.text)}</footer>` : ""}</article>`).join("");
 }
 
@@ -187,5 +319,6 @@ showVoice();
       }
     } catch (e) { console.warn("Discord SDK failed to start", e); }
   }
+  await loadProgress();
   greet();
 })();
