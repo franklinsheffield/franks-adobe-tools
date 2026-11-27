@@ -237,3 +237,21 @@ test("book pokes: after some lost rounds the host recommends a real book from th
   assert.equal(L.bookPoke("alchemist", "flametest", "Frank", { rand: () => 0, now: 1e6 + 60000 }), null, "not twice within 3 minutes");
   assert.ok(L.bookPoke("observatory", "comet", "Frank", { rand: () => 0, now: 1e6 + 200000 }).includes("arcana"));
 });
+
+test("Parlour Phase 1: parlour scene dims at night, bell jar, poses, reactions, séance emotes, gowns", async () => {
+  const D = await import("../activity/src/hosts/parlour-room.js");
+  const { parlour } = await import("../activity/src/hosts/parlour.js");
+  const { EMOTES } = await import("../activity/src/character.js");
+  assert.ok(D.gloom(1) > 0.99 && D.gloom(13) < 0.01);
+  const html = D.parlourSceneHtml(new Date(2026, 10, 27, 22).getTime(), { motes: 0 });
+  for (const t of ["cabinet", "trumpet"]) assert.match(html, new RegExp(`data-tap="${t}"`), t);
+  assert.equal(Object.keys(D.POSES).length, 8); assert.equal(new Set(Object.values(D.POSES)).size, 8);
+  assert.match(D.bellJarSvg("t"), /pb-bell/);
+  assert.deepEqual(Object.keys(D.SEANCE_EMOTES).sort(), EMOTES.map((e) => e.id).sort());
+  for (const k of ["poke-eye", "poke-orb", "perfect", "lose"]) assert.ok(D.REACT[k], k);
+  assert.equal(D.GOWNS.length, 7); assert.equal(D.GOWNS[0].price, 0);
+  const c = D.gownShop.items.find((i) => i.id === D.DEBUNKER); assert.ok(c.earned && c.how && c.price === undefined, "never sold");
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("gown"));
+  assert.ok(D.grantDebunker({}).owned.includes(D.DEBUNKER));
+  assert.equal(parlour.scene, D.parlourSceneHtml); assert.equal(parlour.emotes, D.SEANCE_EMOTES); assert.ok(parlour.shelves.includes(D.gownShop));
+});

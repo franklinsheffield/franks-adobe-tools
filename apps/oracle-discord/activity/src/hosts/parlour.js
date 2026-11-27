@@ -2,6 +2,8 @@
 // as Houdini exposed mediums in the 1920s. She reuses the Oracle's figure rig with a plum velvet hood, a lace veil, a cameo
 // brooch and a trick card tucked in the veil. Brand brief: brand/houses/README.md (House 4). Every fact in her lines is real.
 import { vinylSvg } from "../player.js";
+import { parlourSceneHtml, bellJarSvg, propsSvg, react, SEANCE_EMOTES, ROOM_CSS, gownOf, gownShop } from "./parlour-room.js";
+import { coatOverlay } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -97,8 +99,9 @@ body[data-house="parlour"] .gate-title{color:#C3A6FF;font-family:"Cormorant Gara
 function paint(svg, prog, id = "t") {
   if (!svg) return;
   const stops = (gid, cols) => svg.querySelectorAll(`#${id}-${gid} stop`).forEach((s, i) => cols[i] && s.setAttribute("stop-color", cols[i]));
-  stops("face", ["#FBEFF6", "#D9B8D8", "#5a3a5c"]); stops("hood", ["#6b2a5e", "#2A0F24", "#0e0410"]); stops("iris", ["#F3EAFF", "#C3A6FF", "#5B3A8A"]);
-  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", "#C3A6FF"); });
+  const C = prog && prog.gown ? gownOf(prog.gown) : null;
+  stops("face", ["#FBEFF6", "#D9B8D8", "#5a3a5c"]); stops("hood", C ? C.hood : ["#6b2a5e", "#2A0F24", "#0e0410"]); stops("iris", ["#F3EAFF", "#C3A6FF", "#5B3A8A"]);
+  svg.querySelectorAll('.o-body [stroke="#E2B04A"], .o-body [data-trim], .o-sleeves, .o-sleeves [data-trim]').forEach((e) => { if (!e.closest(".o-hands")) e.setAttribute("stroke", C ? C.trim : "#C3A6FF"); });
   const body = svg.querySelector(".o-body"), eye = svg.querySelector(".o-eye"); if (!body || !eye) return;
   svg.querySelector(".h-rook")?.remove();
   const T = trickOf(prog && prog.trickcard), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-rook");
@@ -109,6 +112,10 @@ function paint(svg, prog, id = "t") {
     <g transform="translate(252 104) rotate(14)">${cardFace(T, 0.7)}</g>
     <g transform="translate(140 98)"><rect x="-3" y="0" width="6" height="16" fill="#FFF6EE"/><path class="hk-flame" d="M0 0q5 -8 0 -14q-5 6 0 14z" fill="#FFE3A3"/><circle cy="-6" r="8" fill="#FFE3A3" opacity=".18"/></g>`;
   eye.after(g);
+  svg.querySelector(".hv-coat")?.remove(); if (C && body.children[4]) body.children[4].insertAdjacentHTML("afterend", coatOverlay(C)); // her gown, over the robe
+  const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands"); // a spirit bell under a glass dome stands where the crystal ball was
+  if (ball) { ball.querySelector(".pb-jar")?.remove(); ball.insertAdjacentHTML("beforeend", bellJarSvg(id)); }
+  if (hands) { hands.querySelector(".pb-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
   for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", rookHand(side)); } }
 }
 /** Madame Rook's hands: white lace gloves. At rest her left hand holds up a candle and her right floats palm-down over the
@@ -153,9 +160,9 @@ export const parlour = {
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
-  css: PARLOUR_CSS + ROOK_HANDS_CSS, paint, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: PARLOUR_CSS + ROOK_HANDS_CSS + ROOM_CSS, paint, scene: parlourSceneHtml, react, emotes: SEANCE_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Spirit Trumpet Gramophone", deck: gramophoneSvg },
-  shelves: [trickShop],
+  shelves: [trickShop, gownShop],
   token: { id: "key", emoji: "🗝️", name: "skeleton key", plural: "skeleton keys", purse: "Key ring" },
   relics: PARLOUR_RELICS, relicLabel: "🗝️ Parlour relics", relicBlurb: "Parlour relics stay in my House for good. Earn keys with your first visit each day and by beating game levels here.",
   strayIntro: "Three knocks, and this dropped out of the curtain:",
