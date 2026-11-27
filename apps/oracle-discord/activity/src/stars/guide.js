@@ -4,7 +4,7 @@ export const GUIDE = {
   title: "Star Lore study guide",
   sections: [
     { h: "How to play", p: [
-      "The Oracle asks you to <b>find and draw</b> a constellation. The sky starts somewhere else, so you have to look for it: <b>drag</b> to roam the whole sky, <b>pinch, scroll or tap + and -</b> to zoom.",
+      "The Oracle asks you to <b>find and draw</b> a constellation. The sky starts somewhere else, so you have to look for it: drag the <b>sky ball</b> in the corner to turn the whole sky, and <b>pinch, scroll or tap + and -</b> to zoom. A <b>timer</b> runs: if dawn comes before you finish, the stars fade and you lose the round (you still hear the story).",
       "When you find it, <b>drag from star to star</b> (or tap one star, then the next) to draw each line of its figure. The little shape in the corner shows what to draw. As each line goes in, the Oracle tells you the next part of a <b>fable</b> about it, picked from a pool of stories from different cultures.",
       "A line that is not in the figure is a <b>mistake</b>. Finish with 0 or 1 mistakes for 3 stars, up to 4 for 2 stars. <b>Hint</b> points the way or flashes the next line, and counts as a mistake. Then one question on the real astronomy earns a bonus.",
       "<b>Level 1</b> draws every constellation's figure on the sky, so you look for the right shape. <b>Level 2</b> hides all figures: find the pattern in the stars themselves. <b>Level 3</b> is a photo-real sky with the Milky Way and thousands of faint stars, as it looks from a dark site.",
