@@ -6,6 +6,7 @@
 /** What each system adds to the Codex: total possible entries, a name for them, and the entries in a reading. */
 export const CODEX = {
   iching: { total: 64, label: "hexagrams", items: (r) => { const m = /I Ching · (\d+)/.exec(r.embeds[0].title || ""); return m ? ["Hexagram " + m[1]] : []; } },
+  tarot: { total: 78, label: "cards", items: (r) => (r.reading?.cards || []).map((x) => x.name) },
   runes: { total: 24, label: "runes", items: (r) => (r.reading?.runes || []).map((x) => x.name) },
   oraclebones: { total: 60, label: "cycle days", items: (r) => (r.reading?.day ? [r.reading.day] : []) },
   ifa: { total: 256, label: "Odù", items: (r) => (r.reading?.odu ? [r.reading.odu] : []) },

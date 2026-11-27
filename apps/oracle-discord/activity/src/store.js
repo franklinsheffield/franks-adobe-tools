@@ -78,6 +78,7 @@ export const STORE = [
   // Vibes: colour theme, fonts and backgrounds as one set (chamber.css [data-vibe])
   { id: "chamber", kind: "vibe", name: "Midnight Chamber", note: "Violet night, gold trim, Cinzel letters", price: 0, stars: ["#FADE8C", "#66E0C8"] },
   { id: "v-iching", kind: "vibe", name: "Book of Changes", note: "I Ching: ink-wash mountains, jade and a red seal", price: 150, stars: ["#f4efe2", "#9fd4b0"] },
+  { id: "v-tarot", kind: "vibe", name: "Gilded Arcana", note: "Tarot: midnight velvet, gilded borders, a fan of cards", price: 150, stars: ["#FADE8C", "#e7a0ff"] },
   { id: "v-runes", kind: "vibe", name: "Northern Lights", note: "Runes: aurora over icy fjords, carved letters", price: 150, stars: ["#c9fff0", "#7ad6ff"] },
   { id: "v-oraclebones", kind: "vibe", name: "Bronze & Bone", note: "Oracle bones: bronze vessels, bone and ember", price: 150, stars: ["#ffd9a8", "#ff8a3d"] },
   { id: "v-ifa", kind: "vibe", name: "Cowrie & Indigo", note: "Ifá: deep indigo cloth, cowrie white and palm gold", price: 150, stars: ["#fff6e0", "#E2B04A"] },
