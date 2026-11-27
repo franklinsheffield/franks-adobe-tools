@@ -1719,3 +1719,27 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .cd-list li.un{opacity:.6}
 .cd-list details{flex-basis:100%;font-size:13px}.cd-list summary{cursor:pointer;color:var(--ink2)}
 @media (prefers-reduced-motion:reduce){.gl-layer i,.cd-scrap.cd-bound{animation:none}}
+/* The sky window, animated: drifting clouds, birds, a slow sun, a bobbing moon, shooting stars, fireflies, a glass glint */
+.sc-window{pointer-events:none}
+.sc-cloud{animation:sc-cloud var(--t,40s) linear var(--d,0s) infinite}
+@keyframes sc-cloud{from{transform:translateX(-46px)}to{transform:translateX(46px)}}
+.sc-rays{animation:sc-spin 40s linear infinite}
+@keyframes sc-spin{to{transform:rotate(360deg)}}
+.sc-halo{animation:sc-halo 5s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes sc-halo{0%,100%{opacity:.18;transform:scale(1)}50%{opacity:.34;transform:scale(1.18)}}
+.sc-moonbob{animation:sc-bob 9s ease-in-out infinite}
+@keyframes sc-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}}
+.sc-moon circle:first-child{animation:sc-halo 6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.sc-skyshift{animation:sc-drift 120s linear infinite alternate}
+@keyframes sc-drift{to{transform:translateX(-6px) rotate(-2deg)}}
+.sc-birds{animation:sc-birds 26s linear -4s infinite}
+@keyframes sc-birds{0%{transform:translate(-40px,-6px)}50%{transform:translate(0,-14px)}100%{transform:translate(40px,-4px)}}
+.sc-bird{animation:sc-flap .5s ease-in-out var(--d,0s) infinite alternate;transform-box:fill-box;transform-origin:center}
+@keyframes sc-flap{to{transform:scaleY(-.6)}}
+.sc-shoot{opacity:0;animation:sc-shoot 11s ease-in 3s infinite}
+@keyframes sc-shoot{0%,88%{opacity:0;transform:translate(22px,-36px)}89%{opacity:1}96%{opacity:1;transform:translate(-10px,-22px)}100%{opacity:0;transform:translate(-14px,-20px)}}
+.sc-fly{animation:sc-fly 3.4s ease-in-out var(--d,0s) infinite;opacity:0}
+@keyframes sc-fly{0%,100%{opacity:0;transform:translate(0,0)}40%{opacity:.9;transform:translate(var(--x),-3px)}70%{opacity:.4;transform:translate(calc(var(--x) * -1),-5px)}}
+.sc-glint{animation:sc-glint 9s ease-in-out 2s infinite}
+@keyframes sc-glint{0%,70%{transform:skewX(-18deg) translateX(0)}100%{transform:skewX(-18deg) translateX(120px)}}
+@media (prefers-reduced-motion:reduce){.sc-cloud,.sc-rays,.sc-halo,.sc-moonbob,.sc-skyshift,.sc-birds,.sc-bird,.sc-shoot,.sc-fly,.sc-glint,.sc-moon circle:first-child{animation:none}.sc-shoot,.sc-fly{opacity:0}}
