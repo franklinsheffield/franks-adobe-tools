@@ -35,6 +35,8 @@ export const SFX = {
     [PENTA[k], PENTA[k + 2]].forEach((f, i) => { tone(c, f, t + i * 0.09, 0.8, { vol: 0.32 }); tone(c, f * 3, t + i * 0.09, 0.3, { vol: 0.04 }); }); },
   /** Not a pair: a low, woody double knock. */
   miss() { const c = ctx(); if (!c) return; const t = c.currentTime; tone(c, 170, t, 0.18, { type: "triangle", vol: 0.4, to: 120 }); tone(c, 150, t + 0.12, 0.2, { type: "triangle", vol: 0.32, to: 100 }); },
+  /** A candle snuffed: a soft breath and a falling hiss of smoke. */
+  snuff() { const c = ctx(); if (!c) return; const t = c.currentTime; swish(c, t, 0.35, { from: 900, to: 300, vol: 0.3, q: 0.7 }); tone(c, 420, t, 0.3, { type: "sine", vol: 0.06, to: 180 }); },
   /** The peek: a shimmer as every card lifts, then falls. */
   peek() { const c = ctx(); if (!c) return; const t = c.currentTime; for (let i = 0; i < 6; i++) tone(c, 900 + i * 180, t + i * 0.04, 0.5, { vol: 0.07 }); swish(c, t, 0.4, { from: 800, to: 3000, vol: 0.15 }); },
   /** The board cleared: a rising arpeggio with a sparkle on top. */
