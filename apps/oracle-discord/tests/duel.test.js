@@ -212,3 +212,20 @@ test("Bigger hits: reactions scale with power, and every compound has a one-line
   }
   for (const x of COMPOUNDS) { const l = firstLine(x.fact); assert.ok(l.length > 10 && l.length <= x.fact.length, x.id); }
 });
+
+test("Codex upgrade: every compound has uses and a turning structure, and milestones pay once", async () => {
+  const { USES, MILESTONES } = await import("../activity/src/duel/uses.js");
+  const { structureSvg } = await import("../activity/src/duel/scene.js");
+  const { pageHtml } = await import("../activity/src/duel/room.js");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  for (const c of COMPOUNDS) {
+    assert.ok(USES[c.id] && USES[c.id].length, "uses for " + c.id);
+    assert.ok(c.dh >= -1720 && c.dh <= 240, "heat scale covers " + c.id);
+    assert.match(structureSvg(c), /du-turn/); assert.match(pageHtml(c, esc), /Used for/);
+  }
+  assert.equal(Object.keys(USES).length, COMPOUNDS.length);
+  const p = {}, r = room(p); COMPOUNDS.slice(0, 9).forEach((c) => (r.codex[c.id] = 1));
+  const g = newGame(1, 3); g.you.found = [COMPOUNDS[9].id, COMPOUNDS[10].id]; g.over = { winner: "oracle", how: "stability" };
+  const a = settle(p, g); assert.deepEqual(a.newMilestones.map((m) => m.at), [10]); assert.ok(a.essence >= MILESTONES[0].essence);
+  assert.deepEqual(settle(p, g).newMilestones, []);
+});

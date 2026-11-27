@@ -7,7 +7,8 @@
 import { EL, FAMILY, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
-import { sceneSvg, kindOf, KIND, powerTier } from "./scene.js";
+import { sceneSvg, kindOf, KIND, powerTier, structureSvg } from "./scene.js";
+import { USES, MILESTONES } from "./uses.js";
 import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
@@ -49,8 +50,11 @@ export function pageHtml(c, esc, extra = "") {
     `<span class="du-tag">${ph[c.ph]} at room temperature</span>`,
     ...c.tags.map((t) => `<span class="du-tag">${{ acid: "🧪 acid in water", base: "🧼 base in water", cat: "⚗️ made over a catalyst", spark: "⚡ made by sparks" }[t]}</span>`),
   ];
-  return `<div class="du-page"><h3>${esc(pretty(c.f))} · ${esc(c.name)}</h3><div class="du-tags">${extra}${tags.join("")}</div>
+  const pos = Math.min(100, Math.max(0, ((240 - c.dh) / (240 + 1720)) * 100)), uses = USES[c.id] || [];
+  return `<div class="du-page"><div class="du-pagehead">${structureSvg(c)}<div style="flex:1;min-width:180px"><h3>${esc(pretty(c.f))} · ${esc(c.name)}</h3><div class="du-tags">${extra}${tags.join("")}</div>
+    <div class="du-heat" title="Standard enthalpy of formation: ${c.dh} kJ/mol"><i style="left:${pos.toFixed(1)}%"></i></div><div class="du-heat-l"><span>❄️ +240 soaks up heat</span><span>${c.dh > 0 ? "+" : ""}${c.dh} kJ/mol</span><span>−1720 gives out heat 🔥</span></div></div></div>
     <div class="du-sec"><b class="h">🔬 Fact</b>${esc(c.fact)}</div>
+    ${uses.length ? `<div class="du-sec"><b class="h">🏭 Used for</b>${uses.map(esc).join(" · ")}</div>` : ""}
     <div class="du-sec"><b class="h">⚛️ Atoms</b>${Object.entries(c.atoms).map(([s, n]) => `${n} × ${esc(EL[s].name)} (${s}, ${EL[s].ox.filter((o) => o).slice(0, 3).map(sign).join("/")})`).join(" + ")}</div></div>`;
 }
 const GUIDE = [
@@ -126,11 +130,19 @@ export const room = {
     }
     const oName = () => (rival ? `${rival.emoji} ${esc(rival.short)}` : "🔮 Oracle");
     const capText = () => (isDaily ? `📅 Daily Lab #${dayNumber()}` : rival ? `${rival.emoji} Master duel vs ${rival.short}` : `⚛️ ${L.name} duel`);
-    const toggle = (fn) => { const rb = $("reading-body"), html = fn(); const on = rb.dataset.v !== fn.name; rb.innerHTML = on ? html : ""; rb.dataset.v = on ? fn.name : ""; if (on) rb.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const toggle = (fn) => { const rb = $("reading-body"), html = fn(); const on = rb.dataset.v !== fn.name; rb.innerHTML = on ? html : ""; rb.dataset.v = on ? fn.name : ""; if (on) { rb.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" }); wireCodex(rb); } };
+    /** Codex chips open that compound's page, with a way back to the list. */
+    const wireCodex = (rb) => rb.querySelectorAll("[data-cx]").forEach((b) => (b.onclick = () => { const c = BY_ID[b.dataset.cx]; if (!c) return; SFX.flip();
+      rb.innerHTML = pageHtml(c, esc) + `<div class="choices"><button class="c small" type="button" id="du-cxback">📒 Back to my compounds</button></div>`; rb.dataset.v = "page";
+      $("du-cxback").onclick = () => { rb.innerHTML = codexPage(); rb.dataset.v = "codexPage"; wireCodex(rb); }; rb.firstElementChild?.scrollIntoView({ behavior: "smooth", block: "start" }); }));
     function codexPage() {
       const r = duelRoom(state.prog);
-      return `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">📒 My compounds</h3>${LEVELS.map((x) => { const got = COMPOUNDS.filter((c) => c.tier === x.n && r.codex[c.id]), all = COMPOUNDS.filter((c) => c.tier === x.n);
-        return `<details open><summary>${esc(x.name)} · ${got.length} / ${all.length}</summary>${got.length ? `<div class="du-chips">${got.map((c) => `<span title="${esc(c.name + ": " + c.fact)}">${esc(pretty(c.f))} ${esc(c.name)}</span>`).join("")}</div>` : "<p>None yet.</p>"}</details>`; }).join("")}
+      const n = codexCount(state.prog), nx = MILESTONES.find((m) => n < m.at);
+      return `<div class="du-guide"><h3 style="font-family:var(--display);color:var(--gold2);margin:0 0 6px">📒 My compounds · ${n} / ${COMPOUNDS.length}</h3>
+        <div class="bar"><i style="width:${(n / COMPOUNDS.length) * 100}%"></i></div>
+        <div class="du-ms">${MILESTONES.map((m) => `<span class="${n >= m.at ? "got" : ""}">${n >= m.at ? "✓" : "◇"} ${m.at} · ${m.essence} 💎</span>`).join("")}</div>
+        <div class="note">${nx ? `${nx.at - n} more to the next milestone (+${nx.essence} 💎). ` : "Every compound found. "}Tap a compound to open its page.</div>${LEVELS.map((x) => { const got = COMPOUNDS.filter((c) => c.tier === x.n && r.codex[c.id]), all = COMPOUNDS.filter((c) => c.tier === x.n);
+        return `<details open><summary>${esc(x.name)} · ${got.length} / ${all.length}</summary><div class="du-chips">${all.map((c) => r.codex[c.id] ? `<button type="button" data-cx="${esc(c.id)}" title="${esc(c.name)}">${esc(pretty(c.f))} ${esc(c.name)}</button>` : `<button type="button" class="locked" disabled title="Not discovered yet">❔ ${"·".repeat(Math.min(4, c.n))}</button>`).join("")}</div></details>`; }).join("")}
         <details><summary>Chains completed · ${Object.keys(r.chains).length} / ${CHAINS.length}</summary><div class="du-chips">${CHAINS.map((ch) => `<span>${r.chains[ch.id] ? "✅" : "▫️"} ${esc(ch.name)}</span>`).join("")}</div></details></div>`;
     }
     function shop(msg) {
@@ -253,6 +265,7 @@ export const room = {
       ui(`<div class="reward"><div><b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b> · ${g.you.found.length} discover${g.you.found.length === 1 ? "y" : "ies"} this duel${g.you.bonusHits ? ` · ${g.you.bonusHits} bonus compound${g.you.bonusHits > 1 ? "s" : ""}` : ""}</div>
         ${r.newCodex.length ? `<div class="up">📒 New in your Codex: ${r.newCodex.map((id) => esc(pretty(id))).join(", ")}</div>` : ""}
         ${r.newChains.length ? `<div class="up">🏭 Chain completed: ${r.newChains.map((id) => esc(CHAINS.find((c) => c.id === id).name)).join(", ")}</div>` : ""}
+        ${r.newMilestones && r.newMilestones.length ? `<div class="up">📒 Codex milestone: ${r.newMilestones.map((m) => `${m.at} compounds, +${m.essence} 💎`).join(" · ")}</div>` : ""}
         ${r.newRival ? `<div class="up">🧑‍🔬 First win over ${esc(RIVAL[r.newRival].name)}: +${RIVAL_PRIZE} 💎${RIVALS[RIVALS.findIndex((x) => x.id === r.newRival) + 1] ? ` · ${esc(RIVALS[RIVALS.findIndex((x) => x.id === r.newRival) + 1].name)} is unlocked` : " · you have beaten every rival!"}</div>` : ""}
         ${dl ? `<div class="up">📅 Daily Lab #${dayNumber()}: <b>${dl.score} pts</b>${dl.first ? ` · 🔥 ${dl.streak}-day streak` : " · practice run (your first run today counts)"}</div>` : ""}
         ${titled ? `<div class="up">⚛️ Duel title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
