@@ -186,3 +186,22 @@ test("hidden features per House: the Alchemist's 13 finds pay once, count in her
   assert.match(alchemist.scene(0, { motes: 0 }), /data-tap="hood"/); assert.match(alchemist.scene(0, { motes: 0 }), /data-tap="jar-7"/);
   assert.equal(tapCount("x", 0), 1); assert.equal(tapCount("x", 500), 2); assert.equal(tapCount("x", 5000), 1);
 });
+
+test("Observatory Phase 1: dome scene with the real Moon, astrolabe, poses, reactions, sky emotes, observing coats", async () => {
+  const D = await import("../activity/src/hosts/observatory-dome.js");
+  const { observatory } = await import("../activity/src/hosts/observatory.js");
+  const { EMOTES } = await import("../activity/src/character.js");
+  assert.ok(D.moonPhase(Date.UTC(2000, 0, 6, 18, 14)) < 0.01, "known new moon");
+  assert.ok(Math.abs(D.moonPhase(Date.UTC(2026, 10, 24, 14, 0)) - 0.5) < 0.04, "full moon 24 Nov 2026");
+  const night = D.domeSceneHtml(new Date(2026, 10, 27, 22).getTime(), { motes: 0 }), day = D.domeSceneHtml(new Date(2026, 10, 27, 12).getTime(), { motes: 0 });
+  assert.match(night, /data-tap="moon"/); assert.match(night, /data-tap="dome"/); assert.match(night, /sc dome open/); assert.ok(!/sc dome open/.test(day) && /od-shut mb-hot shut/.test(day));
+  assert.equal(Object.keys(D.POSES).length, 8); assert.equal(new Set(Object.values(D.POSES)).size, 8);
+  assert.match(D.astrolabeSvg("t"), /ao-rete/);
+  assert.deepEqual(Object.keys(D.SKY_EMOTES).sort(), EMOTES.map((e) => e.id).sort(), "re-dresses exactly the 8 starting emotes");
+  for (const k of ["poke-eye", "poke-orb", "perfect", "lose"]) assert.ok(D.REACT[k], k);
+  assert.equal(D.OBS_COATS.length, 7); assert.equal(D.OBS_COATS[0].price, 0);
+  const royal = D.obsCoatShop.items.find((i) => i.id === D.ROYAL_COAT); assert.ok(royal.earned && royal.how && royal.price === undefined, "never sold");
+  assert.ok(DEPTS.find((d) => d.id === "houses").kinds.includes("obscoat"));
+  assert.ok(D.grantRoyal({}).owned.includes(D.ROYAL_COAT));
+  assert.equal(observatory.scene, D.domeSceneHtml); assert.equal(observatory.emotes, D.SKY_EMOTES); assert.ok(observatory.shelves.includes(D.obsCoatShop));
+});
