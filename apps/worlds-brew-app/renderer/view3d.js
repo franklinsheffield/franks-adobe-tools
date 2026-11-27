@@ -324,7 +324,7 @@ export class Viewport {
   overGizmo() { return !!(this.tc.object && this.tc.axis); }
   setRing(p, radius) { if (!p) { if (this.ring.visible) { this.ring.visible = false; this.dirty = true; } return; } this.ring.visible = true; this.ring.position.set(p.x, p.y + 0.03, p.z); this.ring.scale.setScalar(radius); this.dirty = true; }
   // screen position (client px) of a world point, for drop previews and tests
-  project(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.camera), r = this.canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }
+  project(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.camera), r = this.canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height, z: v.z }; }
   // building together (D4): what the others have selected, as an outline in their colour with their name over it
   setPeers(list) {
     this.peers = this.peers || [];

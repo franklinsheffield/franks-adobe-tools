@@ -13,7 +13,7 @@ const { server } = require("./serve.js");
   const errs = []; p.on("pageerror", (e) => errs.push(e.message)); p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
   const dl = []; p.on("download", (d) => dl.push(d.suggestedFilename()));
   try {
-    await p.goto("http://localhost:8788/"); await p.waitForFunction(() => window.__wb && window.__psWeb, null, { timeout: 30000 });
+    await p.goto("http://localhost:8788/?nostart=1"); await p.waitForFunction(() => window.__wb && window.__psWeb, null, { timeout: 30000 });
     assert.ok(!(await p.evaluate(() => [...document.querySelectorAll("button")].some((x) => /Photoshop/.test(x.textContent)))), "no Photoshop buttons on the web");
     await p.evaluate(() => { window.__wb.st.out.w = 320; window.__wb.st.out.h = 180; return window.__wb.renderNow(); });
     assert.ok(await p.evaluate(() => !!window.__wb.refs.lastPics), "render made pictures");
