@@ -7,6 +7,7 @@ import { FONTS } from "./fonts.gen.js";
 import { CSS } from "./style.js";
 import { GUIDES } from "./guide.js";
 import { SHOP, tabletOf } from "./shop.js";
+import { play } from "./sfx.js";
 
 export const room = { id: "decoder", label: "Rune & Glyph Decoder", emoji: "🗝️", blurb: "Read runes, Ogham, hieroglyphs and Maya numbers", open };
 
@@ -55,11 +56,13 @@ function mountBoard() {
 }
 function zoomCard(el) {
   const z = $("zoom"), art = $("zoom-art"); if (!z || !art) return;
-  art.innerHTML = `<div class="dec-zoom">${el.innerHTML}</div>`; z.hidden = false; $("zoom-close") && $("zoom-close").focus();
+  art.innerHTML = `<div class="dec-zoom">${el.innerHTML}</div>`; z.hidden = false; play("zoom"); $("zoom-close") && $("zoom-close").focus();
 }
 function leave() { C.greet(); }
 const show = (html) => { board.innerHTML = html; };
-const starRow = (n, of = 3) => `<span class="dec-stars" aria-label="${n} of ${of} stars">${"★".repeat(n)}<i>${"★".repeat(of - n)}</i></span>`;
+const starRow = (n, of = 3, pop = false) => `<span class="dec-stars${pop ? " pop" : ""}" aria-label="${n} of ${of} stars">${Array.from({ length: n }, (_, i) => `<b style="--i:${i}">★</b>`).join("")}<i>${"★".repeat(of - n)}</i></span>`;
+// A burst of sparks for a finished level (CSS animates them outward).
+const sparks = (n = 14) => `<div class="dec-sparks" aria-hidden="true">${Array.from({ length: n }, (_, i) => `<i style="--a:${Math.round((i / n) * 360)}deg;--d:${(i % 3) * 0.05}s"></i>`).join("")}</div>`;
 const save = () => { try { C.saveProgress(); } catch {} };
 
 /** This room's part of the 📜 Codex: one row per script. */
@@ -89,7 +92,7 @@ function home() {
   C.clearReading(); C.cap("🗝️ Rune & Glyph Decoder");
   const p = P(), solved = Object.keys(dec(p).solved).length;
   show(`<div class="dec-home">${SCRIPT_ORDER.map((k) => { const s = SCRIPTS[k], n = levelsOf(k).length;
-    return `<div class="dec-medal" data-s="${k}" role="button" tabindex="0"><div class="dec-glyph ${s.font}">${k === "maya" ? mayaSvg(13, 40) : esc(sample(k))}</div><b>${esc(s.name)}</b><small>${scriptStars(p, k)} / ${n * 3} ★</small></div>`; }).join("")}</div>`);
+    return `<div class="dec-medal" data-s="${k}" role="button" tabindex="0" style="--i:${SCRIPT_ORDER.indexOf(k)}"><div class="dec-glyph ${s.font}">${k === "maya" ? mayaSvg(13, 40) : esc(sample(k))}</div><b>${esc(s.name)}</b><small>${scriptStars(p, k)} / ${n * 3} ★</small></div>`; }).join("")}</div>`);
   C.say(solved ? `Back to the old scripts. You've decoded ${solved} of ${LEVELS.length} so far. Which one calls to you?`
     : "Before the Oracle could read the stars, someone had to read the stones. Four scripts, four ancient peoples. Choose one, and I'll teach you its signs.");
   C.ui(`<div class="choices">${SCRIPT_ORDER.map((k) => `<button class="c" type="button" data-s="${k}">${esc(SCRIPTS[k].emoji)} ${esc(SCRIPTS[k].name)}</button>`).join("")}
@@ -100,7 +103,7 @@ function home() {
 const sample = (k) => ({ futhark: "ᚠᚢᚦᚨᚱᚲ", ogham: "᚛ᚁᚂᚃᚄᚅ᚜", egyptian: "𓊪𓏏𓍯𓃭" }[k] || "");
 
 function scriptMenu(k) {
-  const s = SCRIPTS[k], p = P(); C.cap(`${s.emoji} ${s.name}`); C.clearReading();
+  const s = SCRIPTS[k], p = P(); C.cap(`${s.emoji} ${s.name}`); C.clearReading(); play("open", k);
   show(`<div class="dec-intro"><div class="dec-big ${s.font}">${k === "maya" ? [7, 0, 13].map((n) => mayaSvg(n, 48)).join("") : esc(sample(k))}</div><p>${esc(s.blurb)}</p><small>${esc(s.where)}</small></div>`);
   C.say(s.blurb);
   C.ui(`<div class="dec-levels">${levelsOf(k).map((l, i) => { const ok = unlocked(p, l.id), st = dec(p).solved[l.id] || 0;
@@ -113,7 +116,7 @@ function scriptMenu(k) {
 
 // ---- a level: lesson, decode, meaning, reward ----
 function lesson(l) {
-  const s = SCRIPTS[l.script]; C.cap(`${s.emoji} ${l.title}`); C.clearReading();
+  const s = SCRIPTS[l.script]; C.cap(`${s.emoji} ${l.title}`); C.clearReading(); play("page");
   if (l.kind === "write") return writeLevel(l);
   if (l.kind === "date") return dateLevel(l);
   const fresh = l.script === "maya" ? [] : Array.from(l.teach || "").map((g) => signOf(l.script, g));
@@ -127,18 +130,19 @@ function lesson(l) {
   $("dec-go").onclick = () => puzzle(l); $("dec-back").onclick = () => scriptMenu(l.script);
 }
 
-function strip(l, picks, { wrongAt = -1, peek = false } = {}) {
+function strip(l, picks, { wrongAt = -1, peek = false, won = false } = {}) {
+  const just = (k) => (!won && picks.length && k === picks.length - 1 ? " just" : ""), wave = (k) => (won ? ` style="--i:${k}"` : "");
   const s = SCRIPTS[l.script], cells = []; let k = 0;
   if (l.script === "maya") {
-    l.text.forEach((n, i) => { const v = picks[k]; cells.push(`<div class="dec-cell${k === picks.length ? " now" : ""}${k === wrongAt ? " bad" : ""}">${l.longCount ? `<em>${esc(LONG_COUNT[i][0])}</em>` : ""}${mayaSvg(n, l.longCount ? 44 : 56)}<b>${v ?? "&nbsp;"}</b></div>`); k++; });
-    return `<div class="dec-strip maya${l.longCount ? " lc" : ""}">${cells.join("")}</div>${l.round ? `<div class="dec-round">${esc(l.round)}</div>` : ""}`;
+    l.text.forEach((n, i) => { const v = picks[k]; cells.push(`<div class="dec-cell${k === picks.length ? " now" : ""}${k === wrongAt ? " bad" : ""}${just(k)}"${wave(k)}>${l.longCount ? `<em>${esc(LONG_COUNT[i][0])}</em>` : ""}${mayaSvg(n, l.longCount ? 44 : 56)}<b>${v ?? "&nbsp;"}</b></div>`); k++; });
+    return `<div class="dec-strip maya${l.longCount ? " lc" : ""}${won ? " won" : ""}">${cells.join("")}</div>${l.round ? `<div class="dec-round">${esc(l.round)}</div>` : ""}`;
   }
   for (const g of Array.from(l.text)) {
     const sg = signOf(l.script, g);
     if (!sg) { cells.push(`<div class="dec-cell sep ${s.font}">${g === " " ? "&#x1680;" : esc(g)}<b>&nbsp;</b></div>`); continue; }
-    const v = picks[k]; cells.push(`<div class="dec-cell${k === picks.length ? " now" : ""}${k === wrongAt ? " bad" : ""}"><span class="${s.font}">${esc(g)}</span><b>${v ? esc(v) : peek ? `<i>${esc(sg.v)}</i>` : "&nbsp;"}</b></div>`); k++;
+    const v = picks[k]; cells.push(`<div class="dec-cell${k === picks.length ? " now" : ""}${k === wrongAt ? " bad" : ""}${just(k)}"${wave(k)}><span class="${s.font}">${esc(g)}</span><b>${v ? esc(v) : peek ? `<i>${esc(sg.v)}</i>` : "&nbsp;"}</b></div>`); k++;
   }
-  return `<div class="dec-strip ${l.script}${l.cartouche ? " cartouche" : ""}${k > 8 ? " long" : ""}">${cells.join("")}</div>`;
+  return `<div class="dec-strip ${l.script}${l.cartouche ? " cartouche" : ""}${k > 8 ? " long" : ""}${won ? " won" : ""}">${cells.join("")}</div>`;
 }
 
 function puzzle(l) {
@@ -153,12 +157,12 @@ function puzzle(l) {
     <div class="choices"><button class="c" type="button" id="dec-book">📖 Codebook</button><button class="c" type="button" id="dec-hint">💡 Hint</button><button class="c" type="button" id="dec-undo">⌫ Undo</button><button class="c" type="button" id="dec-quit">↩ Leave</button></div>`);
   const tap = (v) => {
     const r = check(l, [...st.picks, v]);
-    if (!r.ok) { st.misses++; draw(st.picks.length); C.say(st.misses > 2 ? "Not that one. Open the codebook, there's no shame in it." : "Not quite. Look again."); return; }
-    st.picks.push(v); draw();
-    if (r.done) { C.chime && C.chime(); return solved(l, st); }
+    if (!r.ok) { st.misses++; play("wrong"); draw(st.picks.length); C.say(st.misses > 2 ? "Not that one. Open the codebook, there's no shame in it." : "Not quite. Look again."); return; }
+    st.picks.push(v); play("carve", l.script, st.picks.length - 1); draw();
+    if (r.done) { setTimeout(() => play("solve"), 200); return solved(l, st); }
   };
   $("ui").querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => tap(b.dataset.v)));
-  $("dec-book").onclick = () => { st.book = !st.book; if (st.book) st.peeks++; $("dec-book").textContent = st.book ? "📖 Close codebook" : "📖 Codebook"; draw(); };
+  $("dec-book").onclick = () => { play("page"); st.book = !st.book; if (st.book) st.peeks++; $("dec-book").textContent = st.book ? "📖 Close codebook" : "📖 Codebook"; draw(); };
   $("dec-hint").onclick = () => { const v = hint(l, st.picks); if (v == null) return; st.hints++; C.say(`The next one is “${v}”.`); tap(v); };
   $("dec-undo").onclick = () => { st.picks.pop(); draw(); };
   $("dec-quit").onclick = () => scriptMenu(l.script);
@@ -172,17 +176,17 @@ function codebook(l) {
 
 function solved(l, st) {
   const stars = starsFor(st), read = l.script === "maya" ? target(l).join(l.longCount ? "." : ", ") : target(l).join("");
-  show(strip(l, st.picks) + `<div class="dec-done">Decoded: <b>${esc(read)}</b> ${starRow(stars)}</div>`);
+  show(strip(l, st.picks, { won: true }) + `<div class="dec-done">Decoded: <b>${esc(read)}</b> ${starRow(stars)}</div>`);
   C.say(`Yes! “${read}”. Now: what does it tell us?`);
-  setTimeout(() => meaning(l, stars), 400);
+  setTimeout(() => meaning(l, stars), 900);
 }
 function meaning(l, stars) {
   const q = l.q, order = shuffle(q.choices.map((_, i) => i), l.id);
   C.ui(`<div class="dec-q"><p>${esc(q.ask)}</p>${order.map((i) => `<button class="c" type="button" data-a="${i}">${esc(q.choices[i])}</button>`).join("")}</div><div class="choices">${guideBtn(l.script)}</div>`);
   wireGuide(l.script);
   $("ui").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => {
-    if (+b.dataset.a !== q.right) { b.disabled = true; C.say("Hmm, no. The stones say otherwise. Try again."); return; }
-    reward(l, stars, q.why);
+    if (+b.dataset.a !== q.right) { b.disabled = true; play("wrong"); b.classList.add("dec-no"); C.say("Hmm, no. The stones say otherwise. Try again."); return; }
+    play("right"); reward(l, stars, q.why);
   }));
 }
 const shuffle = (a, seed) => { let h = [...seed].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7); return a.map((x) => [x, (h = (h * 1103515245 + 12345) >>> 0)]).sort((x, y) => x[1] - y[1]).map((x) => x[0]); };
@@ -192,8 +196,9 @@ function reward(l, stars, why) {
   const a = (r.xp || r.essence) && C.award ? C.award(r.xp, r.essence) || {} : {};
   save(); C.showStats && C.showStats();
   const next = levelsOf(l.script)[levelsOf(l.script).indexOf(l) + 1];
-  board.insertAdjacentHTML("beforeend", `<div class="dec-reward">${starRow(r.best)}${r.newCodex ? `<div>📜 Codex: <b>${esc(r.newCodex)}</b></div>` : ""}
+  board.insertAdjacentHTML("beforeend", `<div class="dec-reward">${sparks()}${starRow(r.best, 3, true)}${r.newCodex ? `<div>📜 Codex: <b>${esc(r.newCodex)}</b></div>` : ""}
     ${r.xp ? `<div>+${r.xp} ✦ · +${r.essence} 💎</div>` : `<div class="dec-note">Replay: practice only</div>`}${l.src ? `<small>Source: ${esc(l.src)}</small>` : ""}</div>`);
+  play("stars", r.best); if (r.xp && C.chime) setTimeout(() => C.chime(r.first ? 2 : 1), 300 + r.best * 220);
   C.say(why + (a.rankUp ? ` And… you've risen to ${a.rankUp}!` : ""));
   C.ui(`<div class="choices">${next ? `<button class="c main" type="button" id="dec-next">✦ Next: ${esc(next.title)}</button>` : ""}${stars < 3 ? `<button class="c" type="button" id="dec-again">↻ Try for ★★★</button>` : ""}
     <button class="c" type="button" id="dec-lv">↩ Levels</button></div>`);
@@ -213,9 +218,9 @@ function writeLevel(l) {
   C.say(l.lesson);
   C.ui(`<div class="form one" id="dec-wf"><label for="dec-name">Your name<input id="dec-name" maxlength="24" autocomplete="off" value="${esc(C.state.name && C.state.name !== "traveller" ? C.state.name : "")}"></label></div>
     <div class="choices"><button class="c main" type="button" id="dec-wf-go">✦ Carve it</button><button class="c" type="button" id="dec-back">↩ Levels</button></div>`);
-  const inp = $("dec-name"); inp.oninput = () => draw(inp.value); draw(inp.value);
+  const inp = $("dec-name"); let had = 0; inp.oninput = () => { const w = draw(inp.value); if (w.length > had) play("carve", l.script, w.length - 1); had = w.length; }; draw(inp.value);
   onGo("dec-wf-go", "dec-name", () => { const w = draw(inp.value); if (!w.length) { C.say("Give me a name with letters in it."); return; }
-    C.chime && C.chime(); reward(l, 3, `There: ${inp.value.trim()}, as a ${s.name} carver might have written it.`); });
+    play("solve"); reward(l, 3, `There: ${inp.value.trim()}, as a ${s.name} carver might have written it.`); });
   $("dec-back").onclick = () => scriptMenu(l.script);
 }
 function dateLevel(l) {
@@ -228,11 +233,10 @@ function dateLevel(l) {
     <div class="choices"><button class="c main" type="button" id="dec-df-go">✦ Count the days</button><button class="c" type="button" id="dec-back">↩ Levels</button></div>`);
   const inp = $("dec-date"); inp.oninput = () => draw(inp.value); draw(inp.value);
   onGo("dec-df-go", "dec-date", () => { const m = draw(inp.value); if (!m) { C.say("That date doesn't fit the count. Try year-month-day, like 1990-04-09."); return; }
-    C.chime && C.chime(); reward(l, 3, `${m.longCount.join(".")}: ${m.days.toLocaleString("en-US")} days since 4 Ajaw 8 Kumk'u. Your day sign is ${m.tone} ${m.signName}.`); });
+    play("solve"); reward(l, 3, `${m.longCount.join(".")}: ${m.days.toLocaleString("en-US")} days since 4 Ajaw 8 Kumk'u. Your day sign is ${m.tone} ${m.signName}.`); });
   $("dec-back").onclick = () => scriptMenu(l.script);
 }
 
-/** Store try-on: a sample inscription on the given tablet (drawn into the reading table by the Chamber store). */
 // Try-on in the Essence store: lay a sample inscription on the tablet being tried.
 export function tabletPreview(id, { tableEl } = {}) {
   styleOnce(); const it = SHOP.items.find((x) => x.id === id) || SHOP.items[0], l = byId(it.sample) || LEVELS[0];

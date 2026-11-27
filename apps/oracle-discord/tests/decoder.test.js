@@ -111,3 +111,12 @@ test("Decoder tablets are on sale in the Essence store and each one has a look",
   assert.ok(p.owned.includes("tab-starlit")); assert.equal(tabletOf(p.tablet), "starlit");
   assert.ok(buy(p, "tab-birch")); assert.equal(p.essence, 40); assert.ok(!buy(p, "tab-bracteate"));
 });
+
+
+test("Decoder has a sound for every script and moment, and stays silent without audio", async () => {
+  const { SFX, play } = await import("../activity/src/decoder/sfx.js");
+  for (const k of ["carve", "wrong", "open", "page", "zoom", "solve", "stars", "right", "tap"]) assert.equal(typeof SFX[k], "function", k);
+  assert.doesNotThrow(() => { play("carve", "futhark", 3); play("open", "maya"); play("nope"); });
+  const { CSS } = await import("../activity/src/decoder/style.js");
+  for (const a of ["dec-carve", "dec-wave", "dec-star", "dec-spark", "prefers-reduced-motion"]) assert.ok(CSS.includes(a), a);
+});
