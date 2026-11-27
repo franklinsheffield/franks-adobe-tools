@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
 import { makeTable, fitSvg, setTableDecor } from "./table.js";
@@ -193,11 +194,11 @@ function greet() {
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
   say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
-  ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast" && !s.row).map(btn).join("")}
-    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}${ROOMS.filter((r) => r.row === "cards").map(roomBtn).join("")}
-    <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
-    <div class="group">Investigate &amp; learn</div>${ROOMS.filter((r) => !r.row).map(roomBtn).join("")}
-    <div class="group">Study</div>${STUDY.filter((x) => ROOMS.some((r) => r.id === x.room)).map((x) => `<button class="c small" type="button" data-study="${x.room}" title="Study guides for ${esc(x.name)}">📖 ${x.emoji} ${esc(x.name)}</button>`).join("")}</div>`);
+  const items = homeItems(sys, ROOMS, STUDY);
+  ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
+  $("hm-daily").onclick = () => choose(systemByKey("tarot"));
+  $("hm-surprise").onclick = () => { const all = [...items.question, ...items.cards, ...items.birth, ...items.play], it = all[Math.floor(Math.random() * all.length)];
+    mood.emote("wink", { quiet: true }); it.kind === "sys" ? choose(systemByKey(it.id)) : openRoom(it.id); };
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
   $("ui").querySelectorAll("[data-study]").forEach((b) => (b.onclick = () => openStudy(b.dataset.study)));
@@ -607,7 +608,12 @@ showVoice();
     } catch (e) { console.warn("Discord SDK failed to start", e); }
   }
   await loadProgress();
-  greet();
+  // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
+  const gate = $("gate"), p = state.prog;
+  gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
+  gate.hidden = false; say("");
+  const enter = () => { unlockVoice(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); };
+  $("enter").onclick = enter; $("enter").focus();
 })();
 
 // ---- the Trophy Case (trophies.js): full-screen cabinet, the collect moment, showcase pins ----
