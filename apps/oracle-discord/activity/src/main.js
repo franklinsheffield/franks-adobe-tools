@@ -33,9 +33,11 @@ import { workshop, workshopCodex } from "./workshop/room.js";
 import { bookings, bookingsCodex } from "./bookings/room.js";
 import { darkseance, darkseanceCodex } from "./darkseance/room.js";
 import { mentalist, mentalistCodex } from "./mentalist/room.js";
+import { phantasmagoria, phantasmagoriaCodex } from "./phantasmagoria/room.js";
 import { bench, benchCodex } from "./bench/room.js";
 import { commissions, commissionsCodex } from "./commissions/room.js";
 import { fireworks, fireworksCodex } from "./fireworks/room.js";
+import { leadgold, leadgoldCodex } from "./leadgold/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -220,15 +222,15 @@ $("table").addEventListener("click", (e) => {
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 /** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
-function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
+function keepLine() { const t = (say.full || $("say").textContent).trim(); say.full = ""; if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
   clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
-  if (!keep) $("said").innerHTML = "";
+  keepLine(); const said = $("said"); while (said.children.length > 40) said.firstElementChild.remove(); // the conversation stays readable: earlier lines scroll up
   /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { box.scrollTop = box.scrollHeight; };
-  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
+  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60, follow = () => { if (atEnd) box.scrollTop = box.scrollHeight; };
+  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
   const pros = prosody(plain);
@@ -388,7 +390,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -770,6 +772,11 @@ function showStore(tab = "outfit", opener = null) {
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
 $("store-btn").onclick = () => showStore();
+/** The header menu (Frank 2026-11-27): Store, Trophies, Grimoire and the sound controls fold away behind ☰. Remembered per player. */
+{ const head = document.querySelector(".box-head"), btn = $("menu-btn"), set = (on) => { head.classList.toggle("menu-open", on); btn.setAttribute("aria-expanded", String(on)); btn.textContent = on ? "✕ Close" : "☰ Menu"; try { localStorage.setItem("oracle-menu", on ? "1" : "0"); } catch {} };
+  let start = false; try { start = localStorage.getItem("oracle-menu") === "1"; } catch {} set(start);
+  btn.onclick = () => set(!head.classList.contains("menu-open"));
+  for (const id of ["store-btn", "trophy-btn", "grimoire-btn"]) $(id).addEventListener("click", () => set(false)); }
 
 function showCodex() { return openBook("codex"); }
 /** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */

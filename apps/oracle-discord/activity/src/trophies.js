@@ -39,9 +39,11 @@ export const TROPHIES = [
   { id: "bookings", game: "Bookings", name: "Star Turn Ticket", art: "ticket", need: 3 },
   { id: "darkseance", game: "The Dark Séance", name: "Spirit Trumpet", art: "trumpet", need: 3 },
   { id: "mentalist", game: "The Mentalist", name: "Silk Blindfold", art: "blindfold", need: 3 },
+  { id: "phantasmagoria", game: "Phantasmagoria", name: "Brass Lantern", art: "lantern", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
   { id: "fireworks", game: "Fireworks Workshop", name: "Golden Rocket", art: "rocket", need: 2, how: ["Win Level 1", "Win Level 2", "Win a Level 3 show", "A perfect Level 3 show"] },
   { id: "fregoli", game: "The Same Person", name: "Fregoli's Mask", art: "mask", meta: true, how: ["Find 4 Dossier clues", "Find 9 Dossier clues", "Find 14 Dossier clues", "Find all 17 Dossier clues"] },
+  { id: "leadgold", game: "Lead into Gold", name: "Philosopher's Nucleus", art: "nucleus", need: 2, how: ["Win Level 1", "Win Level 2", "Win Level 3", "A perfect Level 3"] },
   { id: "commissions", game: "Commissions", name: "Royal Warrant", art: "seal", need: 3, how: ["3 Village jobs", "3 Guild jobs", "3 Royal Society jobs", "Clear the board at every tier"] },
 ];
 for (const t of TROPHIES) if (!t.how) {
@@ -51,6 +53,7 @@ for (const t of TROPHIES) if (!t.how) {
 export const SETS = [
   { id: "story", name: "Story set", ids: ["seance", "decoder", "alchemy", "timeline"], bonus: 100 },
   { id: "cards", name: "Card set", ids: ["duel", "rummy", "memory"], bonus: 100 },
+  { id: "orrery", name: "The Grand Orrery", ids: ["stars", "calendar", "rummy", "comet", "eclipse", "navigator"], bonus: 250 }, // obsprog.js OBS_GAMES: Gold on every Observatory game
 ];
 export const CASE_LEVELS = [{ at: 0, name: "Apprentice" }, { at: 8, name: "Curator" }, { at: 20, name: "Archivist" }, { at: 32, name: "Grand Keeper" }];
 
@@ -70,6 +73,7 @@ export const LINES = {
   flametest: "Bunsen's Burner, in your colours. Every flame you read was a real element.",
   bench: "The Golden Crucible. Every discovery in it was real chemistry.",
   fireworks: "The Golden Rocket. Every colour in your sky was real chemistry.",
+  leadgold: "The Philosopher's Nucleus. You did what the alchemists only dreamed of.",
   commissions: "The Royal Warrant. The Society itself vouches for your chemistry.",
   inscriptions: "The Scribe's Loupe. Every mark meant something, and you read the script.",
   starparty: "The Radiant Medal. You counted the shower true, strays and all left out.",
@@ -84,6 +88,7 @@ export const LINES = {
   bookings: "The Star Turn Ticket. Your name at the top of the bill, and not one spirit on the payroll.",
   fregoli: "Fregoli's Mask. Five hosts, one face, and you saw through every hat. Fregoli himself never got caught that badly.",
   darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
+  phantasmagoria: "The Brass Lantern. It filled Paris with ghosts in 1798, and every one was a painted slide.",
   mentalist: "The Silk Blindfold. You never read a mind in it, only the audience, and that was the whole act.",
 };
 
@@ -159,6 +164,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     mask: `<path d="M18 40 Q34 28 50 38 Q66 28 82 40 Q84 58 68 62 Q56 62 50 52 Q44 62 32 62 Q16 58 18 40Z" ${F}/><ellipse cx="35" cy="46" rx="7" ry="5" fill="#0b0818"/><ellipse cx="65" cy="46" rx="7" ry="5" fill="#0b0818"/><g class="tr-swing"><path d="M50 52 L50 80" stroke="${mid}" stroke-width="3" stroke-linecap="round"/></g><path class="tr-gem" d="M26 36 Q34 32 42 36" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`,
     trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
     blindfold: `<path d="M14 44 Q50 30 86 44 L86 56 Q50 44 14 56 Z" ${F}/><path d="M20 54 Q14 68 22 80" stroke="${lo}" stroke-width="4" fill="none"/><path d="M28 52 Q26 70 34 82" stroke="${lo}" stroke-width="3" fill="none"/><circle class="tr-gem" cx="50" cy="44" r="5" fill="#fff" opacity=".7"/>`,
+    lantern: `<rect x="34" y="34" width="32" height="34" rx="4" ${F}/><path d="M42 34v-10h16v10" ${F}/><circle cx="50" cy="20" r="4" ${F}/><path d="M66 46h14l4 -4v16l-4 -4h-14z" ${F}/><circle class="tr-gem" cx="50" cy="51" r="7" fill="#FFD27A" opacity=".85"/><path d="M84 46 L96 38 M84 54 L96 62" stroke="#FFF3C4" stroke-width="2" opacity=".6"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,
     ticket: `<path d="M18 34 H82 V44 Q76 50 82 56 V66 H18 V56 Q24 50 18 44Z" ${F}/><path d="M38 36 V64" stroke="${lo}" stroke-width="1.5" stroke-dasharray="3 3"/><path class="tr-gem" d="M60 40 L63 47 L70 47 L64 51 L66 58 L60 54 L54 58 L56 51 L50 47 L57 47Z" fill="#fff6d0"/>`,
     lens: `<circle cx="44" cy="42" r="20" ${F}/><circle cx="44" cy="42" r="13" fill="#cfe8ff" opacity=".35"/><path class="tr-gem" d="M36 34 Q40 30 46 30" stroke="#fff" stroke-width="3" fill="none"/><path d="M58 56 L76 74" stroke="#5a3a12" stroke-width="9" stroke-linecap="round"/><path d="M58 56 L76 74" stroke="#C9A24A" stroke-width="5" stroke-linecap="round"/>`,
@@ -166,6 +172,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     loupe: `<path d="M24 30 Q50 22 70 30 L70 74 L24 74Z" ${F}/><path d="M32 40 h26 M32 48 h20 M32 56 h24" stroke="${lo}" stroke-width="2" stroke-linecap="round"/><g class="tr-rot"><circle cx="62" cy="40" r="14" fill="rgba(255,255,255,.18)" stroke="${mid}" stroke-width="4"/><path d="M72 50 L84 64" stroke="${mid}" stroke-width="6" stroke-linecap="round"/></g>`,
     geode: `<path d="M22 54 Q20 26 50 20 Q80 26 78 54 Q76 76 50 78 Q24 76 22 54Z" ${F}/><path d="M32 52 Q32 34 50 30 Q68 34 68 52 Q66 68 50 70 Q34 68 32 52Z" fill="#7a4ad0" opacity=".85"/><path class="tr-gem" d="M42 52 L50 36 L58 52 L50 64Z" fill="#c8a8ff"/><path d="M36 56 L44 46 L46 60Z M56 46 L64 54 L56 62Z" fill="#e6d8ff" opacity=".8"/>`,
     rocket: `<path d="M50 14 Q62 28 60 56 L40 56 Q38 28 50 14Z" ${F}/><path d="M40 48 L30 64 L40 60Z M60 48 L70 64 L60 60Z" ${F}/><circle cx="50" cy="34" r="6" fill="none" stroke="${lo}" stroke-width="2.5"/><path class="tr-gem" d="M44 60 Q50 78 56 60" fill="#ff9a3c" opacity=".9"/><g class="tr-rot"><path d="M20 22 l4 4 M80 22 l-4 4 M16 40 h6 M84 40 h-6" stroke="#ffd86b" stroke-width="2.5" stroke-linecap="round"/></g>`,
+    nucleus: `<circle cx="50" cy="46" r="26" ${F}/>${[[44,40],[56,40],[50,50],[42,52],[58,52],[50,38]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="6" fill="${i%2?"#e2574a":lo}"/>`).join("")}<g class="tr-rot"><ellipse cx="50" cy="46" rx="40" ry="12" fill="none" stroke="#ffd86b" stroke-width="2"/><circle cx="90" cy="46" r="3" fill="#ffd86b"/></g>`,
     seal: `<path d="M38 56 L30 84 L40 78 L46 86 L50 60Z" fill="#b8322a"/><path d="M62 56 L70 84 L60 78 L54 86 L50 60Z" fill="#8a2420"/><circle cx="50" cy="44" r="24" ${F}/><circle cx="50" cy="44" r="16" fill="none" stroke="${lo}" stroke-width="2"/><path class="tr-glyph" d="M40 50 L42 38 L50 46 L58 38 L60 50Z" fill="${lo}"/>`,
     crucible: `<path d="M26 34 L74 34 L66 74 Q64 80 56 80 L44 80 Q36 80 34 74Z" ${F}/><rect x="22" y="28" width="56" height="8" rx="3" ${F}/><path d="M34 46 L66 46 L63 60 L37 60Z" fill="#ffcf6a" opacity=".85"/><circle class="tr-bub" cx="46" cy="50" r="2.5" fill="#fff" opacity=".8"/><path class="tr-flame" d="M40 92 Q46 82 50 92 Q54 82 60 92Z" fill="#ff8a3a"/>`,
     mortar: `<path class="tr-pestle" d="M58 44 L74 14" stroke="${mid}" stroke-width="7" stroke-linecap="round"/><path d="M24 46 L76 46 Q74 74 50 76 Q26 74 24 46Z" ${F}/><rect x="22" y="42" width="56" height="6" rx="3" ${F}/><path d="M36 42 Q40 36 44 42 M48 42 Q52 34 56 42" fill="#7ad16a"/>`,
