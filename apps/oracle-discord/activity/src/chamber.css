@@ -1115,3 +1115,7 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .c.level.sc-daily{border-color:rgba(250,222,140,.7);background:linear-gradient(90deg,rgba(250,222,140,.12),transparent)}
 .sc-hint{border-color:rgba(102,224,200,.5)}
 .sc-buy .c{font-size:.85em}
+/* Séance: group circle */
+.c.level.sc-group { border-color: rgba(140, 200, 255, .45); }
+.sc-circle span { font-size: 12px; }
+.sc-log { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; font-size: 12px; max-height: 120px; overflow-y: auto; }
