@@ -38,6 +38,8 @@ export function gears(n, secs = 1.2) {
   for (let i = 0; i < k; i++) { const t = t0 + (secs * 0.85 * i) / k; noise(t, 0.03, { freq: 3200 + (i % 2) * 900, q: 9, vol: 0.5 }); tone(180 + (i % 3) * 20, t, 0.04, { type: "square", vol: 0.08, lp: 900 }); }
   clunk(t0 + secs * 0.9);
 }
+/** One ratchet click: a single day turned by hand. */
+export function tick(fwd = true) { if (!ac()) return; const t = ctx.currentTime; noise(t, 0.025, { freq: fwd ? 3600 : 2900, q: 9, vol: 0.45 }); tone(fwd ? 200 : 170, t, 0.035, { type: "square", vol: 0.07, lp: 900 }); }
 export function clunk(t = null) { if (!ac()) return; t ??= ctx.currentTime; tone(110, t, 0.18, { type: "triangle", vol: 0.5, f2: 70 }); noise(t, 0.08, { freq: 600, q: 2, vol: 0.35 }); }
 /** Fast whirl for a long jump through time. */
 export function whirl(secs = 2) {

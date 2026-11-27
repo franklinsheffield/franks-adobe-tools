@@ -39,6 +39,8 @@ export const CSS = `
 .gr-note.safe{border-color:#6bbf6b}.gr-note.deadly{border-color:#d2334a}
 .gr-tells{margin:4px 0 0 18px;padding:0}.gr-tells li{margin:3px 0}
 @media (max-width:560px){.gr-notes{grid-template-columns:1fr}}
+.c.main.gr-daily .note,#gr-twins .note{color:inherit;opacity:.72}
+.gr-share{white-space:pre-wrap;font-family:inherit;font-size:.95rem;line-height:1.5;border:1px dashed var(--gold);border-radius:12px;padding:8px 12px;margin:6px 0;background:rgba(226,176,74,.08);user-select:all}
 .gr-guide h3{font-family:var(--display);color:var(--gold2);margin:0 0 6px;font-size:1.02rem}
 .gr-guide details{border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:6px 0;background:var(--deep)}
 .gr-guide summary{cursor:pointer;color:var(--teal);font-weight:600}

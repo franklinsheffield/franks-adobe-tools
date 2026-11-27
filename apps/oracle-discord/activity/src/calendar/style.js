@@ -38,6 +38,9 @@ export const CSS = `
 .cal-ecl-t{opacity:0;animation:cal-fadein .6s 2.6s both}.cal-ecl{pointer-events:none}
 .cal-flame{opacity:0;animation:cal-flame .5s 1.2s ease-in-out infinite alternate both}@keyframes cal-flame{from{opacity:.85;transform:scaleY(.8) scaleX(1.05)}to{opacity:1;transform:scaleY(1.2) scaleX(.9)}}
 .cal-pop .cal-stars{display:inline-block;animation:cal-pop .6s cubic-bezier(.2,1.6,.4,1) both}@keyframes cal-pop{from{transform:scale(0) rotate(-30deg)}}
+.cal-drag{touch-action:none;cursor:grab}.cal-drag.dragging{cursor:grabbing}.cal-desk.dragging .cal-g{transition:transform .12s ease-out}
+.cal-daily{border-color:var(--gold)!important;background:linear-gradient(90deg,rgba(226,176,74,.16),rgba(22,16,48,.5))!important}
+.cal-turned{fill:var(--teal,#7fe3d4);font-weight:700;letter-spacing:.04em}
 @media (max-width:560px){.form.cal-two{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:reduce){.cal-g{transition:none}.cal-spin,.cal-tw,.cal-ember,.cal-smoke,.cal-sirius,.cal-win,.cal-dial,.cal-wrap.shake{animation:none}.cal-desk.whirl .cal-g{transition:none}}
 `;

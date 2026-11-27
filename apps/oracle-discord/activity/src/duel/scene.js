@@ -6,6 +6,7 @@ import { CARD_BACK, cardBackSvg } from "../cardbacks.js";
 import { colourOf } from "./elements.js";
 import { BY_ID, pretty } from "./compounds.js";
 import { COND, START, GOAL } from "./logic.js";
+import { RIVAL } from "./rivals.js";
 
 const xml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -91,10 +92,10 @@ function moleculeSvg(c, cx, cy, k = 1, cls = "") {
   const bonds = at.length === 2 ? `<path d="M${at[0].x} ${cy} H${at[1].x}" stroke="#ddd" stroke-width="${4 * k}"/>` : rest.map((a) => `<path d="M${a0.x} ${a0.y} L${a.x} ${a.y}" stroke="#ddd" stroke-width="${4 * k}"/>`).join("");
   return `<g class="${cls}">${bonds}${at.map((a, i) => `<g class="du-atom" style="--i:${i}"><circle cx="${a.x}" cy="${a.y}" r="${rOf(a.s, k)}" fill="${colourOf(a.s)}" stroke="#000" stroke-opacity=".5"/><circle cx="${a.x - rOf(a.s, k) * 0.35}" cy="${a.y - rOf(a.s, k) * 0.35}" r="${rOf(a.s, k) * 0.3}" fill="#fff" opacity=".45"/><text x="${a.x}" y="${a.y + 3.5 * k}" font-size="${(a.s === "H" ? 8 : 10) * k}" text-anchor="middle" fill="${["C", "N", "Cs", "Rb", "I", "Br", "K"].includes(a.s) ? "#fff" : "#111"}" font-weight="700" font-family="system-ui">${a.s}</text></g>`).join("")}</g>`;
 }
-function bar(x, y, w, hp, col, label, found, shield) {
-  const f = Math.max(0, hp) / START;
+function bar(x, y, w, hp, col, label, found, shield, max = START) {
+  const f = Math.min(1, Math.max(0, hp) / max);
   return `<g class="du-bar${shield ? " shielded" : ""}"><text x="${x}" y="${y - 4}" font-size="9" fill="${col}" font-family="Cinzel,Georgia,serif" letter-spacing="1.5">${label}</text>
-    <text x="${x + w}" y="${y - 4}" font-size="9" fill="#ece6fa" text-anchor="end" font-family="system-ui">${hp} / ${START} · ${"◆".repeat(found)}${"◇".repeat(Math.max(0, GOAL - found))}</text>
+    <text x="${x + w}" y="${y - 4}" font-size="9" fill="#ece6fa" text-anchor="end" font-family="system-ui">${hp} / ${max} · ${"◆".repeat(found)}${"◇".repeat(Math.max(0, GOAL - found))}</text>
     <rect x="${x}" y="${y}" width="${w}" height="9" rx="4.5" fill="rgba(0,0,0,.5)" stroke="${col}" stroke-opacity=".6"/>
     <rect class="du-fill" x="${x}" y="${y}" width="${(w * f).toFixed(1)}" height="9" rx="4.5" fill="${col}"/>
     ${shield ? `<rect class="du-shield" x="${x - 4}" y="${y - 4}" width="${w + 8}" height="17" rx="8.5" fill="rgba(95,224,232,.15)" stroke="#5fe0e8" stroke-width="1.5"/><text x="${x + w / 2}" y="${y + 7.5}" font-size="8" fill="#e8ffff" text-anchor="middle" font-family="system-ui">🛡 ${shield}</text>` : ""}</g>`;
@@ -142,7 +143,7 @@ export function sceneSvg(s) {
       ${fx.kind === "win" ? Array.from({ length: 14 }, (_, i) => `<circle class="du-conf" cx="200" cy="130" r="3" fill="${["#fade8c", "#ff4fb3", "#66e0c8", "#b07cff"][i % 4]}" style="--a:${i * 25.7}deg;--d:${(i % 5) * 0.06}s"/>`).join("") : ""}</g>`;
   }
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" class="${fx.hit ? "du-hit-" + fx.hit : ""}">${wall}${backs}
-    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", "ORACLE", g.oracle.found.length, g.oracle.shield)}</g>
+    <g class="du-o">${bar(110, 66, 180, g.oracle.hp, "#ff4fb3", g.rival ? RIVAL[g.rival].short.toUpperCase() : "ORACLE", g.oracle.found.length, g.oracle.shield, g.oMax || START)}</g>
     ${condCard}${bonusCard}${centre}
     <g class="du-y">${bar(110, 270, 180, g.you.hp, "#66e0c8", "YOU", g.you.found.length, g.you.shield)}</g>
     <text x="12" y="290" font-size="8" fill="${ink}" opacity=".6" font-family="system-ui">deck ${g.you.deck.length}</text></svg>`;

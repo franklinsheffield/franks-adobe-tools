@@ -1110,3 +1110,8 @@ body.slam .table{animation:g-tshake .4s ease-out}
 @media (prefers-reduced-motion: reduce){.teller .o-crown .cr-halo,.teller .o-crown .cr-star,.cr-stars i,.cr-sig,.credits{animation:none}}
 .tset.tmaster{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 #stats .booster{color:#e7b8ff;text-shadow:0 0 8px rgba(199,155,255,.7)}
+/* Séance: Daily Ghost share box and paid hints */
+.sc-share{width:100%;box-sizing:border-box;background:var(--deep,#120a22);color:var(--fg,#fff);border:1px solid rgba(250,222,140,.45);border-radius:10px;padding:8px;font:inherit;resize:none}
+.c.level.sc-daily{border-color:rgba(250,222,140,.7);background:linear-gradient(90deg,rgba(250,222,140,.12),transparent)}
+.sc-hint{border-color:rgba(102,224,200,.5)}
+.sc-buy .c{font-size:.85em}
