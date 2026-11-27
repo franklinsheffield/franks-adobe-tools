@@ -1,6 +1,6 @@
 # Science is Magic oracle bot
 
-One Discord app for the server's readings: `/oracle` (the fortune teller), `/humandesign`, `/astrology`, `/iching` and `/profile`; more systems plug in as modules.
+One Discord app for the server's readings: `/oracle` (the fortune teller), `/humandesign`, `/astrology`, `/iching`, `/numerology`, `/chinesezodiac`, `/mayan`, `/egyptian`, `/celtic`, plus `/profile`.
 
 - **Worker** (`worker/index.js`, Cloudflare free tier): checks Discord's signature, defers the reply, seals the options with AES-GCM (`ORACLE_KEY`) and dispatches `.github/workflows/oracle-reading.yml`.
 - **Reading job** (`scripts/job.js`, GitHub Actions): opens the options, runs `src/modules/<name>/index.js`, posts embeds + PNG to Discord. Birth data is never stored or logged.
@@ -16,6 +16,16 @@ One Discord app for the server's readings: `/oracle` (the fortune teller), `/hum
 
 ## Human Design
 `src/humandesign/`: chart (26 activations, design moment at 88° of solar arc, true node), branded bodygraph PNG, and original Science is Magic interpretation text. Verified against Ra Uru Hu's published chart and 400 random charts from an independent engine.
+
+## Birth-data systems (milestone 1 of the 8-system expansion)
+All use `/profile` (now with an optional birth name) and the pop-up form, which asks only for what each system needs (`BIRTH_FIELDS` in `src/profiles.js`). Shared card renderer: `src/card.js`.
+- `/numerology`: Pythagorean life path, expression, soul urge, personality, birthday, personal year/month, maturity, pinnacles and challenges, karmic debt; masters 11/22/33 kept.
+- `/chinesezodiac`: animal/element/yin-yang by the real lunar new year (new moons and principal terms from astronomy-engine, UTC+8), four pillars from solar terms (year at Lichun, day at 23:00), element balance, trines/clash, this year.
+- `/mayan`: Tzolk'in day sign + tone, kin, trecena, Haab', Long Count, Lord of the Night (GMT 584283), bar-and-dot numerals.
+- `/egyptian`: the modern "Egyptian zodiac" deity plus the birthday in the Coptic (Egyptian) calendar. Labelled as a modern reconstruction.
+- `/celtic`: Graves' tree calendar with ogham letter and fire-festival season. Labelled as a modern reconstruction.
+Every module returns `headline` (short result) and `reading` (structured data) alongside the embeds, so non-Discord front ends can use it.
+Preview any module: `node scripts/preview.js numerology '{"name":"Ada Lovelace","date":"1815-12-10"}'`.
 
 ## Local preview
 `npm ci && node scripts/try.js humandesign 1990-04-09 "2:30 pm" "Phoenix, USA"` writes `out/bodygraph.png` and `out/embeds.json`.
