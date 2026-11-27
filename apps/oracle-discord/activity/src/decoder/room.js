@@ -9,6 +9,7 @@ import { GUIDES } from "./guide.js";
 import { SHOP, tabletOf } from "./shop.js";
 import { play } from "./sfx.js";
 import { cardBackSvg, equippedBack } from "../cardbacks.js";
+import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, todayKey, dayNumber } from "../daily.js";
 
 export const room = { id: "decoder", row: "cards", label: "Rune & Glyph Decoder", emoji: "🗝️", blurb: "Card game: play sound cards onto real runes, Ogham, hieroglyphs and Maya numbers", open };
 
@@ -98,6 +99,7 @@ function home() {
     : "Before the Oracle could read the stars, someone had to read the stones. Four scripts, four ancient peoples. Choose one, and I'll teach you its signs.");
   C.ui(`<div class="choices">${SCRIPT_ORDER.map((k) => `<button class="c" type="button" data-s="${k}">${esc(SCRIPTS[k].emoji)} ${esc(SCRIPTS[k].name)}</button>`).join("")}
     <button class="c" type="button" id="dec-out">↩ Back to the Oracle</button></div>`);
+  dailyButton();
   $("ui").querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => scriptMenu(b.dataset.s)));
   $("dec-out").onclick = leave;
 }
@@ -149,9 +151,9 @@ function strip(l, picks, { wrongAt = -1, peek = false, won = false } = {}) {
 // The card game (Scribe's Hand): the inscription lies on the table as glyph cards, the player holds sound cards.
 // Tap a card to play it onto the glyph that glows; tap the deck to draw (1 ink). A wrong card costs 2 ink, a right one
 // refills 1. Run dry and the level is lost. Rules live in engine.js (deal, playCard, drawCard).
-function puzzle(l) {
+function puzzle(l, opts = {}) {
   C.clearReading(); // the study guide closes while decoding: only the codebook (one star) helps here
-  const g = deal(l, l.id + ":" + Date.now()); g.book = false; g.noPowers = !!opts.noPowers; let busy = false, first = true, peek = null;
+  const g = deal(l, opts.seed || l.id + ":" + Date.now()); g.book = false; g.noPowers = !!opts.noPowers; let busy = false, first = true, peek = null;
   const cardFace = (c) => `<button class="dec-hcard${l.script === "maya" ? " num" : ""}" type="button" data-c="${c.id}" aria-label="Play ${esc(c.v)}"><b>${esc(c.v)}</b></button>`;
   const inkRow = () => `<span class="dec-ink" aria-label="${g.ink} ink">${Array.from({ length: g.well }, (_, i) => `<i class="${i < g.ink ? "on" : ""}"></i>`).join("")}</span>`;
   const drawBoard = (wrongAt = -1) => {
@@ -176,7 +178,7 @@ function puzzle(l) {
     $("dec-hint").onclick = () => { const v = needed(l, g); if (v == null) return; g.hints++; const c = g.hand.find((x) => x.v === v);
       if (c) { const el = $("ui").querySelector(`[data-c="${c.id}"]`); el && el.classList.add("hinted"); C.say(`Play the “${v}” card.`); }
       else C.say(`You don't hold “${v}” yet. Draw from the deck.`); };
-    $("dec-quit").onclick = () => scriptMenu(l.script);
+    $("dec-quit").onclick = () => (opts.onQuit ? opts.onQuit(g) : scriptMenu(l.script));
   };
   const fly = (el, done) => {
     const to = board.querySelector(".now"); if (!el || !to || C.reduced) return done();
@@ -192,7 +194,7 @@ function puzzle(l) {
       busy = false; const r = playCard(l, g, id);
       if (!r.ok) { play_("wrong"); drawBoard(g.picks.length); drawHand(); C.say(g.lost ? "" : g.misses > 2 ? "Not that one. Open the codebook, there's no shame in it." : "Not quite. That card goes to the bottom of the deck."); if (r.lost) dry(); return; }
       play_("carve", l.script, g.picks.length - 1); drawBoard(); drawHand([g.hand[g.hand.length - 1]?.id]);
-      if (r.done) { setTimeout(() => play_("solve"), 200); return solved(l, g); }
+      if (r.done) { setTimeout(() => play_("solve"), 200); return opts.onDone ? opts.onDone(g) : solved(l, g); }
     });
   };
   const power = (k) => {
@@ -203,6 +205,7 @@ function puzzle(l) {
     peek = r.peek; C.say("The Scholar peers at the deck. Take the card you need."); drawBoard(); drawHand();
   };
   const dry = () => {
+    if (opts.onLost) return opts.onLost(g);
     show(`<div class="dec-cardtable">${strip(l, g.picks)}</div><div class="dec-done">🪶 The ink ran dry at ${g.picks.length} / ${target(l).length}.</div>`);
     play_("dry"); C.say("The ink well is empty. A scribe's lot. Fresh ink, fresh deck: try again?");
     C.ui(`<div class="choices"><button class="c main" type="button" id="dec-retry">🪶 Fresh ink, new deal</button>${guideBtn(l.script)}<button class="c" type="button" id="dec-lv">↩ Levels</button></div>`);
@@ -289,3 +292,63 @@ export function tabletPreview(id, { tableEl } = {}) {
   t.innerHTML = `<div class="dec-board">${strip(l, target(l).slice(0, 4))}<div class="dec-progress">${esc(it.name)} · ${esc(l.title)}</div></div>`;
 }
 room.shop = { ...SHOP, preview: tabletPreview };
+
+// ---- Daily Inscription: one inscription and one deal for the whole server each day (shared ../daily.js) ----
+// The level is picked from the day's seed. Only the first run counts: dealing marks the day as started
+// (prog.rooms.decoder.dailyDeal), so leaving mid-game and coming back records that run as 0, not a fresh deal.
+// Power cards are off in the daily so the board is fair. Score = 100 per star + 10 per ink left − draws.
+const DAILY_ID = "decoder";
+export function dailyLevel(day = todayKey()) {
+  const pool = LEVELS.filter((l) => l.kind === "decode");
+  return pool[dailySeed(DAILY_ID, day) % pool.length];
+}
+export const dailyScore = (g, won) => (won ? Math.max(0, starsFor(g) * 100 + g.ink * 10 - g.draws) : 0);
+function dailyButton() {
+  const p = P(), d = dec(p), l = dailyLevel();
+  if (d.dailyDeal === todayKey() && !dailyState(p, DAILY_ID).played) { // dealt earlier and left: that run counts as 0
+    const r = finishDaily(p, DAILY_ID, { score: 0, won: false, detail: `left · ${l.title}` }); save();
+    if (r.first) postDaily(C.state, DAILY_ID, { score: 0, won: false, detail: `left · ${l.title}` });
+  }
+  const st = dailyState(p, DAILY_ID);
+  const b = document.createElement("div"); b.className = "choices dec-daily-row";
+  b.innerHTML = `<button class="c ${st.played ? "" : "main "}dec-daily" type="button" id="dec-daily">📅 ${st.played ? "Today's board" : `Daily Inscription #${dayNumber()}`} · ${esc(SCRIPTS[l.script].emoji)} ${esc(l.title)}${st.streak ? ` · 🔥 ${st.streak}` : ""}</button>`;
+  $("ui").prepend(b); $("dec-daily").onclick = () => (dailyState(P(), DAILY_ID).played ? dailyBoard() : dailyStart());
+}
+function dailyStart() {
+  const l = dailyLevel(), s = SCRIPTS[l.script];
+  C.cap(`📅 Daily Inscription #${dayNumber()} · ${s.emoji} ${l.title}`); C.clearReading(); play("open", l.script);
+  show(`<div class="dec-intro"><div class="dec-big">📅</div><p><b>${esc(l.title)}</b></p><small>${esc(s.name)} · the same deal for everyone today · power cards are off</small></div>`);
+  C.say(`Today's inscription is ${l.title}, in ${s.name}. Everyone gets the same cards, and only your first run counts, so take your time. The codebook is there if you need it, but it costs a star.`);
+  C.ui(`<div class="choices"><button class="c main" type="button" id="dec-dgo">🎴 Deal today's cards</button>${guideBtn(l.script)}<button class="c" type="button" id="dec-home">↩ All scripts</button></div>`);
+  wireGuide(l.script); $("dec-home").onclick = home;
+  $("dec-dgo").onclick = () => {
+    dec(P()).dailyDeal = todayKey(); save();
+    const fin = (g, won) => dailyFinish(l, g, won);
+    puzzle(l, { seed: dailySeed(DAILY_ID), noPowers: true, onDone: (g) => fin(g, true), onLost: (g) => fin(g, false), onQuit: (g) => fin(g, false) });
+  };
+}
+async function dailyFinish(l, g, won) {
+  const stars = won ? starsFor(g) : 0, score = dailyScore(g, won), p = P();
+  const detail = `${won ? "★".repeat(stars) : "✗"} · ${l.title}`;
+  const r = finishDaily(p, DAILY_ID, { score, won, detail });
+  const bonus = won && r.first ? 10 + Math.min(r.streak, 7) * 2 : 0;
+  const a = bonus && C.award ? C.award(5, bonus) || {} : {}; save(); C.showStats && C.showStats();
+  const read = l.script === "maya" ? target(l).join(l.longCount ? "." : ", ") : target(l).join("");
+  show(`<div class="dec-cardtable">${strip(l, g.picks, { won })}</div><div class="dec-reward">${won ? sparks() : ""}${won ? starRow(stars, 3, true) : ""}
+    <div>📅 Daily Inscription #${dayNumber()} · <b>${score}</b> points</div><div>${won ? `${g.ink} 🪶 left · ${g.draws} draw${g.draws === 1 ? "" : "s"}` : `Stopped at ${g.picks.length} / ${target(l).length}`} · 🔥 ${r.streak} day streak</div>
+    ${bonus ? `<div>+5 ✦ · +${bonus} 💎</div>` : ""}</div>`);
+  if (won) { play("stars", stars); C.say(`“${read}”. ${l.q.why}${a.rankUp ? ` And you've risen to ${a.rankUp}!` : ""}`); }
+  else { play("dry"); C.say(`Today's inscription read “${read}”. Your streak still counts. A new one is dealt at midnight UTC.`); }
+  C.ui(`<div class="note">Loading today's board…</div>`);
+  if (r.first) await postDaily(C.state, DAILY_ID, { score, won, detail });
+  dailyBoard(true);
+}
+async function dailyBoard(fresh = false) {
+  const st = dailyState(P(), DAILY_ID), l = dailyLevel();
+  if (!fresh) { C.cap(`📅 Daily Inscription #${dayNumber()}`); C.say(`You've played today's inscription: ${st.today ? st.today.score : 0} points, ${st.streak} day streak. A new one is dealt at midnight UTC.`); }
+  C.ui(`<div class="note">Loading today's board…</div>`);
+  const board = await boardOf(C.state, DAILY_ID);
+  C.ui(`<div class="group">📅 Today's board · ${esc(l.title)}</div>${boardHtml(board, esc, { unit: "pts", local: st.today })}
+    <div class="choices"><button class="c" type="button" id="dec-home">↩ All scripts</button></div>`);
+  $("dec-home").onclick = home;
+}

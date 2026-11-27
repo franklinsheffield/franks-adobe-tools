@@ -160,3 +160,16 @@ test("power cards: earned with a new three stars, capped, two per level, each do
   const n = g2.hand.length; assert.ok(E.takePeek(g2, pk[1].id)); assert.equal(g2.hand.length, n + 1);
   const g3 = E.deal(l, "pw3"); g3.noPowers = true; assert.equal(E.canPower(p, g3, "ink"), false, "daily has no powers");
 });
+
+
+test("Daily Inscription: same level and deal for everyone on a day, fair score, no power cards", async () => {
+  const { dailyLevel, dailyScore } = await import("../activity/src/decoder/room.js");
+  const { dailySeed } = await import("../activity/src/daily.js");
+  const E = await import("../activity/src/decoder/engine.js");
+  const days = ["2026-11-27", "2026-11-28", "2026-11-29", "2026-11-30", "2026-12-01", "2026-12-02", "2026-12-03"];
+  const ids = days.map((d) => dailyLevel(d).id); assert.ok(new Set(ids).size >= 4, "the daily changes from day to day");
+  for (const d of days) { const l = dailyLevel(d); assert.equal(l.kind, "decode"); assert.equal(dailyLevel(d), l);
+    const a = E.deal(l, dailySeed("decoder", d)), b = E.deal(l, dailySeed("decoder", d)); assert.deepEqual(a.hand, b.hand); }
+  const l = dailyLevel(days[0]), g = E.deal(l, 1); g.ink = 6; g.draws = 2;
+  assert.equal(dailyScore(g, true), 300 + 60 - 2); assert.equal(dailyScore(g, false), 0);
+});
