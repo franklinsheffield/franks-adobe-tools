@@ -38,6 +38,7 @@ import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, ti
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
+import { CODES, BOOK_CODES, broken as cdBroken, tryCode, spot as cdSpot, codesOn, scrapHtml, glyphLayer } from "./codes.js";
 import { SECRETS, secretOf, found as gsFound, findSecret, INK, inkLit, CIPHER, toRunes, cipherSolved, diary, calendarPage, CREED, monthGrid, weekRecap, recapLine, searchLog } from "./secrets.js";
 import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
@@ -47,7 +48,7 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
-import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
+import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
@@ -716,6 +717,7 @@ function drawBook() {
   const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "diary" ? diaryPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
+  bookCodes(p, L, R);
   bookExtras(p);
   const on = (sel, fn) => document.querySelectorAll("#book " + sel).forEach((b) => (b.onclick = () => fn(b)));
   on("[data-bs]", (b) => turnTo(() => { BK.sys = b.dataset.bs; BK.entry = null; }));
@@ -855,8 +857,8 @@ function secretPages(p) {
   const solved = gsFound(p, "cipher"), secretBooks = BOOKS.filter((b) => b.secret && owns(b.id)), cal = (p.gcal || []).length;
   const right = pageHead("ᚱ The margin cipher", "Three margins, three words, one phrase") + `<div class="bk-cipher">${CIPHER.map((c) => `<span>${c.n} · ${toRunes(c.w)}</span>`).join("")}</div>`
     + (solved ? `<p class="bk-note">✓ Broken: <b>${CIPHER.map((c) => c.w).join(" ")}</b>.</p>` : `<div class="bk-speak"><input id="bk-cipher" type="text" autocomplete="off" placeholder="Write the phrase in letters" aria-label="The phrase from the margins"><button type="button" class="c small" id="bk-speak">Speak it</button></div><p class="bk-note" id="bk-cipher-r">Each rune stands for one letter. A few letters share a rune.</p>`)
-    + `<h4>Secret bindings</h4>${secretBooks.length ? `<div class="choices">${secretBooks.map((b) => `<button type="button" class="c small${p.book === b.id ? " on" : ""}" data-wb="${b.id}">${p.book === b.id ? "✓ " : ""}${esc(b.name)}</button>`).join("")}</div>` : `<p class="bk-empty">Two bindings are never sold. They are hidden in this book.</p>`}
-    <p class="bk-note">🌙 Calendar pages seen: ${cal}</p>`;
+    + `<h4>Secret bindings</h4>${secretBooks.length ? `<div class="choices">${secretBooks.map((b) => `<button type="button" class="c small${p.book === b.id ? " on" : ""}" data-wb="${b.id}">${p.book === b.id ? "✓ " : ""}${esc(b.name)}</button>`).join("")}</div>` : `<p class="bk-empty">Three bindings are never sold. They are hidden in this book.</p>`}
+    <p class="bk-note">🌙 Calendar pages seen: ${cal}</p>` + codebreakerHtml(p);
   return [left, right];
 }
 function diaryPages(p) {
@@ -881,6 +883,33 @@ function sharePageNow() {
     .then((r) => r.json()).then((r) => bkToast(r.ok ? "📤 Shared in the channel" : `Not shared: ${r.error || "try again"}`)).catch(() => bkToast("Not shared: offline"));
   else { const txt = `📖 ${title}\n${lines.join("\n")}`; try { navigator.clipboard.writeText(txt).then(() => bkToast("📋 Page copied. Paste it in the chat."), () => bkToast("Sharing works inside Discord")); } catch { bkToast("Sharing works inside Discord"); } }
 }
+/** Coded messages and the binding's own glyphs, written into the margins of the open pages. */
+function bookCodes(p, L, R) {
+  const bk = bookOf(p), here = codesOn(BK.sec, bk.id);
+  for (const [side, el] of [["left", L], ["right", R]]) {
+    el.insertAdjacentHTML("afterbegin", glyphLayer(bk.id, BK.sec, side, side === "right" ? emblemInner(bk) : ""));
+    const mine = here.filter((c) => c.side === side); if (mine.length) el.insertAdjacentHTML("beforeend", mine.map((c) => scrapHtml(c, esc)).join(""));
+  }
+  const fresh = here.length ? cdSpot(p, here.map((c) => c.id)) : []; if (!fresh.length) return; saveProgress();
+  if (fresh.some((id) => CODES.find((c) => c.id === id).book)) setTimeout(() => bkToast(`✦ Something is written here that only the ${bk.name} shows`), 400);
+}
+function codebreakerHtml(p) {
+  const n = CODES.filter((c) => cdBroken(p, c.id)).length, seen = p.cdSeen || [], SEC = { codex: "the Codex", journal: "the Journal", patterns: "Patterns", secrets: "the Secrets pages", diary: "the Oracle's diary" };
+  return `<h4>🔐 The Codebreaker's page</h4><p class="bk-note">${n} of ${CODES.length} coded messages broken. ${BOOK_CODES} of them only show in a certain binding. Write a decoded message here any time.</p>
+    <div class="bk-speak"><input id="cd-in" type="text" autocomplete="off" placeholder="Write a decoded message" aria-label="A decoded message"><button type="button" class="c small" id="cd-go">Try it</button></div><p class="bk-note" id="cd-r"></p>
+    <ol class="cd-list">${CODES.map((c) => { const b = c.book && BOOKS.find((x) => x.id === c.book);
+      if (cdBroken(p, c.id)) return `<li class="ok"><b>✓ ${esc(c.name)}</b><span>${esc(c.plain)}</span></li>`;
+      if (seen.includes(c.id)) return `<li class="seen"><b>${esc(c.name)}</b><small>Spotted in ${SEC[c.sec]}${b ? `, in the ${esc(b.name)}` : ""}</small><details><summary>How it works</summary><p>${esc(c.how)}</p></details></li>`;
+      return `<li class="un"><b>?</b><small>${b ? `Only shows in the ${esc(b.name)}` : "Somewhere in this book"}</small></li>`; }).join("")}</ol>`;
+}
+function breakCode() {
+  const p = state.prog, inp = $("cd-in"), out = $("cd-r"); if (!inp) return;
+  const c = tryCode(p, inp.value); if (!c) { out.textContent = "Nothing in the book unlocks with that. Check every letter."; mood.emote("shake"); return; }
+  const all = CODES.every((x) => cdBroken(p, x.id)); if (all) { p.owned = p.owned || []; if (!p.owned.includes("bk-cipher")) p.owned.push("bk-cipher"); }
+  saveProgress(); showStats(); chime(2); mood.emote(all ? "cheer" : "wow", { quiet: true });
+  logEvent("secret", "🔐", `Broke a coded message: ${c.name}`, null, [["Message", c.name], ["It said", c.plain], ["Method", c.how], ["Reward", `💎 ${c.pay}`], ["Broken so far", `${(p.cd || []).length} of ${CODES.length}`], ["Bonus", all ? "Every code broken: the Codebreaker's folio binding" : ""]]);
+  drawBook(); setTimeout(() => { bkToast(all ? "🔐 Every code broken! The Codebreaker's folio is yours" : `🔐 Broken: ${c.name} · +${c.pay} 💎`); mood.bubble(all ? "Every code in my book, broken. I'm impressed and a little worried." : `“${c.plain}.” You read my margins.`, 3600, "🔐"); }, 60);
+}
 /** Wire the parts drawBook doesn't: ribbons, the ink pages, search, notes, the cipher and the weekly recap. */
 function bookExtras(p) {
   const rb = $("bk-ribbons"); if (rb) { const M = lsGet(marksKey(), []); rb.innerHTML = M.map((m, i) => `<button type="button" style="--i:${i}" data-rib="${i}" title="${esc(m.label)}"><span>${esc(m.label)}</span></button>`).join("");
@@ -893,6 +922,7 @@ function bookExtras(p) {
   const q = $("bk-q"); if (q) q.oninput = () => { BK.q = q.value.trim(); const R = $("bk-right"); R.innerHTML = journalRight(byDay(loadLog())) + `<div class="bk-margin">${CIPHER[1].n} · ${toRunes(CIPHER[1].w)}</div>`;
     R.querySelectorAll("[data-day]").forEach((b) => (b.onclick = () => { BK.q = ""; turnTo(() => { BK.day = b.dataset.day; }); })); bookExtrasNote(); };
   bookExtrasNote();
+  const cg = $("cd-go"); if (cg) { cg.onclick = breakCode; $("cd-in").onkeydown = (e) => { if (e.key === "Enter") breakCode(); }; }
   const sp = $("bk-speak"); if (sp) { const go = () => { const v = $("bk-cipher").value; if (cipherSolved(v)) { p.owned = p.owned || []; if (!p.owned.includes("bk-rune")) p.owned.push("bk-rune"); revealSecret("cipher"); drawBook(); } else { $("bk-cipher-r").textContent = "The runes stay dark. Check each margin again."; mood.emote("shake"); } };
     sp.onclick = go; $("bk-cipher").onkeydown = (e) => { if (e.key === "Enter") go(); }; }
   const rc = $("bk-recap"); if (rc) rc.onclick = () => { const line = recapLine(weekRecap(loadLog()), state.name); closeBook(); clearReading(); cap("🗓️ Your week"); say(line); mood.emote("think"); ui(`<div class="choices"><button class="c" type="button" id="back">✦ Back to the Oracle</button><button class="c" type="button" id="bk-again">📖 Back to Your Grimoire</button></div>`); $("back").onclick = greet; $("bk-again").onclick = () => openBook("patterns"); };
@@ -943,7 +973,7 @@ function joinLobby() {
   next();
 })();
 $("grimoire-btn").onclick = () => openBook("codex");
-if (PREVIEW) window.__bookTest = (sec) => openBook(sec);
+if (PREVIEW) window.__bookTest = (sec, book) => { if (book) { const p = state.prog; p.owned = [...new Set([...(p.owned || []), book])]; p.book = book; } openBook(sec); };
 
 // Progress: this device always; the member's Discord account too when signed in (newest by reading count wins).
 let pushT = null;

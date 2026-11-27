@@ -1697,3 +1697,25 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .bk-entry-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:10px;border-top:1px dotted color-mix(in srgb,var(--ink2) 40%,transparent)}
 .bk-entry-nav small{color:var(--ink2)}
 @media (max-width:560px){.bk-dl{grid-template-columns:1fr}.bk-dl dt{padding-top:6px}}
+/* Coded messages and each binding's margin glyphs (codes.js) */
+.gl-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+:where(.bk-page)>:where(:not(.gl-layer)){position:relative;z-index:1}
+.gl-layer i{position:absolute;font-style:normal;font-size:calc(18px * var(--s,1));color:var(--foil,var(--ink2));opacity:.2;transform:translate(-50%,-50%) rotate(var(--r,0deg));animation:gl-breathe 7s ease-in-out var(--d,0s) infinite;font-family:"Segoe UI Symbol","Noto Sans Symbols","Noto Sans Symbols 2","Apple Symbols",serif}
+.gl-sketch{position:absolute;width:110px;height:110px;color:var(--foil,var(--ink2));opacity:.08;transform:rotate(var(--r,0deg))}
+@keyframes gl-breathe{0%,100%{opacity:.14}50%{opacity:.28}}
+.cd-scrap{margin:16px auto 6px;max-width:94%;padding:9px 12px;border:1px dashed color-mix(in srgb,var(--ink2) 55%,transparent);border-radius:3px;transform:rotate(var(--r,0deg));color:var(--ink2);font-family:"Courier New",ui-monospace,monospace;font-size:13px;letter-spacing:.06em;line-height:1.6;text-align:center;overflow-wrap:anywhere;background:color-mix(in srgb,var(--pg2) 45%,transparent);cursor:help}
+.cd-scrap.cd-bound{border-style:solid;border-color:color-mix(in srgb,var(--foil,var(--ink2)) 70%,transparent);box-shadow:0 0 12px color-mix(in srgb,var(--foil,var(--ink2)) 30%,transparent);animation:cd-glow 4s ease-in-out infinite}
+.cd-seal{position:absolute;top:-9px;left:-7px;font-style:normal;color:var(--foil,var(--ink2));font-size:14px}
+.cd-mirror{display:inline-block;transform:scaleX(-1);font-family:var(--body,Georgia,serif);font-style:italic;font-size:15px;letter-spacing:.02em}
+.cm-braille .cd-txt{font-size:20px;letter-spacing:.12em}
+.cm-runes .cd-txt{font-size:17px}
+.cm-binary .cd-txt,.cm-hex .cd-txt{font-size:12px}
+.cd-pig{width:100%;height:auto;max-height:46px;color:var(--ink)}
+@keyframes cd-glow{0%,100%{box-shadow:0 0 6px color-mix(in srgb,var(--foil,var(--ink2)) 20%,transparent)}50%{box-shadow:0 0 16px color-mix(in srgb,var(--foil,var(--ink2)) 45%,transparent)}}
+.cd-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.cd-list li{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;padding:5px 0;border-bottom:1px dotted color-mix(in srgb,var(--ink2) 35%,transparent)}
+.cd-list li small{color:var(--ink2)}
+.cd-list li.ok span{font-family:"Courier New",monospace;font-size:12.5px;letter-spacing:.05em}
+.cd-list li.un{opacity:.6}
+.cd-list details{flex-basis:100%;font-size:13px}.cd-list summary{cursor:pointer;color:var(--ink2)}
+@media (prefers-reduced-motion:reduce){.gl-layer i,.cd-scrap.cd-bound{animation:none}}
