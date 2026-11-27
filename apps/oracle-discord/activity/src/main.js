@@ -1074,6 +1074,7 @@ showSpeech();
   gate.hidden = false; say("");
   const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
+  if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
 
 // ---- server boosts (boost.js): the Worker checks the boost with the bot and pays each one once; the Oracle says thank you ----
