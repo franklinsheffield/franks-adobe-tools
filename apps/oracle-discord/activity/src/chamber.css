@@ -251,7 +251,6 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 .trance .teller .o-nail{animation:nail .35s ease-in-out infinite}
 details.written{margin-top:10px;border-top:1px solid rgba(250,222,140,.25);padding-top:6px}
 details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cinzel,serif;font-size:.95em;padding:4px 0}
-<<<<<<< HEAD
 /* ---- Essence store ---- */
 .table .t-flame{filter:var(--flame-filter,none)}
 .shop{display:grid;gap:6px;margin-top:6px}
@@ -260,5 +259,3 @@ details.written summary{cursor:pointer;color:var(--gold,#FADE8C);font-family:Cin
 .shop-row.on{border-color:var(--gold,#E2B04A);box-shadow:0 0 0 1px rgba(226,176,74,.35) inset}
 .tabs .on{border-color:var(--gold,#E2B04A);background:rgba(226,176,74,.18)}
 .table .t-flicker{filter:var(--flame-filter,none)}
-=======
->>>>>>> origin/main
