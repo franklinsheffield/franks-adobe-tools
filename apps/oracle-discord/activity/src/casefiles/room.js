@@ -11,6 +11,7 @@ import * as sfx from "../seance/sfx.js";
 import { page, coins, glass } from "../flametest/sfx.js";
 import { finishDaily, postDaily, boardOf, boardHtml, dailyState } from "../daily.js";
 import { host } from "../hosts/index.js";
+import { TRICKS } from "../workshop/data.js";
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const styleOnce = () => { if (document.getElementById("cf-style")) return; const s = document.createElement("style"); s.id = "cf-style"; s.textContent = CSS; document.head.append(s); };
@@ -85,8 +86,8 @@ export const casefiles = {
         board = `<div class="group">📅 Today's board</div><div id="cf-board" class="note">Loading the board…</div>`; }
       if (r.first) chime(1);
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>${board}${cardHtml(c, esc)}
-        <div class="choices"><button class="c main" type="button" id="cf-next">🗂️ Next Level ${L.n} case</button><button class="c" type="button" id="cf-lobby">📁 The files</button><button class="c" type="button" id="back">✦ Back</button></div>`);
-      $("cf-next").onclick = () => begin(start(L, nextOf(P(), L))); $("cf-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+        <div class="choices"><button class="c main" type="button" id="cf-next">🗂️ Next Level ${L.n} case</button>${r.learned ? `<button class="c" type="button" id="cf-ws">🎩 Rehearse it in the Workshop</button>` : ""}<button class="c" type="button" id="cf-lobby">📁 The files</button><button class="c" type="button" id="back">✦ Back</button></div>`);
+      $("cf-next").onclick = () => begin(start(L, nextOf(P(), L))); if (r.learned) $("cf-ws").onclick = () => ctx.go?.("workshop", { trick: (TRICKS.find((t) => t.lv === 1 && t.needs[0] === r.learned) || {}).id }); $("cf-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
     function shop(msg) {
       clearReading(); cap("🔍 The investigator's desk"); const look = lookOf(P()); draw(caseOf("fox"));

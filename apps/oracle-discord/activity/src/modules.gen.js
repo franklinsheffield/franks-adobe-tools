@@ -16,4 +16,5 @@ import * as m13 from "../../src/modules/magicdeck/index.js";
 import * as m14 from "../../src/modules/calendar/index.js";
 import * as m15 from "../../src/modules/tonight/index.js";
 import * as m16 from "../../src/modules/commission/index.js";
-export const MODS = { "humandesign": m0, "astrology": m1, "iching": m2, "numerology": m3, "chinesezodiac": m4, "mayan": m5, "egyptian": m6, "celtic": m7, "runes": m8, "oraclebones": m9, "ifa": m10, "tarot": m11, "lenormand": m12, "magicdeck": m13, "calendar": m14, "tonight": m15, "commission": m16 };
+import * as m17 from "../../src/modules/booking/index.js";
+export const MODS = { "humandesign": m0, "astrology": m1, "iching": m2, "numerology": m3, "chinesezodiac": m4, "mayan": m5, "egyptian": m6, "celtic": m7, "runes": m8, "oraclebones": m9, "ifa": m10, "tarot": m11, "lenormand": m12, "magicdeck": m13, "calendar": m14, "tonight": m15, "commission": m16, "booking": m17 };
