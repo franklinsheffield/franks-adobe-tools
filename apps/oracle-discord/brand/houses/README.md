@@ -1,6 +1,6 @@
 # Houses brand briefs
 
-Brand for every Science is Magic House (`activity/src/hosts/`). Houses 1 and 2 are live; Houses 3 to 5 are approved briefs ready to build. Machine-readable values: `house-tokens.json`. Crests: `crests/*.svg`. Overview: `houses-brand-sheet.png`. Full brand book (voice tables, social use): https://claude.ai/artifact/K9y5opNhdzTdYoXLfNVLiu
+Brand for every Science is Magic House (`activity/src/hosts/`). Houses 1 to 3 are live; Houses 4 and 5 are approved and their channels exist, ready to build. Pixel Scape's game language is approved. Machine-readable values: `house-tokens.json`. Crests: `crests/*.svg`. Overview: `houses-brand-sheet.png`. Full brand book (voice tables, social use): https://claude.ai/artifact/K9y5opNhdzTdYoXLfNVLiu
 
 ## Shared rules (every House)
 
@@ -15,11 +15,11 @@ Brand for every Science is Magic House (`activity/src/hosts/`). Houses 1 and 2 a
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | The Oracle Chamber | `oracle` | The Oracle | all | – | #🔮-oracle (live) | `#FF4FB3` | Cinzel | square 330 Hz | The Record Player |
 | 2 | The Alchemist's House | `alchemist` | Magister Vell (she) | alchemy, duel, grimoire | alchemy | #⚗️-laboratory (live) | `#E89A55` | IM Fell English | triangle 270 Hz | The Brass Phonograph |
-| 3 | The Observatory | `observatory` | Keeper Altair (he) | stars, calendar, rummy | stars | #🔭-observatory (to create) | `#8FB8FF` | Cormorant Garamond, wide caps | sine 220 Hz | The Orrery Music Box |
-| 4 | The Séance Parlour | `parlour` | Madame Rook (she) | seance, timeline | timeline | #🕯️-parlour (to create) | `#C3A6FF` | Cormorant Garamond italic | sawtooth 200 Hz, low-passed | The Spirit Trumpet Gramophone |
-| 5 | The Scriptorium | `scriptorium` | Archivist Wren (they) | decoder, memory | decoder | #🪶-scriptorium (to create) | `#E8483B` | Uncial Antiqua | triangle 380 Hz | The Hurdy-Gurdy |
+| 3 | The Observatory | `observatory` | Keeper Altair (he) | stars, calendar, rummy | stars | #🔭-observatory `1575975395692642596` (live) | `#8FB8FF` | Cormorant Garamond, wide caps | sine 220 Hz | The Orrery Music Box |
+| 4 | The Séance Parlour | `parlour` | Madame Rook (she) | seance, timeline | timeline | #🕯️-parlour `1575977181622829158` | `#C3A6FF` | Cormorant Garamond italic | sawtooth 200 Hz, low-passed | The Spirit Trumpet Gramophone |
+| 5 | The Scriptorium | `scriptorium` | Archivist Wren (they) | decoder, memory | decoder | #🪶-scriptorium `1575977195048927232` | `#E8483B` | Uncial Antiqua | triangle 380 Hz | The Hurdy-Gurdy |
 
-All display faces are already bundled in `activity/src/fonts/` or `assets/`. Leave `channelIds: []` for Houses 3 to 5 until the channels exist (preview with `?house=<id>`).
+All display faces are already bundled in `activity/src/fonts/` or `assets/`. All five channels exist under 🔮 Sanctum of Mysteries; use the ids above in each host's `channelIds`.
 
 ## House 3: The Observatory
 
