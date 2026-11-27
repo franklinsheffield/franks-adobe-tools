@@ -10,6 +10,7 @@ import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace,
 import { sceneSvg, kindOf, KIND, powerTier, structureSvg } from "./scene.js";
 import { USES, MILESTONES } from "./uses.js";
 import { friendDuel } from "./friend.js";
+import { cardFace, CLASSICAL, PLANET } from "./cardart.js";
 import { canJoin } from "../net.js";
 import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
@@ -66,6 +67,7 @@ const GUIDE = [
   ["Lab conditions", CONDITIONS.map((c) => `${c.emoji} <b>${c.name}</b>: ${c.rule} <i>${c.why}</i>`)],
   ["Levels", LEVELS.map((L) => `<b>${L.n} · ${L.name}</b>: ${L.what}. Recycle up to ${L.recycle} cards. Points ×${L.mult}.`)],
   ["Reaction chains (Master)", ["Make the steps of a real industrial process on your turns in a row for +2 power per step:", ...CHAINS.map((ch) => `<b>${ch.name}</b>: ${ch.steps.map(pretty).join(" → ")}. <i>${ch.what}</i>`)]],
+  ["Card faces", ["Each card shows a picture of the element as it really looks: gases glow in their real sign-tube colour, metals are ingots in their real colour, and sulfur, iodine and bismuth are their real crystals.", "Each card also has its classical element, the alchemists' four, assigned by how the real element behaves at room temperature: 🌬 <b>Air</b> is a gas, 💧 <b>Water</b> a liquid (only bromine and mercury), 🔥 <b>Fire</b> burns or reacts fiercely in air or water (the alkali metals, magnesium, phosphorus, sulfur), and 🌍 <b>Earth</b> is every other solid.", "The seven metals of antiquity also carry their alchemical planet sign: gold ☉ Sun, silver ☽ Moon, iron ♂ Mars, copper ♀ Venus, mercury ☿ Mercury, tin ♃ Jupiter, lead ♄ Saturn."]],
   ["Oxidation states", ["Each card shows its usual charges (oxidation states) in the corner. In a compound they add up to zero: Na is +1 and Cl is −1, so NaCl. Mg is +2 and Cl −1, so MgCl₂. Use them to work out formulas at Chemist and Master."]],
 ];
 export const DUEL_GUIDE = GUIDE; // read by the Study hall (study.js)
@@ -172,8 +174,7 @@ export const room = {
       say(`${pick(["I shuffle my deck. You shuffle yours.", "Seven atoms each. Let's see what you can make.", "The bench is set. Your move, chemist."])} Round 1: ${c.emoji} ${c.name}. ${c.rule}`);
       turn();
     }
-    const cardHtml = (c, where, cls = "") => { const e = EL[c.s], col = FAMILY[e.fam].col;
-      return `<button class="du-card ${cls}" type="button" data-${where}="${c.id}" style="--fam:${col}" title="${esc(e.name)} · ${esc(FAMILY[e.fam].name)} · ${esc(e.fact)}" aria-label="${esc(e.name)}"><span class="z">${e.z}</span><span class="ox">${e.ox.filter((o) => o).slice(0, 2).map(sign).join(" ") || "0"}</span><span class="sym">${c.s}</span><span class="nm">${esc(e.name)}</span><span class="fam"></span></button>`; };
+    const cardHtml = (c, where, cls = "") => cardFace(c, esc, `data-${where}="${c.id}"`, cls);
 
     /** Your turn: stats, condition, bench, hand, actions. */
     function turn(line, keepTable = false) {
