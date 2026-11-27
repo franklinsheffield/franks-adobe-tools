@@ -16,6 +16,7 @@ import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, ensureFree, item, buy, r
 import { setVoiceStyle, sampleVoice, checkout, rimshot } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
+import { room as memory, memoryCodex } from "./memory/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
@@ -136,21 +137,22 @@ function idleTick() {
 function greet() {
   state.inRoom = null; idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
+  const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
   say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
   ui(`<div class="choices"><div class="group">By question</div>${sys.filter((s) => s.kind === "cast" && !s.row).map(btn).join("")}
-    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}
+    <div class="group">By the cards</div>${sys.filter((s) => s.row === "cards").map(btn).join("")}${ROOMS.filter((r) => r.row === "cards").map(roomBtn).join("")}
     <div class="group">By birth</div>${sys.filter((s) => s.kind === "birth").map(btn).join("")}
-    <div class="group">Investigate &amp; learn</div>${ROOMS.map((r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`).join("")}</div>`);
+    <div class="group">Investigate &amp; learn</div>${ROOMS.filter((r) => !r.row).map(roomBtn).join("")}</div>`);
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
 }
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }];
 for (const r of ROOMS) registerShelf(r.shop); // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
