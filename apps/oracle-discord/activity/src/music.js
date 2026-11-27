@@ -5,6 +5,7 @@
 // The two "hero" tracks are battle music: they take over in the rooms where you play against the Oracle.
 // This file is data and rules only (no audio), so the tests can check it. player.js plays the music and draws the UI.
 import { tierOf } from "./trophies.js";
+import { LIBRARY } from "./hosts/soundtracks.js";
 
 /** Every record. how: "start" (yours from the start), "task" (test(p) says when it unlocks) or "shop" (price in Essence).
  *  label/ink colour the record's centre label and sleeve; icon sits on both. */
@@ -26,12 +27,16 @@ export const TRACKS = [
   { id: "jade-cartridge-shop", title: "Jade Cartridge Shop", icon: "🐉", label: "#1f8a5a", ink: "#e0fff0", how: "task", task: "Open a mystery box in the store", test: (p) => (p.boxes || 0) >= 1 },
   { id: "pixel-shaman", title: "Pixel Shaman", icon: "🪶", label: "#2e7d32", ink: "#e8ffe3", how: "shop", price: 250, note: "Drums, chants and chiptune smoke" },
 ];
+/** House records whose audio is in (hosts/soundtracks.js HAVE). Unlocked by their House task; they play on the same record player. */
+export const HOUSE_TRACKS = LIBRARY.flatMap((L) => L.tracks.filter((t) => t.file && t.test));
+/** Every playable record: the Chamber's 16, then the House records. (credits.js keeps to TRACKS, the Chamber's own.) */
+export const ALL_TRACKS = [...TRACKS, ...HOUSE_TRACKS];
 export const STARTER = "ember-menu";
 /** Rooms where you play against the Oracle: hero tracks take over there (if you own any). */
 export const BATTLE_ROOMS = ["duel", "rummy"];
 /** The store's id for a record sold on the Records shelf. */
 export const shopId = (t) => "rec-" + t.id;
-export const trackOf = (id) => TRACKS.find((t) => t.id === id || shopId(t) === id) || null;
+export const trackOf = (id) => ALL_TRACKS.find((t) => t.id === id || shopId(t) === id) || null;
 export const fileOf = (t) => `music/${t.id}.mp3`;
 
 /** The music settings in the member's progress (created on first use). on/vol: the always-there switch and volume. */
@@ -53,7 +58,7 @@ export function hasTrack(p, t) {
 /** Check every task record; returns the ones unlocked just now (they are saved into music.got). */
 export function checkUnlocks(p) {
   const m = musicOf(p), fresh = [];
-  for (const t of TRACKS) if (t.how === "task" && !m.got.includes(t.id)) { let ok = false; try { ok = t.test(p); } catch {} if (ok) { m.got.push(t.id); fresh.push(t); } }
+  for (const t of ALL_TRACKS) if (t.how === "task" && !m.got.includes(t.id)) { let ok = false; try { ok = t.test(p); } catch {} if (ok) { m.got.push(t.id); fresh.push(t); } }
   for (const t of fresh) if (!t.hero && !m.list.includes(t.id)) m.list.push(t.id); // new records join the playlist (hero tracks stay for battles unless you add them)
   return fresh;
 }

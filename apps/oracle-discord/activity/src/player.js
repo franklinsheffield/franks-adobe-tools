@@ -1,6 +1,6 @@
 // The Chamber's music player: one <audio> element that loops your playlist endlessly (or the hero tracks in a battle),
 // the always-there 🎵 button with on/off and volume, and the record player drawn in the Trophy Case.
-import { TRACKS, trackOf, fileOf, musicOf, hasTrack, playlist, battleList, nextIndex, shopId, togglePlaylist, moveInPlaylist } from "./music.js";
+import { TRACKS, ALL_TRACKS, trackOf, fileOf, musicOf, hasTrack, playlist, battleList, nextIndex, shopId, togglePlaylist, moveInPlaylist } from "./music.js";
 
 /** Create the player. getProg() returns the member's progress; save() stores it; onChange() redraws any open UI. */
 export function createPlayer({ getProg, save, onChange = () => {} }) {
@@ -90,7 +90,7 @@ export function turntableSvg(t, playing) {
 /** The record player view inside the Trophy Case. */
 /** deck(track, playing) draws the House's own player (the Oracle's turntable by default); the records and playlist are shared. */
 export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg } = {}) {
-  const s = musicOf(p), cur = pl.current, list = s.list.filter((id) => hasTrack(p, trackOf(id))), owned = TRACKS.filter((t) => hasTrack(p, t)).length;
+  const s = musicOf(p), cur = pl.current, list = s.list.filter((id) => hasTrack(p, trackOf(id))), owned = ALL_TRACKS.filter((t) => hasTrack(p, t)).length;
   const sleeve = (t, i) => { const own = hasTrack(p, t), inList = list.includes(t.id), on = cur && cur.id === t.id;
     const state = own ? "" : t.how === "shop" ? `<span class="rp-lock">💎 ${t.price} in the Store</span>` : `<span class="rp-lock">🔒 ${esc(t.task)}</span>`;
     return `<div class="rp-rec${own ? "" : " locked"}${on ? " now" : ""}" style="--lab:${t.label};--ink:${t.ink};--i:${i}">
@@ -109,8 +109,8 @@ export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg } = {}) {
       <div class="rp-list"><small>Your playlist · loops forever${list.length ? "" : " · add a record below"}</small>${list.map((id, i) => { const t = trackOf(id); return `<span class="rp-chip${cur && cur.id === id ? " now" : ""}" style="--lab:${t.label}">${t.icon} ${esc(t.title)}<button type="button" data-rp-up="${id}" aria-label="Move ${esc(t.title)} up" ${i ? "" : "disabled"}>▲</button><button type="button" data-rp-list="${id}" aria-label="Take ${esc(t.title)} off the playlist">✕</button></span>`; }).join("")}</div>
     </div>
   </div>
-  <h3 class="rp-h">Your records · ${owned} / ${TRACKS.length}</h3>
-  <div class="rp-crate">${TRACKS.map(sleeve).join("")}</div>
+  <h3 class="rp-h">Your records · ${owned} / ${ALL_TRACKS.length}</h3>
+  <div class="rp-crate">${ALL_TRACKS.map(sleeve).join("")}</div>
   <div class="note">Finish tasks to unlock records, or buy them in the Store under The Chamber. ⚔ Battle records play when you face the Oracle in Element Duel or Constellation Rummy.</div>
 </div>`;
 }

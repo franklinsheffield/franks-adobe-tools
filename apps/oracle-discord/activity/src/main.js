@@ -1,7 +1,7 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
 import { bookPoke } from "./library.js";
-import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
+import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, ALL_TRACKS, hasTrack } from "./music.js";
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
@@ -275,7 +275,7 @@ function showGift() {
     setTimeout(m.close, reduced ? 600 : 1500); };
 }
 function showProfile() {
-  const recs = TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
+  const recs = ALL_TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
   const x = profileOf(state.prog, { name: state.name, records: recs, systems: names });
   const art = ($("teller").querySelector("svg")?.outerHTML || "").replace(/id="t-/g, 'id="pf-').replace(/#t-/g, "#pf-").replace(/\sid="(?!pf-)[^"]*"/g, "");
   const m = modal("profile", `<div class="pf-in" role="dialog" aria-label="Your profile card">${profileHtml(x, esc, art)}<div class="choices"><button class="c main" type="button" id="pf-share">📤 Share in the channel</button><button class="c" type="button" id="pf-x">Close</button></div><p class="pf-msg" id="pf-msg" aria-live="polite"></p></div>`);
@@ -1326,8 +1326,8 @@ function openCase(focus = null, view = null) {
     <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
       <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
       ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
-    ${(() => { const t = player.current, own = TRACKS.filter((x) => hasTrack(p, x)).length;
-      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
+    ${(() => { const t = player.current, own = ALL_TRACKS.filter((x) => hasTrack(p, x)).length;
+      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || ALL_TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
     <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);

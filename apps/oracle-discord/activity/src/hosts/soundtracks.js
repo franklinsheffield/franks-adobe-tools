@@ -7,6 +7,11 @@ const visit = (h) => (p) => !!(((p && p.houses) || {})[h] || {}).day;
 const lvl3 = (h) => (p) => ((((p && p.houses) || {})[h] || {}).lv || []).some((k) => /-3$/.test(k));
 const rounds = (h, n) => (p) => ((((p && p.houses) || {})[h] || {}).rounds || 0) >= n;
 const relics = (h, n) => (p) => ((((p && p.houses) || {})[h] || {}).relics || []).length >= n;
+/** Records whose audio is in activity/music/<id>.mp3. They join the record player (music.js HOUSE_TRACKS). */
+export const HAVE = new Set(["bubble-and-brass", "knock-once-for-yes"]);
+/** Sleeve colours and icon for House records that don't set their own. */
+const SLEEVE = { alchemist: ["#C88A3A", "#fff1c4", "⚗️"], observatory: ["#8FB8FF", "#0B1530", "🔭"], parlour: ["#C3A6FF", "#2A0F24", "🕯️"],
+  scriptorium: ["#E8483B", "#F1E4C6", "🪶"], pixelscape: ["#5CF2FF", "#05040C", "🌍"] };
 const set = (house, rows) => rows.map(([id, title, mood, task, test]) => ({ id, title, mood, how: "task", house, task, test }));
 
 export const LIBRARY = [
@@ -42,5 +47,10 @@ export const LIBRARY = [
       ["new-world", "New World", "Big finale, a world finished", "Share a terrain to Discord", null],
     ]) },
 ];
+for (const L of LIBRARY) {
+  const [label, ink, icon] = SLEEVE[L.house] || [];
+  L.tracks = L.tracks.map((t) => ({ label, ink, icon, ...t, file: HAVE.has(t.id) }));
+  if (L.house !== "oracle") L.have = L.tracks.filter((t) => t.file).length;
+}
 /** How many tracks Frank still needs to send, per House. */
 export const toSend = () => LIBRARY.filter((L) => L.tracks.length).map((L) => ({ house: L.house, player: L.player, n: L.tracks.length - L.have }));
