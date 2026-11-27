@@ -38,6 +38,7 @@ export const TROPHIES = [
   { id: "bookings", game: "Bookings", name: "Star Turn Ticket", art: "ticket", need: 3 },
   { id: "darkseance", game: "The Dark Séance", name: "Spirit Trumpet", art: "trumpet", need: 3 },
   { id: "mentalist", game: "The Mentalist", name: "Silk Blindfold", art: "blindfold", need: 3 },
+  { id: "phantasmagoria", game: "Phantasmagoria", name: "Brass Lantern", art: "lantern", need: 3 },
   { id: "bench", game: "Discovery Bench", name: "Golden Crucible", art: "crucible", need: 1, how: ["10 discoveries", "30 discoveries", "Every discovery", "Every discovery"] },
   { id: "fireworks", game: "Fireworks Workshop", name: "Golden Rocket", art: "rocket", need: 2, how: ["Win Level 1", "Win Level 2", "Win a Level 3 show", "A perfect Level 3 show"] },
   { id: "fregoli", game: "The Same Person", name: "Fregoli's Mask", art: "mask", meta: true, how: ["Find 4 Dossier clues", "Find 9 Dossier clues", "Find 14 Dossier clues", "Find all 17 Dossier clues"] },
@@ -82,6 +83,7 @@ export const LINES = {
   bookings: "The Star Turn Ticket. Your name at the top of the bill, and not one spirit on the payroll.",
   fregoli: "Fregoli's Mask. Five hosts, one face, and you saw through every hat. Fregoli himself never got caught that badly.",
   darkseance: "The Spirit Trumpet. It never floated by itself, and now you know every way it was made to.",
+  phantasmagoria: "The Brass Lantern. It filled Paris with ghosts in 1798, and every one was a painted slide.",
   mentalist: "The Silk Blindfold. You never read a mind in it, only the audience, and that was the whole act.",
 };
 
@@ -157,6 +159,7 @@ export function trophyArt(kind, tierKey, { plinth = true } = {}) {
     mask: `<path d="M18 40 Q34 28 50 38 Q66 28 82 40 Q84 58 68 62 Q56 62 50 52 Q44 62 32 62 Q16 58 18 40Z" ${F}/><ellipse cx="35" cy="46" rx="7" ry="5" fill="#0b0818"/><ellipse cx="65" cy="46" rx="7" ry="5" fill="#0b0818"/><g class="tr-swing"><path d="M50 52 L50 80" stroke="${mid}" stroke-width="3" stroke-linecap="round"/></g><path class="tr-gem" d="M26 36 Q34 32 42 36" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`,
     trumpet: `<path d="M24 62 L58 48 Q74 30 82 26 L84 44 Q76 52 60 58 Z" ${F}/><circle cx="24" cy="62" r="5" ${F}/><path class="tr-gem" d="M62 44 Q72 36 78 32" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/><circle cx="34" cy="70" r="3" fill="#b8f0ff" opacity=".8"/><circle cx="72" cy="66" r="2.5" fill="#b8f0ff" opacity=".6"/>`,
     blindfold: `<path d="M14 44 Q50 30 86 44 L86 56 Q50 44 14 56 Z" ${F}/><path d="M20 54 Q14 68 22 80" stroke="${lo}" stroke-width="4" fill="none"/><path d="M28 52 Q26 70 34 82" stroke="${lo}" stroke-width="3" fill="none"/><circle class="tr-gem" cx="50" cy="44" r="5" fill="#fff" opacity=".7"/>`,
+    lantern: `<rect x="34" y="34" width="32" height="34" rx="4" ${F}/><path d="M42 34v-10h16v10" ${F}/><circle cx="50" cy="20" r="4" ${F}/><path d="M66 46h14l4 -4v16l-4 -4h-14z" ${F}/><circle class="tr-gem" cx="50" cy="51" r="7" fill="#FFD27A" opacity=".85"/><path d="M84 46 L96 38 M84 54 L96 62" stroke="#FFF3C4" stroke-width="2" opacity=".6"/>`,
     tophat: `<rect x="32" y="26" width="36" height="40" rx="3" ${F}/><rect x="20" y="64" width="60" height="9" rx="4" ${F}/><rect x="32" y="54" width="36" height="7" fill="#a3122a" opacity=".85"/><path class="tr-gem" d="M40 32 L40 50" stroke="#fff" stroke-width="2.5" opacity=".7"/>`,
     ticket: `<path d="M18 34 H82 V44 Q76 50 82 56 V66 H18 V56 Q24 50 18 44Z" ${F}/><path d="M38 36 V64" stroke="${lo}" stroke-width="1.5" stroke-dasharray="3 3"/><path class="tr-gem" d="M60 40 L63 47 L70 47 L64 51 L66 58 L60 54 L54 58 L56 51 L50 47 L57 47Z" fill="#fff6d0"/>`,
     lens: `<circle cx="44" cy="42" r="20" ${F}/><circle cx="44" cy="42" r="13" fill="#cfe8ff" opacity=".35"/><path class="tr-gem" d="M36 34 Q40 30 46 30" stroke="#fff" stroke-width="3" fill="none"/><path d="M58 56 L76 74" stroke="#5a3a12" stroke-width="9" stroke-linecap="round"/><path d="M58 56 L76 74" stroke="#C9A24A" stroke-width="5" stroke-linecap="round"/>`,
