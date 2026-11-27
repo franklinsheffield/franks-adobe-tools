@@ -3,7 +3,7 @@
 // the device beside the Journal log. Every secret is about the member's own data or plain facts: no advice, no verdicts.
 import { dayKey } from "./book.js";
 
-/** The seven secrets. hint: what the Secrets page says before one is found. */
+/** The eight secrets. hint: what the Secrets page says before one is found. */
 export const SECRETS = [
   { id: "ink", e: "🕯️", name: "Invisible ink", hint: "Some pages look blank. Bring a little light closer.", pay: 15 },
   { id: "cipher", e: "ᚱ", name: "The margin cipher", hint: "Three margins hold runes. The Scribe's Hand teaches the alphabet.", pay: 60 },
@@ -12,6 +12,7 @@ export const SECRETS = [
   { id: "gilded", e: "🏵️", name: "Gilded plates", hint: "Finish every entry in one system of the Codex.", pay: 80 },
   { id: "sealed", e: "👑", name: "The sealed chapter", hint: "A wax seal only a crown can break.", pay: 0 },
   { id: "pressed", e: "🌿", name: "Pressed specimens", hint: "Name a plant in the Herbalist's Grimoire. It will turn up between the pages.", pay: 10 },
+  { id: "behind", e: "🔺", name: "Behind the words", hint: "The Oracle's words cover something. Fold them away and look underneath.", pay: 20 },
 ];
 export const secretOf = (id) => SECRETS.find((s) => s.id === id);
 const gs = (p) => (p.gs = Array.isArray(p.gs) ? p.gs : []);

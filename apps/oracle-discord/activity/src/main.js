@@ -225,6 +225,30 @@ $("table").addEventListener("click", (e) => {
   setTimeout(() => { if (c.isConnected) { c.classList.remove("out"); c.classList.add("relit"); ignite(); setTimeout(() => c.classList.remove("relit"), 700); } }, 3200);
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
+// ---- the text feed: follows the speech, folds to two lines (a secret hides behind it), quick-saves the conversation ----
+const FEED = { pinned: true, autoAt: 0 };
+function feedToEnd() { const f = $("feed"); FEED.autoAt = performance.now(); f.scrollTop = f.scrollHeight; }
+$("feed").addEventListener("scroll", () => { const f = $("feed"), end = f.scrollHeight - f.scrollTop - f.clientHeight < 24; if (end) FEED.pinned = true; else if (performance.now() - FEED.autoAt > 120) FEED.pinned = false; }, { passive: true });
+function setFeedMini(on, save = true) {
+  const pane = $("feed").parentElement, b = $("feed-min"); pane.classList.toggle("feed-mini", on);
+  b.textContent = on ? "▴" : "▾"; b.setAttribute("aria-expanded", String(!on)); b.setAttribute("aria-label", on ? "Show the full text" : "Shrink the text to two lines"); b.title = on ? "Show the full text" : "Shrink the text";
+  if (save) try { localStorage.setItem("oracle-feed-mini", on ? "1" : "0"); } catch { /* blocked */ }
+  FEED.pinned = true; feedToEnd(); setTimeout(feedToEnd, 320);
+}
+$("feed-min").onclick = () => { chime(1); setFeedMini(!$("feed").parentElement.classList.contains("feed-mini")); };
+try { if (localStorage.getItem("oracle-feed-mini") === "1") setFeedMini(true, false); } catch { /* blocked */ }
+$("feed-secret").onclick = () => { const first = revealSecret("behind"); mood.bubble(first ? "You looked behind my words. Hardly anyone does." : "Still there. Some things only show when the talking stops.", 3600, "🔺"); };
+/** Quick save: everything in the feed goes into the Journal as a saved conversation. */
+$("feed-save").onclick = () => {
+  const lines = [...$("said").children].map((x) => x.textContent.trim()).concat((say.full || $("say").textContent).trim()).filter((t) => t && t !== "…");
+  const b = $("feed-save"); b.classList.remove("saved"); void b.offsetWidth;
+  if (!lines.length) { mood.bubble("Nothing said yet to save.", 2400); return; }
+  const title = ($("table-cap").textContent || "").trim() || "A conversation", words = lines.join("\n\n"), at = Date.now();
+  const entry = { at, key: "talk", label: "Conversation", emoji: "💬", title: "💬 " + title, words, embeds: [{ title: "💬 " + title, description: words.slice(0, 4000) }], files: [] };
+  try { localStorage.setItem(jKey(), JSON.stringify([entry, ...loadJournal()].slice(0, 60))); } catch { mood.bubble("This device would not let me save that.", 2600); return; }
+  logEvent("save", "💬", `Saved a conversation: ${title}`, at, [["Lines", String(lines.length)], ["First line", lines[0].slice(0, 160)]]);
+  b.classList.add("saved"); chime(1); mood.bubble(`Saved to your Journal (${lines.length} line${lines.length === 1 ? "" : "s"}).`, 2400, "💬");
+};
 /** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
 function keepLine() { const t = (say.full || $("say").textContent).trim(); say.full = ""; if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
@@ -232,8 +256,8 @@ function say(text, done, { keep = false } = {}) {
   text = rename(text);
   clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
   keepLine(); const said = $("said"); while (said.children.length > 40) said.firstElementChild.remove(); // the conversation stays readable: earlier lines scroll up
-  /** Long text scrolls: keep the line being spoken in view. */
-  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60, follow = () => { if (atEnd) box.scrollTop = box.scrollHeight; };
+  /** The feed keeps up with what is being said; scroll up to read back (that pauses the follow until the next line). */
+  FEED.pinned = true; const follow = () => { if (FEED.pinned) feedToEnd(); };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
   const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
@@ -257,9 +281,11 @@ const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "
 const joke = (key) => hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
-const ui = (html) => { $("ctl").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
+const ui = (html) => { $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
 /** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
-const ctl = (html) => { $("ctl").innerHTML = rename(html); };
+const ctl = (html) => { $("dock").innerHTML = ""; $("ctl").innerHTML = rename(html); };
+/** The floating corner dock (bottom left of the box): Continue and Skip live here, so the box stays clear. */
+const dock = (html) => { $("dock").innerHTML = html; };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
 function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * 6.28; return `<i style="--x:${Math.cos(a) * 110}px;--y:${Math.sin(a) * 70}px"></i>`; }).join("");
   p.classList.remove("go"); void p.offsetWidth; p.classList.add("go"); }
@@ -556,11 +582,11 @@ function talkThrough(pages, done, { keep = false } = {}) {
     const raw = pages[i++], page = raw.text ?? raw, last = i >= pages.length;
     if (raw.mood) mood.emote(raw.mood);
     if (i > 1 || keep) keepLine(); else $("said").innerHTML = "";
-    ui(""); ctl(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
+    ui(""); dock(`<button class="cont skip" type="button" id="skip" title="Show the whole line now">Skip ⏭</button>`);
     $("skip").onclick = () => say.finish && say.finish(); // Skip only skips the typing effect: the full text shows at once
     say(page, () => {
       if (raw.after) mood.emote(raw.after);
-      ctl(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
+      dock(`<button class="cont" type="button" id="more" title="Or press Space">${last ? "✦ Done" : "Continue ▸"}</button>`);
       $("more").onclick = next;
     }, { keep: true });
   };
@@ -775,6 +801,8 @@ function showStore(tab = "outfit", opener = null) {
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
+$("full-btn").onclick = () => { const on = !document.body.classList.contains("box-full"), b = $("full-btn"); document.body.classList.toggle("box-full", on); chime(1);
+  b.textContent = on ? "⤡" : "⤢"; b.setAttribute("aria-pressed", String(on)); b.title = on ? "Back to half screen" : "Expand this box to full screen"; b.setAttribute("aria-label", b.title); };
 $("store-btn").onclick = () => showStore();
 /** The header menu (Frank 2026-11-27): Store, Trophies, Grimoire and the sound controls fold away behind ☰. Remembered per player. */
 { const head = document.querySelector(".box-head"), btn = $("menu-btn"), set = (on) => { head.classList.toggle("menu-open", on); btn.setAttribute("aria-expanded", String(on)); btn.textContent = on ? "✕ Close" : "☰ Menu"; try { localStorage.setItem("oracle-menu", on ? "1" : "0"); } catch {} };
