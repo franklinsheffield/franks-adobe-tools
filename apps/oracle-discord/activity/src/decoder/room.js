@@ -5,12 +5,34 @@ import { SCRIPTS, LEVELS, SCRIPT_ORDER, LONG_COUNT, levelsOf, byId } from "./lev
 import { glyphsOf, target, taught, tiles, check, hint, starsFor, writeIn, mayaOf, complete, unlocked, scriptStars, dec, signOf } from "./engine.js";
 import { FONTS } from "./fonts.gen.js";
 import { CSS } from "./style.js";
+import { GUIDES } from "./guide.js";
 
 export const room = { id: "decoder", label: "Rune & Glyph Decoder", emoji: "🗝️", blurb: "Read runes, Ogham, hieroglyphs and Maya numbers", open };
 
 let C = null, board = null;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);
+
+// ---- study guide: shown in the reading area under the Oracle's text; free to read outside the decode step ----
+export function guideHtml(k) {
+  const g = GUIDES[k], s = SCRIPTS[k];
+  const table = k === "maya" ? `<div class="dec-gtable maya">${s.signs.map((x) => `<span>${mayaSvg(+x.g, 30)}<b>${x.g}</b></span>`).join("")}</div>`
+    : `<div class="dec-gtable">${s.signs.map((x) => `<span><i class="${s.font}">${esc(x.g)}</i><b>${esc(x.v)}</b><small>${esc(x.n)}: ${esc(x.gl)}</small></span>`).join("")}</div>`;
+  return `<div class="dec-guide"><h3>📖 ${esc(g.title)}</h3>${g.sections.map((sec, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(sec.h)}</summary>${sec.p.map((t) => `<p>${glyphFont(t)}</p>`).join("")}</details>`).join("")}
+    <details><summary>All the signs</summary>${table}</details></div>`;
+}
+/** Put runs of runes, Ogham or hieroglyphs inside the guide's prose into the matching glyph font. */
+const glyphFont = (t) => t.replace(/[\u16A0-\u16FF]+/g, (m) => `<span class="dec-runic dec-in">${m}</span>`)
+  .replace(/[\u1680-\u169F]+/g, (m) => `<span class="dec-ogham dec-in">${m}</span>`)
+  .replace(/[\u{13000}-\u{1342F}]+/gu, (m) => `<span class="dec-egy dec-in">${m}</span>`);
+function toggleGuide(k, btn) {
+  const rb = $("reading-body"), on = !rb.querySelector(".dec-guide");
+  rb.innerHTML = on ? guideHtml(k) : "";
+  if (btn) btn.textContent = on ? "📖 Close study guide" : "📖 Study guide";
+  if (on) rb.querySelector(".dec-guide").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+const guideBtn = (k) => `<button class="c" type="button" id="dec-guide">📖 Study guide</button>`;
+const wireGuide = (k) => { const b = $("dec-guide"); if (b) b.onclick = () => toggleGuide(k, b); };
 const P = () => C.state.prog;
 
 function styleOnce() {
@@ -73,7 +95,8 @@ function scriptMenu(k) {
   C.say(s.blurb);
   C.ui(`<div class="dec-levels">${levelsOf(k).map((l, i) => { const ok = unlocked(p, l.id), st = dec(p).solved[l.id] || 0;
     return `<button class="c dec-lv" type="button" data-l="${l.id}" ${ok ? "" : "disabled"}><span>${i + 1}. ${esc(l.title)}</span>${ok ? starRow(st) : "🔒"}</button>`; }).join("")}</div>
-    <div class="choices"><button class="c" type="button" id="dec-home">↩ All scripts</button></div>`);
+    <div class="choices">${guideBtn(k)}<button class="c" type="button" id="dec-home">↩ All scripts</button></div>`);
+  wireGuide(k);
   $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => lesson(byId(b.dataset.l))));
   $("dec-home").onclick = home;
 }
@@ -89,7 +112,8 @@ function lesson(l) {
       ${l.longCount ? `<div class="dec-lc-key">${LONG_COUNT.map(([n, d]) => `<span><b>${esc(n)}</b> ${d.toLocaleString("en-US")} days</span>`).join("")}</div>` : ""}</div>`
     : `<div class="dec-learn"><p class="dec-note">No new signs: you know them all. Decode it from memory.</p></div>`);
   C.say(l.lesson);
-  C.ui(`<div class="choices"><button class="c main" type="button" id="dec-go">✦ I'm ready: decode</button><button class="c" type="button" id="dec-back">↩ Levels</button></div>`);
+  C.ui(`<div class="choices"><button class="c main" type="button" id="dec-go">✦ I'm ready: decode</button>${guideBtn(l.script)}<button class="c" type="button" id="dec-back">↩ Levels</button></div>`);
+  wireGuide(l.script);
   $("dec-go").onclick = () => puzzle(l); $("dec-back").onclick = () => scriptMenu(l.script);
 }
 
@@ -108,6 +132,7 @@ function strip(l, picks, { wrongAt = -1, peek = false } = {}) {
 }
 
 function puzzle(l) {
+  C.clearReading(); // the study guide closes while decoding: only the codebook (one star) helps here
   const s = SCRIPTS[l.script], st = { picks: [], peeks: 0, hints: 0, misses: 0, book: false };
   const draw = (wrongAt = -1) => {
     show(strip(l, st.picks, { wrongAt }) + (st.book ? codebook(l) : `<div class="dec-progress">${st.picks.length} / ${target(l).length}</div>`));
@@ -143,7 +168,8 @@ function solved(l, st) {
 }
 function meaning(l, stars) {
   const q = l.q, order = shuffle(q.choices.map((_, i) => i), l.id);
-  C.ui(`<div class="dec-q"><p>${esc(q.ask)}</p>${order.map((i) => `<button class="c" type="button" data-a="${i}">${esc(q.choices[i])}</button>`).join("")}</div>`);
+  C.ui(`<div class="dec-q"><p>${esc(q.ask)}</p>${order.map((i) => `<button class="c" type="button" data-a="${i}">${esc(q.choices[i])}</button>`).join("")}</div><div class="choices">${guideBtn(l.script)}</div>`);
+  wireGuide(l.script);
   $("ui").querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => {
     if (+b.dataset.a !== q.right) { b.disabled = true; C.say("Hmm, no. The stones say otherwise. Try again."); return; }
     reward(l, stars, q.why);
