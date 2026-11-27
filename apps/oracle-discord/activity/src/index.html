@@ -9,21 +9,23 @@
 <body>
 <main id="stage" class="stage">
   <canvas id="stars" class="stars" aria-hidden="true"></canvas>
-  <div id="teller" class="teller" role="img" aria-label="The Oracle, a hooded fortune teller behind a crystal ball"></div>
-  <div id="poof" class="poof" aria-hidden="true"></div>
-  <button id="journal-btn" class="corner" type="button">📖 Journal</button>
-  <section class="dialog" aria-live="polite" aria-label="The Oracle speaks">
-    <div class="speaker">THE ORACLE</div>
-    <div id="say" class="say"></div>
+  <section class="pane oracle-pane" aria-label="The Oracle">
+    <div id="teller" class="teller" role="img" aria-label="The Oracle: a tall black hood with a golden pyramid face and one pink eye, hands around a crystal ball"></div>
+  </section>
+  <section class="pane table-pane" aria-label="The reading table">
+    <div id="table" class="table"></div>
+    <div id="poof" class="poof" aria-hidden="true"></div>
+    <div id="table-cap" class="table-cap" aria-live="polite"></div>
+  </section>
+  <section id="box" class="box" aria-label="The Oracle speaks">
+    <div id="sr" class="sr" aria-live="polite"></div>
+    <div class="box-head"><span class="speaker">THE ORACLE</span><span class="head-btns"><button id="voice-btn" class="c small" type="button" aria-pressed="true">🔊 Voice on</button><button id="journal-btn" class="c small" type="button">📖 Journal</button></span></div>
+    <div id="say" class="say" aria-hidden="true"></div>
     <div id="ui"></div>
+    <div id="reading-body" class="reading-body"></div>
   </section>
 </main>
-<section id="reading" class="reading" hidden aria-label="Your reading">
-  <div class="reading-inner">
-    <div class="reading-bar"><button type="button" class="c" id="close-reading">← Back to the Oracle</button></div>
-    <div id="reading-body"></div>
-  </div>
-</section>
+<div id="zoom" class="zoom" hidden role="dialog" aria-label="Reading art, enlarged"><div id="zoom-art"></div><button class="c" type="button" id="zoom-close">Close</button></div>
 <script type="module" src="chamber.js"></script>
 </body>
 </html>
