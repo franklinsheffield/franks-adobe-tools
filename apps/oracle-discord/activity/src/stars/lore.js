@@ -409,3 +409,8 @@ export const LEVELS = [
   { n: 2, name: "Star Joiner", what: "No figures: find the stars and join them from the shape", guide: "none", mult: 1.5 },
   { n: 3, name: "Sky Keeper", what: "A photo-real night sky with the Milky Way and faint stars", guide: "none", mult: 2 },
 ];
+
+// The second sky (lore2.js): 14 more constellations, and more fables for some of the first 16.
+import { MORE, EXTRA } from "./lore2.js";
+DECK.push(...MORE);
+for (const [id, fs] of Object.entries(EXTRA)) DECK.find((g) => g.id === id).fables.push(...fs);
