@@ -7,7 +7,7 @@
 import { EL, FAMILY, isNoble } from "./elements.js";
 import { COMPOUNDS, BY_ID, CHAINS, pretty } from "./compounds.js";
 import { LEVELS, CONDITIONS, COND, GOAL, START, SHIELD, newGame, place, unplace, clearBench, playBench, raiseShield, recycle, oracleTurn, glowing, bestHint, cardsFor, compoundOf, room as duelRoom, codexCount, titleOf, nextTitle, settle } from "./logic.js";
-import { sceneSvg, kindOf, KIND } from "./scene.js";
+import { sceneSvg, kindOf, KIND, powerTier } from "./scene.js";
 import { equippedBack } from "../cardbacks.js";
 import { SHOP, SLOTS, SHELF_TALK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { CSS } from "./style.js";
@@ -33,6 +33,9 @@ const TAUNT = {
   ohit: ["The Oracle fuses {f}: {n}! Your bench rattles.", "'{n},' the Oracle purrs, sliding {f} across the table.", "From its sleeve, the Oracle makes {f}, {n}. It stings.", "The Oracle forms {f}. {n}. 'I read this in your future,' it says."],
   orecycle: ["The Oracle frowns at its hand and swaps cards.", "The Oracle shuffles {k} cards back into its deck, muttering about valence.", "No reaction. The Oracle recycles {k} cards."],
 };
+/** The first sentence of a fact (two if the first is very short), for a one-line note while the reaction plays. */
+export const firstLine = (t) => { const parts = String(t).match(/[^.!?]+[.!?]+(?=\s|$)/g) || [String(t)]; let out = "";
+  for (const p of parts) { out += p; if (out.trim().length >= 25) break; } return out.trim(); };
 const fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? "");
 const ph = { s: "solid", l: "liquid", g: "gas" };
 // Bench formulas are written the usual way round: metals first, then the non-metals in the conventional order.
@@ -196,7 +199,7 @@ export const room = {
         else later(300, () => turn(msg));
         return;
       }
-      busy = true; show(out); ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span><span>◆ Discoveries <b>${g.you.found.length}</b> of ${GOAL}</span></div><div class="note">⚗️ Reacting… its Codex page is open below.</div>`);
+      busy = true; show(out); ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span><span>◆ Discoveries <b>${g.you.found.length}</b> of ${GOAL}</span></div><div class="note">🔬 ${esc(firstLine(out.c.fact))}</div>`);
       const c = out.c, bits = [];
       bits.push(`${pretty(c.f)}, ${c.name}! Power ${out.power}${out.notes.length ? ` (${out.notes.join(", ")})` : ""}.`);
       if (out.blocked) bits.push(`My shield blocks ${out.blocked}.`);
@@ -208,7 +211,8 @@ export const room = {
     }
     /** Animate a reaction and open its Codex page. */
     function show(out) {
-      fx = { kind: "react", side: out.side, c: out.c, cards: out.cards, dmg: out.dmg, blocked: out.blocked, hit: out.dmg ? (out.side === "you" ? "oracle" : "you") : null }; draw();
+      fx = { kind: "react", side: out.side, c: out.c, cards: out.cards, dmg: out.dmg, blocked: out.blocked, power: out.power, hit: out.dmg ? (out.side === "you" ? "oracle" : "you") : null }; draw();
+      const tier = powerTier(out.power); if (tier === "big" || tier === "huge") tableEl.classList.add("du-quake", tier);
       SFX.react(out.power, kindOf(out.c), out);
       if (out.side === "you" && out.isNew) setTimeout(() => SFX.discover(), 1300); if (out.chain && out.chain.k > 0) SFX.chain(out.chain.k);
       $("reading-body").innerHTML = pageHtml(out.c, esc, out.side === "you" && out.isNew && !duelRoom(state.prog).codex[out.c.id] ? `<span class="du-tag new">✨ new for your Codex</span>` : out.side === "oracle" ? `<span class="du-tag">🔮 the Oracle made it</span>` : "");
@@ -216,12 +220,12 @@ export const room = {
     /** The Oracle's turn, then the next round. */
     function oracleGo() {
       busy = true; fx = null; cap("🔮 The Oracle's turn"); draw();
-      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span></div><div class="note">The Oracle studies its hand…</div>`);
+      ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span></div><div class="note">${esc(rival ? rival.short : "The Oracle")} studies the hand…</div>`);
       later(900, () => {
         const prev = g.round, out = oracleTurn(g); if (!out) return turn();
         const lines = [];
         if (out.shield) { SFX.shield(); lines.push(`The Oracle raises a ${EL[out.shield.s].name} shield (blocks ${out.shield.shield}).`); }
-        if (out.ok) { show(out); const c = out.c; lines.push(fill(pick(TAUNT.ohit), { f: pretty(c.f), n: c.name }) + ` Power ${out.power}${out.blocked ? `, your shield blocks ${out.blocked}` : ""}${out.dmg ? `: you lose ${out.dmg}.` : "."}`);
+        if (out.ok) { show(out); const c = out.c; ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>${oName()} <b>${g.oracle.hp}</b></span></div><div class="note">🔬 ${esc(firstLine(c.fact))}</div>`); lines.push(fill(pick(TAUNT.ohit), { f: pretty(c.f), n: c.name }) + ` Power ${out.power}${out.blocked ? `, your shield blocks ${out.blocked}` : ""}${out.dmg ? `: you lose ${out.dmg}.` : "."}`);
           if (out.chain && out.chain.k > 0) lines.push(`That's step ${out.chain.k + 1} of the ${out.chain.chain.name}.`); }
         else { fx = null; draw(); SFX.deal(Math.max(1, out.recycled)); lines.push(fill(pick(TAUNT.orecycle), { k: out.recycled })); }
         say(lines.join(" "), () => later(out.ok ? 900 : 400, () => {

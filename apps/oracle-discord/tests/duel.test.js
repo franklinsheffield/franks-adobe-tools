@@ -200,3 +200,15 @@ test("Rivals: a ladder of real chemists at Master, each with their own deck, han
   const a = settle(p, g), b = settle(p, g);
   assert.equal(a.newRival, "davy"); assert.equal(b.newRival, null); assert.equal(a.essence - b.essence, 25); assert.equal(room(p).rivals.davy, 2);
 });
+
+test("Bigger hits: reactions scale with power, and every compound has a one-line fact", async () => {
+  const { powerTier } = await import("../activity/src/duel/scene.js");
+  const { firstLine } = await import("../activity/src/duel/room.js");
+  assert.deepEqual([3, 4, 5, 7, 8, 10, 11, 15].map(powerTier), ["small", "small", "", "", "big", "big", "huge", "huge"]);
+  const g = newGame(2, 4), c = BY_ID.Al2O3;
+  for (const [p, cls] of [[3, /p-small/], [9, /p-big/], [12, /p-huge/]]) {
+    const svg = sceneSvg({ look: DEFAULT_LOOK, g, fx: { kind: "react", side: "you", c, cards: [], dmg: p, power: p } });
+    assert.match(svg, cls); if (p >= 8) assert.match(svg, /REACTION · /);
+  }
+  for (const x of COMPOUNDS) { const l = firstLine(x.fact); assert.ok(l.length > 10 && l.length <= x.fact.length, x.id); }
+});
