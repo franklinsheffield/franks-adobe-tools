@@ -48,3 +48,24 @@ test("plant compounds belong to real Herbalist plants; every page renders", () =
   const c = nbCounts(p); assert.equal(c.bench[0], 1); assert.equal(c.commissions[0], 1); assert.equal(c.recipes[0], 1);
   const [l, r] = notebookPages(p, esc, "table"); assert.ok(l.includes("data-nb=\"minerals\"")); assert.ok(r.includes("nb-table"));
 });
+import { STAGES, OPUS_GAMES, opusState, claimOpus, opusHtml, STAGE_STONES } from "../activity/src/opus.js";
+import { alchemist as ALCHEMIST } from "../activity/src/hosts/alchemist.js";
+import { TROPHIES } from "../activity/src/trophies.js";
+
+const finish = (p, id, levels) => { const t = TROPHIES.find((x) => x.id === id); (p.trophies ||= {})[id] = { tier: levels.length, wins: Object.fromEntries(levels.map((l) => [l, t.need])) }; };
+test("Magnum Opus: Vell's games, four stages in order, stones once, then the Opus", () => {
+  assert.deepEqual([...OPUS_GAMES].sort(), [...ALCHEMIST.rooms].sort());
+  assert.deepEqual(STAGES.map((s) => s.id), ["nigredo", "albedo", "citrinitas", "rubedo"]);
+  const p = { rooms: { alchemy: { accidents: ["a", "b", "c", "d"] } } };
+  finish(p, "alchemy", [3]); finish(p, "duel", [3]); finish(p, "bench", [3]);
+  assert.equal(opusState(p, 80).filter((s) => s.done).length, 0, "albedo waits for nigredo");
+  p.rooms.alchemy.accidents.push("e");
+  let o = claimOpus(p, 10); assert.deepEqual(o.stages, ["Nigredo", "Albedo"]); assert.equal(o.stones, 2 * STAGE_STONES);
+  assert.equal(claimOpus(p, 10).stones, 0);
+  o = claimOpus(p, 60); assert.deepEqual(o.stages, ["Citrinitas"]); assert.ok(!o.finished);
+  for (const id of OPUS_GAMES) finish(p, id, [1, 2, 3]);
+  o = claimOpus(p, 60); assert.deepEqual(o.stages, ["Rubedo"]); assert.ok(o.finished);
+  assert.ok(p.houses.alchemist.opus); assert.ok(p.owned.includes("coat-magister"));
+  assert.ok(!claimOpus(p, 60).finished);
+  assert.ok(opusHtml(p, esc, 60).includes("Vell wears the red stone"));
+});

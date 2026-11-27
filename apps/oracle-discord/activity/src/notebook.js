@@ -13,6 +13,7 @@ import { sample } from "./flametest/data.js";
 import { BY_ID as DUEL_COMPOUNDS } from "./duel/compounds.js";
 import { ALL as PLANTS_ALL } from "./grimoire/logic.js";
 import { dailySeed, todayKey } from "./daily.js";
+import { opusHtml, opusState } from "./opus.js";
 
 // ---- the 118 elements, in order of atomic number ----
 export const SYMS = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(" ");
@@ -157,7 +158,7 @@ export function commissionsDone(p) { const done = R(p, "commissions").done || {}
 
 export const NB_PAGES = [
   ["table", "🧮 The Table"], ["recipes", "📜 Recipes"], ["bench", "🔬 Bench discoveries"], ["minerals", "🪨 Mineral drawers"],
-  ["plants", "🌿 Plant compounds"], ["hazards", "⚠️ Hazard log"], ["commissions", "📦 Commissions"], ["margins", "🜍 Margin notes"],
+  ["plants", "🌿 Plant compounds"], ["hazards", "⚠️ Hazard log"], ["commissions", "📦 Commissions"], ["margins", "🜍 Margin notes"], ["opus", "🔴 Magnum Opus"],
 ];
 /** The counts shown on the contents page: [have, total]. */
 export function nbCounts(p) {
@@ -166,7 +167,7 @@ export function nbCounts(p) {
     table: [lit, 118], recipes: [labRecipes(p).length, LAB_LEVELS.filter((L) => L.n > 1).reduce((a, L) => a + L.deck.length, 0)],
     bench: [benchMade(p).length, PRODUCTS.length], minerals: [foundMineralsOf(p).length, MINERALS.length],
     plants: [namedPlants(p).filter((x) => PLANT_COMPOUNDS[x.id]).length, Object.keys(PLANT_COMPOUNDS).length], hazards: [accidentsOf(p).length, HAZARDS.length],
-    commissions: [commissionsDone(p).length, JOBS.length], margins: [NOTES.filter((n) => hiddenFound(p) >= n.at).length, NOTES.length],
+    commissions: [commissionsDone(p).length, JOBS.length], margins: [NOTES.filter((n) => hiddenFound(p) >= n.at).length, NOTES.length], opus: [opusState(p, lit).filter((s) => s.done).length, 4],
   };
 }
 const head = (t, sub = "") => `<h3 class="bk-h">${t}</h3>${sub ? `<div class="bk-sub">${sub}</div>` : ""}`;
@@ -188,6 +189,7 @@ export function tableHtml(p, esc, day = todayKey()) {
 }
 export function nbPageHtml(sec, p, esc, day = todayKey()) {
   if (sec === "table") return tableHtml(p, esc, day);
+  if (sec === "opus") return opusHtml(p, esc, Object.keys(litTable(p)).length);
   if (sec === "recipes") { const L = labRecipes(p);
     return head("📜 Recipes", "Every experiment you finished in the Alchemist's Lab becomes a page") + (L.length ? L.map(({ L: lv, x }) => page(`${esc(x.product || x.goal)} <small>· ${esc(lv.name)}</small>`,
       `<p><b>${esc(x.eq || "")}</b></p>${x.who ? `<p>${esc(x.who)}${x.when ? ", " + esc(x.when) : ""}</p>` : ""}${x.story ? `<p>${esc(x.story)}</p>` : ""}${x.answer ? `<p><i>What it really showed:</i> ${esc(x.answer)}</p>` : ""}`)).join("") : empty("Finish a Level 2 experiment in the Alchemist's Lab to write the first recipe."));
