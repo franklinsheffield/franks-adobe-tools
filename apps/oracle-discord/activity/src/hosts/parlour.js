@@ -173,7 +173,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const parlour = {
   id: "parlour", name: "Madame Rook", house: "The Séance Parlour", emoji: "🕯️", accent: "#C3A6FF",
   channelIds: ["1575977181622829158"], // #🕯️-parlour
-  readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "seance", "timeline"], daily: "timeline",
+  readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "roguesgallery", "seance", "timeline"], daily: "timeline",
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
