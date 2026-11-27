@@ -6,6 +6,8 @@
 // Rules and maths in engine.js, constellations and fables in lore.js. Mounted via main.js ROOMS; sells sky themes on
 // the Essence store's "🔭 Star Lore" shelf (store.js registerShelf).
 import { STARS, FAINT, MILKY_WAY, LINES } from "./sky.gen.js";
+import { openFactFib } from "../party/factfib-ui.js";
+import { kit as fibKit } from "./factfib.js";
 import { GUIDE } from "./guide.js";
 import { domeOpen, ping, gutter, shimmer, discover, darkness, verdict } from "./sfx.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
@@ -379,10 +381,10 @@ export const stars = {
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
       ui(`${stats()}${dailyHtml()}<div class="levels">${LEVELS.map(lvl).join("")}<button class="c level" type="button" id="sl-hops"><b>🧭 Star-hops</b><span>Find your way like a real stargazer: from a pattern you know to a star you don't · ${hopsDone(state.prog)} / ${HOPS.length} routes</span></button><button class="c level" type="button" id="sl-tonight"><b>🌙 Tonight's real sky</b><span>The sky from where you are tonight, with the horizon: find what you could step outside and see · points ×${TONIGHT.mult}</span></button><button class="c level" type="button" id="sl-planets"><b>🪐 Planet Tracker</b><span>Where the Moon and planets really are in your sky tonight, and what astrology says about each one's position · ${trackerOf(prog()).ever.length} / ${PLANETS.length} found</span></button></div>
         ${optsHtml()}<div class="note">Level 1 shows every constellation's stick figure. Level 2 shows none. Level 3 is the real-looking sky: thousands of stars and the Milky Way.</div>
-        <div class="choices">${guideBtn}<button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        <div class="choices">${guideBtn}<button class="c" type="button" id="ff-open">🎭 Fact or Fib (party)</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; search(L, nextTarget(state.prog, L, prog().last)); }));
       $("sl-tonight").onclick = () => tonight(); $("sl-planets").onclick = () => planets(); $("sl-hops").onclick = () => hops(); wireOpts(() => lobby(false));
-      $("sl-daily").onclick = () => { const seed = dailySeed("stars"); search(LEVELS[1], dailyPick(seed), null, seed); }; $("sl-board").onclick = () => showBoard(); $("back").onclick = greet; wireGuide();
+      $("sl-daily").onclick = () => { const seed = dailySeed("stars"); search(LEVELS[1], dailyPick(seed), null, seed); }; $("sl-board").onclick = () => showBoard(); $("back").onclick = greet; wireGuide(); $("ff-open").onclick = () => openFactFib(ctx, fibKit(tableEl), () => lobby(false));
     }
 
     // ---- the Daily Constellation (shared seed, streak and board from daily.js) ----
