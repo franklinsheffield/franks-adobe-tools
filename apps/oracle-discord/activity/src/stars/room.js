@@ -1,5 +1,6 @@
 // Star Lore Navigator: a room of the Oracle Chamber. The Oracle asks you to find a constellation somewhere in the
-// whole sky and draw it star to star; as each line goes in she tells a fable about it from one of several cultures.
+// whole sky and draw it star to star before the clock runs out. The reward for a finished figure is its lore: a fable from one of
+// several cultures, then the real astronomy. Run out of time and the story stays sealed: she sends you to study instead.
 // Then the real astronomy and one quiz question. Level 1 shows every constellation's stick figure, level 2 shows none,
 // level 3 is a photo-real sky (every star to magnitude 6 and the Milky Way). Drag to roam, pinch, wheel or +/− to zoom.
 // Rules and maths in engine.js, constellations and fables in lore.js. Mounted via main.js ROOMS; sells sky themes on
@@ -260,7 +261,7 @@ export const stars = {
       clearReading(); cap("🔭 Star Lore Navigator");
       const sky = mount({ view: { ra: 84, dec: 10, fov: 50 }, figures: true }); sky.input(() => {}, () => {});
       say(first && !prog().plays
-        ? `Welcome to the observatory, ${state.name}. The whole sky is yours: drag to roam, pinch or use the buttons to zoom. I'll ask you to find a constellation and draw it, star to star. And while you draw, I'll tell you a story people have told about it for thousands of years.`
+        ? `Welcome to the observatory, ${state.name}. The whole sky is yours: drag to roam, pinch or use the buttons to zoom. I'll ask you to find a constellation and draw it, star to star. Finish before dawn and your reward is its lore: a story people have told about it for thousands of years.`
         : foundCount(state.prog) >= ALL.length ? `You've drawn the whole sky, ${state.name}. Draw again any time: there are more fables to hear.` : `Clear skies tonight, ${state.name}. Which sky shall we open?`);
       const lvl = (L) => { const n = foundCount(state.prog, L);
         return `<button class="c level" type="button" data-l="${L.n}"><b>${"⭐".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${n} / ${DECK.length} drawn · points ×${L.mult}</span></button>`; };
@@ -287,7 +288,7 @@ export const stars = {
         const st = starsFor(run.mistakes);
         ui(`<div class="cx-top">Level ${L.n} · lines ${run.drawn.length} / ${run.total} · ${"<span class=\"sl-lant\">★</span>".repeat(st)}${"☆".repeat(3 - st)} · mistakes ${run.mistakes}</div>
           <div class="sl-shape">${shapeSvg(g)}<div class="note">${esc(g.find)}<br>Turn the sky with the ball (bottom left). Tap a star, then the next star of the figure, or drag from star to star. Beat the clock.</div></div>
-          ${told ? `<div class="sl-fable">📜 ${esc(fable.c)}: “${esc(fable.t)}”</div>` : ""}${extra || ""}
+          <div class="sl-fable">📜 Your reward: a sealed story from ${esc(fable.c)}. Finish the figure to unseal it.</div>${extra || ""}
           <div class="choices"><button class="c" type="button" id="sl-hint">🏮 Hint (counts as a mistake)</button>${guideBtn}<button class="c small" type="button" id="sl-reveal">Show me</button><button class="c small" type="button" id="sl-leave">↩ Levels</button></div>`);
         $("sl-hint").onclick = () => { const [ra, de] = figureCentre(g), p = toScreen(sky.view, sky.w, sky.h, ra, de), inView = p.front && p.X > 0 && p.Y > 0 && p.X < sky.w && p.Y < sky.h;
           shimmer();
@@ -298,9 +299,9 @@ export const stars = {
         $("sl-reveal").onclick = () => { stopClock(); reveal(); };
         $("sl-leave").onclick = () => { stopClock(); lobby(false); }; wireGuide();
       };
-      const tell = () => { const n = partsTold(run, fable.parts.length);
-        if (n > told) { const first = !told, from = told; told = n;
-          say((first ? `${pick(["You've found it.", "Yes, there it is.", "Good eyes."])} Now, a story from ${fable.c}, “${fable.t}”. ` : "") + fable.parts.slice(from, n).join(" ")); } };
+      const tell = () => { const half = run.drawn.length * 2 >= run.total;
+        if (!told) { told = 1; say(`${pick(["You've found it.", "Yes, there it is.", "Good eyes."])} Keep going. A story from ${fable.c} waits for you at the end.`); }
+        else if (half && told === 1) { told = 2; say(pick(["Halfway. The story is stirring.", "More than half drawn. I can almost hear the story.", "Keep going, the lore is close."])); } };
       const line = (a, b) => {
         const r = attempt(run, g, a[4], b[4]);
         if (r === "miss") { gutter(); sky.fx.push({ kind: "miss", a: [a[0], a[1]], b: [b[0], b[1]], at: performance.now(), dur: 700 }); sky.o.sel = null;
@@ -329,8 +330,8 @@ export const stars = {
       function complete() {
         discover(); sky.o.sel = null; sky.o.label = g.name; centreOn(() => { const [ra, de] = figureCentre(g); sky.fx.push({ kind: "spark", at2: [ra, de], at: performance.now(), dur: 1200 }); sky.meteor(); });
         cap(`${g.emoji} ${g.name}`);
-        const rest = fable.parts.slice(told); told = fable.parts.length;
-        const pages = [...(rest.length ? [rest.join(" ")] : []), "And now, what astronomers know.", ...g.science];
+        run.lore = true;
+        const pages = [`Drawn! Your reward, as promised: a story from ${fable.c}, “${fable.t}”.`, fable.parts.join(" "), "And now, what astronomers know.", ...g.science];
         status(); talkThrough(pages, () => facts());
       }
       function timeUp() {
@@ -339,18 +340,18 @@ export const stars = {
         darkness(); sky.o.label = g.name;
         for (const [a, b] of figureEdges(g)) { const k = edgeKey(a, b); if (!run.drawn.includes(k)) run.drawn.push(k); }
         centreOn(); cap(`${g.emoji} ${g.name}: time's up`);
-        talkThrough([`Dawn breaks and the stars fade. Time's up. Here is ${g.name}, so you'll know it next time.`, fable.parts.slice(told).join(" ") || "That was the whole story.", ...g.science], () => facts(true));
+        talkThrough([`Dawn breaks and the stars fade. Time's up. Here is ${g.name}, so you'll know it next time.`, `Its story stays sealed until you draw it. Study the guide, learn the shape, and come back before dawn.`], () => facts(true));
       }
       function reveal() {
         run.done = false; darkness(); sky.o.sel = null; sky.o.label = g.name;
         for (const [a, b] of figureEdges(g)) { const k = edgeKey(a, b); if (!run.drawn.includes(k)) run.drawn.push(k); }
         centreOn(); cap(`${g.emoji} ${g.name}`);
-        talkThrough([`Here it is: ${g.name}. No stars for this one, but the story is yours anyway.`, fable.parts.join(" "), ...g.science], () => facts(true));
+        talkThrough([`Here it is: ${g.name}. Learn its shape: the story stays sealed until you draw it yourself.`, ...g.science], () => facts(true));
       }
       function facts(gaveUp) {
         const [ra, de] = figureCentre(g);
-        $("reading-body").innerHTML = `<div class="sl-facts"><span>🗓️ Best seen in the evening: around <b>${bestMonth(ra)}</b></span><span>🌍 ${esc(seenFrom(de))}</span><span>✳️ IAU constellation: <b>${esc(conName(g.con))}</b></span><span>📜 Fable: ${esc(fable.c)}, “${esc(fable.t)}”</span></div>`;
-        if (gaveUp) { run.revealed = true; return finish(L, g, run, fi, "Try it again when you're ready."); }
+        $("reading-body").innerHTML = `<div class="sl-facts"><span>🗓️ Best seen in the evening: around <b>${bestMonth(ra)}</b></span><span>🌍 ${esc(seenFrom(de))}</span><span>✳️ IAU constellation: <b>${esc(conName(g.con))}</b></span><span>📜 ${run.lore ? `Fable: ${esc(fable.c)}, “${esc(fable.t)}”` : "Fable: sealed until you draw it"}</span></div>`;
+        if (gaveUp) { run.revealed = true; return finish(L, g, run, null, run.lost ? "Time to study. The guide has every shape and story clue; then try again." : "Try it again when you're ready, or study first."); }
         say(`One question before you go. ${g.quiz.q}`);
         const cs = quizChoices(g);
         ui(`<div class="choices col">${cs.map((c, i) => `<button class="c" type="button" data-q="${i}">${esc(c)}</button>`).join("")}</div><div class="note">+${Math.round(5 * L.mult)} for the right answer.</div>`);
@@ -370,11 +371,12 @@ export const stars = {
       if (run.done) bits.push(`${"★".repeat(starsFor(run.mistakes))}${"☆".repeat(3 - starsFor(run.mistakes))} drawing ${drawPts(run)} + quiz ${quizPts(run)} = ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${prog().found[keyOf(L, g)]}`}`);
       else bits.push(run.lost ? "⏳ time ran out" : "revealed, not drawn");
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🔭 Star title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
-        <div class="choices"><button class="c main" type="button" id="sl-go">🔭 Next constellation</button><button class="c" type="button" id="sl-again">↻ Draw it again (another fable)</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+        <div class="choices">${run.done ? "" : `<button class="c main" type="button" id="sl-study">📖 Study Star Lore</button>`}<button class="c${run.done ? " main" : ""}" type="button" id="sl-go">🔭 Next constellation</button><button class="c" type="button" id="sl-again">↻ ${run.done ? "Draw it again (another fable)" : "Try this one again"}</button><button class="c" type="button" id="sl-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp) chime(2);
       $("sl-go").onclick = () => search(L, nextTarget(state.prog, L, g.id));
       $("sl-again").onclick = () => search(L, g);
       $("sl-lobby").onclick = () => lobby(false); $("back").onclick = greet;
+      if ($("sl-study")) $("sl-study").onclick = () => (ctx.study ? ctx.study("stars", () => lobby(false)) : toggleGuide());
     }
 
     lobby(true);
