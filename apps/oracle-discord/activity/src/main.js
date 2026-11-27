@@ -51,7 +51,7 @@ import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
 import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
-import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
+import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, recordClues, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
@@ -80,6 +80,7 @@ import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
+import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
@@ -149,6 +150,7 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** What a House host needs to react on the figure: the teller, the backdrop (for the fume hood) and her gestures. */
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
+  disguiseEvent(kind, data);
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
   const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
     find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
@@ -156,6 +158,22 @@ function secretEvent(kind, data = {}) {
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
       CU.event?.("house-secret", id); return true; } };
   try { H.secrets.event(kind, data, api); } catch (e) { console.warn("secret", e); }
+}
+// ---- the one-person gimmick (hosts/disguise.js): every host is secretly the same person, and slips ----
+function disguiseEvent(kind, data) {
+  if (!state.prog) return; const r = clueEvent(kind, data, { p: state.prog, host: HOST() }); if (!r) return;
+  logEvent("secret", r.clue.e, `Dossier: ${r.clue.name}`, null, [["Clue", r.clue.name], ["Found", `${r.n} of ${CLUES.length}`], ["Reward", "💎 15"]]); saveProgress(); showStats();
+  if (r.clue.id === "quickchange" && !reduced) { document.body.classList.add("dg-quick"); setTimeout(() => document.body.classList.remove("dg-quick"), 950); }
+  const wait = kind === "home" ? (reduced ? 0 : 4200) : (reduced ? 0 : 300);
+  setTimeout(() => { mood.emote("flinch", { quiet: true }); mood.bubble(`${r.line} 🎭 Dossier clue ${r.n}/${CLUES.length}. 💎 15`, 6400, "🎭"); chime(2); }, wait);
+  if (r.all) setTimeout(() => mood.bubble(PAYOFF, 8000, "🎭"), wait + 6800);
+  trophyNews(recordClues(state.prog, r.n));
+  const b = $("hm-dossier"); if (b) b.querySelector("small").textContent = `${r.n}/${CLUES.length}`;
+}
+function openDossier() {
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🎭 The Dossier");
+  say(clueCount(state.prog) === CLUES.length ? "All right. You've got the whole file. Five Houses, one face. Please stop telling people." : "A Dossier? On me? There's nothing to find. We are five completely different people.");
+  ui(dossierHtml(state.prog, esc)); $("dg-back").onclick = greet;
 }
 document.addEventListener("click", (e) => { const t = e.target && e.target.closest && e.target.closest("[data-tap]"); if (t) secretEvent("tap", { tap: t.dataset.tap, count: tapCount(t.dataset.tap) }); });
 function openHouseSecrets() {
@@ -272,7 +290,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
+  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>` + leftBehindHtml(HOST().id); CU.paint(); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -325,6 +343,7 @@ function greet() {
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
+  if (clueCount(state.prog)) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-dossier">🎭 Dossier <small>${clueCount(state.prog)}/${CLUES.length}</small></button>`); $("hm-dossier").onclick = openDossier; }
   if (HOST().menuBg) { $("ui").classList.add("has-mbg"); $("ui").insertAdjacentHTML("afterbegin", HOST().menuBg.html(Date.now(), { prog: state.prog })); }
   secretEvent("home", { at: Date.now() });
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));

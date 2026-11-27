@@ -13,6 +13,7 @@ import { parlour } from "./parlour.js";
 import { scriptorium } from "./scriptorium.js";
 import { tokensLeft, houseRelicsHtml, tokenIcon, TOKEN_CSS } from "./tokens.js";
 import { SECRETS_CSS } from "./secrets.js";
+import { addRing, DISGUISE_CSS } from "./disguise.js";
 
 export const HOSTS = [oracle, alchemist, observatory, parlour, scriptorium];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
@@ -55,11 +56,11 @@ export function dressHouse(doc = document) {
   doc.title = h === oracle ? "Oracle Chamber" : h.house;
   const sp = doc.querySelector(".speaker"); if (sp) sp.textContent = h.name.toUpperCase();
   const t = doc.getElementById("teller"); if (t && h !== oracle) t.setAttribute("aria-label", `${h.name}, ${h.house}'s host`);
-  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + SECRETS_CSS + (h.css || "") + ((h.menuBg && h.menuBg.css) || "") + `body{--house-accent:${h.accent}}`; doc.head.appendChild(st); }
+  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + SECRETS_CSS + DISGUISE_CSS + (h.css || "") + ((h.menuBg && h.menuBg.css) || "") + `body{--house-accent:${h.accent}}`; doc.head.appendChild(st); }
 }
 /** Paint the host onto a copy of the shared figure (the teller, or the door's portrait). */
 export function paintHost(svg, prog, id = "t") {
-  if (!svg) return; if (current.paint) current.paint(svg, prog || {}, id);
+  if (!svg) return; if (current.paint) current.paint(svg, prog || {}, id); addRing(svg); // every host wears the same ring (disguise.js)
   const pane = id === "t" && current.relics && svg.closest(".pane"); if (!pane) return; // House relics sit in the host's pane, behind the host
   let layer = pane.querySelector("#house-relics"); if (!layer) { layer = svg.ownerDocument.createElement("div"); layer.id = "house-relics"; layer.setAttribute("aria-hidden", "true"); pane.prepend(layer); }
   const key = JSON.stringify(((prog || {}).houses || {})[current.id]?.relics || []); if (layer.dataset.k !== key) { layer.dataset.k = key; layer.innerHTML = houseRelicsHtml(prog || {}, current); }
