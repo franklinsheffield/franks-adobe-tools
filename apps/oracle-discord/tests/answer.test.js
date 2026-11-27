@@ -42,28 +42,29 @@ test("deeper pages cover every field", () => {
 test("deeper pages lead with Codex history and the analysis, and skip the analysis embed", () => {
   const r = { analysis: A, embeds: [{ description: "A long road.", fields: [] }, { title: "🔬 Reading the data", fields: [{ name: "x", value: "Dup." }] }] };
   const p = deeperPages(r, "", ["Seen twice before."]);
-  assert.match(p[0], /^Compared with your Codex\. Seen twice/); assert.match(p[1], /^The data first\. Dealt/);
+  assert.match(p[0], /^Seen twice/); assert.equal(p.exams, 1); assert.match(p[1], /^The data first\. Dealt/);
   assert.ok(p.some((x) => /^What may be concluded/.test(x))); assert.ok(!p.some((x) => /Dup\./.test(x)));
 });
-test("the Codex compares a reading with the member's history and says what that may mean, with no tallies", async () => {
+test("Go deeper examines the member's own data against the reading, one at a time, without naming the Codex", async () => {
   const { fresh, record, codexNotes } = await import("../activity/src/game.js");
   const { themeOf } = await import("../activity/src/codexthemes.js");
   const p = fresh(), r = (names) => ({ embeds: [{}], reading: { cards: names.map((name) => ({ name })) } });
-  assert.deepEqual(codexNotes(p, "tarot", r(["The Sun"]), themeOf), [], "no history, nothing to compare");
+  assert.deepEqual(codexNotes(p, "tarot", r(["The Sun"]), themeOf), [], "no personal data, nothing to examine");
   for (let i = 0; i < 3; i++) record(p, "tarot", r(["The Sun", "The Moon"]));
-  assert.deepEqual(p.seen.tarot, { "The Sun": 3, "The Moon": 3 });
-  const n = codexNotes(p, "tarot", r(["The Sun", "The Star"]), themeOf).join(" ");
-  assert.match(n, /The Sun is back: it came up 3 times before in your readings, and it is read as joy, success, vitality/);
-  assert.match(n, /may point to a theme that is still open for you/);
-  assert.match(n, /turned most often to The Moon \(/); assert.match(n, /The Star \([^)]+\) has not appeared for you before/);
-  assert.doesNotMatch(n, /\d+ of 78|%|chance alone predicts|recorded draws/, "no Codex statistics");
-  assert.doesNotMatch(n, /\b(you should|you must|you need to|try to|make sure)\b/i);
-  assert.match(n, /\bmay\b/);
+  record(p, "chinesezodiac", { embeds: [{}], headline: "Metal Horse · Yang" });
   record(p, "celtic", { embeds: [{}], reading: { tree: "Hawthorn" } });
-  const b = codexNotes(p, "egyptian", { embeds: [{}], reading: { god: "Anubis" } }, themeOf).join(" ");
-  assert.match(b, /Set beside your other charts: this one gives Anubis \(/); assert.match(b, /Hawthorn \([^)]+\) in the Celtic tree reading/);
-  const c = codexNotes(p, "tarot", r(["The Tower"]), themeOf).join(" ");
-  assert.match(c, /Your charts describe you through Hawthorn/); assert.match(c, /Nothing here repeats an earlier draw/);
+  const n = codexNotes(p, "tarot", r(["The Sun", "The Star"]), themeOf);
+  assert.ok(n.length >= 4 && n.length <= 6);
+  for (const x of n) { assert.match(x, /^Because /); assert.match(x, /you may consider/); assert.doesNotMatch(x, /codex/i); assert.doesNotMatch(x, /\d+ of 78|%|chance/); }
+  assert.match(n[0], /^Because The Sun has come to you 3 times before \(joy, success, vitality\), you may consider that joy is still an open question/);
+  assert.ok(n.some((x) => /^Because your Chinese zodiac is Horse \([^)]+\), and this reading turns on The (Sun|Star) \(/.test(x)));
+  assert.ok(n.some((x) => /^Because your Celtic tree is Hawthorn/.test(x)));
+  assert.ok(n.some((x) => /^Because The Moon is what your readings have turned to most/.test(x)));
+  assert.ok(n.some((x) => /^Because The Star has never come up for you before/.test(x)));
+  const b = codexNotes(p, "egyptian", { embeds: [{}], reading: { god: "Anubis" } }, themeOf);
+  assert.match(b[0], /^Because your Chinese zodiac is Horse \([^)]+\), and this chart gives Anubis \(/);
+  const d = deeperPages({ embeds: [{ description: "A long road.", fields: [] }] }, "", n);
+  assert.equal(d.exams, n.length); assert.equal(d[0], n[0]);
 });
 test("every Codex system with meanings has keywords for its entries", async () => {
   const { themeOf } = await import("../activity/src/codexthemes.js");

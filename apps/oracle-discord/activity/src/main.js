@@ -552,7 +552,7 @@ function afterReading() {
 /** Go deeper: the Oracle keeps talking about the same reading, two parts at a time, with the odd aside. */
 function goDeeper() {
   const L = state.last; deepen();
-  const pages = L.deeper.slice(L.di, L.di + 2); L.di += pages.length;
+  const pages = L.deeper.slice(L.di, L.di + (L.di < (L.deeper.exams || 0) ? 1 : 2)); // personal examinations come one at a time L.di += pages.length;
   if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
   if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
   else pages.push(joke(L.sys.key));
