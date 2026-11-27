@@ -100,7 +100,7 @@ export const GOWNS = [
   { id: "gw-tweed", name: "Psychical investigator's tweed", price: 140, style: "lapel", hood: ["#7a6a4a", "#4a3e2a", "#14100a"], trim: "#B8893A", lapel: "#5a4a32", note: "The Society for Psychical Research was founded in London in 1882 to test séance claims." },
   { id: "gw-sequins", name: "Magician's sequinned costume", price: 160, style: "bands", hood: ["#B3123A", "#6a0820", "#200008"], trim: "#FADE8C", lapel: "#8a0a2c", note: "Adelaide Herrmann, billed as the Queen of Magic, even performed the bullet catch." },
   { id: "gw-escape", name: "Escape artist's suit", price: 180, style: "suit", hood: ["#2a4a6a", "#14283e", "#040a14"], trim: "#c8ccd6", lapel: "#1e3a56", note: "Houdini first performed the Water Torture Cell in public in Berlin in 1912." },
-  { id: DEBUNKER, name: "The Debunker's cloak", earned: true, how: "Expose the medium in The Dark Séance", style: "lapel", hood: ["#4a1640", "#1a0614", "#060004"], trim: "#FFE3A3", lapel: "#2A0F24", note: "In 1924 Houdini sat on a Scientific American committee that tested the medium 'Margery'. He called her a fraud." },
+  { id: DEBUNKER, name: "The Debunker's cloak", earned: true, how: "Solve every Level 3 case in the Case Files", style: "lapel", hood: ["#4a1640", "#1a0614", "#060004"], trim: "#FFE3A3", lapel: "#2A0F24", note: "In 1924 Houdini sat on a Scientific American committee that tested the medium 'Margery'. He called her a fraud." },
 ];
 export const gownOf = (id) => GOWNS.find((c) => c.id === id) || GOWNS[0];
 const swatch = (c) => `<svg viewBox="0 0 400 400" aria-hidden="true"><defs><linearGradient id="gw-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.hood[0]}"/><stop offset=".5" stop-color="${c.hood[1]}"/><stop offset="1" stop-color="${c.hood[2]}"/></linearGradient></defs>
@@ -109,13 +109,13 @@ export const gownShop = {
   kind: "gown", label: "🎭 Rook's gowns and stage clothes",
   items: GOWNS.map(({ id, name, note, price, earned, how }) => ({ id, name, note, ...(earned ? { earned, how } : { price }) })),
   talk: {
-    open: ["My wardrobe, darling: half medium, half magician. Same thing, different poster.", "Every one of these was worn by someone who fooled a room. Or caught someone fooling one.", "The cloak you earn: expose the medium in The Dark Séance."],
+    open: ["My wardrobe, darling: half medium, half magician. Same thing, different poster.", "Every one of these was worn by someone who fooled a room. Or caught someone fooling one.", "The cloak you earn: solve every Level 3 case in the Case Files."],
     tryon: ["{item}. Dramatic. Hides a trick or two.", "{item}. Lights down... and the reveal!", "{item}. The sleeves are deep. For reasons."],
     buy: ["{item}, darling. It's on the rail behind the curtain.", "{item}! Showtime.", "{item} is yours. Check the pockets: one card, one wire, one secret."],
   },
   preview: (id, ctx) => { ctx.tableEl.className = "table idle gm-show"; ctx.table.idle(swatch(gownOf(id))); ctx.cap("🎭 " + gownOf(id).name); },
 };
-/** The Dark Séance calls this when the player exposes the medium: the Debunker's cloak is earned. */
+/** Case Files calls this once every Level 3 case is solved: the Debunker's cloak is earned. */
 export function grantDebunker(p) {
   p.houses = p.houses || {}; (p.houses.parlour ||= {}).debunker = true;
   p.owned = p.owned || []; if (!p.owned.includes(DEBUNKER)) p.owned.push(DEBUNKER); return p;

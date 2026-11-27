@@ -66,3 +66,12 @@ test("the Almanac Desk: real answers, 3 jobs a day with one hard job, hard jobs 
   assert.equal(deskToday(p, "2026-11-28").done.length, 0, "new day, new jobs");
   room(p).jobsDone = 8; assert.equal(repOf(p).name, "Royal Society Fellow"); room(p).jobsDone = 25; assert.equal(repOf(p).name, "Astronomer Royal");
 });
+
+test("watch: reaching Astronomer Royal earns Altair's gold-trimmed coat", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../activity/src/watch/room.js", import.meta.url), "utf8");
+  assert.match(src, /Astronomer Royal"\) grantRoyal\(P\(\)\)/);
+  const { grantRoyal } = await import("../activity/src/hosts/observatory-dome.js");
+  const p = grantRoyal(grantRoyal({}));
+  assert.equal(p.houses.observatory.royal, true); assert.equal(p.owned.length, 1);
+});
