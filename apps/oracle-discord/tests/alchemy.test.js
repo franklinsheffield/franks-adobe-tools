@@ -139,6 +139,25 @@ test("free play: every product can be made from the full shelf, hazards first, f
   const g = gridOf(p); assert.equal(g.total, FINDS.length + HAZARDS.length); assert.equal(g.got, 2);
   assert.ok(gridOf({}).got === 0);
 });
+test("daily experiment is the same for everyone each day; streaks grow and cap; seal pays once", async () => {
+  const { HAZARDS } = await import("../activity/src/alchemy/lab.js");
+  const { dailyOf, logDaily, dayKey, FINDS, DAILY_BASE, DAILY_STEP, DAILY_MAX, sealOf } = await import("../activity/src/alchemy/logic.js");
+  assert.equal(dailyOf("2026-11-27").x.id, dailyOf("2026-11-27").x.id);
+  const seen = new Set(); for (let d = 1; d <= 28; d++) { const k = `2026-02-${String(d).padStart(2, "0")}`, dd = dailyOf(k); assert.ok(FINDS.includes(dd.x)); assert.ok(dd.L.deck.includes(dd.x)); seen.add(dd.x.id); }
+  assert.ok(seen.size >= 8, "varied picks");
+  assert.equal(dayKey(new Date("2026-11-27T23:00:00Z")), "2026-11-27");
+  const p = {};
+  assert.equal(logDaily(p, "2026-11-01", false), null);
+  assert.deepStrictEqual(logDaily(p, "2026-11-01", true), { bonus: DAILY_BASE, streak: 1 });
+  assert.equal(logDaily(p, "2026-11-01", true), null, "once a day");
+  assert.equal(logDaily(p, "2026-11-02", true).streak, 2);
+  assert.equal(logDaily(p, "2026-11-04", true).streak, 1, "a missed day resets");
+  for (let d = 5; d <= 14; d++) logDaily(p, `2026-11-${String(d).padStart(2, "0")}`, true);
+  assert.equal(logDaily(p, "2026-11-15", true).bonus, DAILY_BASE + DAILY_STEP * (DAILY_MAX - 1), "bonus caps");
+  assert.ok(room(p).daily.best >= 11);
+  const q = { rooms: { alchemy: { accidents: HAZARDS.slice(1).map((h) => h.id) } } };
+  assert.equal(sealOf(q), false); q.rooms.alchemy.accidents.push(HAZARDS[0].id); assert.equal(sealOf(q), true); assert.equal(sealOf(q), false);
+});
 test("apothecary: free items owned, buying spends Essence and puts it on the bench", () => {
   const p = { essence: 70, owned: [] };
   assert.ok(owns(p, "al-alembic")); assert.ok(!owns(p, "al-pelican"));

@@ -127,3 +127,26 @@ test("show me 4: a wrong pick costs 3 leaves, a wrong typed name costs 1", () =>
   assert.equal(guessName(picked, p, other), "out"); assert.equal(picked.leaves, 0);
   assert.ok(pageSvg(p, { leaves: 2, fell: 2, fellTo: 5 }).split("gr-fall").length - 1 === 3, "three leaves fall");
 });
+
+test("spot the look-alike: every pair is a safe plant and a poison double, with notes and tells", async () => {
+  const { TWINS, twinPlants, nextTwin, layTwin, pickTwin, settleTwin, spottedCount } = await import("../activity/src/grimoire/twins.js");
+  const { twinSvg } = await import("../activity/src/grimoire/sketch.js");
+  assert.ok(TWINS.length >= 8); assert.equal(new Set(TWINS.map((t) => t.id)).size, TWINS.length);
+  for (const t of TWINS) {
+    const { safe, deadly } = twinPlants(t);
+    assert.ok(safe && deadly, t.id + " plants exist");
+    assert.notEqual(safe.danger[0], "poison", t.id + " safe one is not poison"); assert.equal(deadly.danger[0], "poison", t.id + " double is poison");
+    assert.ok(t.notes.safe.length > 30 && t.notes.deadly.length > 30 && t.why.length > 30 && t.tells.length >= 2, t.id);
+    const svg = twinSvg(safe, deadly, { revealed: true, poison: [false, true], picked: 0, right: 0, sparkle: true });
+    assert.ok(svg.startsWith("<svg") && !/NaN|undefined/.test(svg), t.id + " svg");
+    assert.ok(!twinSvg(safe, deadly).includes(safe.name), "names hidden before the pick");
+  }
+  const prog = fresh(), t = TWINS[0];
+  const a = layTwin(t, () => 0.2); assert.equal(a.safeSide, 0);
+  assert.equal(pickTwin(a, 0), true); assert.equal(pickTwin(a, 1), null, "one answer");
+  const r = settleTwin(prog, a); assert.ok(r.first && r.xp === 15 && r.essence === 15); assert.equal(spottedCount(prog), 1);
+  const b = layTwin(t, () => 0.9); pickTwin(b, 0); const r2 = settleTwin(prog, b); assert.equal(r2.xp, 1); assert.equal(r2.essence, 0);
+  const c = layTwin(t, () => 0.9); pickTwin(c, 1); assert.equal(settleTwin(prog, c).xp, 3, "a replay pays a little");
+  for (let i = 0; i < 20; i++) assert.notEqual(nextTwin(prog, TWINS[1].id).id, TWINS[1].id);
+  assert.notEqual(nextTwin(prog, null, () => 0).id, t.id, "prefers pairs not yet spotted");
+});

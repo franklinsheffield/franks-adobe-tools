@@ -66,6 +66,11 @@ export const SFX = {
   draw: () => { noise(0, 0.1, { f: 2600, q: 0.6, g: 0.35 }); noise(0.09, 0.03, { f: 1200, q: 2, g: 0.4 }); },
   flick: () => noise(0, 0.06, { f: 3200, q: 0.9, g: 0.3 }),
   dry: () => { tone(330, 0, 0.5, { type: "triangle", to: 110, g: 0.3 }); noise(0.1, 0.3, { f: 500, type: "lowpass", g: 0.25, fall: 1 }); },
+  /** A power card: a bright shimmer, then its own sound (stone chord, pouring ink, an owl's hoot). */
+  power: (k) => { [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, i * 0.04, 0.35, { type: "sine", g: 0.16 }));
+    if (k === "rosetta") [262, 330, 392].forEach((f) => tone(f, 0.15, 0.8, { type: "triangle", g: 0.18 }));
+    else if (k === "ink") { for (let i = 0; i < 5; i++) tone(500 + i * 90, 0.15 + i * 0.06, 0.08, { to: 300 + i * 90, g: 0.2 }); }
+    else { tone(440, 0.15, 0.25, { to: 392, g: 0.22, vib: 5 }); tone(392, 0.45, 0.4, { to: 330, g: 0.22, vib: 5 }); } },
   /** A tap on a tile or button (very soft). */
   tap: () => tone(1200, 0, 0.04, { type: "triangle", g: 0.08 }),
 };

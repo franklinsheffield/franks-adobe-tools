@@ -229,11 +229,19 @@ ${T.decor || ""}
 ${p ? `<ellipse cx="206" cy="232" rx="92" ry="12" fill="url(#gr-shadow)"/>` : ""}<g class="gr-spec${turn ? " turn" : ""}"><g class="gr-sway"><g filter="url(#gr-wash)">${p ? placed(p) : ""}</g></g></g>${p && p.look.habit !== "ball" && p.look.habit !== "rosette" ? `<rect x="180" y="${p.look.root ? 176 : 196}" width="44" height="11" rx="1" fill="#efe3b8" opacity=".7" transform="rotate(4 202 ${p.look.root ? 181 : 201})"/>` : ""}${sparkle ? `<g class="gr-spark">${Array.from({ length: 16 }, (_, i) => `<circle cx="${130 + ((i * 53) % 140)}" cy="${90 + ((i * 37) % 120)}" r="${i % 3 ? 2 : 3.2}" fill="${["#FADE8C", "#9be59b", "#f7b6e0"][i % 3]}" style="--d:${(i % 8) * 0.09}s"/>`).join("")}</g>` : ""}
 ${leafIcons}
 <g transform="translate(244 240)"><rect width="130" height="42" rx="3" fill="${T.label}" stroke="${T.ink}" stroke-width=".8"/>
-<text x="8" y="13" font-family="Cinzel, Georgia, serif" font-size="8" fill="${T.ink}" letter-spacing="1">SPECIMEN Nº ${String(no).padStart(2, "0")}</text>
+<text x="8" y="13" font-family="Cinzel, Georgia, serif" font-size="8" fill="${T.ink}" letter-spacing="1">SPECIMEN ${typeof no === "number" ? "Nº " + String(no).padStart(2, "0") : esc(no)}</text>
 <text x="8" y="26" font-family="Cormorant Garamond, Georgia, serif" font-size="${name.length > 20 ? 8.5 : 10.5}" fill="${T.ink}" font-weight="700">${name}</text><text x="8" y="37" font-family="Cormorant Garamond, Georgia, serif" font-size="8.5" fill="${T.ink}" opacity=".85">${latin}</text></g>
 
 ${revealed && poison ? `<g class="gr-stamp" transform="translate(84 236) rotate(-12)"><rect x="-52" y="-15" width="104" height="30" rx="4" fill="none" stroke="#b3122a" stroke-width="2.5"/><text y="7" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="17" fill="#b3122a" letter-spacing="2">☠ POISON</text></g>` : ""}
 </svg>`;
+}
+/** Two pages side by side for "Spot the look-alike": left and right are plants; poison marks which ones get a stamp. */
+export function twinSvg(left, right, { revealed = false, theme = null, poison = [false, false], picked = -1, right: rightSide = -1, turn = false, sparkle = false } = {}) {
+  const page = (p, i) => pageSvg(p, { leaves: 0, max: 0, revealed, no: i ? "B" : "A", theme, poison: revealed && poison[i], turn, sparkle: sparkle && i === rightSide })
+    .replace("<svg ", `<svg x="${i * 400}" y="0" width="400" height="318" `).replace(/id="gr-/g, `id="gr${i}-`).replace(/url\(#gr-/g, `url(#gr${i}-`);
+  const ring = (i, c) => `<rect x="${i * 400 + 16}" y="12" width="368" height="278" rx="7" fill="none" stroke="${c}" stroke-width="5" opacity=".9"/>`;
+  const badge = (i) => `<g transform="translate(${i * 400 + 200} 304)"><circle r="13" fill="#1a0f07" stroke="#e2b04a" stroke-width="1.5"/><text y="5" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-size="14" font-weight="700" fill="#FADE8C">${i ? "B" : "A"}</text></g>`;
+  return `<svg viewBox="0 0 800 322" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="-400" y="-400" width="1600" height="1100" fill="${(theme || PAGE_THEMES.parchment).desk}"/>${page(left, 0)}${page(right, 1)}${picked >= 0 ? ring(picked, picked === rightSide ? "#6bbf6b" : "#d2334a") : ""}${badge(0)}${badge(1)}</svg>`;
 }
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 

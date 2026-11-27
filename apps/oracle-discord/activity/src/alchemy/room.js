@@ -9,7 +9,7 @@ import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse
 import { sceneSvg } from "./scene.js";
 import { CSS } from "./style.js";
 import * as sfx from "./sfx.js";
-import { LEVELS, ALL, FLAMES, keyOf, room as labOf, solvedCount, titleOf, nextTitle, byId, nextOf, start, options, moreClue, readSymbol, transmute, hintOf, nameIt, settle, opsFor, PER_FLAME, NAME_PTS, experiment, logPlay, gridOf, FIND_PTS } from "./logic.js";
+import { LEVELS, ALL, FLAMES, keyOf, room as labOf, solvedCount, titleOf, nextTitle, byId, nextOf, start, options, moreClue, readSymbol, transmute, hintOf, nameIt, settle, opsFor, PER_FLAME, NAME_PTS, experiment, logPlay, gridOf, FIND_PTS, sealOf, SEAL_PTS, dayKey, dailyOf, logDaily } from "./logic.js";
 
 const rot = (a, id) => { const k = [...id].reduce((n, c) => n + c.charCodeAt(0), 0) % a.length; return [...a.slice(k), ...a.slice(0, k)]; };
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -41,11 +41,14 @@ export const alchemy = {
       const lvl = (L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⚗️".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${solvedCount(P(), L)} / ${L.deck.length} done · points ×${L.mult}</span></button>`;
       ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
         <div class="note">4 flames in the furnace. A wrong answer, a failed mix or a notebook hint puts one out.</div>
+        ${(() => { const k = dayKey(), dd = dailyOf(k), d = lab().daily || {}, done = d.last === k, live = done || d.last === new Date(Date.parse(k + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
+          return `<button class="c level al-daily${done ? " done" : ""}" type="button" id="al-daily"><b>📅 Daily Experiment${done ? " · done ✓" : ""}</b><span>${esc(dd.x.goal)} · Level ${dd.L.n}${live && d.streak ? ` · 🔥 ${d.streak}-day streak` : ""}${done ? " · come back tomorrow for a new one" : " · bonus Essence, grows with your streak"}</span></button>`; })()}
         <div class="choices"><button class="c main" type="button" id="al-free">🧪 Free play (${gridOf(P()).got} / ${gridOf(P()).total})</button></div>
         <div class="choices"><button class="c" type="button" id="al-book">📓 Alchemist's notebook</button><button class="c" type="button" id="al-music">${sfx.musicOn() ? "🎵 Music on" : "🔇 Music off"}</button><button class="c" type="button" id="al-table">🧪 My periodic table</button><button class="c" type="button" id="al-shop">🏺 Apothecary</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; begin(L, nextOf(P(), L, lab().last)); }));
       $("al-book").onclick = () => toggle("book", $("al-book"), "📓 Alchemist's notebook"); $("al-table").onclick = () => toggle("table", $("al-table"), "🧪 My periodic table");
       $("al-shop").onclick = shop; $("back").onclick = greet; $("al-free").onclick = () => { sfx.whoosh(); freeplay(); };
+      $("al-daily").onclick = () => { const k = dayKey(), dd = dailyOf(k); begin(dd.L, dd.x, k); };
       setTimeout(() => sfx.startMusic(() => tableEl.classList.contains("alchemy")), 50);
       $("al-music").onclick = () => { const on = !sfx.musicOn(); sfx.setMusic(on); $("al-music").textContent = on ? "🎵 Music on" : "🔇 Music off"; if (on) sfx.startMusic(() => tableEl.classList.contains("alchemy")); };
     }
@@ -56,7 +59,7 @@ export const alchemy = {
       if (on) rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    const begin = (L, x) => { sfx.whoosh(); const run = start(x, L); run.guard = (shopItem(lookOf(P()).gear) || {}).guards || [];
+    const begin = (L, x, daily) => { sfx.whoosh(); const run = start(x, L); run.guard = (shopItem(lookOf(P()).gear) || {}).guards || []; if (daily) run.daily = daily;
       return L.n === 1 ? read(L, x, run) : bench(L, x, run, [], null); };
 
     // ---- level 1: read the symbol ----
@@ -126,8 +129,8 @@ export const alchemy = {
       $("al-ok").onclick = () => (run.done ? finish(L, x, run) : bench(L, x, run, [], op, "Steady now. Try a safer mix."));
     }
     /** Play an accident (explosion or poison gas) on the bench and show its lesson card. `end` = the experiment is over. */
-    function accident(hz, { flames = 0, shelf, sel, end = true, btn, done }) {
-      const gas = hz.kind === "gas", tail = end ? "" : " Luckily this is free play, so nobody gets hurt.";
+    function accident(hz, { flames = 0, shelf, sel, end = true, btn, done, note }) {
+      const gas = hz.kind === "gas", tail = note ?? (end ? "" : " Luckily this is free play, so nobody gets hurt.");
       if (gas) { sfx.gas(); cap("☠️ " + hz.name); draw({ flames, shelf, chips: sel, gas: hz.col, label: "☠️ " + hz.name });
         tableEl.classList.remove("choke"); void tableEl.offsetWidth; tableEl.classList.add("choke");
         say(pick(end ? ["*cough* *cough* A poison cloud pours out of the flask. Get out! The experiment is over.", "The air turns thick and stinging. You stagger out of the Lab, eyes streaming. Experiment over.", "A deadly gas fills the room. Out, now! This experiment is finished."]
@@ -162,18 +165,30 @@ export const alchemy = {
       ctx.trophy?.("alchemy", L.n, { won: run.won, perfect: run.won && !run.wrong.length && !r.boom }); // Trophy Case (trophies.js)
       const after = solvedCount(P()), t = titleOf(after), titled = titleOf(before).name !== t.name;
       const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
+      const dl = run.daily ? logDaily(P(), run.daily, run.won) : null; if (dl) { award(dl.bonus, dl.bonus); saveProgress(); showStats(); bits.push(`📅 Daily Experiment done: <b>+${dl.bonus} ✦ +${dl.bonus} 💎</b> · streak ${dl.streak} day${dl.streak === 1 ? "" : "s"}`); }
+      const sealHtml = sealUp();
       if (r.boom) bits.push(`${hz.kind === "gas" ? "☠️ poisoned by" : "💥 exploded:"} ${esc(hz.name)} · lesson added to your Codex`); else bits.push(run.won ? `score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${lab().solved[keyOf(L, x)]}`}` : "not done this time");
       if (r.boom) say(hz.kind === "gas" ? "Lesson learned, with streaming eyes. Air the room and try again." : "Lesson learned the loud way. Try again with a steadier hand."); else say(run.won ? pick(["Into the notebook it goes.", "The Great Work advances.", "Another secret of matter, written down."]) : "Even Newton had bad days at the furnace.");
       const els = r.newEls.length ? `<div class="up">🧪 New on your periodic table: ${r.newEls.map((e) => `<span class="al-el on">${e}<small>${ELEMENTS[e][2]}</small></span>`).join(" ")}</div>` : "";
       const up = LEVELS[L.n] && run.won && r.first && solvedCount(P(), L) === 4 ? `<div class="up">🔓 Ready for Level ${L.n + 1}: ${esc(LEVELS[L.n].what)}</div>` : "";
-      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${els}${titled ? `<div class="up">⚗️ Lab title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}</div>
+      ui(`<div class="reward"><div>${bits.join(" · ")}</div>${els}${titled ? `<div class="up">⚗️ Lab title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}${up}${sealHtml}</div>
         ${L.n > 1 ? eqCard(x) : `<div class="al-eq"><b>${esc(x.name)}</b><code>${esc(x.modern)}</code></div>`}
         <div class="choices"><button class="c main" type="button" id="al-next">⚗️ Next Level ${L.n} work</button>${run.won ? "" : `<button class="c" type="button" id="al-again">↻ Try again</button>`}<button class="c" type="button" id="al-lobby">📜 Choose a level</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       if (titled || aw.rankUp || r.newEls.length) spark(); if (titled || aw.rankUp) chime(2);
       $("al-next").onclick = () => begin(L, nextOf(P(), L, x.id));
-      if ($("al-again")) $("al-again").onclick = () => begin(L, x);
+      if ($("al-again")) $("al-again").onclick = () => begin(L, x, run.daily);
       $("al-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
+
+    /** Pays and announces the gold seal the first time all accidents are learned. */
+    function sealUp() { if (!sealOf(P())) return ""; award(SEAL_PTS, SEAL_PTS); saveProgress(); showStats(); chime(3); spark();
+      return `<div class="up al-seal">🏅 Gold seal: <b>Safety Officer</b>. You've learned all ${HAZARDS.length} lab accidents · +${SEAL_PTS} ✦ +${SEAL_PTS} 💎</div>`; }
+    /** The Discoveries grid in the reading area; tap a learned accident to replay it. */
+    function showGrid() { const rb = $("reading-body"); sfx.page(); rb.innerHTML = gridHtml(P(), esc);
+      rb.querySelectorAll("[data-replay]").forEach((b) => (b.onclick = () => replay(b.dataset.replay))); rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    function replay(id) { const hz = HAZARDS.find((h) => h.id === id); if (!hz) return;
+      accident(hz, { flames: 4, shelf: freeShelf([...hz.all, ...(hz.any ? [hz.any[0]] : [])].slice(0, 3)), sel: [...hz.all, ...(hz.any ? [hz.any[0]] : [])].slice(0, 3), end: false, note: " (A replay from your accident files.)",
+        btn: "🗂 Back to Discoveries", done: () => { lobby(false); showGrid(); } }); }
 
     // ---- free play: every reagent, every operation, no target ----
     const ALL_IDS = Object.keys(REAGENTS);
@@ -190,24 +205,25 @@ export const alchemy = {
         sfx.clink(ALL_IDS.indexOf(id) % 6); if (added) sfx.pour(); freeplay(s2, op, " ", added ? { pour: REAGENTS[id].c } : {}); }));
       $("ui").querySelectorAll("[data-op]").forEach((b) => (b.onclick = () => { const k = b.dataset.op; (k === "dissolve" ? sfx.bubble : k === "electrolyse" ? sfx.zap : sfx.whoosh)(); freeplay(sel, k, `${OPS[k].name}: ${OPS[k].what}`); }));
       $("al-leave").onclick = () => lobby(false);
-      $("al-grid").onclick = () => { const rb = $("reading-body"); sfx.page(); rb.innerHTML = gridHtml(P(), esc); rb.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      $("al-grid").onclick = showGrid;
       $("al-go").onclick = () => {
         const res = experiment(sel, op); if (!res) return;
-        const lg = logPlay(P(), res), aw = award(lg.xp, lg.essence); saveProgress(); showStats();
+        const lg = logPlay(P(), res), aw = award(lg.xp, lg.essence); saveProgress(); showStats(); const seal = sealUp();
         const again = () => freeplay([], op, "Clean flask. What next?");
         if (res.hazard) { const hz = res.hazard, gear = shopItem(lookOf(P()).gear);
           if ((gear?.guards || []).includes(hz.kind)) { sfx.saved(); cap("🛡 " + hz.name); draw({ shelf: freeShelf(sel), chips: sel, saved: hz.col || "#9fd8ff", fizzle: true, label: `🛡 ${gear.name} saved you` });
             say(`${hz.kind === "gas" ? "☠️" : "💥"} ${hz.name}! Your ${gear.name.toLowerCase()} kept you safe.`);
-            ui(`<div class="al-boomcard saved"><b>🛡 ${esc(hz.name)}${lg.first ? " · new in your Discoveries" : ""}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div><div class="choices"><button class="c main" type="button" id="al-ok">⚗️ Mix again</button></div>`);
+            ui(`<div class="al-boomcard saved"><b>🛡 ${esc(hz.name)}${lg.first ? " · new in your Discoveries" : ""}</b><p>${esc(hz.what)}</p><p class="note">${esc(hz.lesson)}</p></div>${seal}<div class="choices"><button class="c main" type="button" id="al-ok">⚗️ Mix again</button></div>`);
             $("al-ok").onclick = again; return; }
-          return accident(hz, { flames: 4, shelf: freeShelf(sel), sel, end: false, btn: hz.kind === "gas" ? "🪟 Air the room and mix again" : "🧹 Sweep up and mix again", done: again }); }
+          if (seal) say(`${hz.name}! And that's every accident in the book: the gold seal is yours.`);
+          return accident(hz, { flames: 4, shelf: freeShelf(sel), sel, end: false, note: seal ? " That's all of them: the gold seal is yours. 🏅" : undefined, btn: hz.kind === "gas" ? "🪟 Air the room and mix again" : "🧹 Sweep up and mix again", done: again }); }
         if (res.find) { const x = res.find; sfx.transmute(); spark(); cap(`✨ ${x.product}`);
           draw({ shelf: freeShelf(sel), chips: x.make, liquid: x.colour, glow: true, label: x.product, react: { from: x.make.map((i) => REAGENTS[i].c), to: x.colour, fx: x.fx, fxc: x.fxc } }); sfx.react(x.fx);
           const els = lg.newEls.length ? `<div class="up">🧪 New on your periodic table: ${lg.newEls.map((e) => `<span class="al-el on">${e}<small>${ELEMENTS[e][2]}</small></span>`).join(" ")}</div>` : "";
           return talkThrough([lg.first ? `A discovery! ${x.product}.` : `${x.product} again. You found this one before.`, x.story, x.science], () => {
             ui(`<div class="reward"><div>${lg.first ? `<b>+${lg.xp} ✦ · +${lg.essence} 💎</b> · new in your Discoveries` : "Already in your Discoveries"}</div>${els}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>${eqCard(x)}
               <div class="choices"><button class="c main" type="button" id="al-ok">⚗️ Mix again</button><button class="c" type="button" id="al-grid2">🗂 Discoveries</button></div>`);
-            $("al-ok").onclick = again; $("al-grid2").onclick = () => { $("reading-body").innerHTML = gridHtml(P(), esc); sfx.page(); }; }); }
+            $("al-ok").onclick = again; $("al-grid2").onclick = showGrid; }); }
         sfx.fizzle(); freeplay(sel, op, pick(["Nothing much happens. A little warmth, a little smell. No discovery here.", "It bubbles, then settles. Nothing new.", "A murky mess. No alchemist wrote this one down."]), { fizzle: true });
       };
     }
@@ -233,10 +249,12 @@ export const alchemy = {
 /** The Discoveries grid: every product you can make and every accident you can have, found or still a mystery. */
 export function gridHtml(p, esc) {
   const g = gridOf(p);
-  const cell = (on, icon, name, sub) => `<span class="al-find${on ? " on" : ""}"><b>${on ? icon : "❔"}</b>${on ? `${esc(name)}<small>${esc(sub)}</small>` : "<small>not found yet</small>"}</span>`;
+  const cell = (on, icon, name, sub, id) => on && id ? `<button class="al-find on" type="button" data-replay="${id}" title="Replay this accident"><b>${icon} ↻</b>${esc(name)}<small>${esc(sub)} · tap to replay</small></button>`
+    : `<span class="al-find${on ? " on" : ""}"><b>${on ? icon : "❔"}</b>${on ? `${esc(name)}<small>${esc(sub)}</small>` : "<small>not found yet</small>"}</span>`;
   return `<div class="al-grid"><h3>🗂 Discoveries · ${g.got} / ${g.total}</h3><p class="note">Free play lets you mix anything. Each product and each accident you find is filled in here.</p>
     <div class="group">✨ Products (${g.finds.filter((f) => f.on).length} / ${g.finds.length})</div><div class="al-finds">${g.finds.map(({ x, on }) => cell(on, "✨", x.product, x.eq)).join("")}</div>
-    <div class="group">⚠️ Accidents (${g.hazards.filter((f) => f.on).length} / ${g.hazards.length})</div><div class="al-finds">${g.hazards.map(({ h, on }) => cell(on, h.kind === "gas" ? "☠️" : "💥", h.name, h.kind === "gas" ? "poison gas" : h.kind === "splash" ? "acid eruption" : "explosion")).join("")}</div></div>`;
+    <div class="group">⚠️ Accidents (${g.hazards.filter((f) => f.on).length} / ${g.hazards.length})</div><div class="al-finds">${g.hazards.map(({ h, on }) => cell(on, h.kind === "gas" ? "☠️" : "💥", h.name, h.kind === "gas" ? "poison gas" : h.kind === "splash" ? "acid eruption" : "explosion", h.id)).join("")}</div>
+    ${labOf(p).seal ? `<div class="up al-seal">🏅 Gold seal: <b>Safety Officer</b> · all ${g.hazards.length} accidents learned</div>` : `<p class="note">Learn all ${g.hazards.length} accidents for the 🏅 gold seal (+50 ✦ +50 💎).</p>`}</div>`;
 }
 /** The notebook (study guide) shown in the reading area. */
 export function notebookHtml(esc) {
@@ -261,7 +279,7 @@ export function alchemyCodex(p, esc) {
   return LEVELS.map((L) => { const done = L.deck.filter((x) => r.solved[keyOf(L, x)]);
     return `<div class="cx"><div class="cx-h"><span>⚗️ Lab level ${L.n}: ${esc(L.what)}</span><span class="note">${done.length} / ${L.deck.length}</span></div>
       <div class="bar"><i style="width:${(done.length / L.deck.length) * 100}%"></i></div>${done.length ? `<div class="chips">${done.map((x) => `<span>${esc(x.name || x.product)}</span>`).join("")}</div>` : ""}</div>`; }).join("")
-    + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>⚠️ Lab accidents (lessons learned)</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
+    + (() => { const acc = r.accidents || []; return `<div class="cx"><div class="cx-h"><span>⚠️ Lab accidents (lessons learned)${r.seal ? " · 🏅 gold seal" : ""}</span><span class="note">${acc.length} / ${HAZARDS.length}${r.booms ? ` · ${r.booms} explosion${r.booms === 1 ? "" : "s"}` : ""}</span></div>${acc.length ? `<div class="chips">${acc.map((id) => `<span>${esc(HAZARDS.find((h) => h.id === id)?.name || id)}</span>`).join("")}</div>` : ""}</div>`; })()
     + (() => { const g = gridOf(p); return `<div class="cx"><div class="cx-h"><span>🗂 Free-play discoveries</span><span class="note">${g.got} / ${g.total}</span></div><div class="bar"><i style="width:${(g.got / g.total) * 100}%"></i></div></div>`; })()
     + `<div class="cx"><div class="cx-h"><span>🧪 Elements found in the Lab</span><span class="note">${n} / ${of}</span></div><div class="bar"><i style="width:${(n / of) * 100}%"></i></div>${n ? `<div class="chips">${r.elements.map((e) => `<span>${esc(e)}</span>`).join("")}</div>` : ""}</div>`;
 }

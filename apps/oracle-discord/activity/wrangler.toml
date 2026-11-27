@@ -17,6 +17,16 @@ DISCORD_APP_ID = "1575582995878772789"
 binding = "PROFILES"
 id = "KV_ID_SET_BY_DEPLOY"
 
+# Multiplayer: one Durable Object per call and game holds that game's table (tables.mjs; SQLite-backed, free plan).
+# Local test tables without Discord: wrangler dev --var DEV_ROOMS:1
+[[durable_objects.bindings]]
+name = "TABLES"
+class_name = "Tables"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Tables"]
+
 # Secrets (set by the deploy workflow): ORACLE_KEY, DISCORD_CLIENT_SECRET (optional until sign-in is set up)
 
 [observability]
