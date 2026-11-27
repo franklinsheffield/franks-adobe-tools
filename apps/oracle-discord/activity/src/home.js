@@ -38,7 +38,7 @@ export function homeHtml(items, tab, esc) {
   const on = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
   return `<div class="home">
   <div class="hm-quick"><button class="c main hm-magnet" type="button" id="hm-daily">✦ Draw today's card</button><button class="c" type="button" id="hm-surprise">🎲 Surprise me</button></div>
-  <div class="hm-tabs" role="tablist" aria-label="What would you like to do?">${tabs.map((t) => `<button class="hm-tab${t.id === on ? " on" : ""}" type="button" role="tab" aria-selected="${t.id === on}" aria-controls="hm-p-${t.id}" data-hm="${t.id}"><span aria-hidden="true">${t.emoji}</span> ${esc(t.label)}<em>${items[t.id].length}</em></button>`).join("")}</div>
+  <div class="hm-tabs" role="tablist" aria-label="What would you like to do?">${tabs.map((t) => `<button class="hm-tab${t.id === on ? " on" : ""}" type="button" role="tab" aria-selected="${t.id === on}" aria-controls="hm-p-${t.id}" data-hm="${t.id}"><i class="hm-knob" aria-hidden="true"></i><span class="hm-de" aria-hidden="true">${t.emoji}</span> ${esc(t.label)}<em>${items[t.id].length}</em></button>`).join("")}</div>
   ${tabs.map((t) => `<div class="hm-panel" id="hm-p-${t.id}" role="tabpanel" data-panel="${t.id}"${t.id === on ? "" : " hidden"}><p class="hm-blurb">${esc(t.blurb)}</p><div class="hm-grid">${items[t.id].map(card).join("")}</div></div>`).join("")}
 </div>`;
 }
@@ -47,6 +47,7 @@ export function homeHtml(items, tab, esc) {
 export function wireHome(root, { reduced = false, onTab = null } = {}) {
   root.querySelectorAll("[data-hm]").forEach((b) => (b.onclick = () => {
     const id = b.dataset.hm; saveTab(id); onTab && onTab(id);
+    if (!reduced) { b.classList.remove("swing"); void b.offsetWidth; b.classList.add("swing"); } // the hall of doors: the door you pick swings open
     root.querySelectorAll("[data-hm]").forEach((x) => { const on = x.dataset.hm === id; x.classList.toggle("on", on); x.setAttribute("aria-selected", String(on)); });
     root.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== id; });
   }));

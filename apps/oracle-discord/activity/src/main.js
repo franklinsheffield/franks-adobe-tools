@@ -43,6 +43,7 @@ import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
 import { joinTable, canJoin } from "./net.js";
 import { gemShop, gemSvg } from "./gems.js";
+import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, addLog, byDay, dayKey, dayLabel, timeOf, topDrawn, hoursOf, bookSfx } from "./book.js";
@@ -192,6 +193,21 @@ function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, 
 // ---- the conversation ----
 const cap = (t) => { $("table-cap").textContent = t || ""; };
 const clearReading = () => { $("reading-body").innerHTML = ""; $("box").scrollTop = 0; };
+// ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
+function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
+  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }); }
+paintScene(); setInterval(paintScene, 10 * 60e3);
+/** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
+function cine(kind) { if (reduced || !kind) return; const old = document.querySelector(".cine"); if (old) old.remove();
+  const el = document.createElement("div"); el.className = "cine cn-" + kind; el.setAttribute("aria-hidden", "true"); el.innerHTML = cineHtml(kind); $("stage").append(el); setTimeout(() => el.remove(), 1100); }
+/** Notification orbs on the menu: today's card, each game's daily, a new store week. */
+function paintOrbs() {
+  const o = orbsFor(state.prog), sb = $("store-btn"); sb.querySelector(".orb")?.remove(); if (o.store) sb.insertAdjacentHTML("beforeend", orbHtml(1, "New picks this week"));
+  const ui_ = $("ui"); if (!ui_.querySelector(".home")) return;
+  if (o.card) $("hm-daily")?.insertAdjacentHTML("beforeend", orbHtml(1, "Today's card is waiting"));
+  for (const id of o.games) ui_.querySelector(`.hm-card[data-room="${id}"]`)?.insertAdjacentHTML("beforeend", orbHtml(1, "Today's daily challenge is open"));
+  ui_.querySelectorAll(".hm-tab").forEach((t) => { const n = ui_.querySelectorAll(`[data-panel="${t.dataset.hm}"] .orb`).length; if (n) t.insertAdjacentHTML("beforeend", orbHtml(n, `${n} waiting`)); });
+}
 /** Discord's Activity iframe blocks <form> submission, so forms are plain divs: the #go button and Enter in a field run the div's onsubmit. */
 function bindGo(id) {
   const box = $(id), run = () => { const bad = [...box.querySelectorAll("input[required]")].find((i) => !i.value.trim());
@@ -211,6 +227,7 @@ function idleTick() {
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
 
 function greet() {
+  if (state.inRoom || document.querySelector(".pane.oracle-pane.showroom")) cine(CINE.home);
   state.inRoom = null; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
@@ -226,6 +243,7 @@ function greet() {
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
   $("ui").querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => openRoom(b.dataset.room)));
   $("ui").querySelectorAll("[data-study]").forEach((b) => (b.onclick = () => openStudy(b.dataset.study)));
+  paintOrbs();
 }
 
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
@@ -260,6 +278,7 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
+  if (state.inRoom !== id) cine(CINE.room);
   state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
@@ -303,7 +322,7 @@ function choose(sys) {
 
 async function reveal(sys, options, question = "") {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
-  ui(""); clearReading(); state.q = question;
+  ui(""); clearReading(); state.q = question; cine(CINE.reading); markCard(state.prog);
   // The trance: the Oracle closes her eye and raises her hands for 3 seconds, humming, while the table casts.
   document.body.classList.add("trance"); mood.clear(); refreshEnergy(); cap(sys.emoji + " " + (line(P(), "cast", { system: sys.label }) || CAST[sys.key] || "The mist is moving…"));
   clearTimeout(typing); $("say").textContent = "…"; $("sr").textContent = "The Oracle closes her eye and raises her hands.";
@@ -326,6 +345,9 @@ async function reveal(sys, options, question = "") {
   poof(); await wait(250);
   const files = (r.files || []).map(svgOf).filter(Boolean);
   layArt(files);
+  { const rb = $("reading-body"); rb.innerHTML = readingCardHtml(sys, r, headline(r.embeds[0], r.headline), esc); const rc = $("rc");
+    setTimeout(() => rc && rc.classList.add("flip"), reduced ? 0 : 350);
+    rc.onclick = () => { const d = document.querySelector("details.written"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); } else rc.classList.toggle("flip"); }; }
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
   const lore = codexNotes(state.prog, sys.key, r);
@@ -523,6 +545,8 @@ function thumb(it) {
 const ACTIVE_KINDS = ["voice", "vibe", "persona"]; // "Active" reads better than "Wearing" for these
 /** The store: five departments, each with its shelves; `tab` is the open shelf (a kind, or "haunted"). */
 function showStore(tab = "outfit", opener = null) {
+  if (!$("ui").querySelector(".depts")) cine(CINE.store);
+  markStore(state.prog); $("store-btn").querySelector(".orb")?.remove();
   clearReading(); cap(trying ? "👁 Trying on: " + (trying.set ? `the ${LOOK_SETS.find((x) => x.id === trying.set).name} set` : lookItem(trying.id)?.name || "") : "💎 The Essence store"); table.idle();
   const p = state.prog, depts = departments(), dept = deptOf(tab);
   say(opener || (p.essence ? `Ah, a customer. You have ${p.essence} Essence, ${state.name}. Everything here is cosmetic. Destiny is not for sale. Lip gloss for the crystal ball, however…` : "Essence comes from readings, traveller. Every ✦ you earn is a drop of 💎 Essence. Come back with a full pocket."));
