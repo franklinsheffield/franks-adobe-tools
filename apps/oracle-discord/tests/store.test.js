@@ -56,3 +56,14 @@ test("personalities: every one has full line pools and a store item", async () =
     assert.ok(deliver(id, "Yes.", { name: "Frank" }).includes("Yes."));
   }
 });
+
+import { IDLE, idleLine } from "../activity/src/idle.js";
+import { PERSONAS } from "../activity/src/personas.js";
+test("every personality has 15 idle lines; first 3 lead in order, then no repeats", () => {
+  for (const id of Object.keys(PERSONAS)) {
+    assert.equal(IDLE[id]?.length, 15, id);
+    const used = [], got = Array.from({ length: 15 }, (_, k) => idleLine(id, k, used, "Ana"));
+    assert.deepEqual(got.slice(0, 3), IDLE[id].slice(0, 3).map((t) => t.replace(/\{name\}/g, "Ana")));
+    assert.equal(new Set(got).size, 15, id);
+  }
+});
