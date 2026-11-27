@@ -1685,3 +1685,15 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .emo-spark{position:absolute;z-index:6;pointer-events:none;font-style:normal;font-size:clamp(14px,2.2vw,22px);opacity:0;transform:translate(-50%,-50%);animation:emo-spark 1.2s ease-out var(--d) forwards}
 @keyframes emo-spark{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}20%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1) rotate(25deg)}}
 @media (prefers-reduced-motion:reduce){.emo-pop,.emo-spark{display:none}}
+/* Journal: every entry opens its full log */
+.bk-log li.bk-li{grid-template-columns:76px 26px 1fr 14px;cursor:pointer;border-radius:4px;transition:background .15s}
+.bk-log li.bk-li:hover,.bk-log li.bk-li:focus-visible{background:color-mix(in srgb,var(--ink2) 12%,transparent);outline:none}
+.bk-li-go{font-style:normal;color:var(--ink2);opacity:.5;align-self:center}
+.bk-log li.bk-li:hover .bk-li-go{opacity:1}
+.bk-entry-t{font-size:15px;line-height:1.45;margin:6px 0 12px}
+.bk-dl{display:grid;grid-template-columns:minmax(90px,32%) 1fr;gap:6px 12px;margin:0 0 14px;font-size:13.5px;line-height:1.45}
+.bk-dl dt{font-family:var(--display,Cinzel,serif);font-size:12px;color:var(--ink2);padding-top:1px}
+.bk-dl dd{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.bk-entry-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:10px;border-top:1px dotted color-mix(in srgb,var(--ink2) 40%,transparent)}
+.bk-entry-nav small{color:var(--ink2)}
+@media (max-width:560px){.bk-dl{grid-template-columns:1fr}.bk-dl dt{padding-top:6px}}

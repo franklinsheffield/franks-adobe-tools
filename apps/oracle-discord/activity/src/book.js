@@ -66,9 +66,25 @@ export const bookShop = {
 // ---- the Journal: a log of days, every entry timestamped ----
 export const LOG_CAP = 500;
 /** Add an entry ({ at, k, e, t, ref? }) to the front of the log, newest first, capped. */
-export function addLog(log, k, e, t, ref = null, at = Date.now()) {
-  const L = Array.isArray(log) ? log : []; L.unshift({ at, k, e, t: String(t).slice(0, 220), ...(ref != null ? { ref } : {}) }); if (L.length > LOG_CAP) L.length = LOG_CAP; return L;
+export function addLog(log, k, e, t, ref = null, at = Date.now(), d = null) {
+  const L = Array.isArray(log) ? log : [], rows = cleanRows(d);
+  L.unshift({ at, k, e, t: String(t).slice(0, 220), ...(ref != null ? { ref } : {}), ...(rows.length ? { d: rows } : {}) });
+  if (L.length > LOG_CAP) L.length = LOG_CAP;
+  for (let i = DETAIL_KEEP; i < L.length; i++) if (L[i] && L[i].d) delete L[i].d; // full details for the newest entries only, to keep storage small
+  return L;
 }
+/** Full details are kept for this many of the newest entries. */
+export const DETAIL_KEEP = 150;
+/** Detail rows [[label, value], ...]: strings only, empty values dropped, capped in count and length. */
+export function cleanRows(d) {
+  if (!Array.isArray(d)) return [];
+  return d.filter((r) => Array.isArray(r) && r[1] != null && String(r[1]).trim() !== "").slice(0, 14)
+    .map(([k, v]) => [String(k).slice(0, 60), String(v).replace(/\*\*|__/g, "").slice(0, 600)]);
+}
+/** What kind of entry it is, for the full log page. */
+export const LOG_KINDS = { reading: "Reading", save: "Saved reading", game: "Game", trophy: "Trophy", buy: "Store", gift: "Daily gift", secret: "Secret", record: "Record" };
+/** Full date and time: "Friday, 27 November 2026 · 10:42 AM". */
+export const fullWhen = (at) => `${new Date(at).toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${timeOf(at)}`;
 const pad = (n) => String(n).padStart(2, "0");
 /** The local calendar day of a time, as YYYY-MM-DD. */
 export const dayKey = (at) => { const d = new Date(at); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
