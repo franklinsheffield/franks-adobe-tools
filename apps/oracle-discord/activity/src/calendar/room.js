@@ -11,6 +11,7 @@ import * as S from "./sfx.js";
 import { attachDrag, daysToTz, daysToEgy } from "./drag.js";
 import { dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { GAME, dailySet, dailyScore, dailyReward } from "./daily-sky.js";
+import { birthdayOf } from "./birthday.js";
 
 const escH = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -166,9 +167,38 @@ function lobby(first) {
     return `<button class="c level" type="button" data-l="${L.n}" ${on ? "" : "disabled"}><b>${"🗓️".repeat(L.n)} Level ${L.n} · ${C.esc(L.name)}</b><span>${C.esc(L.what)} · ${n} / ${L.deck.length} solved · ${starsOf(p, L)} ★ · rewards ×${L.mult}${on ? "" : ` · solve 4 in Level ${L.n - 1} to open`}</span></button>`; };
   C.ui(`${stats()}<div class="levels">${LEVELS.map(lvl).join("")}</div>
     <div class="note">3 stars a puzzle. Each hint or wrong answer costs one. Answers come from the real calendars and the real sky, and change every time you play.</div>
-    ${dailyBtn(p)}<div class="choices"><button class="c" type="button" id="cal-desk">🗓️ Keeper's desk: turn to any date</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>${guideRow()}`);
+    ${dailyBtn(p)}<div class="choices"><button class="c" type="button" id="cal-desk">🗓️ Keeper's desk: turn to any date</button><button class="c" type="button" id="cal-bday">🎂 Your birthday in every calendar</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>${guideRow()}`);
   $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = LEVELS[+b.dataset.l - 1]; play(L, nextPuzzle(p, L, cal(p).last)); }));
-  $("cal-desk").onclick = () => freeDesk(shown ?? E.todayJdn()); $("cal-daily").onclick = dailyStart; $("back").onclick = C.greet; wireGuides();
+  $("cal-desk").onclick = () => freeDesk(shown ?? E.todayJdn()); $("cal-daily").onclick = dailyStart; $("cal-bday").onclick = () => birthday(); $("back").onclick = C.greet; wireGuides();
+}
+
+// ---- 🎂 Your birthday in every calendar (from the saved /profile, or a date typed here; the date itself is not saved) ----
+function birthday(v) {
+  const prof = C.state.profile && C.state.profile.date, j = v ?? (prof ? E.parseYmd(prof) : null), today = E.todayJdn();
+  C.clearReading(); C.cap("🎂 Your birthday in every calendar");
+  const form = (val) => `<div class="form one"><label for="cal-b">Birth date (year-month-day)<input id="cal-b" value="${C.esc(val)}" maxlength="11" autocomplete="off" inputmode="numeric" placeholder="1990-04-09"></label></div>
+    <div class="choices"><button class="c main" type="button" id="cal-bgo">✦ Turn the wheels to my birthday</button><button class="c small" type="button" id="cal-lobby">📜 Back to the levels</button></div>
+    <div class="note">${prof ? "Filled in from your saved /profile. " : ""}Your birth date stays on this screen; only the calendar names go in your Codex.</div>`;
+  const wire = () => { const go = () => { const b = E.parseYmd($("cal-b").value); if (b == null || b > today) { C.say("That date won't turn the wheels. Try year-month-day, like 1990-04-09."); return; } birthday(b); };
+    $("cal-bgo").onclick = go; onEnter("cal-b", go); $("cal-lobby").onclick = () => lobby(false); };
+  if (j == null) { desk(today); C.say("Tell me the day you were born and I'll find it in all three calendars."); C.ui(form("")); wire(); return; }
+  const B = birthdayOf(j, today), g = E.dateOf(j), ymd = `${g.year}-${String(g.month).padStart(2, "0")}-${String(g.day).padStart(2, "0")}`, k = B.celtic;
+  desk(j, shown ?? today);
+  const r = cal(C.state.prog), firstPage = !r.bday;
+  r.bday = { tz: B.maya.tz, meaning: B.maya.meaning, egy: B.egypt.short, celtic: `after ${k.after.name.split(" ")[0]}` };
+  let gain = ""; if (firstPage) { const aw = C.award(10, 6); gain = `<div class="up">📜 New Codex page · <b>+10 ✦ · +6 💎</b>${aw.rankUp ? ` · 🏅 You are now <b>${C.esc(aw.rankUp)}</b>` : ""}</div>`; setTimeout(S.fanfare, 600); }
+  save(); C.showStats();
+  const when = (d) => d === 0 ? "today!" : `in ${d} day${d === 1 ? "" : "s"} (${E.fmt(today + d)})`;
+  C.say(`Born on ${B.maya.tz}. The day sign ${E.SIGNS[B.maya.sign]} is ${B.maya.meaning}. ${B.nextTz.days === 0 ? "And today is your sacred birthday!" : ""}`);
+  $("reading-body").innerHTML = `<div class="cal-report"><h3>🎂 ${C.esc(E.fmt(j, true))}</h3><ul>
+    <li><b>Maya Tzolk'in:</b> ${C.esc(B.maya.tz)}, the day sign of ${C.esc(B.maya.meaning)}. Haab' ${C.esc(B.maya.haab)}. Long Count ${C.esc(B.maya.lc)}.</li>
+    <li><b>Egyptian civil year:</b> ${C.esc(B.egypt.name)}, season of ${C.esc(B.egypt.season)}.${B.egypt.god ? ` You share a birthday with ${C.esc(B.egypt.god)}.` : ""} Coptic: ${C.esc(B.coptic)}.</li>
+    <li><b>Celtic year:</b> ${k.onDay ? `born on ${C.esc(k.after.name)} itself` : `born in the quarter after ${C.esc(k.after.name)}, before ${C.esc(k.next.name)}`}, in ${k.half}.</li></ul></div>`;
+  C.ui(`<div class="reward"><div>🌽 Next 260-day sacred birthday: <b>${C.esc(when(B.nextTz.days))}</b></div><div class="note">You have lived ${B.lived.toLocaleString("en")} days: ${B.rounds} full turns of the Tzolk'in.</div>
+    <div>🏺 Next Egyptian civil birthday: <b>${C.esc(when(B.nextEgy.days))}</b></div><div class="note">The civil year has no leap day, so this birthday drifts about one day every four years against ours.</div>${gain}</div>
+    ${form(ymd).replace("✦ Turn the wheels to my birthday", "✦ Try another date")}
+    <div class="choices"><button class="c" type="button" id="cal-btz">🌽 Turn to my next sacred birthday</button></div>`);
+  wire(); $("cal-btz").onclick = () => { desk(B.nextTz.jdn); C.say(`On ${E.fmt(B.nextTz.jdn, true)} the Tzolk'in comes round to ${B.maya.tz} again.`); };
 }
 
 // ---- Daily Sky: the same three puzzles for everyone today (a cycle, a festival, an eclipse), a streak and a shared board ----
@@ -324,8 +354,9 @@ function finish(L, p, run) {
 
 /** This room's part of the 📜 Codex: stars per level and the puzzles solved. */
 export function codexHtml(prog, esc = escH) {
-  const r = cal(prog);
-  return LEVELS.map((L) => { const got = L.deck.filter((x) => r.stars[keyOf(L, x)]), st = starsOf(prog, L), of = L.deck.length * STARS;
+  const r = cal(prog), b = r.bday;
+  const bday = b ? `<div class="cx"><div class="cx-h"><span>🎂 Your birthday in every calendar</span><span class="note">Calendar Keeper</span></div><div class="chips"><span>🌽 ${esc(b.tz)} (${esc(b.meaning)})</span><span>🏺 ${esc(b.egy)}</span><span>🔥 ${esc(b.celtic)}</span></div></div>` : "";
+  return bday + LEVELS.map((L) => { const got = L.deck.filter((x) => r.stars[keyOf(L, x)]), st = starsOf(prog, L), of = L.deck.length * STARS;
     return `<div class="cx"><div class="cx-h"><span>🗓️ Calendar Keeper ${L.n}: ${esc(L.what)}</span><span class="note">${st} / ${of} ★</span></div>
       <div class="bar"><i style="width:${(st / of) * 100}%"></i></div>${got.length ? `<div class="chips">${got.map((x) => `<span>${esc(x.title)} ${"★".repeat(r.stars[keyOf(L, x)])}</span>`).join("")}</div>` : ""}</div>`; }).join("");
 }

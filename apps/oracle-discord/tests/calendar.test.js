@@ -116,3 +116,21 @@ test("Daily Sky: the same three puzzles for everyone, a new set each day", async
   assert.deepEqual(DS.dailyReward(9, 1), { xp: 37, essence: 18 });
   assert.equal(DS.dailyReward(9, 50).essence, 30);
 });
+
+test("birthday in every calendar", async () => {
+  const B = await import("../activity/src/calendar/birthday.js");
+  const birth = E.jdnOf({ year: 2012, month: 12, day: 21 }), today = E.jdnOf({ year: 2026, month: 11, day: 27 });
+  const b = B.birthdayOf(birth, today);
+  assert.equal(b.maya.tz, "4 Ajaw"); assert.equal(b.maya.lc, "13.0.0.0.0"); assert.match(b.maya.meaning, /lord/);
+  assert.equal(b.celtic.after.id, "samhain"); assert.equal(b.celtic.next.id, "imbolc");
+  // the next sacred birthday really is the same Tzolk'in day, within 260 days
+  assert.ok(b.nextTz.days >= 0 && b.nextTz.days < 260); assert.equal(E.maya(b.nextTz.jdn).tz, "4 Ajaw");
+  assert.equal(E.egyptCivil(b.nextEgy.jdn).doy, E.egyptCivil(birth).doy);
+  assert.equal(b.rounds, Math.floor((today - birth) / 260));
+  assert.equal(B.SIGN_MEANING.length, 20);
+  // 1 January sits after Samhain; 1 May is Bealtaine itself
+  assert.equal(B.celticSeason(E.jdnOf({ year: 2000, month: 1, day: 1 })).after.id, "samhain");
+  assert.ok(B.celticSeason(E.jdnOf({ year: 2000, month: 5, day: 1 })).onDay);
+  // an epagomenal birthday names its god
+  const ep = E.NABONASSAR + 365 * 3000 + 363; assert.equal(B.birthdayOf(ep, ep + 10).egypt.god, "Isis");
+});
