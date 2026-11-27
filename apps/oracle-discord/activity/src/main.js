@@ -33,6 +33,7 @@ import { headline } from "../../src/oracle/voice.js";
 import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
+import { banter } from "./banter.js";
 import { initMood, moodForOutcome, moodForTone, flickFor } from "./mood.js";
 
 const $ = (id) => document.getElementById(id);
@@ -95,7 +96,19 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 // The Oracle talks: letters appear at speaking pace (pausing on punctuation), each few letters a retro blip,
 // and the creature's eye and face pulse while it speaks.
 let typing = null;
-const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: () => refreshEnergy() });
+const bused = []; // banter lines already said this visit (banter.js)
+const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: () => refreshEnergy(),
+  onPoke: (zone, count) => (count < 5 && Math.random() < 0.5 ? banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null) });
+// Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
+const chat = { n: 0, next: 3, at: 0 };
+function roomBanter(event = "mid") {
+  const l = state.inRoom && banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused); if (!l) return;
+  chat.n = 0; chat.next = 5 + Math.floor(Math.random() * 4); chat.at = Date.now();
+  mood.emote(["wink", "curious", "think", "smug"][Math.floor(Math.random() * 4)], { quiet: true, say: l });
+  if (state.prog.persona === "standup") setTimeout(rimshot, 900);
+}
+$("ui").addEventListener("click", (e) => { if (!state.inRoom || !e.target.closest("button") || mood.mood()) return;
+  if (++chat.n >= chat.next && Date.now() - chat.at > 22000 && !document.body.classList.contains("talking")) roomBanter("mid"); });
 // Everything the store sells reacts to her: robe effects, the crystal ball, avatar extras and the vibe speed up when
 // she is excited or talking and slow when she is low (candles and colours follow in chamber.css via body[data-mood]).
 const ENERGY = { joy: 2, cheer: 3, love: 1.7, laugh: 2.3, wow: 3, curious: 1.4, angry: 3.6, think: 0.8, sad: 0.45, sulk: 0.5, sleepy: 0.3 };
@@ -199,9 +212,9 @@ function award(xp = 0, essence = 0) {
 }
 function openRoom(id) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
-  state.inRoom = id;
+  state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000;
   const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
-  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble });
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter });
 }
 
 function choose(sys) {
@@ -581,7 +594,8 @@ function tierKey(n) { return TIERS[n].key; }
 function showcaseHtml(p) { return (p.showcase || []).length ? `<button type="button" class="tr-pins" id="tr-pins" title="Your showcase: open the Trophy Case">${p.showcase.map((id) => { const t = TROPHIES.find((x) => x.id === id); return t ? `<span class="tr-pin">${trophyArt(t.art, tierKey(tierOf(p, id)), { plinth: false })}</span>` : ""; }).join("")}</button>` : ""; }
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#tr-pins")) openCase(); });
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
-function trophy(id, level, o) { mood.emote(moodForOutcome(id, o || {}));
+function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
+  mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) }); if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); } }
 function trophyNews(n) {
   if (!n) return;
