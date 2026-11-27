@@ -106,6 +106,16 @@ export function blip(ch, { final = false, ...p } = {}) {
     const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(); src.buffer = n; bp.type = "bandpass"; bp.frequency.value = 2400 * y.mouth; g.gain.value = V.breath * y.gain; src.connect(bp); bp.connect(g); g.connect(out); src.start(t); }
 }
 
+/** A House's door sting: its own short motif as the door opens, before its first line. { type, notes: [[hz, at s, len s, gain?]] } */
+export function sting(st) {
+  if (!st || muted || !ctx || ctx.state !== "running") return;
+  st.notes.forEach(([f, at, len, gain = 0.3]) => {
+    const t = ctx.currentTime + 0.05 + at, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = st.type || "sine"; o.frequency.setValueAtTime(f, t); if (st.glide) o.frequency.exponentialRampToValueAtTime(f * st.glide, t + len);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + len + 0.02);
+  });
+}
 /** A short retro reward jingle: 1 = small find, 2 = unlock or rank up. */
 export function chime(level = 1) {
   if (muted || !ctx || ctx.state !== "running") return;

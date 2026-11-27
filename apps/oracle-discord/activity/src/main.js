@@ -18,7 +18,7 @@ import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
 import { CARD_BACK, cardBackSvg } from "./cardbacks.js";
 import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, departments, deptOf, kindLabel, goodsOf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
-import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal } from "./voice-sfx.js";
+import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal, sting } from "./voice-sfx.js";
 import { seance, codexHtml as seanceCodex } from "./seance/room.js";
 import { room as decoder, decoderCodex } from "./decoder/room.js";
 import { room as memory, memoryCodex } from "./memory/room.js";
@@ -60,7 +60,7 @@ import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./m
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
-import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip } from "./hosts/index.js";
+import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
@@ -125,7 +125,9 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 let typing = null;
 const bused = []; // banter lines already said this visit (banter.js)
 const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: (m) => { refreshEnergy(); const sp = document.querySelector(".speaker"); if (sp) sp.dataset.emo = MOOD_EMOJI[m] || ""; },
-  onPoke: (zone, count) => (count < 5 && Math.random() < 0.5 ? hostBanter("", "poke", state.name, bused) || banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null) });
+  onPoke: (zone, count) => { const hr = hostReact("poke-" + zone, reactCtx()); if (hr && count < 5 && Math.random() < 0.6) return hr; return (count < 5 && Math.random() < 0.5 ? hostBanter("", "poke", state.name, bused) || banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null); } });
+/** What a House host needs to react on the figure: the teller, the backdrop (for the fume hood) and her gestures. */
+function reactCtx() { return { teller: $("teller"), scene: $("scene"), gesture: (g) => mood.gesture(g), reduced }; }
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
 function roomBanter(event = "mid") {
@@ -234,7 +236,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
+  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -272,7 +274,7 @@ function idleTick() {
 
 function greet() {
   if (!cine.mid && (state.inRoom || $("ui").querySelector(".depts"))) return cine(CINE.home, greet);
-  state.inRoom = null; player.room(null); idle.on = true; idleReset();
+  state.inRoom = null; delete document.body.dataset.room; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = HOST().readings ? available(MODULES) : [], btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
@@ -285,7 +287,7 @@ function greet() {
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
-  if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${HOST().token.emoji} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
+  if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
   $("hm-surprise").onclick = () => { const all = [...items.question, ...items.cards, ...items.birth, ...items.play], it = all[Math.floor(Math.random() * all.length)];
     mood.emote("wink", { quiet: true }); it.kind === "sys" ? choose(systemByKey(it.id)) : openRoom(it.id); };
@@ -301,7 +303,7 @@ function strayCheck() {
   saveProgress(); showStats(); setTimeout(() => { mood.emote("wow", { quiet: true }); mood.bubble(strayLine(HOST(), home), 6000, home.token.emoji); }, reduced ? 0 : 2200);
 }
 function openHouseRelics(note) {
-  const H = HOST(); state.inRoom = null; clearReading(); table.idle(); cap(H.relicLabel);
+  const H = HOST(); state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(H.relicLabel);
   say(typeof note === "string" ? note : H.relicBlurb); ui(relicPanelHtml(state.prog, H, esc));
   $("ui").querySelectorAll("[data-hrelic]").forEach((b) => (b.onclick = () => { const r = buyHouseRelic(state.prog, H, b.dataset.hrelic); if (!r) return;
     saveProgress(); showStats(); applyLook(); chime(2); mood.emote("cheer"); openHouseRelics(`${r.name}. It stays in my House now, for good. Look behind me.`); }));
@@ -312,7 +314,7 @@ function openHouseRelics(note) {
 function openStudy(roomId, back) {
   const x = studyFor(roomId); if (!x) return greet();
   if (!document.getElementById("study-style")) { const st = document.createElement("style"); st.id = "study-style"; st.textContent = STUDY_CSS; document.head.appendChild(st); }
-  state.inRoom = null; clearReading(); table.idle(); cap(`📖 Study: ${x.name}`);
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(`📖 Study: ${x.name}`);
   const show = (g) => { const rb = $("reading-body"); rb.innerHTML = studyHtml(g); rb.querySelector(".sh-guide")?.scrollIntoView({ behavior: "smooth", block: "start" });
     $("ui").querySelectorAll("[data-guide]").forEach((b) => b.classList.toggle("main", b.dataset.guide === g.id)); };
   say(x.guides.length > 1 ? `The ${x.name} library. ${x.guides.length} guides: pick one and read at your own pace.` : `Everything ${x.name} asks is in here. Read at your own pace.`);
@@ -341,7 +343,7 @@ function award(xp = 0, essence = 0) {
 function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   if (state.inRoom !== id && !cine.mid) return cine(CINE.room, () => openRoom(id, arg));
-  state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
+  state.inRoom = id; document.body.dataset.room = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); if (xp || es) strayCheck(); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
     arg, go: (rid, a) => openRoom(rid, a), reading: (k) => { const sys = systemByKey(k); if (sys) choose(sys); } }); // reading: open one of the Oracle's readings (e.g. "astrology") // arg: optional entry hint from another room (e.g. { ghost } or { script }); go: jump to another room
@@ -637,7 +639,7 @@ function showStore(tab = "outfit", opener = null) {
   else if (tab === "creator") { const L = lookOf(p);
     cards = `<div class="creator">${Object.entries(CREATOR).map(([k, c]) => `<div class="cr-row"><b>${esc(c.label)}</b><div class="cr-opts">${c.opts.map(([v, l]) => `<button type="button" class="cr-sw${L[k] === v ? " on" : ""}${v ? "" : " auto"}" data-cr="${k}" data-v="${v}" title="${esc(l)}" aria-label="${esc(c.label)}: ${esc(l)}" aria-pressed="${L[k] === v}" style="${v && v.startsWith("#") ? `--sw:${v}` : ""}">${v && !v.startsWith("#") ? esc(l) : v ? "" : "Auto"}</button>`).join("")}</div></div>`).join("")}
       <p class="note">Free, and on top of any avatar or robe. "Auto" uses the avatar's or robe's own colours.</p><button class="c small" type="button" data-cr-reset="1">↺ Reset to Auto</button></div>`
-      + emoteBookHtml(p, esc, (id) => (item(id) || {}).name || id, { modal: false }); }
+      + emoteBookHtml(p, esc, (id) => (item(id) || {}).name || id, { modal: false, skin: hostEmote }); }
   else if (tab === "sets") cards = LOOK_SETS.map((st, si) => { const pr = setProgress(p, st), items = Object.values(st.kinds).map((id) => STORE.find((x) => x.id === id)).filter(Boolean), worn = pr.worn === pr.of;
     return `<div class="set-head${worn ? " worn" : ""}" data-set-id="${st.id}"><b>${st.e} ${esc(st.name)}</b><span class="note">${esc(st.blurb)} when all four are worn.</span><span class="set-prog">${pr.own}/${pr.of} owned</span>${pr.own === pr.of ? `<button class="c small${worn ? "" : " main"}" type="button" data-wearset="${st.id}" ${worn ? "disabled" : ""}>${worn ? "✓ Set worn" : "Wear the set"}</button>` : ""}<button class="c small" type="button" data-tryset="${st.id}">👁 Try the set</button></div>${items.map((it, i) => cardOf(it, si * 4 + i)).join("")}`; }).join("");
   else if (tab === "moon") cards = `<div class="note box-note">🌙 ${moonLeft(p)} moon tokens to spend. Moon relics stay in the Oracle's chamber for good, all at once. Earn them with your first reading each day and the first time you beat each game level: Level 1 🌙2, Level 2 🌙4, Level 3 🌙6, and 🌙3 more for beating all three. One game's full series is about one good relic.</div>`
@@ -988,7 +990,7 @@ function bookExtrasNote() { const t = $("bk-note"); if (!t) return; let tm = nul
 // ---- the emote wheel: make the Oracle wave, laugh, dance…; in a Discord call everyone in the Chamber sees it ----
 const EMO = { last: 0, lobby: null };
 function doEmote(id, by = null) {
-  const e = emoteAny(id); if (!e) return; const t = $("teller");
+  const e = hostEmote(emoteAny(id)); if (!e) return; const t = $("teller");
   mood.emote(e.mood);
   if (!reduced && e.fx) { const fx = document.createElement("div"); fx.className = "efx-layer"; fx.innerHTML = emoteFxHtml(e); t.parentElement.append(fx); setTimeout(() => fx.remove(), 2600); } mood.bubble(by ? `${by} made me ${e.name.toLowerCase()}! ${e.say}` : e.say, 2200, e.e);
   t.classList.remove("em-wave", "em-dance", "em-spook"); void t.offsetWidth; if (["wave", "dance", "spook"].includes(id)) { t.classList.add("em-" + id); setTimeout(() => t.classList.remove("em-" + id), 2400); }
@@ -997,7 +999,7 @@ function doEmote(id, by = null) {
 function sendEmote(id) {
   if (Date.now() - EMO.last < 1500 || !emoteSlots(state.prog).includes(id)) return; EMO.last = Date.now(); doEmote(id); CU.event("emote-out", id);
   const u = useEmote(state.prog, id); if (u.dayBonus) { showStats(); } saveProgress();
-  if (u.levelUp || u.dayBonus || u.unlocked.length) setTimeout(() => mood.bubble(u.unlocked.length ? `New emote: ${u.unlocked[0].e} ${u.unlocked[0].name}! Find it in your emotes.` : u.dayBonus ? `Emote of the day! +💎 ${u.dayBonus}` : `${emoteAny(id).name} reached ${u.levelUp}!`, 3000, u.unlocked.length ? u.unlocked[0].e : u.dayBonus ? "⭐" : "🏅"), 2300);
+  if (u.levelUp || u.dayBonus || u.unlocked.length) setTimeout(() => mood.bubble(u.unlocked.length ? `New emote: ${u.unlocked[0].e} ${u.unlocked[0].name}! Find it in your emotes.` : u.dayBonus ? `Emote of the day! +💎 ${u.dayBonus}` : `${hostEmote(emoteAny(id)).name} reached ${u.levelUp}!`, 3000, u.unlocked.length ? u.unlocked[0].e : u.dayBonus ? "⭐" : "🏅"), 2300);
   const L = EMO.lobby; if (!L) return; const m = { emote: id, by: state.name, byId: L.me && L.me.id };
   if (L.isHost()) L.to("*", m); else L.up(m);
 }
@@ -1006,7 +1008,7 @@ function sendEmote(id) {
   btn.type = "button"; btn.id = "emote-btn"; btn.className = "emote-btn"; btn.textContent = "😀"; btn.title = "Emotes: make the Oracle react"; btn.setAttribute("aria-label", "Emotes"); btn.setAttribute("aria-expanded", "false");
   wheel.id = "emote-wheel"; wheel.className = "emote-wheel"; wheel.hidden = true; wheel.setAttribute("role", "menu");
   // the ring: your 7 most-used emotes, plus the emote book with all of them
-  const ring = () => { const p = state.prog, mine = emoteSlots(p).map(emoteAny), all = [...mine, { id: "_book", e: "🔁", name: `Swap emotes (${emotesOwned(p).length} of ${ALL_EMOTES.length} collected)` }];
+  const ring = () => { const p = state.prog, mine = emoteSlots(p).map(emoteAny).map(hostEmote), all = [...mine, { id: "_book", e: "🔁", name: `Swap emotes (${emotesOwned(p).length} of ${ALL_EMOTES.length} collected)` }];
     wheel.innerHTML = all.map((e, i) => `<button type="button" role="menuitem" style="--a:${(i / all.length) * 360 - 90}deg" data-emote="${e.id}" title="${e.name}" aria-label="${e.name}">${e.e}</button>`).join("");
     wheel.querySelectorAll("[data-emote]").forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); close(); if (b.dataset.emote === "_book") showStore("creator"); else sendEmote(b.dataset.emote); })); };
   pane.append(wheel, btn);
@@ -1130,7 +1132,7 @@ showSpeech();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
+  const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
   if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
@@ -1160,8 +1162,8 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
-  mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) });
-  { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : "Lab relics"}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
+  mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); hostReact(ev, reactCtx());
+  { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }

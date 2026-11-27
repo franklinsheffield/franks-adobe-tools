@@ -3,11 +3,13 @@
 // voice, lines, game banter, store shelves and its own music player. The Oracle is House 1 and the fallback.
 //   Pack: { id, name, house, emoji, accent, channelIds[], readings, rooms: "all" | [roomId], daily?, voice?, css?,
 //           paint?(svg, prog, idPrefix), rename?(text), player: { name, deck(track, playing) }, shelves?[],
+//           scene?(at, { prog, motes }) -> html (replaces the Chamber's backdrop), react?(kind, { teller, scene, gesture, reduced }) -> line?,
+//           emotes?: { [startEmoteId]: { e, name, mood, say, fx } } (re-dresses the 8 starting emotes; ids stay), token.icon? (html),
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
 import { observatory } from "./observatory.js";
-import { tokensLeft, houseRelicsHtml, TOKEN_CSS } from "./tokens.js";
+import { tokensLeft, houseRelicsHtml, tokenIcon, TOKEN_CSS } from "./tokens.js";
 
 export const HOSTS = [oracle, alchemist, observatory];
 export const hostById = (id) => HOSTS.find((h) => h.id === id) || null;
@@ -60,4 +62,12 @@ export function paintHost(svg, prog, id = "t") {
   const key = JSON.stringify(((prog || {}).houses || {})[current.id]?.relics || []); if (layer.dataset.k !== key) { layer.dataset.k = key; layer.innerHTML = houseRelicsHtml(prog || {}, current); }
 }
 /** The House token in the stats bar (the Oracle's 🌙 is already there). */
-export const houseChip = (p) => (current.token && current.token.id !== "moon" ? `<span title="${current.token.plural} to spend on ${current.house}'s relics. Earn them with your first visit each day and by beating game levels here.">${current.token.emoji} ${tokensLeft(p, current)}</span>` : "");
+export const houseChip = (p) => (current.token && current.token.id !== "moon" ? `<span title="${current.token.plural} to spend on ${current.house}'s relics. Earn them with your first visit each day and by beating game levels here.">${tokenIcon(current.token)} ${tokensLeft(p, current)}</span>` : "");
+
+/** The House's own backdrop, or null for the Chamber's. */
+export const hostScene = (at, opts) => (current.scene ? current.scene(at, opts) : null);
+/** The host reacts to "poke-eye" | "poke-orb" | "poke-hands" | "poke-hood" | "win" | "perfect" | "lose". May return a line. */
+export const hostReact = (kind, ctx) => (current.react ? current.react(kind, ctx) : null);
+/** An emote as this House shows it (same id, levels and slot; the host's own look and line). */
+export const hostEmote = (e) => (e && current.emotes && current.emotes[e.id] ? { ...e, ...current.emotes[e.id] } : e);
+export { tokenIcon };
