@@ -1931,3 +1931,9 @@ body.cu-8bit #stage{animation:cu-8bit 3s steps(6)}
 .mc-store{display:flex;flex-direction:column;gap:6px;margin:8px 0}.mc-row{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-left:3px solid var(--foil,#e2b04a);background:rgba(0,0,0,.06);border-radius:4px}.mc-row small{opacity:.7;font-size:12px}
 .mc-sys{margin:0 0 14px;padding-bottom:10px;border-bottom:1px dashed rgba(0,0,0,.2)}.mc-sys h4{margin:0 0 4px}
 #mc-del[data-sure="1"],#mc-clear[data-sure="1"]{border-color:#e0574a;color:#e0574a}
+/* Game rooms (Frank 2026-11-27): the host's words sit in a text box BELOW the game's choices, so they are easy to read. */
+body[data-room] #box{display:flex;flex-direction:column}
+body[data-room] #box>*{flex-shrink:0}
+body[data-room] #box>.box-top{order:0}body[data-room] #said{order:1}body[data-room] #ui{order:2}body[data-room] #say{order:3}body[data-room] #reading-body{order:4}
+body[data-room] #say{margin:12px 0 6px;padding:10px 14px;border:1px solid var(--gold);border-radius:10px;background:rgba(255,255,255,.05);line-height:1.45;min-height:2.6em}
+body[data-room] #say:empty{display:none}

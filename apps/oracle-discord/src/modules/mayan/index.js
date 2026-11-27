@@ -1,5 +1,6 @@
 // /mayan: Tzolk'in day sign and tone, Haab', Long Count and Lord of the Night (GMT 584283 correlation).
-import { parseBirth } from "../../birthplace.js";
+import { parseBirth, geocode } from "../../birthplace.js";
+import { optionalMoment, dayReckoning } from "../../moment.js";
 import { mayaDate, nextKinReturn, SIGNS, HAAB } from "./calendar.js";
 import { SIGN_TEXT, TONE_TEXT, LORDS } from "./text.js";
 import { analyse } from "./insight.js";
@@ -11,6 +12,8 @@ export const command = {
   description: "Your Maya day sign and tone (Tzolk'in), Haab' and Long Count from your birth date",
   options: [
     { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "time", description: "Birth time, local clock (optional: day or night birth, day boundary)", max_length: 8 },
+    { type: 3, name: "place", description: "Birth town or city, country (optional, with the time)", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
 };
@@ -105,11 +108,15 @@ export async function run(o, ctx = {}) {
   if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
   const b = parseBirth(o.date, "12:00");
   const m = mayaDate(b);
+  const timed = !o.time_unknown && !!(o.time && String(o.time).trim());
+  const moment = await optionalMoment(o, (known) => parseBirth(o.date, known ? o.time : "12:00"), ctx, geocode), reck = dayReckoning(moment);
+  const extra = { moment, reck, detail: !!(o.private || ctx.birthDetail), timed };
+  if (reck) extra.alt = { sunset: reck.afterSunset ? mayaDate(reck.fromSunset) : null, sunrise: reck.beforeSunrise ? mayaDate(reck.fromSunrise) : null };
   const nowD = ctx.now || new Date(), t = { year: nowD.getUTCFullYear(), month: nowD.getUTCMonth() + 1, day: nowD.getUTCDate() };
   const today = mayaDate(t), ret = nextKinReturn(m.kin, t);
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Maya Calendar", subtitle: `${m.tone} ${m.signName} · reading for ${who}`, tag: "Tzolk'in · Haab' · Long Count · GMT 584283", body: body(m, today),
     facts: [["Day sign", `${m.tone} ${m.signName}`], ["Kin", `${m.kin} of 260`], ["Haab'", m.haabName], ["Next Tzolk'in birthday", ret === 0 ? "today" : `in ${ret} days`]] });
-  const ins = analyse(m, today, ret, who);
-  return { embeds: withInsight(readingEmbeds(m, today, ret, { who, birth: b }), ins), analysis: ins.analysis, files: [{ name: "mayan.png", data: png }], ephemeral: !!o.private, reading: m, headline: `${m.tone} ${m.signName} · kin ${m.kin}` };
+  const ins = analyse(m, today, ret, who, extra);
+  return { embeds: withInsight(readingEmbeds(m, today, ret, { who, birth: b }), ins), analysis: ins.analysis, files: [{ name: "mayan.png", data: png }], ephemeral: !!o.private, reading: m, moment, headline: `${m.tone} ${m.signName} · kin ${m.kin}` };
 }

@@ -1,7 +1,8 @@
 // The evidence layer of an astrology reading: the positions as numbers, the element, mode and polarity tallies,
 // aspects and orbs, retrogrades and house emphasis, how common each feature is, and what the pattern may mean.
-import { PLANETS, NAMES } from "./chart.js";
-import { SIGNS } from "../../ephemeris.js";
+import { PLANETS, NAMES, angles, signOf } from "./chart.js";
+import { SIGNS, obliquity, siderealTime, norm } from "../../ephemeris.js";
+import { momentRows, momentMethod, span } from "../../moment.js";
 import { insight, plural, list } from "../../insight.js";
 
 const EL = ["fire", "earth", "air", "water"], MODE = ["cardinal", "fixed", "mutable"];
@@ -13,8 +14,20 @@ const PHASES = ["New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous"
 const PHASE_M = ["beginnings made by instinct", "pushing forward against inertia", "action under tension", "refining and perfecting", "awareness through relationship and contrast", "sharing what has been learned", "re-evaluation and turning inward", "closure before a new cycle"];
 const cap = (s) => s[0].toUpperCase() + s.slice(1), dm = (p) => `${Math.floor(p.deg)}°${String(Math.floor((p.deg % 1) * 60)).padStart(2, "0")}'`;
 
-/** c: a chart from castChart. now: true for the current sky (no person), false for a natal chart. */
-export function analyse(c, { who, now = false } = {}) {
+const MC_M = { Aries: "pioneering and competitive", Taurus: "steady, material and craft-based", Gemini: "communicative and varied", Cancer: "protective and caring", Leo: "visible and creative", Virgo: "precise and service-minded",
+  Libra: "diplomatic and aesthetic", Scorpio: "investigative and intense", Sagittarius: "teaching, travelling and exploring", Capricorn: "structured and authoritative", Aquarius: "reforming and collective", Pisces: "imaginative and compassionate" };
+const ANGLE_M = { Ascendant: "the body and first impression", Descendant: "partnership and other people", Midheaven: "reputation and public role", "IC": "home, roots and private life" };
+const SECT = { day: ["Sun", "Jupiter", "Saturn"], night: ["Moon", "Venus", "Mars"] };
+
+/** How far the stated birth time could move before the rising sign changes: { before, after } in minutes (null past 3 hours). */
+export function risingWindow(c) {
+  const sign = signOf(c.get("asc").lon), at = (min) => { const d = new Date(c.utc.getTime() + min * 60000); return signOf(angles(norm(siderealTime(d) * 15 + c.lon), obliquity(d), c.lat).asc); };
+  const scan = (dir) => { for (let m = 1; m <= 180; m++) if (at(dir * m) !== sign) return { min: m, sign: at(dir * m) }; return null; };
+  return { before: scan(-1), after: scan(+1) };
+}
+
+/** c: a chart from castChart. now: true for the current sky (no person), false for a natal chart. moment: from moment.js (natal only). */
+export function analyse(c, { who, now = false, moment = null, detail = false } = {}) {
   const bodies = PLANETS.map((k) => c.get(k)), idx = (p) => SIGNS.indexOf(p.sign);
   const el = EL.map((_, i) => bodies.filter((p) => idx(p) % 4 === i)), mode = MODE.map((_, i) => bodies.filter((p) => idx(p) % 3 === i));
   const yang = bodies.filter((p) => idx(p) % 2 === 0).length;
@@ -31,14 +44,24 @@ export function analyse(c, { who, now = false } = {}) {
   const above = c.cusps ? bodies.filter((p) => p.house >= 7).length : 0, angular = c.cusps ? bodies.filter((p) => [1, 4, 7, 10].includes(p.house)).length : 0;
   const hStell = Object.entries(byHouse).filter(([, v]) => v.length >= 3), ruler = asc ? c.get(RULER[asc.sign]) : null;
   const S = now ? "sky" : "chart";
+  // What only a birth time and place can give: the four angles, which planets sit on them, the sect, and how exact the time has to be.
+  const mc = asc ? c.get("mc") : null, sep = (a, b) => { const d = Math.abs(norm(a - b)); return d > 180 ? 360 - d : d; };
+  const corners = asc ? [["Ascendant", asc.lon], ["Descendant", asc.lon + 180], ["Midheaven", mc.lon], ["IC", mc.lon + 180]] : [];
+  const onAngle = corners.flatMap(([name, l]) => bodies.filter((p) => sep(p.lon, l) <= 8).map((p) => ({ p, name, orb: sep(p.lon, l) }))).sort((a, b) => a.orb - b.orb);
+  const sect = asc && !now ? (sun.house >= 7 ? "day" : "night") : null, win = asc && !now ? risingWindow(c) : null;
+  const edge = win ? Math.min(win.before ? win.before.min : 999, win.after ? win.after.min : 999) : null;
 
   const data = [
+    ...(moment && !now ? momentRows(moment, { detail }) : []),
     ["Positions", bodies.map((p) => `${p.name} ${dm(p)} ${p.sign}${p.house ? ` (house ${p.house})` : ""}${p.retro ? " ℞" : ""}`).join(" · ")],
-    asc ? ["Angles", `Ascendant ${dm(asc)} ${asc.sign} · Midheaven ${dm(c.get("mc"))} ${c.get("mc").sign} · ${c.system === "placidus" ? "Placidus" : "Whole Sign"} houses`] : null,
+    asc ? ["Angles", `Ascendant ${dm(asc)} ${asc.sign} · Midheaven ${dm(mc)} ${mc.sign} · Descendant ${signOf(asc.lon + 180)} · IC ${signOf(mc.lon + 180)} · ${c.system === "placidus" ? "Placidus" : "Whole Sign"} houses`] : null,
+    onAngle.length ? ["On the angles", onAngle.map((x) => `${x.p.name} ${x.orb.toFixed(1)}° from the ${x.name}`).join(" · ")] : asc ? ["On the angles", "no planet within 8° of an angle"] : null,
+    sect ? ["Sect", `${sect} chart: the Sun was ${sect === "day" ? "above" : "below"} the horizon`] : null,
+    win ? ["Time sensitivity", `${asc.sign} rising holds ${win.before ? `from ${span(win.before.min)} earlier (before that, ${win.before.sign})` : "for more than 3 hours earlier"} ${win.after ? `to ${span(win.after.min)} later (after that, ${win.after.sign})` : "and for more than 3 hours later"}. The angles move about 1° every 4 minutes of clock time.`] : null,
     ["Elements (10 bodies)", EL.map((e, i) => `${cap(e)} ${el[i].length}`).join(" · ")],
     ["Modes", MODE.map((m, i) => `${cap(m)} ${mode[i].length}`).join(" · ") + ` · polarity ${yang} outward (fire, air) to ${10 - yang} inward (earth, water)`],
     ["Sun to Moon", `${elong.toFixed(0)}° apart: ${PHASES[ph]}${!now && !c.timeKnown ? " (approximate without a birth time)" : ""}`],
-    ["Aspects", c.aspects.length ? `${c.aspects.length} within orb: ${Object.entries(kinds).map(([k, v]) => `${v} ${k}${v > 1 ? "s" : ""}`).join(", ")}. Tightest: ${NAMES[tight.a]} ${tight.symbol} ${NAMES[tight.b]} at ${tight.orb.toFixed(1)}°` : "none within orb"],
+    ["Aspects", c.aspects.length ? `${c.aspects.length} within orb: ${Object.entries(kinds).map(([k, v]) => `${v} ${k}${v > 1 ? (k === "quincunx" ? "es" : "s") : ""}`).join(", ")}. Tightest: ${NAMES[tight.a]} ${tight.symbol} ${NAMES[tight.b]} at ${tight.orb.toFixed(1)}°` : "none within orb"],
     ["Retrograde", retro.length ? retro.map((p) => p.name).join(", ") : "none"],
     c.cusps ? ["Houses", `${above} of 10 bodies above the horizon (houses 7 to 12) · ${angular} in angular houses (1, 4, 7, 10)${ruler ? ` · chart ruler ${ruler.name} in ${ruler.sign}, house ${ruler.house}` : ""}`] : null,
   ].filter(Boolean);
@@ -50,6 +73,9 @@ export function analyse(c, { who, now = false } = {}) {
     ...hStell.map(([h, v]) => `House ${h} holds ${v.length} bodies (${v.join(", ")}).`),
     c.aspects.length ? `Tension aspects (squares, oppositions): ${hard}. Flowing aspects (trines, sextiles): ${soft}. Conjunctions: ${kinds.conjunction || 0}.` : "",
     retro.length ? `${plural(retro.length, "planet")} retrograde. As seen from Earth, ${retro.map((p) => `${p.name} is retrograde about ${RETRO[p.key]}% of the time`).join(", ")}.` : "No planet is retrograde, which is uncommon: each outer planet is retrograde for more than a third of the year.",
+    onAngle.length ? `${list([...new Set(onAngle.map((x) => x.p.name))])} ${new Set(onAngle.map((x) => x.p.name)).size > 1 ? "sit" : "sits"} within 8° of an angle. Angles are set by the birth minute and place, so this is one of the most individual features of the chart.` : "",
+    edge !== null && edge <= 20 ? `The rising sign is close to a boundary: a birth time ${span(edge)} off would change it. Recorded birth times are often rounded to the quarter hour.` : "",
+    !now && !c.timeKnown ? "Without a birth time there is no Ascendant, Midheaven, house placement, sect or chart ruler. Those are the parts of a chart that tell apart people born on the same day." : "",
     c.cusps ? `${above >= 7 ? "Most bodies sit above the horizon" : above <= 3 ? "Most bodies sit below the horizon" : "Bodies are split between the two hemispheres"} (${above} above, ${10 - above} below).` : now ? "" : "No houses or Ascendant: they need a birth time.",
     `The Moon is ${elong.toFixed(0)}° ahead of the Sun, in the ${PHASES[ph]} part of its monthly cycle.`,
   ];
@@ -64,6 +90,10 @@ export function analyse(c, { who, now = false } = {}) {
     retro.some((p) => ["mercury", "venus", "mars"].includes(p.key)) ? `${list(retro.filter((p) => ["mercury", "venus", "mars"].includes(p.key)).map((p) => p.name))} retrograde is read as that planet's function turned inward or working by revision. Retrograde outer planets are too common to say much.` : "",
     `A ${PHASES[ph]} ${now ? "sky" : "birth"} is associated with ${PHASE_M[ph]}.`,
     c.cusps && !now ? (above >= 7 ? "With most bodies above the horizon, the chart is read as oriented toward public and shared life." : above <= 3 ? "With most bodies below the horizon, the chart is read as oriented toward private and inner life." : "") : "",
+    onAngle.length && !now ? `${onAngle[0].p.name} near the ${onAngle[0].name} is read as a planet turned up loud: its themes may colour ${ANGLE_M[onAngle[0].name]}.` : "",
+    mc && !now ? `Midheaven in ${mc.sign} is read as a ${MC_M[mc.sign]} style of public role. It describes how a vocation tends to be carried, not which one.` : "",
+    sect ? `In a ${sect} chart, traditional astrology gives the lead to ${list(SECT[sect])} (the ${sect} sect) and reads ${sect === "day" ? "Mars" : "Saturn"} as the planet that may be harder to handle.` : "",
+    !now && !c.timeKnown ? "With the time unknown, the reading rests on the planets in signs and their aspects. That part is shared with everyone born the same day, so it may be the least personal layer." : "",
     ruler && !now ? `The chart ruler, ${ruler.name} in house ${ruler.house}, is read as showing where the life's energy tends to be directed.` : "",
   ];
 
@@ -74,13 +104,14 @@ export function analyse(c, { who, now = false } = {}) {
   ] : [
     `Sun in ${sun.sign} and Moon in ${moon.sign}: which one do close friends describe, and which do strangers?`,
     eNone.length ? `Is ${EL_M[eNone[0]]} really less instinctive, or just less visible?` : `Does the ${eTop.length === 1 ? EL[eTop[0]] : "mixed"} emphasis match how decisions actually get made?`,
-    "Which statement above would be easiest to check against real events, and which could never be wrong?",
+    !now && !c.timeKnown ? "Is the birth time on a birth certificate or hospital record? It would add the Ascendant, the houses and the sect." : edge !== null && edge <= 20 ? `How sure is the birth time? ${span(edge)} either way changes the rising sign.` : "Which statement above would be easiest to check against real events, and which could never be wrong?",
   ];
 
   const method = [
     "Positions are geocentric ecliptic longitudes from a real ephemeris (checked against Swiss Ephemeris to under 1 arcminute). Tropical zodiac: signs are 30° slices measured from the March equinox.",
     "Because of precession, tropical signs now sit about 24° away from the constellations they were named for.",
     now ? "Aspect orbs used: 8° for conjunctions and oppositions, 7° for trines and squares, 5° for sextiles, 2.5° for quincunxes (1° wider for Sun and Moon)." : `Sharing a Sun sign: 1 in 12. Sharing Sun, Moon and rising sign together: about 1 in 1,728.${c.timeKnown ? "" : " Without a birth time the Moon may be up to 7° off and houses are omitted."}`,
+    ...(moment && !now ? [momentMethod(moment)] : []),
     "Controlled tests have not found that astrologers can match charts to people better than chance (Carlson, Nature, 1985). The chart is astronomy; the reading is a symbolic tradition.",
   ];
   return insight({ data, patterns, conclusions, questions, method, who });

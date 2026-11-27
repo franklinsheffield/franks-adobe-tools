@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { bookPoke } from "./library.js";
 import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
@@ -25,9 +26,13 @@ import { room as memory, memoryCodex } from "./memory/room.js";
 import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { flametest, flametestCodex } from "./flametest/room.js";
 import { inscriptions, inscriptionsCodex } from "./inscriptions/room.js";
+import { cipherdesk, cipherdeskCodex } from "./cipherdesk/room.js";
 import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
+import { workshop, workshopCodex } from "./workshop/room.js";
+import { bookings, bookingsCodex } from "./bookings/room.js";
 import { bench, benchCodex } from "./bench/room.js";
+import { commissions, commissionsCodex } from "./commissions/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -358,7 +363,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...eclipse, codexHtml: eclipseCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...eclipse, codexHtml: eclipseCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -398,6 +403,9 @@ function choose(sys) {
     if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
     if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
     if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
+    const opt = f.opt || []; // optional extras: asked for, never required
+    if (opt.includes("time")) rows.push(field("t", "Birth time (optional, adds depth)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
+    if (opt.includes("place")) rows.push(field("p", "Birth town or city (optional)", "Phoenix, USA", p.place, false));
     rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
     ui(`<div class="form" id="f">${rows.join("")}</div>
       <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
@@ -408,6 +416,7 @@ function choose(sys) {
       if (need.includes("place")) o[f.place] = v("p");
       if (need.includes("name")) o[f.name] = v("n");
       if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
+      for (const [k, id] of [["time", "t"], ["place", "p"]]) if (opt.includes(k) && v(id)) o[f[k]] = v(id);
       reveal(sys, o, v("bq")); };
   }
   bindGo("f");
@@ -426,7 +435,7 @@ async function reveal(sys, options, question = "") {
   try {
     const mod = MODS[sys.command];
     if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
-    [r] = await Promise.all([mod.run(options, { user: state.name }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
+    [r] = await Promise.all([mod.run(options, { user: state.name, birthDetail: true }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
   document.body.classList.remove("trance"); refreshEnergy(); cap(sys.emoji + " " + sys.label);
   if (err) {
@@ -1230,7 +1239,7 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   if (HOST().id !== "oracle" && hasRoom(HOST(), id)) { const hs = (state.prog.houses ||= {}), h = (hs[HOST().id] ||= {}); h.rounds = (h.rounds || 0) + 1; } // rounds played in this House (House record tasks)
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
-  mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); hostReact(ev, reactCtx()); secretEvent("result", { room: id, won: !!(o && o.won), perfect: !!(o && o.perfect), level });
+  mood.emote(moodForOutcome(id, o || {}), { say: (ev === "lose" && bookPoke(HOST().id, id, state.name)) || hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) }); // sometimes a lost round earns a book from the server's library hostReact(ev, reactCtx()); secretEvent("result", { room: id, won: !!(o && o.won), perfect: !!(o && o.perfect), level });
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;

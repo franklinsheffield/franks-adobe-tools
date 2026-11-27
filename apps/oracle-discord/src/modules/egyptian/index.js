@@ -1,6 +1,7 @@
 // /egyptian: the modern "Egyptian zodiac" deity for a birthday, plus the birthday's place in the Coptic calendar,
 // the living descendant of the ancient Egyptian civil calendar.
-import { parseBirth } from "../../birthplace.js";
+import { parseBirth, geocode } from "../../birthplace.js";
+import { optionalMoment, dayReckoning } from "../../moment.js";
 import { GODS, COPTIC, SEASONS } from "./data.js";
 import { analyse } from "./insight.js";
 import { withInsight } from "../../insight.js";
@@ -11,6 +12,8 @@ export const command = {
   description: "Your Egyptian zodiac deity (a modern reconstruction) and your birthday in the Egyptian calendar",
   options: [
     { type: 3, name: "date", description: "Birth date as DD/MM/YYYY (uses your /profile if left out)", min_length: 8, max_length: 10 },
+    { type: 3, name: "time", description: "Birth time, local clock (optional: day or night birth, day boundary)", max_length: 8 },
+    { type: 3, name: "place", description: "Birth town or city, country (optional, with the time)", max_length: 100 },
     { type: 5, name: "private", description: "Only you see the reading (default: posted to the channel)" },
   ],
 };
@@ -96,9 +99,13 @@ export async function run(o, ctx = {}) {
   if (!o.date) throw new Error("I need your birth date. Add it, or save it once with /profile set.");
   const b = parseBirth(o.date, "12:00");
   const name = godFor(b.month, b.day), c = coptic(b);
+  const timed = !o.time_unknown && !!(o.time && String(o.time).trim());
+  const moment = await optionalMoment(o, (known) => parseBirth(o.date, known ? o.time : "12:00"), ctx, geocode), reck = dayReckoning(moment);
+  const extra = { moment, reck, detail: !!(o.private || ctx.birthDetail), timed };
+  if (reck && reck.beforeSunrise) extra.alt = coptic(reck.fromSunrise);
   const who = ctx.user ? `@${ctx.user}` : "you";
   const png = await cardPng({ title: "Egyptian Zodiac", subtitle: `${name} · reading for ${who}`, tag: "modern reconstruction · ancient gods and calendar", body: body(name, c),
     facts: [["Deity", name], ["Periods", rangeText(GODS[name].ranges)], ["Egyptian date", `${c.day} ${c.name}`], ["Season", c.season]] });
-  const ins = analyse(name, c, b, who);
-  return { embeds: withInsight(readingEmbeds(name, c, { who }), ins), analysis: ins.analysis, files: [{ name: "egyptian.png", data: png }], ephemeral: !!o.private, reading: { god: name, coptic: c }, headline: `${name}, ${GODS[name].title}` };
+  const ins = analyse(name, c, b, who, extra);
+  return { embeds: withInsight(readingEmbeds(name, c, { who }), ins), analysis: ins.analysis, files: [{ name: "egyptian.png", data: png }], ephemeral: !!o.private, reading: { god: name, coptic: c }, moment, headline: `${name}, ${GODS[name].title}` };
 }
