@@ -98,4 +98,4 @@ export const ALL_CARDS = DECKS.filter((d) => d.id !== "mixed").flatMap((d) => d.
 export const cardByKey = (key) => ALL_CARDS.find((c) => c.key === key);
 export const WHERE = { alchemy: "Europe and the Islamic world, about 300–1700 CE", futhark: SCRIPTS.futhark.where, ogham: SCRIPTS.ogham.where, egyptian: SCRIPTS.egyptian.where, maya: SCRIPTS.maya.where,
   tarot: "Italy from the 1440s as a card game; read for fortunes from the late 1700s", lenormand: "Germany and France, sold from about 1846",
-  zodiac: "Babylon, by about 400 BCE, passed on through Greek and Roman astronomy", elements: "Symbols set by Berzelius in 1814; numbers by Moseley in 1913" };
+  zodiac: "Babylon, by about 400 BCE, passed on through Greek and Roman astronomy", elements: "Symbols set by Berzelius in 1814; atomic numbers tied to nuclear charge by Moseley in 1913" };

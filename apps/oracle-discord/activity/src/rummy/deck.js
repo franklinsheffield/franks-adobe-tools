@@ -8,13 +8,13 @@ import { DECK } from "../stars/lore.js";
 /** [hip, name, constellation, spectral class, fact] */
 const RAW = [
   [27989, "Betelgeuse", "Ori", "M", "A red supergiant at Orion's shoulder. Its Arabic name is usually read as 'hand of the giant'. It dimmed sharply in 2019 and 2020 behind a dust cloud it puffed out."],
-  [24436, "Rigel", "Ori", "B", "Orion's foot: rijl is Arabic for 'foot'. A blue-white supergiant tens of thousands of times as luminous as the Sun."],
+  [24436, "Rigel", "Ori", "B", "Orion's foot: rijl is Arabic for 'foot'. A blue-white supergiant roughly 100,000 times as luminous as the Sun."],
   [25336, "Bellatrix", "Ori", "B", "Latin for 'female warrior'. A hot blue giant at Orion's other shoulder."],
   [26311, "Alnilam", "Ori", "B", "The middle star of Orion's Belt. Its Arabic name means 'string of pearls'. A blue supergiant."],
   [54061, "Dubhe", "UMa", "K", "From the Arabic for 'the bear'. With Merak it forms the Pointers: follow them to Polaris."],
   [53910, "Merak", "UMa", "A", "The bear's loins in Arabic. The second Pointer star of the Big Dipper."],
   [62956, "Alioth", "UMa", "A", "The brightest star in Ursa Major, first in the Dipper's handle."],
-  [65378, "Mizar", "UMa", "A", "Mizar and faint Alcor make a naked-eye pair. Mizar was the first double star ever seen through a telescope."],
+  [65378, "Mizar", "UMa", "A", "Mizar and faint Alcor make a naked-eye pair. Mizar is often called the first double star seen through a telescope, in 1617."],
   [3179, "Schedar", "Cas", "K", "From the Arabic for 'breast'. An orange giant in Cassiopeia's W."],
   [746, "Caph", "Cas", "F", "From the Arabic for 'hand'. A yellow-white star that spins fast and pulses slightly in brightness."],
   [4427, "Navi", "Cas", "B", "Astronaut Gus Grissom named it: his middle name Ivan, spelled backwards. Apollo crews used it to navigate."],
@@ -49,7 +49,7 @@ const RAW = [
   [94481, "Aladfar", "Lyr", "B", "Arabic for 'the talons', from when Lyra was drawn as an eagle or vulture."],
   [32349, "Sirius", "CMa", "A", "The brightest star in the night sky, only 8.6 light-years away. Its name comes from the Greek for 'scorching'."],
   [33579, "Adhara", "CMa", "B", "Arabic for 'the maidens'. Seen from Earth, it is the brightest source of extreme ultraviolet light in the sky."],
-  [34444, "Wezen", "CMa", "F", "Arabic for 'weight'. A yellow-white supergiant hundreds of light-years away."],
+  [34444, "Wezen", "CMa", "F", "Arabic for 'weight'. A yellow-white supergiant well over 1,000 light-years away."],
   [30324, "Mirzam", "CMa", "B", "Arabic for 'the herald': it rises just before Sirius."],
   [11767, "Polaris", "UMi", "F", "The North Star, less than a degree from the north celestial pole. It pulses gently: a Cepheid variable."],
   [72607, "Kochab", "UMi", "K", "An orange giant. Around 1000 BCE it was the bright star closest to the north pole."],
@@ -73,7 +73,7 @@ export const FIGURE = (con) => LINES[con] || [];
 
 /** Spectral classes, hottest to coolest (G, the Sun's class, has no card in this deck). */
 export const CLASSES = {
-  B: { name: "Blue-white", temp: "10,000 to 30,000 K", colour: "#9bb8ff", fact: "B stars are hot and blue-white. They burn so fast they live only tens of millions of years." },
+  B: { name: "Blue-white", temp: "10,000 to 30,000 K", colour: "#9bb8ff", fact: "B stars are hot and blue-white. They burn so fast they live only tens to a few hundred million years." },
   A: { name: "White", temp: "7,500 to 10,000 K", colour: "#eef2ff", fact: "A stars are white, like Sirius and Vega. Hydrogen lines are strongest in their light." },
   F: { name: "Yellow-white", temp: "6,000 to 7,500 K", colour: "#fff1c4", fact: "F stars are yellow-white, a little hotter than our Sun, which is a G star." },
   K: { name: "Orange", temp: "3,700 to 5,200 K", colour: "#ffc27a", fact: "K stars are orange. Most bright K stars, like Aldebaran and Pollux, are giants nearing old age." },

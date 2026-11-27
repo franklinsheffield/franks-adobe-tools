@@ -10,7 +10,7 @@ export const HOOKS = {
   ],
   futhark: [
     "Every rune's name <b>starts with its own sound</b>: fehu is f, ūruz is u, þurisaz is th. Learn the name and you have the sound.",
-    "Many runes look like the Latin letters they came from: <b>ᚱ</b> is r, <b>ᛒ</b> is b, <b>ᚺ</b> is h, <b>ᛊ</b> is s.",
+    "Many runes look like Latin letters, which they were probably adapted from: <b>ᚱ</b> is r, <b>ᛒ</b> is b, <b>ᚺ</b> is h, <b>ᛊ</b> is s.",
     "Picture the meaning in the shape: <b>ᛉ algiz</b> as elk antlers, <b>ᚦ þurisaz</b> as a thorn, <b>ᛁ īsaz</b> as a straight icicle.",
     "Watch for look-alikes: <b>ᚹ</b> (w, joy) is a flag, <b>ᚦ</b> (th) is a thorn on a stick. <b>ᚢ</b> (u) is an arch, like the horns of the aurochs it names.",
   ],
