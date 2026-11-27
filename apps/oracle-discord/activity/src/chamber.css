@@ -1776,3 +1776,41 @@ body.trance .teller .o-pe-iris{animation:pe-look 1.6s ease-in-out infinite}
 .eb-slot{width:40px;height:40px;display:grid;place-items:center;font-size:22px;border-radius:50%;border:1px solid rgba(250,222,140,.7);background:rgba(20,10,44,.9)}
 .eb-slot.empty{opacity:.4;font-size:13px;border-style:dashed}
 .eb-slots small{flex-basis:100%;font-size:12px;opacity:.75}
+/* The door's living backdrop (home.js gateBgHtml) */
+.gate{overflow:hidden;--px:0;--py:0}
+.gate-in{position:relative;z-index:2}
+.gate-bg{position:absolute;inset:0;pointer-events:none;z-index:0}
+.gb-neb{position:absolute;width:70vmax;height:70vmax;border-radius:50%;filter:blur(60px);opacity:.42;mix-blend-mode:screen;animation:gb-neb 38s ease-in-out infinite alternate}
+.gb-neb.n1{left:-20vmax;top:-25vmax;background:radial-gradient(circle,#ff4fb3 0,transparent 62%)}
+.gb-neb.n2{right:-25vmax;bottom:-30vmax;background:radial-gradient(circle,#2fd6c0 0,transparent 60%);animation-duration:46s;animation-delay:-12s}
+.gb-neb.n3{left:25%;top:30%;width:50vmax;height:50vmax;background:radial-gradient(circle,#6a3cff 0,transparent 60%);opacity:.3;animation-duration:54s;animation-delay:-30s}
+@keyframes gb-neb{0%{transform:translate(0,0) scale(1);filter:blur(60px) hue-rotate(0deg)}50%{transform:translate(6vmax,4vmax) scale(1.15)}100%{transform:translate(-4vmax,7vmax) scale(.95);filter:blur(60px) hue-rotate(40deg)}}
+.gb-stars{position:absolute;inset:-4%;transition:transform .6s ease-out}
+.gb-stars i{position:absolute;width:calc(2px * var(--s));height:calc(2px * var(--s));border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.8);animation:gb-tw 3.6s ease-in-out var(--d) infinite}
+.gb-stars.far{transform:translate(calc(var(--px) * -10px),calc(var(--py) * -10px));opacity:.55}
+.gb-stars.mid{transform:translate(calc(var(--px) * -24px),calc(var(--py) * -24px));opacity:.75;animation:gb-drift 90s linear infinite alternate}
+.gb-stars.near{transform:translate(calc(var(--px) * -48px),calc(var(--py) * -48px))}
+.gb-stars.near i{background:#FADE8C;box-shadow:0 0 10px #FADE8C}
+@keyframes gb-tw{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes gb-drift{to{translate:-30px 12px}}
+.gb-cons{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.gb-con polyline{fill:none;stroke:#cfe3ff;stroke-width:.12;stroke-dasharray:1;stroke-dashoffset:1;animation:gb-draw 10s ease-in-out var(--d) infinite}
+.gb-con circle{fill:#fff;opacity:0;animation:gb-dot 10s ease-in-out var(--d) infinite}
+@keyframes gb-draw{0%{stroke-dashoffset:1;opacity:0}10%{opacity:1}45%,70%{stroke-dashoffset:0;opacity:1}90%,100%{stroke-dashoffset:0;opacity:0}}
+@keyframes gb-dot{0%,5%{opacity:0}15%,75%{opacity:1}95%,100%{opacity:0}}
+.gb-wheel{position:absolute;left:50%;top:50%;width:min(130vmin,1000px);aspect-ratio:1;transform:translate(-50%,-50%) translate(calc(var(--px) * 18px),calc(var(--py) * 18px));opacity:.2}
+.gb-wheel svg{width:100%;height:100%;fill:none;stroke:var(--gold,#E2B04A);stroke-width:1}
+.gb-wheel text{fill:var(--gold,#E2B04A);stroke:none;font-size:24px;font-family:"Segoe UI Symbol","Noto Sans Symbols","Apple Symbols",serif}
+.gb-zod{animation:gb-spin 160s linear infinite}
+.gb-plan{animation:gb-spin 90s linear infinite reverse}
+.gb-plan text{font-size:20px;fill:#cfe3ff}
+.gb-tri{stroke:var(--pink,#FF4FB3);opacity:.6;animation:gb-breathe 8s ease-in-out infinite;transform-origin:center}
+@keyframes gb-spin{to{transform:rotate(360deg)}}
+@keyframes gb-breathe{0%,100%{opacity:.25;transform:scale(.97)}50%{opacity:.7;transform:scale(1.03)}}
+.gb-glyphs b{position:absolute;bottom:-40px;font-weight:400;font-size:20px;color:var(--gold2,#FADE8C);opacity:0;animation:gb-rise var(--t) linear var(--d) infinite;text-shadow:0 0 10px rgba(250,222,140,.6)}
+@keyframes gb-rise{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:.5}80%{opacity:.35}100%{opacity:0;transform:translate(var(--x),-110vh) rotate(180deg)}}
+.gate-bg u{position:absolute;width:140px;height:1.5px;background:linear-gradient(90deg,#fff,transparent);opacity:0;transform:rotate(-28deg);animation:gb-shoot 13s ease-in var(--d) infinite}
+@keyframes gb-shoot{0%,90%{opacity:0;translate:0 0}91%{opacity:1}97%{opacity:.9;translate:-260px 140px}100%{opacity:0;translate:-300px 160px}}
+.gb-vig{position:absolute;inset:0;background:radial-gradient(55% 45% at 50% 42%,transparent 30%,rgba(5,3,12,.75) 100%);animation:gb-vig 6s ease-in-out infinite}
+@keyframes gb-vig{50%{opacity:.8}}
+@media (prefers-reduced-motion:reduce){.gate-bg *{animation:none!important}.gb-con polyline{stroke-dashoffset:0}.gb-con circle{opacity:1}.gb-glyphs,.gate-bg u{display:none}}

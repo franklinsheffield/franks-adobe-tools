@@ -64,9 +64,29 @@ export function wireHome(root, { reduced = false, onTab = null } = {}) {
     m.onpointerleave = () => { m.style.transform = ""; }; }
 }
 
+/** The living backdrop behind the door: deep space, drifting nebulae, a turning zodiac wheel and a ring of planets,
+ *  constellations that draw themselves, rising glyphs, shooting stars. Pure CSS/SVG; parallax follows the pointer. */
+export function gateBgHtml(rnd = Math.random) {
+  const stars = (n, cls) => Array.from({ length: n }, () => `<i style="left:${(rnd() * 100).toFixed(2)}%;top:${(rnd() * 100).toFixed(2)}%;--d:${(rnd() * 5).toFixed(1)}s;--s:${(0.5 + rnd() * 1.2).toFixed(2)}"></i>`).join("");
+  const Z = "♈♉♊♋♌♍♎♏♐♑♒♓", P = "☉☽☿♀♂♃♄";
+  const zod = [...Z].map((g, i) => { const a = (i * 30 - 75) * Math.PI / 180; return `<text x="${(Math.cos(a) * 205).toFixed(1)}" y="${(Math.sin(a) * 205 + 9).toFixed(1)}" text-anchor="middle">${g}\uFE0E</text>`; }).join("");
+  const ticks = Array.from({ length: 72 }, (_, i) => `<path d="M0 -${i % 6 ? 232 : 226}V-238" transform="rotate(${i * 5})"/>`).join("");
+  const plan = [...P].map((g, i) => { const a = (i * (360 / 7)) * Math.PI / 180; return `<text x="${(Math.cos(a) * 140).toFixed(1)}" y="${(Math.sin(a) * 140 + 8).toFixed(1)}" text-anchor="middle">${g}</text>`; }).join("");
+  const CONST = [[[12, 18], [17, 14], [22, 17], [26, 12], [31, 15]], [[70, 20], [74, 27], [80, 24], [84, 31], [78, 36]], [[14, 72], [19, 66], [25, 70], [22, 78]], [[72, 74], [77, 69], [83, 72], [88, 66]]];
+  const cons = CONST.map((pts, k) => `<g class="gb-con" style="--d:${k * 2.5}s"><polyline points="${pts.map(([x, y]) => `${x},${y}`).join(" ")}" pathLength="1"/>${pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".45"/>`).join("")}</g>`).join("");
+  const glyphs = Array.from({ length: 14 }, (_, i) => `<b style="left:${(4 + rnd() * 92).toFixed(1)}%;--d:${(rnd() * 18).toFixed(1)}s;--t:${(16 + rnd() * 14).toFixed(1)}s;--x:${Math.round(rnd() * 80 - 40)}px">${"☉☽☿♀♂♃♄△▽⊕∴✶✧⚗"[i % 14]}</b>`).join("");
+  const shoot = Array.from({ length: 3 }, (_, i) => `<u style="top:${(8 + rnd() * 40).toFixed(1)}%;left:${(40 + rnd() * 55).toFixed(1)}%;--d:${(2 + i * 4.3 + rnd() * 2).toFixed(1)}s"></u>`).join("");
+  return `<div class="gate-bg" aria-hidden="true">
+  <div class="gb-neb n1"></div><div class="gb-neb n2"></div><div class="gb-neb n3"></div>
+  <div class="gb-stars far">${stars(90, "far")}</div><div class="gb-stars mid">${stars(50, "mid")}</div><div class="gb-stars near">${stars(22, "near")}</div>
+  <svg class="gb-cons" viewBox="0 0 100 100" preserveAspectRatio="none">${cons}</svg>
+  <div class="gb-wheel"><svg viewBox="-260 -260 520 520"><g class="gb-zod"><circle r="238"/><circle r="226"/><circle r="182"/>${ticks}${zod}</g><g class="gb-plan"><circle r="160" stroke-dasharray="2 8"/>${plan}<circle r="118"/></g><g class="gb-tri"><path d="M0 -118 L102 59 L-102 59Z"/><path d="M0 118 L102 -59 L-102 -59Z"/></g></svg></div>
+  <div class="gb-glyphs">${glyphs}</div>${shoot}<div class="gb-vig"></div></div>`;
+}
+
 /** The door: shown once at start. Its tap unlocks the Oracle's voice, then she greets you out loud. */
 export function gateHtml({ name = "", rank = "", streak = 0, back = false, esc, art = "" }) {
-  return `<div class="gate-in">
+  return `${gateBgHtml()}<div class="gate-in">
   <div class="gate-sigil" aria-hidden="true"><i></i><i></i><i></i>${art}</div>
   <p class="gate-eye">Science is Magic</p>
   <h1 class="gate-title">The Oracle Chamber</h1>
