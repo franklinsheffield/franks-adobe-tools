@@ -34,7 +34,7 @@ export const BOOKS = {
 export const ROOM_BOOKS = {
   alchemy: ["silberer", "sherman"], bench: ["silberer", "sherman"], flametest: ["sherman", "silberer"], minerals: ["silberer", "sherman"], commissions: ["silberer", "sherman"], fireworks: ["sherman", "silberer"], leadgold: ["silberer", "sherman"],
   duel: ["artofwar", "sherman"], grimoire: ["fernie", "daniel"],
-  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"], mentalist: ["panchadasi", "crystal"], phantasmagoria: ["besant", "crystal"], roguesgallery: ["besant", "panchadasi"],
+  seance: ["besant", "panchadasi"], casefiles: ["panchadasi", "besant"], workshop: ["panchadasi", "crystal"], bookings: ["besant", "panchadasi"], darkseance: ["besant", "panchadasi"], mentalist: ["panchadasi", "crystal"], phantasmagoria: ["besant", "crystal"], roguesgallery: ["besant", "panchadasi"], possession: ["frazer", "besant"],
   timeline: ["frazer", "hall"], decoder: ["emerald", "mathers"], cipherdesk: ["mathers", "emerald"], inscriptions: ["emerald", "mathers"], memory: ["cambridge", "dreams"],
   stars: ["blavatsky", "reade"], watch: ["blavatsky", "reade"], comet: ["blavatsky", "reade"], eclipse: ["blavatsky", "reade"], navigator: ["reade", "blavatsky"], messier: ["blavatsky", "reade"], starparty: ["reade", "blavatsky"], calendar: ["reade", "frazer"], rummy: ["artofwar", "blavatsky"],
 };

@@ -54,7 +54,7 @@ import { TROPHIES } from "../activity/src/trophies.js";
 
 const finish = (p, id, levels) => { const t = TROPHIES.find((x) => x.id === id); (p.trophies ||= {})[id] = { tier: levels.length, wins: Object.fromEntries(levels.map((l) => [l, t.need])) }; };
 test("Magnum Opus: Vell's games, four stages in order, stones once, then the Opus", () => {
-  assert.deepEqual([...OPUS_GAMES].sort(), [...ALCHEMIST.rooms].sort());
+  assert.deepEqual([...OPUS_GAMES].sort(), ALCHEMIST.rooms.filter((r) => r !== "possession").sort()); // Possession is the shared party room in every House, not one of Vell's Opus games
   assert.deepEqual(STAGES.map((s) => s.id), ["nigredo", "albedo", "citrinitas", "rubedo"]);
   const p = { rooms: { alchemy: { accidents: ["a", "b", "c", "d"] } } };
   finish(p, "alchemy", [3]); finish(p, "duel", [3]); finish(p, "bench", [3]);
