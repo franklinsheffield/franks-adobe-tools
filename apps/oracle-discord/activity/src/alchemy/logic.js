@@ -102,3 +102,26 @@ export function settle(p, run, x) {
   if (out.score > prev) { out.best = !!prev; out.xp = out.essence = out.score - prev; r.solved[k] = out.score; }
   return out;
 }
+
+// ---- free play: an open bench with every reagent and no target ----
+export const FINDS = [...RECIPES, ...DISCOVERIES];
+export const FIND_PTS = 5;
+/** What a free mix makes: { hazard } | { find } | { nothing: true }. Hazards are checked first, as at the bench. */
+export function experiment(ings, op) {
+  if (!ings.length || !op) return null;
+  const hz = hazardOf(ings, op); if (hz) return { hazard: hz };
+  const x = FINDS.find((f) => judge(f, ings, op).ok); return x ? { find: x } : { nothing: true };
+}
+/** Log a free-play result. A first find pays ✦ and 💎 and lights its elements; hazards join the accidents. */
+export function logPlay(p, res) {
+  const r = room(p); r.found ||= []; r.accidents ||= [];
+  const out = { xp: 0, essence: 0, first: false, newEls: [] };
+  if (res.hazard) { if (!r.accidents.includes(res.hazard.id)) { r.accidents.push(res.hazard.id); out.first = true; } return out; }
+  if (!res.find || r.found.includes(res.find.id)) return out;
+  r.found.push(res.find.id); out.first = true; out.xp = out.essence = FIND_PTS;
+  for (const e of res.find.el || []) if (!r.elements.includes(e)) { r.elements.push(e); out.newEls.push(e); }
+  return out;
+}
+/** The Discoveries grid: every product and every accident, found or not. */
+export const gridOf = (p) => { const r = room(p), f = r.found || [], a = r.accidents || [];
+  return { finds: FINDS.map((x) => ({ x, on: f.includes(x.id) })), hazards: HAZARDS.map((h) => ({ h, on: a.includes(h.id) })), total: FINDS.length + HAZARDS.length, got: f.length + a.filter((id) => HAZARDS.some((h) => h.id === id)).length }; };
