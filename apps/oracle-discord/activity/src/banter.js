@@ -137,6 +137,18 @@ export const BANTER = {
     pirate: G("Red flame be lithium, or strontium, if ye be lucky!", "Green fire, like a ghost ship's lantern, arr.", "Ye read the flames like a true navigator!", "Arr, wrong metal. That fire be lyin' like a parrot."),
     influencer: G("Flame colour reveal! Drop your guesses below!", "This green is a whole aesthetic. No filter needed.", "Every colour right! Main character at the burner.", "Wrong guess, bestie. Even the flame needed a filter."),
   },
+  inscriptions: {
+    mystic: G("Old hands made these marks. Let them speak slowly.", "Every script was once someone's everyday handwriting.", "You named the hand that wrote it. The ink rests easy.", "The marks kept their name today. They will wait for you."),
+    deadpan: G("It's writing. On a rock. Your job is to say which writing.", "Wedges again. Clay was cheap and reeds were everywhere.", "Correct. Filed. The drawer is pleased, in its wooden way.", "Wrong script. The rock has had worse days. It's a rock."),
+    drama: G("A TABLET! Unlabelled! Who would DO such a thing?!", "Right to left?! Left to right?! I'm spinning!", "Filed and SEALED! The archive sings your name!", "Misnamed! The scribe's ghost clutches its stylus!"),
+    standup: G("Ancient scribes had no spellcheck. Or spelling.", "This tablet is a grocery list. History is mostly receipts.", "Nailed it. Or wedged it, if it was cuneiform.", "Wrong script. Don't worry, it's written in stone. Literally."),
+    grumpy: G("Back in my day we labelled our finds. Mostly.", "Count the signs. Nobody ever counts the signs.", "Fine. You can read a drawer label. Well done.", "Wrong. Raking light, people. Use the raking light."),
+    sports: G("The find hits the tray and the challenger leans in!", "A direction test! Bold strategy this early!", "IDENTIFIED! Straight into the drawer! What a read!", "And the script slips away unnamed! So close!"),
+    conspiracy: G("Who left this tablet unlabelled? Somebody knows.", "Linear A is unread. Or is it? I'm just asking.", "You named it. Now they know you can read.", "Wrong? Or did someone swap the labels in the archive?"),
+    bard: G("What hand, long dust, did cut these patient lines?", "Through wedge and rune the old words find a voice.", "Thou named'st the script! The drawer takes it home!", "Alas, the marks kept counsel. Read again anon."),
+    pirate: G("Strange marks on a stone! Could be a treasure map!", "Runes! The old sea-raiders signed their stones, arr.", "Ye read it like a captain reads the stars!", "Wrong script, matey. That be no map at all."),
+    influencer: G("Unboxing an unlabelled tablet! Guesses below!", "This handwriting is giving ancient aesthetic.", "Named it! Archive core unlocked!", "Wrong script, bestie. Even the scribe needed a caption."),
+  },
 };
 
 /** Per personality: what she says when poked, and after a perfect round in any game. */
