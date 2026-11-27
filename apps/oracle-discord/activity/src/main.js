@@ -73,7 +73,8 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
-import { notebookPages, studyToday, claimTable, NOTEBOOK_CSS } from "./notebook.js";
+import { notebookPages, studyToday, claimTable, litTable, NOTEBOOK_CSS } from "./notebook.js";
+import { claimOpus, OPUS_CSS, OPUS_GAMES } from "./opus.js";
 import { addTokens } from "./hosts/tokens.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
@@ -811,7 +812,7 @@ function openBook(sec = "codex") {
     <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
       <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div></div></div></div>`;
-  if (!$("nb-style")) { const st = document.createElement("style"); st.id = "nb-style"; st.textContent = NOTEBOOK_CSS; document.head.append(st); }
+  if (!$("nb-style")) { const st = document.createElement("style"); st.id = "nb-style"; st.textContent = NOTEBOOK_CSS + OPUS_CSS; document.head.append(st); }
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
@@ -861,9 +862,19 @@ function drawBook() {
   if (BK.sec === "notebook") payNotebook(p);
   if (BK.sec === "charts") bindCharts();
 }
+/** Pay finished Magnum Opus stages (🪨 5 each); the fourth grants the Opus, sets Vell's red stone and rolls the credits. */
+function payOpus(p) {
+  const out = claimOpus(p, Object.keys(litTable(p)).length); if (!out.stones && !out.finished) return false;
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const n of out.stages) logEvent("trophy", "🔴", `Magnum Opus: ${n} stage complete (+🪨 5)`);
+  saveProgress(); showStats(); chime(2);
+  if (out.finished) { logEvent("trophy", "🪨", "Finished the Magnum Opus: the Great Work"); if (HOST().id === "alchemist") applyLook(); closeBook(); setTimeout(() => rollCredits(true, "opus"), reduced ? 0 : 700); }
+  else mood.bubble(`${out.stages.join(" and ")} complete! +🪨 ${out.stones}`);
+  return true;
+}
 /** Pay the Lab Notebook's table rewards: 💎 per full period, 🪨 and Mendeleev's seal for all 118. */
 function payNotebook(p) {
-  const out = claimTable(p); if (!out.essence && !out.stones) { saveProgress(); return; }
+  const out = claimTable(p); payOpus(p); if (!out.essence && !out.stones) { saveProgress(); return; }
   if (out.essence) award(0, out.essence);
   const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
   for (const per of out.rows) logEvent("trophy", "🧮", `Lab Notebook: period ${per} of the table is full (+${50} 💎)`);
@@ -1292,6 +1303,7 @@ function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" :
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
+  if (o && o.won && OPUS_GAMES.includes(id)) payOpus(state.prog);
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
@@ -1401,7 +1413,8 @@ if (PREVIEW) window.__masterAll = () => { const p = state.prog; p.trophies = p.t
 
 // ---- the end credits (credits.js): a starfield scroll timed to the credits song ----
 let creditsDue = false;
-function rollCredits(auto) {
+function rollCredits(auto, kind = "crown") {
+  const opus = kind === "opus";
   creditsDue = false; if (document.getElementById("credits")) return;
   const tc = $("tcase"); tc.hidden = true; tc.innerHTML = ""; $("music-pop").hidden = true;
   const p = state.prog, c = (p.credits ||= { rolls: 0 }); c.rolls = (c.rolls || 0) + 1; saveProgress();
@@ -1410,11 +1423,11 @@ function rollCredits(auto) {
   const el = document.createElement("div"); el.id = "credits"; el.className = "credits"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "End credits");
   el.innerHTML = `<div class="cr-stars" aria-hidden="true">${stars}</div><button class="c small cr-x" type="button" id="cr-x" aria-label="Close the credits">✕ Close</button>
     <div class="cr-roll" id="cr-roll">
-      <div class="cr-title"><small>${auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>The Oracle Chamber</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
+      <div class="cr-title"><small>${opus ? "The Great Work is finished" : auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>${opus ? "The Magnum Opus" : "The Oracle Chamber"}</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
       ${rows}
       <section class="cr-sec cr-thanks"><h3>Special thanks</h3><div class="cr-big">${esc(SPECIAL_THANKS.name)}</div><p>${esc(SPECIAL_THANKS.line)}</p></section>
       <section class="cr-end"><div class="cr-sig">⚛</div><h2>The End</h2><p>${esc(END_LINE)}</p>
-        ${hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
+        ${opus ? `<div class="cr-crown">🔴 <b>The red stone</b><span>Is set in Vell's goggle for good. The Magnum Opus record and the Magister coat are yours.</span></div>` : hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
         <button class="c main" type="button" id="cr-done">✦ Back to the Chamber</button></section>
     </div>`;
   document.body.append(el);
@@ -1426,7 +1439,8 @@ function rollCredits(auto) {
     roll.style.transform = `translateY(${y.toFixed(1)}px)`; if (k >= 1 && !over) { over = true; el.classList.add("over"); } raf = requestAnimationFrame(frame); };
   if (reduced) { roll.style.position = "relative"; el.classList.add("still"); } else raf = requestAnimationFrame(frame);
   const close = () => { cancelAnimationFrame(raf); song.pause(); el.classList.add("out"); setTimeout(() => el.remove(), reduced ? 0 : 400); player.hold(false); document.removeEventListener("keydown", esc_);
-    if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
+    if (opus) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}! Nigredo, albedo, citrinitas, rubedo. The Great Work, finished. Look at my goggle: a red stone, and it stays there.` }); }, reduced ? 0 : 500);
+    else if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
   const esc_ = (e) => { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", esc_); $("cr-x").onclick = close; $("cr-done").onclick = close; $("cr-x").focus();
   song.addEventListener("ended", () => { el.classList.add("over"); });
