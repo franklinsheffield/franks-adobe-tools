@@ -2,6 +2,9 @@
 // code for an access token. The client secret stays here, never in the page.
 //   POST /api/token  { code } -> { access_token }, or 403 { error: "locked" } when the member lacks an access role.
 //   GET  /api/room?guild=&room=  (WebSocket) -> the shared room for this call (D4, rooms.mjs; same role gate)
+//   GET  /api/lib/index.json, /api/lib/file/<group>/<id>.glb, /api/lib/thumb/<path>.webp -> Frank's 3D library for the
+//        app's "3D library" card (the Activity frame can only reach this origin). Files: the public assets repo; thumbs:
+//        the web-pipeline-kit site; the list: kit-models.json in the web build (data/models-index.json).
 import { Rooms } from "./rooms.mjs";
 export { Rooms };
 // Role gate: GATE_GUILD_ID + GATE_ROLE_IDS (comma list). Unset = no gate.
@@ -20,6 +23,22 @@ export async function exchange(env, code, fetchImpl = fetch) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) return { status: r.ok ? 502 : r.status, body: { error: j.error || "token exchange failed" } };
   return { status: 200, body: { access_token: j.access_token } };
+}
+export const LIB = { files: "https://raw.githubusercontent.com/franklinsheffield/web-pipeline-assets/main/models/", site: "https://web-pipeline-kit.vercel.app" };
+// only the library's own paths are proxied (this is not an open proxy)
+export function libTarget(path) {
+  let m = /^\/api\/lib\/file\/((?:things|places|characters|scans)\/[\w.-]+\.glb)$/.exec(path); if (m && !m[1].includes("..")) return { url: LIB.files + m[1], type: "model/gltf-binary" };
+  m = /^\/api\/lib\/thumb(\/(?:library\/thumbs\/models|models\/thumbs)\/[\w.-]+\.webp)$/.exec(path); if (m && !m[1].includes("..")) return { url: LIB.site + m[1], type: "image/webp" };
+  return null;
+}
+async function libProxy(req, env, path) {
+  if (req.method !== "GET" && req.method !== "HEAD") return json({ error: "GET only" }, 405);
+  if (path === "/api/lib/index.json") { const u = new URL(req.url); u.pathname = "/kit-models.json"; u.search = ""; return env.ASSETS.fetch(new Request(u, { method: "GET" })); }
+  const t = libTarget(path); if (!t) return json({ error: "not in the 3D library" }, 404);
+  let r; try { r = await fetch(t.url, { cf: { cacheEverything: true, cacheTtl: 86400 } }); } catch (e) { return json({ error: "library unreachable" }, 502); }
+  if (!r.ok) return json({ error: "library file " + r.status }, r.status === 404 ? 404 : 502);
+  const h = new Headers({ "content-type": t.type, "cache-control": "public, max-age=86400" }); const n = r.headers.get("content-length"); if (n) h.set("content-length", n);
+  return new Response(r.body, { status: 200, headers: h });
 }
 const json = (o, status) => new Response(JSON.stringify(o), { status: status || 200, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 export default {
@@ -44,6 +63,7 @@ export default {
       if (!env.ROOMS) return json({ error: "rooms are not set up" }, 503);
       return env.ROOMS.get(env.ROOMS.idFromName("guild:" + guild)).fetch(req);
     }
+    if (path.startsWith("/api/lib/")) return libProxy(req, env, path);
     if (path === "/api/health") return json({ ok: true, signIn: !!env.DISCORD_CLIENT_SECRET, rooms: !!env.ROOMS, posting: !!env.DISCORD_BOT_TOKEN });
     return env.ASSETS.fetch(req);
   }

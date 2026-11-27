@@ -38,6 +38,8 @@ async function build() {
   fs.writeFileSync(path.join(OUT, "app.css"), css);
   fs.copyFileSync(path.join(WEB, "index.html"), path.join(OUT, "index.html"));
   fs.copyFileSync(path.join(APP, "build/icon.png"), path.join(OUT, "icon.png"));
+  // Frank's 3D library list (the Activity Worker serves it at /api/lib/index.json; built by pixel-scape-discord)
+  const kit = path.join(APP, "../pixel-scape-discord/data/models-index.json"); if (fs.existsSync(kit)) fs.copyFileSync(kit, path.join(OUT, "kit-models.json"));
   const size = fs.statSync(path.join(OUT, "app.js")).size;
   console.log(`web build: ${n} modules mapped, app.js ${(size / 1e6).toFixed(2)} MB -> ${path.relative(process.cwd(), OUT)}`);
   return r;

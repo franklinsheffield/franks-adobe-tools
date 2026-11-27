@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/pixel-scape-discord/package-lock.json }
       - run: npm ci --no-audit --no-fund
+      - name: Refresh the 3D library list (keeps the committed copy if the site can't be reached)
+        run: npm run models-index || echo "::warning::3D library list not refreshed; using the committed copy"
       - run: npm test
       - name: Secrets missing
         if: env.HAVE_SECRETS != 'true'
@@ -30,6 +32,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/pixel-scape-discord
+          wranglerVersion: "4.150.0"   # bundles the 3D library list (JSON import attributes)
           secrets: |
             DISCORD_PUBLIC_KEY
             DISCORD_APP_ID

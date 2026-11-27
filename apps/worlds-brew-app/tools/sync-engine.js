@@ -10,7 +10,8 @@ const APP = path.resolve(__dirname, ".."), REPO = path.resolve(APP, "../.."), OU
 const KIT = ["ui.js", "console.js", "png.js", "layout.js", "panel.css", "controls.js", "help.js", "help-text.js", "pixfont.js"];
 const SRC = [[path.join(REPO, "plugins/worlds-brew/js"), null, OUT], [path.join(REPO, "shared"), KIT, path.join(OUT, "kit")]];
 function files() {
-  const list = [[path.join(APP, "node_modules/three/examples/jsm/controls/TransformControls.js"), path.join(APP, "renderer/vendor/TransformControls.js")]];   // packaged apps leave out node_modules/*/examples
+  const list = [[path.join(APP, "node_modules/three/examples/jsm/controls/TransformControls.js"), path.join(APP, "renderer/vendor/TransformControls.js")],   // packaged apps leave out node_modules/*/examples
+    [path.join(APP, "node_modules/three/examples/jsm/libs/meshopt_decoder.module.js"), path.join(APP, "renderer/vendor/meshopt_decoder.module.js")]];   // 3D library models (meshopt-compressed)
   for (const [dir, only, to] of SRC) for (const f of fs.readdirSync(dir)) if ((!only || only.includes(f)) && /\.(js|css)$/.test(f)) list.push([path.join(dir, f), path.join(to, f)]);
   return list;
 }
