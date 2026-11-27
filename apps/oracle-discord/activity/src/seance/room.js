@@ -1,27 +1,27 @@
-// Skeptic's Séance: a room in the Oracle Chamber. The Oracle hosts famous historical séances and the member
-// investigates: examine clues by candlelight, name the method, then pick the Skeptic's Toolkit idea that cracked it.
-// Rules in logic.js, cases in cases.js. Mounted through the Chamber's ROOMS registry (main.js).
-import { CASES, TOOLS } from "./cases.js";
-import { CANDLES, room as seanceOf, solvedCount, titleOf, nextTitle, caseById, start, examine, guess, toolChoices, settle, nextCase } from "./logic.js";
+// The Séance: Guess the Ghost. A room in the Oracle Chamber. The Oracle summons the ghost of a famous magician or
+// scientist; it raps out clues about its life. First say what kind of ghost it is, then name it: type the name for the
+// real challenge, or ask for four names to pick from. Rules in logic.js, ghosts in ghosts.js. Mounted via ROOMS (main.js).
+import { GHOSTS, FIELDS } from "./ghosts.js";
+import { CANDLES, FIELD_PTS, perCandle, room as seanceOf, solvedCount, titleOf, nextTitle, ghostById, nextGhost, start, guessField, moreClue, usePick, whoIs, choices, guessName, scoreOf, settle } from "./logic.js";
 
-const WRONG = [
-  "The table rattles with ghostly laughter. Wrong, and the spirits know it. A candle gutters out.",
-  "Ooooh, says the medium, delighted. That's not it. One candle fewer.",
-  "A cold draught, a snuffed candle. The spirits enjoy a wrong guess almost as much as a paying customer.",
-  "Close, but the medium's smile says you've missed it. The dark creeps in a little.",
-  "The tambourine shakes mockingly. Think about what the clues actually showed you.",
-];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const WRONG = [
+  "The ghost sighs. A candle goes out. \"Nobody ever remembers me…\"",
+  "Three angry raps. Wrong spirit, and this one is offended.",
+  "The planchette slides to NO, then to RUDE. A candle gutters.",
+  "A cold draught. \"I'll have you know I was FAMOUS.\" One candle fewer.",
+];
+const UNKNOWN = ["The spirits don't recognise that name. Try a full name, or check the spelling. No candle lost.", "Hmm. Nobody by that name is answering tonight. No candle lost."];
 
-/** The séance table, drawn into the Chamber's table pane: candles (lit or out), a sheet ghost, and clue cards. */
-function sceneSvg(c, run, exposed = false) {
-  const lit = run ? run.candles : CANDLES, xs = [92, 152, 248, 308];
-  const candles = xs.map((x, i) => { const on = i < lit, y = i === 0 || i === 3 ? 214 : 222;
+/** The séance table in the Chamber's table pane: candles (lit or out), the ghost, and its reveal. */
+function sceneSvg(g, run, revealed = false) {
+  const lit = run ? run.candles : CANDLES, xs = [84, 136, 200, 264, 316];
+  const candles = xs.map((x, i) => { const on = i < lit, y = i === 0 || i === 4 ? 214 : i === 2 ? 226 : 221;
     return `<g class="sc-candle${on ? "" : " out"}"><ellipse cx="${x}" cy="${y + 26}" rx="12" ry="4" fill="#000" opacity=".45"/><rect x="${x - 6}" y="${y}" width="12" height="26" rx="2" fill="#efe3cf"/>
       ${on ? `<circle cx="${x}" cy="${y - 8}" r="18" fill="url(#sc-halo)"/><path class="sc-flame" d="M${x} ${y - 20} C${x + 6} ${y - 11} ${x + 5} ${y - 4} ${x} ${y - 1} C${x - 5} ${y - 4} ${x - 6} ${y - 11} ${x} ${y - 20}Z" fill="url(#sc-flame)"/>`
         : `<path class="sc-smoke" d="M${x} ${y - 2} q-6 -10 0 -18 q6 -8 0 -18" stroke="#b9b2cc" stroke-width="2" fill="none" opacity=".5"/>`}</g>`; }).join("");
-  const cards = run ? run.seen.map((k, i) => `<g transform="translate(${150 + i * 34} ${246}) rotate(${(i - 1) * 7})"><g class="sc-card" style="--d:${i * 0.08}s"><rect x="-14" y="-10" width="28" height="20" rx="2" fill="#f3e3c3" stroke="#7a4f12"/><path d="M-9 -4 h18 M-9 1 h14 M-9 6 h10" stroke="#7a4f12" stroke-width="1.2"/></g></g>`).join("") : "";
-  const dim = (CANDLES - lit) * 0.14;
+  const dim = (CANDLES - lit) * 0.11;
+  const name = revealed && g ? g.name.replace(/&/g, "&amp;") : "";
   return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 <defs><radialGradient id="sc-room" cx="50%" cy="70%" r="70%"><stop offset="0" stop-color="#3a1f5e"/><stop offset="1" stop-color="#07040f"/></radialGradient>
 <radialGradient id="sc-cloth" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#5a1830"/><stop offset="1" stop-color="#1e050c"/></radialGradient>
@@ -31,137 +31,117 @@ function sceneSvg(c, run, exposed = false) {
 <rect x="-600" y="-400" width="1600" height="1100" fill="#07040f"/><rect x="-200" width="800" height="300" fill="url(#sc-room)"/>
 <ellipse cx="200" cy="236" rx="168" ry="50" fill="url(#sc-cloth)" stroke="#E2B04A" stroke-width="2"/>
 <path d="M40 240 Q200 312 360 240" stroke="#E2B04A" stroke-width="1" fill="none" opacity=".5"/>
-${candles}${cards}
-<g class="sc-prop${exposed ? " show" : ""}"><circle cx="200" cy="138" r="44" fill="#66E0C8" opacity=".14"/><text x="200" y="156" font-size="54" text-anchor="middle">${c.prop}</text>
-  <g transform="translate(200 196) rotate(-8)"><g class="sc-stamp"><rect x="-66" y="-15" width="132" height="30" rx="4" fill="none" stroke="#FF4FB3" stroke-width="3"/><text y="8" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="20" fill="#FF4FB3" text-anchor="middle" letter-spacing="3">EXPOSED</text></g></g></g>
-<g class="sc-ghost${exposed ? " gone" : ""}"><path d="M200 52 C236 52 252 82 252 120 L252 186 L240 176 L228 188 L214 176 L200 188 L186 176 L172 188 L160 176 L148 186 L148 120 C148 82 164 52 200 52Z" fill="url(#sc-sheet)" stroke="#fff" stroke-width="1.2" opacity=".9"/>
-  <ellipse cx="184" cy="112" rx="7" ry="10" fill="#160b2c"/><ellipse cx="216" cy="112" rx="7" ry="10" fill="#160b2c"/><ellipse cx="200" cy="140" rx="9" ry="7" fill="#160b2c"/>
-  <text x="248" y="70" font-size="26">${c.emoji}</text></g>
+${candles}
+<g class="sc-prop${revealed ? " show" : ""}"><circle cx="200" cy="120" r="46" fill="#66E0C8" opacity=".14"/><text x="200" y="140" font-size="56" text-anchor="middle">${g ? g.emoji : ""}</text>
+  <g transform="translate(200 180)"><g class="sc-stamp"><rect x="-120" y="-17" width="240" height="32" rx="6" fill="#160b2c" stroke="#E2B04A" stroke-width="2"/><text y="6" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="${name.length > 20 ? 13 : 16}" fill="#FADE8C" text-anchor="middle" letter-spacing="1">${name}</text></g></g></g>
+<g class="sc-ghost${revealed ? " gone" : ""}"><path d="M200 46 C236 46 252 76 252 114 L252 180 L240 170 L228 182 L214 170 L200 182 L186 170 L172 182 L160 170 L148 180 L148 114 C148 76 164 46 200 46Z" fill="url(#sc-sheet)" stroke="#fff" stroke-width="1.2" opacity=".9"/>
+  <ellipse cx="184" cy="106" rx="7" ry="10" fill="#160b2c"/><ellipse cx="216" cy="106" rx="7" ry="10" fill="#160b2c"/><ellipse cx="200" cy="134" rx="9" ry="7" fill="#160b2c"/>
+  <text x="250" y="64" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="30" fill="#FADE8C">?</text></g>
 <rect x="-600" y="-400" width="1600" height="1100" fill="#000" opacity="${dim.toFixed(2)}" pointer-events="none"/>
 </svg>`;
 }
 
 export const seance = {
-  id: "seance", label: "Skeptic's Séance", emoji: "🕯️",
-  blurb: "Expose famous historical hoaxes",
+  id: "seance", label: "Séance: Guess the Ghost", emoji: "🕯️",
+  blurb: "A famous magician or scientist is knocking. Who is it?",
   open(ctx) {
     const { $, esc, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     const prog = () => seanceOf(state.prog);
-    const draw = (c, run, exposed) => { tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(c, run, exposed); };
+    const draw = (g, run, rev) => { tableEl.className = "table seance"; tableEl.innerHTML = sceneSvg(g, run, rev); };
     const stats = () => { const n = solvedCount(state.prog), t = titleOf(n), nx = nextTitle(n);
-      return `<div class="cx-top"><b>🕯️ ${esc(t.name)}</b> · ${n} / ${CASES.length} hoaxes exposed${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""} · 🧰 ${prog().tools.length} / ${Object.keys(TOOLS).length} tools</div>`; };
+      return `<div class="cx-top"><b>🕯️ ${esc(t.name)}</b> · ${n} / ${GHOSTS.length} ghosts named${nx ? ` · ${nx.at - n} more to ${esc(nx.name)}` : ""}</div>`; };
 
     function lobby(first) {
-      clearReading(); cap("🕯️ Skeptic's Séance"); draw(nextCase(state.prog), null, false);
+      clearReading(); cap("🕯️ The Séance"); draw(null, null, false);
       const n = solvedCount(state.prog);
       say(first && !prog().plays
-        ? `Welcome to the Séance room, ${state.name}. I'm a professional, so amateurs who fake it annoy me. Tonight we sit with history's famous mediums, and you work out how they did it. Four candles per case. Each clue you examine burns one, and so does each wrong guess.`
-        : n >= CASES.length ? `Every case closed, ${state.name}. Houdini would buy you a drink. Replay any case to beat your score.` : `Pick a case file, ${state.name}. The candles are lit, and the mediums are… very confident.`);
-      const btn = (c) => { const s = prog().solved[c.id];
-        return `<button class="c${s ? "" : " case-new"}" type="button" data-case="${c.id}">${s ? "✓" : c.emoji} ${esc(c.title)} <span class="note">· ${c.year}${s ? ` · best ${s}` : ""}</span></button>`; };
-      ui(`${stats()}<div class="choices"><button class="c main" type="button" id="sc-next">🕯️ ${n ? "Next case" : "Begin the first case"}</button><button class="c" type="button" id="sc-kit">🧰 Skeptic's Toolkit</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
-        <div class="group">Case files</div><div class="choices">${CASES.map(btn).join("")}</div>
-        <div class="note">Real history, 1848 to 1948. Séance cases don't use your daily readings.</div>`);
-      $("sc-next").onclick = () => openCase(nextCase(state.prog));
-      $("sc-kit").onclick = toolkit; $("back").onclick = greet;
-      $("ui").querySelectorAll("[data-case]").forEach((b) => (b.onclick = () => openCase(caseById(b.dataset.case))));
+        ? `Welcome to the séance, ${state.name}. Tonight I'm summoning the great magicians and scientists of history, and they love a guessing game. Each ghost raps out clues about its life. First, tell me what kind of ghost it is. Then name it. Type the name for the real challenge, or ask me for four names to pick from.`
+        : n >= GHOSTS.length ? `You've named every ghost in my circle, ${state.name}. They're honoured. Some of them are insufferable about it. Summon one again to beat your score.` : `Shall we summon someone, ${state.name}? The candles are lit, and somebody famous is knocking.`);
+      const known = GHOSTS.filter((g) => prog().solved[g.id]);
+      ui(`${stats()}<div class="choices"><button class="c main" type="button" id="sc-go">🕯️ Summon a ghost</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>
+        <div class="note">5 candles. The first clue is free; more clues and wrong names each snuff a candle. Typed names score double.</div>
+        ${known.length ? `<div class="group">Ghosts you've named</div><div class="choices">${known.map((g) => `<button class="c" type="button" data-g="${g.id}">${g.emoji} ${esc(g.name)} <span class="note">· best ${prog().solved[g.id]}</span></button>`).join("")}</div>` : ""}`);
+      $("sc-go").onclick = () => summon(nextGhost(state.prog, prog().last));
+      $("back").onclick = greet;
+      $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => summon(ghostById(b.dataset.g))));
     }
 
-    function toolkit() {
-      clearReading(); cap("🧰 Skeptic's Toolkit");
-      const have = prog().tools;
-      say(have.length ? `Your toolkit, ${state.name}. Real skeptics carry these everywhere. Even into my Chamber, which is rude, but fair.` : "Your toolkit is empty. Crack a case and name the idea that cracked it to collect a tool.");
-      ui(`<div class="choices"><button class="c" type="button" id="sc-back">🕯️ Back to the case files</button></div>
-        <div class="kit">${Object.entries(TOOLS).map(([id, t]) => have.includes(id)
-          ? `<div class="kit-row"><b>${t.emoji} ${esc(t.name)}</b><span>${esc(t.line)}</span></div>`
-          : `<div class="kit-row locked"><b>🔒 ${esc(t.name)}</b><span class="note">Found in: ${esc(CASES.filter((c) => c.tool === id).map((c) => c.title).join(", "))}</span></div>`).join("")}</div>`);
-      $("sc-back").onclick = () => lobby(false);
+    const clueList = (g, run) => `<div class="clues">${g.clues.slice(0, run.shown).map((c, i) => `<div class="clue"><b>👻 Clue ${i + 1}</b><span>${esc(c)}</span></div>`).join("")}</div>`;
+    const candleBar = (run) => `<div class="cx-top">🕯️ ${"●".repeat(run.candles)}${"○".repeat(CANDLES - run.candles)} · ${run.candles} candle${run.candles === 1 ? "" : "s"} left${run.field ? ` · naming it now scores ${perCandle(run.mode) * run.candles}${run.mode === "pick" ? " (multiple choice)" : ""}` : ""}</div>`;
+
+    function summon(g) {
+      const run = start(g);
+      clearReading(); cap("🕯️ A ghost is knocking…"); draw(g, run, false);
+      talkThrough([pick(["Hands on the table, please. Spirit, are you there? …Knock once for yes.", "The candles lean. Someone is here. Someone who used to be quite famous…", "Shh. Listen. Raps, from under the table. Our guest has arrived."]), `The ghost raps out its first clue: “${g.clues[0]}”`], () => askField(g, run));
     }
 
-    function openCase(c) {
-      const run = start(c);
-      clearReading(); cap(`${c.emoji} ${c.title} · ${c.place}, ${c.year}`); draw(c, run, false);
-      talkThrough([...c.scene, `Tonight's medium: ${c.medium}. ${c.question} Examine the evidence, ${state.name}. Some clues are true but beside the point.`], () => investigate(c, run));
+    function askField(g, run) {
+      say("First, what kind of ghost is this?");
+      ui(`${candleBar(run)}${clueList(g, run)}<div class="choices">${Object.entries(FIELDS).map(([k, f]) => `<button class="c" type="button" data-f="${k}">${f.emoji} ${esc(f.name)}</button>`).join("")}</div>
+        <div class="note">+${FIELD_PTS} if you're right. One guess.</div>`);
+      $("ui").querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => {
+        const ok = guessField(run, g, b.dataset.f), f = FIELDS[g.field];
+        chime(ok ? 1 : 0);
+        name(g, run, ok ? `Yes, a ${f.name.toLowerCase()}${g.field === "both" ? ": part magician, part scientist" : ""}. +${FIELD_PTS}. Now, who am I talking to?` : `No… this ghost was ${g.field === "both" ? "a bit of both, part magician and part scientist" : "a " + f.name.toLowerCase()}. Now, who is it?`);
+      }));
     }
 
-    function investigate(c, run, line) {
-      draw(c, run, false);
-      if (line) say(line);
-      const clue = (k, i) => run.seen.includes(i)
-        ? `<div class="clue"><b>🔎 ${esc(k.label)}</b><span>${esc(k.text)}</span></div>`
-        : `<button class="c" type="button" data-clue="${i}" ${run.candles <= 1 ? "disabled" : ""}>🔎 ${esc(k.label)} <span class="note">· 🕯️ 1</span></button>`;
-      ui(`<div class="cx-top">🕯️ ${"●".repeat(run.candles)}${"○".repeat(CANDLES - run.candles)} · ${run.candles} candle${run.candles === 1 ? "" : "s"} left · solving now scores ${10 + 5 * run.candles}</div>
-        <div class="clues">${c.clues.map(clue).join("")}</div>
-        <div class="choices"><button class="c main" type="button" id="sc-name">✦ Name the method</button><button class="c" type="button" id="sc-leave">Leave the séance</button></div>
-        ${run.candles <= 1 ? `<div class="note">One candle left. You can't examine more; name the method.</div>` : ""}`);
-      $("ui").querySelectorAll("[data-clue]").forEach((b) => (b.onclick = () => { const i = +b.dataset.clue;
-        if (!examine(run, i)) return; chime(1); const k = c.clues[i];
-        investigate(c, run, k.text); }));
-      $("sc-name").onclick = () => accuse(c, run);
+    function name(g, run, line) {
+      draw(g, run, false); if (line) say(line);
+      const more = run.shown < g.clues.length && run.candles > 1;
+      const form = run.mode === "type"
+        ? `<form class="form one" id="sc-f"><label for="sc-n">Name the ghost<input id="sc-n" maxlength="60" autocomplete="off" placeholder="Full name or surname"></label></form>
+           <div class="choices"><button class="c main" type="submit" form="sc-f">✦ Name it</button>${more ? `<button class="c" type="button" id="sc-more">👻 Another clue (🕯️ 1)</button>` : ""}<button class="c" type="button" id="sc-pick">🎴 Show me 4 names (half points)</button></div>`
+        : `<div class="choices col">${choices(g).map((x) => `<button class="c" type="button" data-n="${x.id}" ${run.wrong.includes(x.id) ? "disabled" : ""}>${run.wrong.includes(x.id) ? "✗ " : ""}${esc(x.name)}</button>`).join("")}</div>
+           <div class="choices">${more ? `<button class="c" type="button" id="sc-more">👻 Another clue (🕯️ 1)</button>` : ""}</div>`;
+      ui(`${candleBar(run)}${clueList(g, run)}${form}<div class="choices"><button class="c small" type="button" id="sc-leave">End the séance</button></div>`);
+      if ($("sc-more")) $("sc-more").onclick = () => { if (moreClue(run, g)) { chime(1); name(g, run, `Rap, rap: “${g.clues[run.shown - 1]}”`); } };
+      if ($("sc-pick")) $("sc-pick").onclick = () => { usePick(run); name(g, run, "Very well. One of these four. Choose carefully."); };
       $("sc-leave").onclick = () => lobby(false);
+      const answer = (who) => {
+        const r = guessName(run, g, who);
+        if (r === "right") return revealed(g, run);
+        if (r === "out") return outOfCandles(g, run);
+        if (r === "wrong") name(g, run, pick(WRONG));
+      };
+      if ($("sc-f")) { setTimeout(() => $("sc-n") && $("sc-n").focus(), 50);
+        $("sc-f").onsubmit = (e) => { e.preventDefault(); const v = $("sc-n").value.trim(); if (!v) return;
+          const who = whoIs(v); if (!who) { say(pick(UNKNOWN)); return; } answer(who); }; }
+      $("ui").querySelectorAll("[data-n]").forEach((b) => (b.onclick = () => answer(ghostById(b.dataset.n))));
     }
 
-    function accuse(c, run) {
-      say(c.question);
-      ui(`<div class="choices col">${c.options.map((o, i) => `<button class="c" type="button" data-opt="${i}" ${run.wrong.includes(i) ? "disabled" : ""}>${run.wrong.includes(i) ? "✗ " : ""}${esc(o)}</button>`).join("")}</div>
-        <div class="choices"><button class="c" type="button" id="sc-more">🔎 Back to the clues</button></div>`);
-      $("sc-more").onclick = () => investigate(c, run);
-      $("ui").querySelectorAll("[data-opt]").forEach((b) => (b.onclick = () => {
-        const r = guess(run, c, +b.dataset.opt);
-        if (r === "right") return exposed(c, run);
-        if (r === "out") return closedUnsolved(c, run);
-        if (r === "wrong") { draw(c, run, false); investigate(c, run, pick(WRONG)); }
-      }));
+    function revealed(g, run) {
+      draw(g, run, true); chime(2); cap(`${g.emoji} ${g.name} · ${g.life}`);
+      talkThrough([`Yes! It's ${g.name}. The ghost bows.`, g.bio, g.link], () => finish(g, run));
+    }
+    function outOfCandles(g, run) {
+      draw(g, run, true); cap(`${g.emoji} ${g.name} · ${g.life}`);
+      talkThrough([`The last candle goes out… and the ghost introduces itself, a little hurt: ${g.name}.`, g.bio, g.link], () => finish(g, run));
     }
 
-    function exposed(c, run) {
-      draw(c, run, true); chime(2);
-      talkThrough([`Exposed! ${c.options[c.answer]}.`, c.reveal, `Who caught it: ${c.exposed}.`], () => toolQuestion(c, run));
-    }
-
-    function closedUnsolved(c, run) {
-      draw(c, run, true);
-      talkThrough([`The last candle gutters out. The medium takes a bow. The spirits win this round… but history didn't let them win for long.`, `It was: ${c.options[c.answer]}.`, c.reveal], () => finish(c, run, null));
-    }
-
-    function toolQuestion(c, run) {
-      say("One more, for the toolkit: which idea cracked this case?");
-      const ids = toolChoices(c);
-      ui(`<div class="choices col">${ids.map((id) => `<button class="c" type="button" data-tool="${id}">${TOOLS[id].emoji} ${esc(TOOLS[id].name)}</button>`).join("")}</div>`);
-      $("ui").querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => {
-        const id = b.dataset.tool, t = TOOLS[c.tool];
-        talkThrough([id === c.tool ? `Yes. ${t.name}: ${t.line}` : `Not quite. This one was ${t.name}: ${t.line}`], () => finish(c, run, id));
-      }));
-    }
-
-    function finish(c, run, toolPick) {
-      const before = solvedCount(state.prog), g = settle(state.prog, run, toolPick);
-      const aw = award(g.xp, g.essence); saveProgress(); showStats();
-      say(run.won ? `Case closed: ${c.title}. Another medium unmasked.` : `Case still open: ${c.title}. The medium is smug about it.`);
+    function finish(g, run) {
+      const before = solvedCount(state.prog), r = settle(state.prog, run);
+      const aw = award(r.xp, r.essence); saveProgress(); showStats();
       const after = solvedCount(state.prog), t = titleOf(after), titled = titleOf(before).name !== t.name;
-      const bits = [`<b>+${g.xp} ✦${g.essence ? ` · +${g.essence} 💎` : ""}</b>`];
-      if (run.won) bits.push(g.first ? `case solved with ${run.candles} candle${run.candles === 1 ? "" : "s"} left` : g.best ? `new best: ${g.score}` : `best stays ${prog().solved[c.id]}`);
-      else bits.push("unsolved, so try it again");
-      if (g.newTool) bits.push(`🧰 new tool: ${esc(g.newTool.name)}`);
+      say(run.won ? `${g.name} has been named. The spirits are impressed.` : `${g.name} stays a mystery… for now. Summon them again.`);
+      const bits = [`<b>+${r.xp} ✦${r.essence ? ` · +${r.essence} 💎` : ""}</b>`];
+      if (run.won) bits.push(`score ${r.score}${r.first ? "" : r.best ? " · new best" : ` · best stays ${prog().solved[g.id]}`}${run.mode === "type" ? " · typed it!" : ""}`);
+      else bits.push("not named this time");
       ui(`<div class="reward"><div>${bits.join(" · ")}</div>${titled ? `<div class="up">🕯️ Séance title: <b>${esc(t.name)}</b></div>` : ""}${aw.rankUp ? `<div class="up">🏅 You are now <b>${esc(aw.rankUp)}</b></div>` : ""}</div>
-        <div class="note">💡 ${esc(c.fact)}</div>
-        <div class="choices"><button class="c main" type="button" id="sc-next">🕯️ Next case</button>${run.won ? "" : `<button class="c" type="button" id="sc-again">↻ Try again</button>`}<button class="c" type="button" id="sc-files">📂 Case files</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
-      if (titled || aw.rankUp || g.newTool) chime(2);
-      const nx = nextCase(state.prog);
-      $("sc-next").onclick = () => openCase(nx.id === c.id ? CASES[(CASES.indexOf(c) + 1) % CASES.length] : nx);
-      if ($("sc-again")) $("sc-again").onclick = () => openCase(c);
-      $("sc-files").onclick = () => lobby(false); $("back").onclick = greet;
+        <div class="choices"><button class="c main" type="button" id="sc-go">🕯️ Summon another</button>${run.won ? "" : `<button class="c" type="button" id="sc-again">↻ Summon ${esc(g.name)} again</button>`}<button class="c" type="button" id="sc-lobby">📜 Séance room</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
+      if (titled || aw.rankUp) chime(2);
+      $("sc-go").onclick = () => summon(nextGhost(state.prog, g.id));
+      if ($("sc-again")) $("sc-again").onclick = () => summon(g);
+      $("sc-lobby").onclick = () => lobby(false); $("back").onclick = greet;
     }
 
     lobby(true);
   },
 };
 
-/** For the Codex page: the séance's collection rows. */
+/** For the Codex page: ghosts named. */
 export function codexHtml(p, esc) {
-  const r = seanceOf(p), solved = CASES.filter((c) => r.solved[c.id]);
-  return `<div class="cx"><div class="cx-h"><span>🕯️ Hoaxes exposed</span><span class="note">${solved.length} / ${CASES.length} cases</span></div>
-    <div class="bar"><i style="width:${(solved.length / CASES.length) * 100}%"></i></div>${solved.length ? `<div class="chips">${solved.map((c) => `<span>${esc(c.title)}</span>`).join("")}</div>` : ""}</div>
-    <div class="cx"><div class="cx-h"><span>🧰 Skeptic's Toolkit</span><span class="note">${r.tools.length} / ${Object.keys(TOOLS).length} tools</span></div>
-    <div class="bar"><i style="width:${(r.tools.length / Object.keys(TOOLS).length) * 100}%"></i></div>${r.tools.length ? `<div class="chips">${r.tools.map((id) => `<span>${TOOLS[id].emoji} ${esc(TOOLS[id].name)}</span>`).join("")}</div>` : ""}</div>`;
+  const r = seanceOf(p), named = GHOSTS.filter((g) => r.solved[g.id]);
+  return `<div class="cx"><div class="cx-h"><span>🕯️ Ghosts named</span><span class="note">${named.length} / ${GHOSTS.length} magicians and scientists</span></div>
+    <div class="bar"><i style="width:${(named.length / GHOSTS.length) * 100}%"></i></div>${named.length ? `<div class="chips">${named.map((g) => `<span>${g.emoji} ${esc(g.name)}</span>`).join("")}</div>` : ""}</div>`;
 }
