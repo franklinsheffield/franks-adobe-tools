@@ -135,7 +135,7 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
-  const api = { prog: state.prog, at: Date.now(), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
+  const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
     find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
       setTimeout(() => mood.bubble(`${r.s.e} ${H.secrets.label.replace(/^\S+\s/, "")}: ${r.s.name}! ${line} ${payLabel(H, r.pay)}`.trim(), 5200, r.s.e), reduced ? 0 : 500);
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
