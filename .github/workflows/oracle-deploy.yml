@@ -79,9 +79,11 @@ jobs:
           secrets: |
             ORACLE_KEY
             ${{ secrets.ORACLE_DISCORD_CLIENT_SECRET != '' && 'DISCORD_CLIENT_SECRET' || '' }}
+            DISCORD_BOT_TOKEN
         env:
           ORACLE_KEY: ${{ env.ORACLE_KEY }}
           DISCORD_CLIENT_SECRET: ${{ secrets.ORACLE_DISCORD_CLIENT_SECRET }}
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
       - name: Register slash commands
         if: env.HAVE_SECRETS == 'true' && env.IS_MAIN == 'true'
         env:
