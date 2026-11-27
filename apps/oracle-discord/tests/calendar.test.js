@@ -83,3 +83,23 @@ test("shop shelf and guides", () => {
   assert.equal(lookOf({ calendar: "cal-jade", owned: ["cal-jade"] }), SHOP[1].look);
   for (const k of GUIDE_ORDER) assert.ok(GUIDES[k].sections.length >= 4, k);
 });
+
+test("turning the desk by hand", async () => {
+  const E = await import("../activity/src/calendar/engine.js");
+  const D = await import("../activity/src/calendar/drag.js");
+  const j0 = E.jdnOf({ year: 2026, month: 11, day: 27 });
+  // n = 0 matches the desk's own rotation formulas
+  const a0 = D.turnAngles(j0, 0);
+  assert.equal(a0.small, -(j0 - E.GMT) * (360 / 13));
+  assert.equal(a0.big, (j0 - E.GMT) * 18);
+  // one Tzolk'in round brings both gears back to the same position (mod 360)
+  const a260 = D.turnAngles(j0, 260);
+  assert.ok(Math.abs(((a260.small - a0.small) % 360 + 360) % 360) < 1e-6 || Math.abs(((a260.small - a0.small) % 360 + 360) % 360 - 360) < 1e-6);
+  assert.ok(Math.abs(((a260.big - a0.big) % 360 + 360) % 360) < 1e-6);
+  // the needle does one full turn in 365 days
+  assert.ok(Math.abs(D.turnAngles(j0, 365).needle - a0.needle - 360) < 1e-9);
+  // pickers <-> dials round-trip
+  for (const n of [0, 1, 13, 20, 99, 259]) { const m = E.maya(j0 + n); assert.equal(D.daysToTz(j0, { tone: m.tone, sign: m.sign }), n); }
+  for (const n of [0, 5, 30, 200, 364]) { const e = E.egyptCivil(j0 + n); assert.equal(D.daysToEgy(j0, { month: e.month, day: e.day }), n); }
+  assert.equal(D.hubAt(238 + 50, 128), "small"); assert.equal(D.hubAt(130 + 60, 292), "egypt"); assert.equal(D.hubAt(5, 5), null);
+});
