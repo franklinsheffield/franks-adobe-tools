@@ -170,7 +170,7 @@ export const MYTHS = [
   { id: "f-napoleon", claim: "The chess-playing Mechanical Turk played a game against Napoleon.", fact: true, emoji: "♟️",
     truth: "Fact, as far as the records go. Napoleon played the Turk at Schönbrunn Palace in 1809 and lost. Accounts say he tested it with illegal moves, and the machine swept the pieces off the board." },
   { id: "f-doyle", claim: "The creator of Sherlock Holmes believed fairy photographs taken by two girls were real.", fact: true, emoji: "🧚",
-    truth: "Fact. Arthur Conan Doyle published the Cottingley fairy photographs as real in 1920 and wrote a book about them. The cousins admitted in 1983 that they were paper cut-outs." },
+    truth: "Fact. Arthur Conan Doyle published the Cottingley fairy photographs as real in 1920 and wrote a book about them. The cousins admitted in 1983 that they were paper cut-outs (Frances Griffiths still claimed the fifth photo was genuine)." },
   { id: "f-newtonalchemy", claim: "Isaac Newton spent years doing alchemy experiments.", fact: true, emoji: "⚗️",
     truth: "Fact. Newton kept furnaces in Cambridge and wrote huge notebooks on alchemy, which he kept private. When economist John Maynard Keynes bought them in 1936, he called Newton 'the last of the magicians'." },
 ];
