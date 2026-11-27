@@ -57,6 +57,12 @@ The Chamber hosts rooms, small games listed under "Investigate & learn" (registr
 
 **Shared multiplayer tables** (`activity/tables.mjs`, `activity/src/net.js`): one Durable Object per Discord call and game at `/api/tables?game=&instance=` (WebSocket). Sign-in through Discord, up to 8 people, first to arrive hosts; the host's client runs the game, sends to members with `to()`, others send moves with `up()`; `snap()` saves the game so a new host can resume. Local test: `wrangler dev --var DEV_ROOMS:1`, page `?table=Name`. Tests: `tests/tables.test.js`.
 
+## Houses (one host per channel)
+`activity/src/hosts/`: the Chamber is an engine with a host per Discord channel. `hostFor()` picks the House from the Activity's channel (or `?house=<id>` for previews), and `/play` opens it from any channel. Everything stays shared: one Essence wallet, Codex, trophies, store, and one music pool and playlist. Each House draws its own music player.
+- **House 1, The Oracle** (`hosts/oracle.js`): every reading and room, her personalities, and the turntable.
+- **House 2, The Alchemist's House** (`hosts/alchemist.js`): Magister Vell (copper mask, brass goggle, leather hood) hosts the Alchemist's Lab, Element Duel and Herbalist's Grimoire. She has her own greetings, idle facts, jokes, game banter and voice, the 🥽 goggle-lens shelf (10 lenses named after real flame tests, in the "House hosts" department) and the Brass Phonograph player.
+- **New House:** add `hosts/<id>.js` with `channelIds`, `rooms`, `lines`, `banter` for each of its rooms, a shelf and a `player.deck`, then list it in `HOSTS`. `tests/houses.test.js` checks that it is complete.
+
 ## Human Design
 `src/humandesign/`: chart (26 activations, design moment at 88° of solar arc, true node), branded bodygraph PNG, and original Science is Magic interpretation text. Verified against Ra Uru Hu's published chart and 400 random charts from an independent engine.
 

@@ -88,7 +88,8 @@ export function turntableSvg(t, playing) {
 }
 
 /** The record player view inside the Trophy Case. */
-export function recordPlayerHtml(p, pl, esc) {
+/** deck(track, playing) draws the House's own player (the Oracle's turntable by default); the records and playlist are shared. */
+export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg } = {}) {
   const s = musicOf(p), cur = pl.current, list = s.list.filter((id) => hasTrack(p, trackOf(id))), owned = TRACKS.filter((t) => hasTrack(p, t)).length;
   const sleeve = (t, i) => { const own = hasTrack(p, t), inList = list.includes(t.id), on = cur && cur.id === t.id;
     const state = own ? "" : t.how === "shop" ? `<span class="rp-lock">💎 ${t.price} in the Store</span>` : `<span class="rp-lock">🔒 ${esc(t.task)}</span>`;
@@ -100,7 +101,7 @@ export function recordPlayerHtml(p, pl, esc) {
   const pos = pl.position;
   return `<div class="rp">
   <div class="rp-deck">
-    <div class="rp-tt">${turntableSvg(cur, pl.playing && s.on)}</div>
+    <div class="rp-tt">${deck(cur, pl.playing && s.on)}</div>
     <div class="rp-ctl">
       <div class="rp-now"><small>${pl.inBattle ? "⚔ Battle music" : s.on ? (pl.playing ? "Now playing" : "Paused") : "Music is off"}</small><b>${cur ? esc(cur.title) : "No record on"}</b><span class="rp-time">${fmt(pos.t)} / ${fmt(pos.d)}</span></div>
       <div class="rp-btns"><button class="c" type="button" data-mu="prev" aria-label="Previous record">⏮</button><button class="c main" type="button" data-mu="toggle" aria-label="${pl.playing ? "Pause" : "Play"}">${pl.playing ? "⏸" : "▶"}</button><button class="c" type="button" data-mu="next" aria-label="Next record">⏭</button></div>

@@ -104,6 +104,7 @@ export default {
       options = flatten(it.data.options);
       if (name === "profile") return profileReply(env, user.id, options, say);
       if (name === "oracle") return json(menuMessage(env, who));
+      if (name === "play") return env.ACTIVITY_READY === "true" ? json({ type: 12 }) : say("The Houses open soon. Try /oracle for now.");
       if (!MODULES.includes(name)) return say("Unknown command.");
       const f = fieldsFor(name, options);
       // /astrology now is public by default: only use birth data when typed, or my_chart is set (which makes it private).

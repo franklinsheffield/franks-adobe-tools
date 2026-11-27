@@ -58,6 +58,7 @@ import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
 import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
+import { host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost } from "./hosts/index.js"; // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -121,11 +122,11 @@ sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
 let typing = null;
 const bused = []; // banter lines already said this visit (banter.js)
 const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: (m) => { refreshEnergy(); const sp = document.querySelector(".speaker"); if (sp) sp.dataset.emo = MOOD_EMOJI[m] || ""; },
-  onPoke: (zone, count) => (count < 5 && Math.random() < 0.5 ? banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null) });
+  onPoke: (zone, count) => (count < 5 && Math.random() < 0.5 ? hostBanter("", "poke", state.name, bused) || banter("", state.prog.persona || "mystic", "poke", state.name, bused) : null) });
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
 function roomBanter(event = "mid") {
-  const l = state.inRoom && banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused); if (!l) return;
+  const l = state.inRoom && (hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
   chat.n = 0; chat.next = 5 + Math.floor(Math.random() * 4); chat.at = Date.now();
   mood.emote(["wink", "curious", "think", "smug"][Math.floor(Math.random() * 4)], { quiet: true, say: l });
   if (state.prog.persona === "standup") setTimeout(rimshot, 900);
@@ -161,6 +162,7 @@ const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!
 function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
+  text = rename(text);
   clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
   if (!keep) $("said").innerHTML = "";
   /** Long text scrolls: keep the line being spoken in view. */
@@ -185,18 +187,18 @@ function say(text, done, { keep = false } = {}) {
   step();
 }
 const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
-const joke = (key) => personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
+const joke = (key) => hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
-const ui = (html) => { $("ctl").innerHTML = ""; $("ui").innerHTML = html; };
+const ui = (html) => { $("ctl").innerHTML = ""; $("ui").innerHTML = rename(html); };
 /** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
-const ctl = (html) => { $("ctl").innerHTML = html; };
+const ctl = (html) => { $("ctl").innerHTML = rename(html); };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
 function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * 6.28; return `<i style="--x:${Math.cos(a) * 110}px;--y:${Math.sin(a) * 70}px"></i>`; }).join("");
   p.classList.remove("go"); void p.offsetWidth; p.classList.add("go"); }
 
 // ---- the conversation ----
-const cap = (t) => { $("table-cap").textContent = t || ""; };
+const cap = (t) => { $("table-cap").textContent = rename(t || ""); };
 const clearReading = () => { $("reading-body").innerHTML = ""; $("box").scrollTop = 0; };
 // ---- pull-in (pullin.js): the daily gift ladder, the profile card, invite a friend ----
 function modal(id, html) { $(id)?.remove(); const el = document.createElement("div"); el.id = id; el.className = "pull-modal"; el.innerHTML = html; document.body.append(el);
@@ -260,7 +262,7 @@ function idleReset() { clearTimeout(idle.t); idle.step = 0; mood.wake(); if (idl
 function idleTick() {
   const b = document.body.classList, busy = state.inRoom || b.contains("talking") || b.contains("trance") || $("more") || document.hidden;
   if (!busy && idle.step >= 4) return mood.sleep(); // after four unanswered remarks she dozes off until you come back
-  if (!busy) say(idleLine(pid(), idle.step++, idle.used, state.name));
+  if (!busy) { idle.step++; say(hostLine("idle", state.name, idle.used) || idleLine(pid(), idle.step - 1, idle.used, state.name)); }
   idle.t = setTimeout(idleTick, IDLE_AFTER);
 }
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
@@ -270,16 +272,16 @@ function greet() {
   state.inRoom = null; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
-  const sys = available(MODULES), btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
+  const sys = HOST().readings ? available(MODULES) : [], btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
-  say((line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  say((hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
   showStats();
-  const items = homeItems(sys, ROOMS, STUDY);
+  const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
-  $("hm-daily").onclick = () => choose(systemByKey("tarot"));
+  $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
   $("hm-surprise").onclick = () => { const all = [...items.question, ...items.cards, ...items.birth, ...items.play], it = all[Math.floor(Math.random() * all.length)];
     mood.emote("wink", { quiet: true }); it.kind === "sys" ? choose(systemByKey(it.id)) : openRoom(it.id); };
   $("ui").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => choose(systemByKey(b.dataset.k))));
@@ -309,7 +311,7 @@ function openStudy(roomId, back) {
 const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
-registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
+hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
 /** Add ✦ and 💎 from a room, keeping ranks in step. Returns { rankUp } (the new rank's name or null). */
 function award(xp = 0, essence = 0) {
   const p = state.prog, before = rankOf(p.xp).name;
@@ -550,7 +552,8 @@ function applyLook(over = {}) {
     else if (!ws && au) au.remove(); }
   root.dataset.vibe = vibe.id; starColors = vibe.stars || starColors;
   if (applyLook.vibe !== vibe.id) { applyLook.vibe = vibe.id; $("vfx-o").innerHTML = vibeFx(vibe.id, "o"); $("vfx-t").innerHTML = vibeFx(vibe.id, "t"); }
-  const v = item(p.voice); setVoiceStyle(v ? v.v : null);
+  const v = item(p.voice); setVoiceStyle(HOST().voice || (v ? v.v : null));
+  paintHost(svg, p, "t");
   // every candle in the Chamber (Memory's candle row, the séance wax) burns in the equipped candles
   root.style.setProperty("--cw1", fl.wax[0]); root.style.setProperty("--cw2", fl.wax[1]);
   root.style.setProperty("--cf1", fl.flame[1]); root.style.setProperty("--cf2", fl.flame[2]); root.style.setProperty("--ch", fl.halo);
@@ -1094,12 +1097,13 @@ showSpeech();
       }
     } catch (e) { console.warn("Discord SDK failed to start", e); }
   }
+  setHost(hostFor({ channelId: state.channelId, search: location.search })); dressHouse();
   await loadProgress();
   await checkBoost();
   joinLobby();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
-  gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
+  gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
   const enter = () => { unlockVoice(); paintScene(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
@@ -1131,7 +1135,7 @@ document.addEventListener("click", (e) => { if (e.target.closest && e.target.clo
 /** A room finished a round: C.trophy(roomId, level 1-3, { won, perfect }). */
 function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" : "win") : "lose"; chat.at = Date.now();
   { const g = TROPHIES.find((x) => x.id === id); if (g) logEvent("game", o && o.won ? "⭐" : "🎲", `${g.game}, Level ${level}: ${o && o.won ? (o.perfect ? "a perfect win" : "won") : "lost to the Oracle"}`, null, [["Game", g.game], ["Level", level], ["Result", o && o.won ? (o.perfect ? "A perfect win" : "Won") : "Lost to the Oracle"], ["Trophy", g.name]]); }
-  mood.emote(moodForOutcome(id, o || {}), { say: banter(id, pid(), ev, state.name, bused) });
+  mood.emote(moodForOutcome(id, o || {}), { say: hostBanter(id, ev, state.name, bused) || banter(id, pid(), ev, state.name, bused) });
   { const mt = levelTokens(state.prog, id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +🌙 ${mt.n}, series bonus included. That's a Moon relic.` : `First win at Level ${level}! +🌙 ${mt.n} for Moon relics.`, 3400, "🌙"), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
@@ -1195,6 +1199,7 @@ function openCase(focus = null, view = null) {
     <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);
       return `<div class="tset tmaster${c ? " done" : ""}"><b>${c ? "👑" : "◇"} The Star Crown</b><span>${c ? "Every game finished on every level. The Oracle wears the Star Crown for good." : `Finish all ${GAMES.length} games on every level to roll the credits and crown the Oracle forever · ${m.done} / ${m.of} levels`}</span><button class="c small" type="button" data-credits="1">🎬 Roll the credits</button></div>`; })()}</div>
     <div class="note">Bronze, Silver and Gold come from finishing Levels 1, 2 and 3. Prismatic needs a perfect round on every level. Each tier pays its Essence once.</div></div>`;
+  if (HOST().rename) el.innerHTML = rename(el.innerHTML);
   el.hidden = false; el.scrollTop = 0; wireCaseTabs();
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
   el.querySelectorAll("[data-tr]").forEach((b) => (b.onclick = () => { chime(1); openCase(b.dataset.tr); }));
@@ -1213,7 +1218,8 @@ function openRecords() {
   const el = $("tcase"), p = state.prog;
   el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The record player">
     <header><div class="tc-brand"><span class="tc-sig">♫</span><div><h2>The Record Player</h2><small>Science is Magic · Oracle Chamber</small></div></div>${caseTabs()}
-      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc)}</div>`;
+      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc, { deck: HOST().player.deck })}</div>`;
+  if (HOST().rename) el.innerHTML = rename(el.innerHTML);
   const wasHidden = el.hidden; el.hidden = false; if (wasHidden) el.scrollTop = 0; wireCaseTabs(); wireMusic(el, player, musicDeps());
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
 }
