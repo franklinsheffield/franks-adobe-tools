@@ -158,7 +158,7 @@ export const room = {
         else later(300, () => turn(msg));
         return;
       }
-      busy = true; show(out);
+      busy = true; show(out); ui(`<div class="du-stats"><span>Round <b>${g.round}</b></span><span>🛡 You <b>${g.you.hp}</b></span><span>🔮 Oracle <b>${g.oracle.hp}</b></span><span>◆ Discoveries <b>${g.you.found.length}</b> of ${GOAL}</span></div><div class="note">⚗️ Reacting… its Codex page is open below.</div>`);
       const c = out.c, bits = [];
       bits.push(`${pretty(c.f)}, ${c.name}! Power ${out.power}${out.notes.length ? ` (${out.notes.join(", ")})` : ""}.`);
       if (out.blocked) bits.push(`My shield blocks ${out.blocked}.`);
