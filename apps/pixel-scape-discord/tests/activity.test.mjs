@@ -41,3 +41,18 @@ test("token route returns 403 locked when the member lacks the role", async () =
     assert.strictEqual(ok.status, 200); assert.deepStrictEqual(await ok.json(), { access_token: "T" });
   } finally { globalThis.fetch = real; }
 });
+test("3D library: list from the web build, files and thumbs proxied, nothing else", async () => {
+  const { libTarget } = await import("../activity/worker.mjs");
+  let asked = null; const e = env({ ASSETS: { fetch: async (r) => { asked = new URL(r.url).pathname; return new Response("{}"); } } });
+  assert.strictEqual(await (await W.fetch(new Request("https://x/.proxy/api/lib/index.json"), e)).text(), "{}"); assert.strictEqual(asked, "/kit-models.json");
+  assert.strictEqual(libTarget("/api/lib/file/things/chess-set.glb").url, "https://raw.githubusercontent.com/franklinsheffield/web-pipeline-assets/main/models/things/chess-set.glb");
+  assert.strictEqual(libTarget("/api/lib/thumb/library/thumbs/models/a-b.webp").url, "https://web-pipeline-kit.vercel.app/library/thumbs/models/a-b.webp");
+  for (const bad of ["/api/lib/file/../secret.glb", "/api/lib/file/things/x.exe", "/api/lib/file/other/x.glb", "/api/lib/thumb/etc/passwd", "/api/lib/file/things/..glb"]) assert.strictEqual(libTarget(bad), null, bad);
+  const real = globalThis.fetch, urls = [];
+  globalThis.fetch = async (u) => { urls.push(String(u)); return new Response(new Uint8Array([1, 2, 3]), { status: 200 }); };
+  try {
+    const r = await W.fetch(new Request("https://x/.proxy/api/lib/file/places/road.glb"), e);
+    assert.strictEqual(r.status, 200); assert.strictEqual(r.headers.get("content-type"), "model/gltf-binary"); assert.strictEqual((await r.arrayBuffer()).byteLength, 3);
+    assert.strictEqual((await W.fetch(new Request("https://x/api/lib/file/nope.glb"), e)).status, 404); assert.strictEqual(urls.length, 1);
+  } finally { globalThis.fetch = real; }
+});

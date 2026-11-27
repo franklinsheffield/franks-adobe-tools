@@ -13,6 +13,13 @@ Pixel Scape (formerly Worlds Lab) is a standalone desktop app (Electron + Three.
 
 ## Update notes
 
+**0.15.0 (2026-11-27): Frank's 3D library inside Pixel Scape**
+
+- **3D library card** (left side, under Add): search about 6,800 free models from the web-pipeline-kit library (CC0, CC BY and public domain), filter by kind, then click one to add it in front of the camera or drag it into the view. The status line shows the licence, and the credit line for CC BY models.
+- **In Discord:** works in the Activity too. Everyone in the call sees the model, the same as any import. The list, files and pictures go through the Activity's own Worker (`/api/lib/...`), so no new URL mappings are needed. Scans over 40 MB and point clouds are left to the website.
+- **Model reader:** now opens meshopt-compressed and quantised .glb files (EXT_meshopt_compression, KHR_mesh_quantization, KHR_texture_transform, EXT_texture_webp), which is how the library's files are stored. Any such file dropped or imported by hand works too.
+- **Bot:** `/model find`, `/model random` and `/model show` in Science is Magic (see `apps/pixel-scape-discord/README.md`).
+
 **0.14.0 (2026-11-26): sharper Terrain Lab pictures**
 
 - **3D preview** in Terrain Lab now draws at full screen resolution on Retina displays (it was drawing at half and looked soft).
