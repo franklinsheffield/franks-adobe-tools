@@ -43,6 +43,7 @@ import { ALL as HERBS, keyOf as herbKey } from "./grimoire/logic.js";
 import { thumbSvg as herbSvg } from "./grimoire/sketch.js";
 import { joinTable, canJoin } from "./net.js";
 import { gemShop, gemSvg } from "./gems.js";
+import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBoost, profileOf, profileHtml, profileLines, inviteSent, INVITE_REWARD } from "./pullin.js";
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
@@ -193,6 +194,35 @@ function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, 
 // ---- the conversation ----
 const cap = (t) => { $("table-cap").textContent = t || ""; };
 const clearReading = () => { $("reading-body").innerHTML = ""; $("box").scrollTop = 0; };
+// ---- pull-in (pullin.js): the daily gift ladder, the profile card, invite a friend ----
+function modal(id, html) { $(id)?.remove(); const el = document.createElement("div"); el.id = id; el.className = "pull-modal"; el.innerHTML = html; document.body.append(el);
+  const close = () => { el.classList.add("out"); setTimeout(() => el.remove(), reduced ? 0 : 300); }; el.onclick = (e) => { if (e.target === el) close(); }; return { el, close }; }
+function showGift() {
+  if (!giftState(state.prog).ready || $("gift")) return;
+  const m = modal("gift", giftHtml(state.prog, esc)); $("gift-take").focus();
+  $("gift-take").onclick = () => { const g = claimGift(state.prog); if (!g) return m.close();
+    saveProgress(); showStats(); chime(2); mood.emote(g.step === 6 ? "cheer" : "joy", { quiet: true });
+    const box = m.el.querySelector(".gl.now"); box?.classList.add("open"); $("gift-take").disabled = true; $("gift-take").textContent = `+💎 ${g.amount}`;
+    logEvent("gift", "🎁", `Daily gift, day ${g.step + 1}: 💎 ${g.amount}`);
+    mood.bubble(g.step === 6 ? `Seven days straight! 💎 ${g.amount}. The ladder starts again tomorrow.` : `💎 ${g.amount}. Same time tomorrow?`, 3600, "🎁");
+    setTimeout(m.close, reduced ? 600 : 1500); };
+}
+function showProfile() {
+  const recs = TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
+  const x = profileOf(state.prog, { name: state.name, records: recs, systems: names });
+  const art = ($("teller").querySelector("svg")?.outerHTML || "").replace(/id="t-/g, 'id="pf-').replace(/#t-/g, "#pf-").replace(/\sid="(?!pf-)[^"]*"/g, "");
+  const m = modal("profile", `<div class="pf-in" role="dialog" aria-label="Your profile card">${profileHtml(x, esc, art)}<div class="choices"><button class="c main" type="button" id="pf-share">📤 Share in the channel</button><button class="c" type="button" id="pf-x">Close</button></div><p class="pf-msg" id="pf-msg" aria-live="polite"></p></div>`);
+  $("pf-x").onclick = m.close; $("pf-x").focus();
+  $("pf-share").onclick = () => { const lines = profileLines(x), msg = (t) => { $("pf-msg").textContent = t; };
+    if (state.token && state.channelId) fetch(api("/api/share"), { method: "POST", headers: { authorization: "Bearer " + state.token, "content-type": "application/json" }, body: JSON.stringify({ channelId: state.channelId, kind: "profile", title: `${state.name}'s card`, lines, color: "#E2B04A" }) })
+      .then((r) => r.json()).then((r) => msg(r.ok ? "📤 Shared in the channel" : `Not shared: ${r.error || "try again"}`)).catch(() => msg("Not shared: offline"));
+    else { try { navigator.clipboard.writeText(`🪪 ${state.name}'s card\n${lines.join("\n")}`).then(() => msg("📋 Card copied. Paste it in the chat."), () => msg("Sharing works inside Discord")); } catch { msg("Sharing works inside Discord"); } } };
+}
+function inviteFriend() {
+  const paid = () => { const n = inviteSent(state.prog); if (n) { saveProgress(); showStats(); chime(1); mood.bubble(`Thank you! 💎 ${n} for spreading the word.`, 3200, "💌"); greet(); } else mood.bubble("Invite sent. The more the merrier.", 2600, "💌"); };
+  if (state.sdk && state.sdk.commands && state.sdk.commands.openInviteDialog) state.sdk.commands.openInviteDialog().then(paid).catch(() => mood.bubble("The invite window didn't open. Try the + button in the Activity bar.", 3200, "💌"));
+  else { try { navigator.clipboard.writeText("Come and sit at the Oracle Chamber with me: open the Activities menu in our voice channel and pick Science is Magic Oracle.").then(paid, () => mood.bubble("Invites work inside Discord.", 2600, "💌")); } catch { mood.bubble("Invites work inside Discord.", 2600, "💌"); } }
+}
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
   el.innerHTML = sceneHtml(Date.now(), { motes: reduced ? 0 : 14 }); }
@@ -237,6 +267,9 @@ function greet() {
   showStats();
   const items = homeItems(sys, ROOMS, STUDY);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
+  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
+  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
+  $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   $("hm-daily").onclick = () => choose(systemByKey("tarot"));
   $("hm-surprise").onclick = () => { const all = [...items.question, ...items.cards, ...items.birth, ...items.play], it = all[Math.floor(Math.random() * all.length)];
     mood.emote("wink", { quiet: true }); it.kind === "sys" ? choose(systemByKey(it.id)) : openRoom(it.id); };
@@ -280,7 +313,7 @@ function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
   if (state.inRoom !== id) cine(CINE.room);
   state.inRoom = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
-  const roomAward = (xp, es) => { const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
+  const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); return r; };
   r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
     arg, go: (rid, a) => openRoom(rid, a), reading: (k) => { const sys = systemByKey(k); if (sys) choose(sys); } }); // reading: open one of the Oracle's readings (e.g. "astrology") // arg: optional entry hint from another room (e.g. { ghost } or { script }); go: jump to another room
 }
@@ -955,7 +988,7 @@ showSpeech();
     try {
       const d = await startDiscord();
       if (d.user) { state.name = d.user.global_name || d.user.username; state.userId = d.user.id; state.token = d.token; state.guildId = d.guildId; }
-      state.instance = d.sdk && d.sdk.instanceId; state.channelId = d.sdk && d.sdk.channelId; // the call: multiplayer tables (net.js) are per call
+      state.sdk = d.sdk || null; state.instance = d.sdk && d.sdk.instanceId; state.channelId = d.sdk && d.sdk.channelId; // the call: multiplayer tables (net.js) are per call
       if (d.token) {
         const p = await fetch(api("/api/profile"), { headers: { authorization: "Bearer " + d.token } }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
         if (p && p.profile) state.profile = p.profile;
@@ -969,7 +1002,7 @@ showSpeech();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` });
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); };
+  const enter = () => { unlockVoice(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
 })();
 

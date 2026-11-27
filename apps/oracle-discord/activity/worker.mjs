@@ -61,14 +61,14 @@ async function daily(req, env, game, url) {
 /** Is this member boosting the guild? The bot reads their member record (premium_since); each boost pays once. */
 /** Post a Grimoire page to the Activity's channel as an embed, from the bot. Text only, trimmed; one per member per minute. */
 export async function sharePage(env, me, body, fetchImpl = fetch) {
-  const { channelId, title, lines, color } = body || {};
+  const { channelId, title, lines, color, kind } = body || {}, prof = kind === "profile"; // kind "profile": the member's profile card
   if (!env.DISCORD_BOT_TOKEN || !/^\d{5,25}$/.test(String(channelId || ""))) return { ok: false, error: "sharing is not available here" };
   if (env.PROFILES) { const k = "share:" + me.id, last = await env.PROFILES.get(k, "json"); if (last && Date.now() - last.at < 60000) return { ok: false, error: "one page a minute" }; await env.PROFILES.put(k, JSON.stringify({ at: Date.now() })); }
   const clean = (t, n) => String(t || "").replace(/@(everyone|here)/gi, "@\u200b$1").replace(/<@[!&]?\d+>/g, "").slice(0, n);
   const desc = (Array.isArray(lines) ? lines : []).slice(0, 14).map((l) => clean(l, 140)).join("\n");
   const name = me.global_name || me.username || "A seeker";
-  const embed = { title: clean(`📖 ${title || "A page from Your Grimoire"}`, 200), description: desc || "…", color: /^#?[0-9a-f]{6}$/i.test(String(color || "")) ? parseInt(String(color).replace("#", ""), 16) : 0xe2b04a,
-    footer: { text: clean(`From ${name}'s Grimoire · Science is Magic Oracle Chamber`, 120) } };
+  const embed = { title: clean(`${prof ? "🪪" : "📖"} ${title || "A page from Your Grimoire"}`, 200), description: desc || "…", color: /^#?[0-9a-f]{6}$/i.test(String(color || "")) ? parseInt(String(color).replace("#", ""), 16) : 0xe2b04a,
+    footer: { text: clean(prof ? `${name} · Science is Magic Oracle Chamber` : `From ${name}'s Grimoire · Science is Magic Oracle Chamber`, 120) } };
   const r = await fetchImpl(`https://discord.com/api/v10/channels/${channelId}/messages`, { method: "POST", headers: { authorization: "Bot " + env.DISCORD_BOT_TOKEN, "content-type": "application/json" }, body: JSON.stringify({ embeds: [embed], allowed_mentions: { parse: [] } }) }).catch(() => null);
   return r && r.ok ? { ok: true } : { ok: false, error: "the bot could not post in this channel" };
 }
