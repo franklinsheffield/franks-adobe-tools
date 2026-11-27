@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 const dist = new URL("dist/", import.meta.url);
 const read = (f) => readFileSync(new URL(f, dist));
-const mime = { otf: "font/otf", ttf: "font/ttf", png: "image/png" };
+const mime = { otf: "font/otf", ttf: "font/ttf", png: "image/png", woff2: "font/woff2" };
 const css = read("chamber.css").toString().replace(/url\((assets\/[^)]+)\)/g, (m, f) => `url(data:${mime[f.split(".").pop()]};base64,${read(f).toString("base64")})`);
 const js = read("chamber.js").toString().replace(/<\/script/gi, "<\\/script");
 const CITIES = { phoenix: [33.4484, -112.074], "new york": [40.7128, -74.006], "los angeles": [34.0522, -118.2437], chicago: [41.8781, -87.6298],
