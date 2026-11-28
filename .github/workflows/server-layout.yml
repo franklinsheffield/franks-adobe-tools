@@ -4,16 +4,17 @@
 #   stage1: creates the new categories and channels hidden from @everyone (no moves, no permission changes)
 #   plan2: read only; lists every stage 2 move, rename, permission set and role grant (scripts/server-switch.js)
 #   stage2: the switch-on: does them. Then run the House gate workflow in mode "on".
+#   team: creates the Dev and Teacher roles and gives both to dev.n (scripts/team-roles.js)
 name: Server layout
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "snapshot | plan | stage1 | plan2 | stage2"
+        description: "snapshot | plan | stage1 | plan2 | stage2 | team"
         required: true
         default: snapshot
         type: choice
-        options: [snapshot, plan, stage1, plan2, stage2]
+        options: [snapshot, plan, stage1, plan2, stage2, team]
 permissions:
   contents: read
 jobs:
@@ -29,7 +30,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
           SNAPSHOT_OUT: ${{ runner.temp }}/snapshot.json
         run: |
-          case "${{ inputs.mode }}" in plan2|stage2) node scripts/server-switch.js "${{ inputs.mode }}" ;; *) node scripts/server-layout.js "${{ inputs.mode }}" ;; esac
+          case "${{ inputs.mode }}" in plan2|stage2) node scripts/server-switch.js "${{ inputs.mode }}" ;; team) node scripts/team-roles.js ;; *) node scripts/server-layout.js "${{ inputs.mode }}" ;; esac
       - uses: actions/upload-artifact@v4
         if: inputs.mode == 'snapshot'
         with: { name: server-snapshot, path: "${{ runner.temp }}/snapshot.json", retention-days: 90 }
