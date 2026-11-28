@@ -30,6 +30,7 @@ import { alchemy, alchemyCodex } from "./alchemy/room.js";
 import { flametest, flametestCodex } from "./flametest/room.js";
 import { inscriptions, inscriptionsCodex } from "./inscriptions/room.js";
 import { cipherdesk, cipherdeskCodex } from "./cipherdesk/room.js";
+import { blackchamber, blackchamberCodex } from "./blackchamber/room.js";
 import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
 import { workshop, workshopCodex } from "./workshop/room.js";
@@ -89,6 +90,7 @@ import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
 import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
+import { HOUSE_BOOKS, houseStudy, studyLine } from "./study-houses.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
@@ -394,7 +396,7 @@ function greet() {
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
   say((personaHouseLine(pid(), "greet", state.name) || hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${hostStreak(st) || `${st} days in a row now… the stars notice.`}` : "") : ""));
   showStats();
-  const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY);
+  const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY, { title: (HOUSE_BOOKS[HOST().id] || HOUSE_BOOKS.oracle).title, name: HOST().house });
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
@@ -449,23 +451,29 @@ function openRecordCrate(note) {
 
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
 function openStudy(roomId, back) {
-  const x = studyFor(roomId); if (!x) return greet();
+  const H = HOST(), house = roomId === "house";
+  const x = house ? houseStudy(H, STUDY.filter((g) => hasRoom(H, g.room) && ROOMS.some((r) => r.id === g.room))) : studyFor(roomId); if (!x) return greet();
   if (!document.getElementById("study-style")) { const st = document.createElement("style"); st.id = "study-style"; st.textContent = STUDY_CSS; document.head.appendChild(st); }
   state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(`📖 Study: ${x.name}`);
-  const show = (g) => { const rb = $("reading-body"); rb.innerHTML = studyHtml(g); rb.querySelector(".sh-guide")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  let first = true;
+  const show = (g) => { const rb = $("reading-body"); rb.innerHTML = studyHtml(g, { accent: house ? H.accent : "" }); rb.querySelector(".sh-guide")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    rb.querySelectorAll(".sh-guide details").forEach((d) => (d.ontoggle = () => d.open && bookSfx("page", { gain: 0.5 })));
+    if (!first) bookSfx("page"); first = false;
     $("ui").querySelectorAll("[data-guide]").forEach((b) => b.classList.toggle("main", b.dataset.guide === g.id)); };
-  say(x.guides.length > 1 ? `The ${x.name} library. ${x.guides.length} guides: pick one and read at your own pace.` : `Everything ${x.name} asks is in here. Read at your own pace.`);
+  bookSfx("cover"); mood.emote("nod", { quiet: true });
+  say(studyLine(H.id, house ? "open" : "pick", { name: state.name, game: x.name }) + (house ? "" : x.guides.length > 1 ? ` ${x.guides.length} guides: start with How to play.` : ""));
+  const play = house ? (H.daily ? `<button class="c main" type="button" id="study-play">▶ Today's daily</button>` : "") : `<button class="c main" type="button" id="study-play">▶ Play ${esc(x.name)}</button>`;
   ui(`<div class="choices">${x.guides.map((g) => `<button class="c small" type="button" data-guide="${g.id}">${g.emoji} ${esc(g.title.replace(/ study guide$/i, ""))}</button>`).join("")}</div>
-    <div class="choices"><button class="c main" type="button" id="study-play">▶ Play ${esc(x.name)}</button><button class="c" type="button" id="study-back">${back ? "↩ Back" : "✦ Back to the Oracle"}</button></div>`);
+    <div class="choices">${play}<button class="c" type="button" id="study-back">${back ? "↩ Back" : `${H.emoji} Back to ${esc(H.name)}`}</button></div>`);
   $("ui").querySelectorAll("[data-guide]").forEach((b) => (b.onclick = () => show(x.guides.find((g) => g.id === b.dataset.guide))));
-  $("study-play").onclick = () => openRoom(roomId);
+  if ($("study-play")) $("study-play").onclick = () => openRoom(house ? H.daily : roomId);
   $("study-back").onclick = () => (back ? back() : greet());
   show(x.guides[0]);
 }
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }, { ...blackchamber, codexHtml: blackchamberCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
