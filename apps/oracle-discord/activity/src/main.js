@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { LITE, chamberHidden, onShow } from "./perf.js";
 import { gateOf } from "./hosts/gates.js";
 import { bookPoke } from "./library.js";
 import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, ALL_TRACKS, hasTrack } from "./music.js";
@@ -16,7 +17,6 @@ import { available, systemByKey, optionsFor } from "../../src/oracle/systems.js"
 import { greeting, askLine, speech } from "../../src/oracle/voice.js";
 import { fieldsFor, missingOptional, accuracyWarning } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
-import { MODS } from "./modules.gen.js";
 import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, codexNotes, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
@@ -158,12 +158,20 @@ const CAST = {
 };
 let starColors = ["#FADE8C", "#66E0C8"];
 const cv = $("stars"), cx = cv.getContext("2d"); let stars = [];
-function sizeSky() { const r = cv.getBoundingClientRect(); cv.width = r.width * devicePixelRatio; cv.height = r.height * devicePixelRatio;
-  stars = Array.from({ length: 110 }, () => ({ x: Math.random(), y: Math.random() * 0.75, r: Math.random() * 1.4 + 0.3, p: Math.random() * 6 })); }
-function drawSky(t) { cx.clearRect(0, 0, cv.width, cv.height);
-  for (const s of stars) { cx.globalAlpha = 0.35 + 0.35 * Math.sin(t / 900 + s.p); cx.fillStyle = s.p > 5 ? starColors[1] : starColors[0]; cx.beginPath(); cx.arc(s.x * cv.width, s.y * cv.height, s.r * devicePixelRatio, 0, 7); cx.fill(); }
-  if (!reduced) requestAnimationFrame(drawSky); }
-sizeSky(); addEventListener("resize", sizeSky); requestAnimationFrame(drawSky);
+// The starfield twinkles slowly (a ~6 s cycle), so it is redrawn at 30 fps (20 in lite mode) rather than every frame,
+// at no more than 2x pixel density (1.5x lite), and not at all while the Chamber is hidden (perf.js).
+const SKY = { dpr: Math.min(devicePixelRatio || 1, LITE ? 1.5 : 2), gap: LITE ? 50 : 33, last: -1e9, on: false };
+function sizeSky() { const r = cv.getBoundingClientRect(); cv.width = r.width * SKY.dpr; cv.height = r.height * SKY.dpr;
+  stars = Array.from({ length: LITE ? 80 : 110 }, () => ({ x: Math.random(), y: Math.random() * 0.75, r: Math.random() * 1.4 + 0.3, p: Math.random() * 6 })); paintSky(performance.now()); }
+function paintSky(t) { cx.clearRect(0, 0, cv.width, cv.height);
+  for (const s of stars) { cx.globalAlpha = 0.35 + 0.35 * Math.sin(t / 900 + s.p); cx.fillStyle = s.p > 5 ? starColors[1] : starColors[0]; cx.beginPath(); cx.arc(s.x * cv.width, s.y * cv.height, s.r * SKY.dpr, 0, 7); cx.fill(); } }
+function drawSky(t) {
+  if (reduced || chamberHidden()) { SKY.on = false; return; } // onShow() starts it again
+  if (t - SKY.last >= SKY.gap) { SKY.last = t; paintSky(t); }
+  requestAnimationFrame(drawSky); }
+const startSky = () => { if (SKY.on || reduced) return; SKY.on = true; requestAnimationFrame(drawSky); };
+onShow(startSky);
+sizeSky(); addEventListener("resize", sizeSky); startSky();
 
 // The Oracle talks: letters appear at speaking pace (pausing on punctuation), each few letters a retro blip,
 // and the creature's eye and face pulse while it speaks.
@@ -589,6 +597,10 @@ function choose(sys) {
   $("back").onclick = greet;
 }
 
+/** The reading modules (and their images) are a separate chunk: fetched in the background once the page is idle,
+ *  or on the first cast, so the first screen loads without them (perf, 2026-11-28). */
+function loadMods() { return (loadMods.p ||= import("./modules.gen.js").catch((e) => { loadMods.p = null; throw e; })); }
+setTimeout(() => { const go = () => loadMods().catch(() => {}); "requestIdleCallback" in window ? requestIdleCallback(go, { timeout: 4000 }) : go(); }, 6000);
 async function reveal(sys, options, question = "") {
   if (readsLeft(state.prog, rankOf(state.prog.xp).name) <= 0) return outOfReadings(sys);
   ui(""); clearReading(); state.q = question; markCard(state.prog);
@@ -599,7 +611,7 @@ async function reveal(sys, options, question = "") {
   trance(3);
   let r, err;
   try {
-    const mod = MODS[sys.command];
+    const mod = (await loadMods()).MODS[sys.command];
     if (sys.row === "cards") { const n = (sys.spreads ? ({ one: 1, pair: 2, three: 3, line: 3, five: 5, square: 9, celtic: 10 }[options.spread] || 3) : 3); cardDeal(n, n > 5 ? 0.13 : 0.2); }
     [r] = await Promise.all([mod.run(options, { user: state.name, birthDetail: true }), table.cast(sys.key, options), wait((sys.key === "tarot" && options.spread === "celtic") || (sys.key === "lenormand" && options.spread === "square") ? 3600 : 3000)]);
   } catch (e) { err = e; }
@@ -1409,7 +1421,7 @@ showSpeech();
   gate.hidden = false; say("");
   const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(OPENER[HOST().id]); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
-  if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
+  if (!reduced && !LITE) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
 
 // ---- server boosts (boost.js): the Worker checks the boost with the bot and pays each one once; the Oracle says thank you ----

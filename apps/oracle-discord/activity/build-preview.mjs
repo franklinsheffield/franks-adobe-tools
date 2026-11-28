@@ -6,7 +6,7 @@ const dist = new URL("dist/", import.meta.url);
 const read = (f) => readFileSync(new URL(f, dist));
 const mime = { otf: "font/otf", ttf: "font/ttf", png: "image/png", woff2: "font/woff2" };
 const css = read("chamber.css").toString().replace(/url\((assets\/[^)]+)\)/g, (m, f) => `url(data:${mime[f.split(".").pop()]};base64,${read(f).toString("base64")})`);
-const js = read("chamber.js").toString().replace(/<\/script/gi, "<\\/script");
+const js = readFileSync(new URL("preview/chamber.js", import.meta.url)).toString().replace(/<\/script/gi, "<\\/script");
 const CITIES = { phoenix: [33.4484, -112.074], "new york": [40.7128, -74.006], "los angeles": [34.0522, -118.2437], chicago: [41.8781, -87.6298],
   london: [51.5074, -0.1278], paris: [48.8566, 2.3522], berlin: [52.52, 13.405], tokyo: [35.6762, 139.6503], sydney: [-33.8688, 151.2093],
   toronto: [43.6532, -79.3832], "mexico city": [19.4326, -99.1332], "sao paulo": [-23.5505, -46.6333], lagos: [6.5244, 3.3792],
