@@ -47,6 +47,12 @@ const after = (anim) => count(emojis, anim) - count(retire, anim) + (anim ? addA
 
 console.log(`Server: ${guild.name} | boost tier ${guild.premium_tier} | limit ${limit} static + ${limit} animated`);
 console.log(`Bot ${me.username}: can manage emoji = ${canManage}`);
+for (const role of guild.roles) if (role.id === gid || member.roles.includes(role.id)) {
+  const p = BigInt(role.permissions);
+  console.log(`  role "${role.id === gid ? "@everyone" : role.name}" (managed=${!!role.managed}): admin=${!!(p & ADMIN)} manageExpressions=${!!(p & MANAGE_EXPRESSIONS)} createExpressions=${!!(p & (1n << 43n))}`);
+}
+const named = guild.roles.filter((r) => /oracle|science/i.test(r.name)).map((r) => `${r.name}${member.roles.includes(r.id) ? " [bot has it]" : ""}: manageExpressions=${!!(BigInt(r.permissions) & MANAGE_EXPRESSIONS)}`);
+console.log(`  roles named Oracle/Science: ${named.join("; ") || "none"}`);
 console.log(`Now: ${count(emojis, false)} static, ${count(emojis, true)} animated`);
 console.log(`Server emoji: ${emojis.map((e) => `${e.name}${e.animated ? "(a)" : ""}`).sort().join(", ")}`);
 console.log(`Retire ${retire.length}: ${retire.map((e) => e.name + (e.animated ? "(a)" : "")).join(", ")}`);
