@@ -9,14 +9,14 @@ export const HOME_TABS = [
   { id: "question", emoji: "❓", label: "Ask a question", blurb: "Cast coins, runes, bones or chains for one question" },
   { id: "birth", emoji: "🌌", label: "Your birth", blurb: "Readings from the day you were born" },
   { id: "play", emoji: "🎲", label: "Play & learn", blurb: "Games about real magic and real science" },
-  { id: "study", emoji: "📖", label: "Study", blurb: "Guides for every game, read at your own pace" },
+  { id: "study", emoji: "📖", label: "Study", blurb: "Your House handbook and a guide for every game: how to play, tips and the real facts" },
 ];
 const TAB_KEY = "oracle-home-tab";
 export function savedTab() { try { const t = localStorage.getItem(TAB_KEY); return HOME_TABS.some((x) => x.id === t) ? t : "cards"; } catch { return "cards"; } }
 export function saveTab(t) { try { localStorage.setItem(TAB_KEY, t); } catch {} }
 
 /** Sort systems, rooms and study guides into the tabs. Returns { tabId: [{ kind: "sys"|"room"|"study", id, emoji, label, hint }] }. */
-export function homeItems(systems, rooms, study) {
+export function homeItems(systems, rooms, study, house = null) {
   const sys = (s) => ({ kind: "sys", id: s.key, emoji: s.emoji, label: s.label, hint: s.hint || "" });
   const room = (r) => ({ kind: "room", id: r.id, emoji: r.emoji, label: r.label, hint: r.blurb || "" });
   return {
@@ -24,7 +24,8 @@ export function homeItems(systems, rooms, study) {
     question: systems.filter((s) => s.kind === "cast" && !s.row).map(sys),
     birth: systems.filter((s) => s.kind === "birth").map(sys),
     play: rooms.filter((r) => !r.row).map(room),
-    study: study.filter((x) => rooms.some((r) => r.id === x.room)).map((x) => ({ kind: "study", id: x.room, emoji: x.emoji, label: x.name, hint: "Study guides" })),
+    study: [...(house ? [{ kind: "study", id: "house", emoji: "📖", label: house.title, hint: `${house.name}: how this House works` }] : []),
+      ...study.filter((x) => rooms.some((r) => r.id === x.room)).map((x) => ({ kind: "study", id: x.room, emoji: x.emoji, label: x.name, hint: "How to play, tips and the real facts" }))],
   };
 }
 
