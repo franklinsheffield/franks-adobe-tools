@@ -75,6 +75,7 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
+import { textFxPlan, textFxHtml, TEXTFX_CSS } from "./textfx.js";
 import { notebookPages, studyToday, claimTable, litTable, NOTEBOOK_CSS } from "./notebook.js";
 import { claimOpus, OPUS_CSS, OPUS_GAMES } from "./opus.js";
 import { addTokens } from "./hosts/tokens.js";
@@ -229,6 +230,7 @@ $("table").addEventListener("click", (e) => {
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 // ---- the text feed: follows the speech, folds to two lines (a secret hides behind it), quick-saves the conversation ----
 const FEED = { pinned: true, autoAt: 0 };
+{ const st = document.createElement("style"); st.id = "textfx-style"; st.textContent = TEXTFX_CSS; document.head.append(st); }
 function feedToEnd() { const f = $("feed"); FEED.autoAt = performance.now(); f.scrollTop = f.scrollHeight; }
 $("feed").addEventListener("scroll", () => { const f = $("feed"), end = f.scrollHeight - f.scrollTop - f.clientHeight < 24; if (end) FEED.pinned = true; else if (performance.now() - FEED.autoAt > 120) FEED.pinned = false; }, { passive: true });
 function setFeedMini(on, save = true) {
@@ -262,10 +264,12 @@ function say(text, done, { keep = false } = {}) {
   FEED.pinned = true; const follow = () => { if (FEED.pinned) feedToEnd(); };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
-  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
+  /** Now and then a few words move with the feeling: shake, wave, bounce or pop (textfx.js). */
+  const plan = reduced ? null : textFxPlan(text, mood.mood() || "");
+  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); if (plan) el.innerHTML = textFxHtml(plain, plan, esc); };
   const pros = prosody(plain);
   say.finish = null;
-  const sm = speechMode(), pace = sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1;
+  const sm = speechMode(), pace = (sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1) * (plan && plan.slow ? 1.3 : 1); // dreamy lines are said a little slower
   if (reduced || sm === "off") { el.textContent = plain; stop(); follow(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
   say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); follow(); done && done(); };
