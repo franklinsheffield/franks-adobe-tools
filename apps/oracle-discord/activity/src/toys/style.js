@@ -67,12 +67,18 @@ export const TOY_CSS = `
 .ty-jar b{font:700 1.05rem Georgia,serif}.ty-jar small{font-size:.66rem;color:var(--muted);text-align:center;line-height:1.1}
 .ty-jar:hover,.ty-jar:focus-visible{border-color:var(--c);box-shadow:0 0 10px var(--c)}
 .ty-ghost{position:fixed;z-index:99;pointer-events:none;transform:translate(-50%,-50%) rotate(-8deg) scale(1.08);opacity:.9;width:74px}
-.ty-wall{display:grid;grid-template-columns:repeat(18,34px);justify-content:safe center;grid-template-rows:repeat(10,auto);gap:2px;overflow-x:auto;padding:2px 0 6px}
+.ty-wall{display:grid;grid-template-columns:repeat(18,34px);justify-content:safe center;grid-template-rows:repeat(11,auto);gap:2px;overflow-x:auto;padding:2px 0 6px}
 .ty-cell{position:relative;width:34px;height:34px;padding:0;border:1px solid var(--c);border-radius:4px;background:#120c1c;color:#fff;font:700 .8rem Georgia,serif;cursor:pointer;line-height:1}
 .ty-cell small{position:absolute;left:2px;top:1px;font:400 .45rem var(--body);opacity:.7}
 .ty-cell.seen{background:color-mix(in srgb,var(--c) 30%,#120c1c)}.ty-cell:hover,.ty-cell:focus-visible{box-shadow:0 0 8px var(--c);z-index:1}
 .ty-cell.ping{animation:ty-ping .7s ease-out}@keyframes ty-ping{0%{transform:scale(1.5);box-shadow:0 0 16px var(--c)}}
 .ty-legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.7rem;color:var(--muted)}.ty-legend i{display:inline-block;width:.7em;height:.7em;border-radius:2px;margin-right:4px}
+.ty-talk{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;height:100%}.ty-talk .ty-pair{height:58%}
+.ty-bubble{position:relative;margin:0;max-width:94%;padding:6px 10px;border-radius:12px;background:#f6f1ff;color:#1a1326;font-size:.82rem;line-height:1.3;min-height:2.6em;box-shadow:0 0 0 2px var(--c),0 4px 14px #0007;animation:ty-in .35s ease-out}
+.ty-bubble:before{content:"";position:absolute;top:-7px;left:30%;border:7px solid transparent;border-top:0;border-bottom-color:#f6f1ff}
+.ty-danger{display:flex;align-items:center;gap:3px;font-size:.72rem;color:var(--fg)}.ty-danger i{width:14px;height:8px;border-radius:2px;background:#2a2440}.ty-danger i.on{background:var(--dc);box-shadow:0 0 6px var(--dc)}.ty-danger b{color:var(--dc);margin-left:4px}
+.ty-gh{background:none;border:0;color:var(--muted);font:600 .62rem var(--body);cursor:pointer;align-self:end;padding:0 0 1px}.ty-gh:hover,.ty-gh:focus-visible{color:var(--fg)}
+.ty-wall.tour .ty-cell{opacity:.22;transition:opacity .3s}.ty-wall.tour .ty-cell.hi{opacity:1;box-shadow:0 0 9px var(--c)}
 .ty-card{background:#140f22;border:1px solid var(--line);border-radius:10px;padding:8px 12px}.ty-card p{margin:.25rem 0}
 @media (prefers-reduced-motion:reduce){.ty-ink,.ty-uncial{animation:none;stroke-dashoffset:0;opacity:1;clip-path:none}
   .ty-seal.on,.ty-fl,.ty-glow,.ty-motes i,.ty-tile,.ty-fls,.ty-gas,.ty-atom,.ty-bub,.ty-lab *,.ty-cell,.ty-book .ty-pg,.ty-plate{animation:none!important}}

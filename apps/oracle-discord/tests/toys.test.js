@@ -78,3 +78,21 @@ test("toys get their own menu tab, marked Toy, not Game", () => {
   assert.deepEqual(it.toys.map((x) => x.id), ["runename"]); assert.deepEqual(it.play.map((x) => x.id), ["seance"]);
   const html = homeHtml(it, "toys", (s) => s); assert.match(html, /Just for fun/); assert.match(html, /hm-tag">Toy/);
 });
+
+test("every element has a danger rating, a reason and its own voice", async () => {
+  const { dangerOf, elementVoice, DANGER } = await import("../activity/src/toys/danger.js");
+  for (const e of ELEMENTS) { const d = dangerOf(e); assert.ok(d.n >= 0 && d.n <= 4 && d.why.length > 8, e.s); assert.ok(elementVoice(e).includes(e.name.toLowerCase()) || elementVoice(e).includes(e.name), e.s); }
+  assert.equal(dangerOf(bySym("Au")).n, 0); assert.equal(dangerOf(bySym("Po")).n, 4); assert.equal(dangerOf(bySym("Na")).n, 3); assert.equal(dangerOf(bySym("Og")).n, 4);
+  assert.ok(Object.keys(DANGER).length >= 100);
+});
+
+test("Vell's table insight: blocks, groups, periods and a tour that lights real tiles", async () => {
+  const { blockOf, periodOf, groupOf, placeLine, TOUR, tourCount, groupInsight } = await import("../activity/src/toys/table-insight.js");
+  const B = (s) => blockOf(bySym(s));
+  assert.equal(B("Na"), "s"); assert.equal(B("He"), "s"); assert.equal(B("Fe"), "d"); assert.equal(B("Cl"), "p"); assert.equal(B("U"), "f");
+  assert.equal(periodOf(bySym("U")), 7); assert.equal(groupOf(bySym("Cl")), 17); assert.equal(groupOf(bySym("Ce")), null);
+  assert.match(placeLine(bySym("Cl")), /7 electrons in the outer one/); assert.match(placeLine(bySym("Na")), /1 electron in the outer/);
+  for (let g = 1; g <= 18; g++) assert.ok(groupInsight(g), "group " + g);
+  TOUR.forEach((s, i) => { assert.ok(s.t && s.say.length > 40); assert.ok(tourCount(i) > 0, s.t); });
+  assert.equal(tourCount(TOUR.findIndex((s) => /Mendeleev/.test(s.t))), 3);
+});

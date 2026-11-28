@@ -68,3 +68,6 @@ export function reveal() { if (!ready()) return; const t = ac.currentTime; [523,
 export function glass() { if (!ready()) return; const t = ac.currentTime; tone(2400, t, 0.4, { vol: 0.16 }); tone(6100, t, 0.2, { vol: 0.05 }); }
 /** Flask emptied: a gurgle down the drain. */
 export function drain() { if (!ready()) return; const t = ac.currentTime; for (let k = 0; k < 6; k++) tone(rnd(200, 420), t + k * 0.09, 0.1, { vol: 0.1, to: rnd(120, 200) }); }
+/** An element talking: a little blip voice, pitched by atomic number (light elements squeak, heavy ones rumble). */
+export function chatter(z, len = 40) { if (!ready()) return; const t = ac.currentTime, base = 900 - Math.min(118, z) * 5.5, n = Math.min(26, Math.ceil(len / 4));
+  for (let k = 0; k < n; k++) tone(base * (0.85 + Math.random() * 0.4), t + k * 0.075, 0.06, { type: "triangle", vol: 0.07 }); }

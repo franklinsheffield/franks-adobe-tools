@@ -5,6 +5,8 @@
 // On the House's "Just for fun" tab (row "toy", house "alchemist"); progress in prog.rooms[id].
 import { ELEMENTS, CATS, bySym, lightOf, birthElement, parseDM } from "./elements.js";
 import { SAMPLES } from "../flametest/data.js";
+import { LEVELS, dangerOf, elementVoice } from "./danger.js";
+import { TOUR, placeLine, groupOf, groupInsight } from "./table-insight.js";
 import { TOY_CSS } from "./style.js";
 import { shareToy } from "./share.js";
 import * as sfx from "./sfx.js";
@@ -155,28 +157,50 @@ export const potion = {
   },
 };
 
+const DCOL = ["#4fd18b", "#e6d84a", "#ff9a3c", "#ff4a3c", "#c04cff"];
 export const curiowall = {
-  ...toyBase("curiowall", "Wall of curiosities", "🧱", "All 118 elements. Tap one for a weird, true fact"),
+  ...toyBase("curiowall", "Wall of curiosities", "🧱", "All 118 elements: tap one and it talks. Vell explains how the table works"),
   open(ctx) {
     const { $, esc, say, ui, cap, clearReading, state, saveProgress, greet, tableEl } = ctx; styleOnce();
-    const R = toyOf(state.prog, "curiowall"); R.seen ||= [];
-    const draw = (e) => { tableEl.className = "table toy-table"; tableEl.innerHTML = `<div class="ty-pair on">${tileSvg(e, "glow")}${lightSvg(e, "lit")}</div>`; };
-    const cell = (e) => `<button type="button" class="ty-cell${R.seen.includes(e.z) ? " seen" : ""}" data-z="${e.z}" style="grid-row:${e.place[0] + (e.place[0] > 7 ? 1 : 0)};grid-column:${e.place[1]};--c:${CATS[e.cat].col}" aria-label="${e.z} ${esc(e.name)}"><small>${e.z}</small>${e.s}</button>`;
+    const R = toyOf(state.prog, "curiowall"); R.seen ||= []; let lens = R.lens || "family", step = -1, typing = null;
+    const caption = () => cap(`🧱 Wall of curiosities · ${R.seen.length} / 118 tapped`);
+    const meter = (d) => `<div class="ty-danger" style="--dc:${DCOL[d.n]}" aria-label="Danger ${d.n} of 4: ${esc(d.name)}"><span>${d.e} Danger</span>${[0, 1, 2, 3, 4].map((k) => `<i class="${k <= d.n ? "on" : ""}"></i>`).join("")}<b>${esc(d.name)}</b></div>`;
+    const draw = (e, talk = false) => { const d = dangerOf(e); tableEl.className = "table toy-table";
+      tableEl.innerHTML = `<div class="ty-talk"><div class="ty-pair on">${tileSvg(e, "glow")}${lightSvg(e, "lit")}</div>${meter(d)}<p class="ty-bubble" id="ty-bub" style="--c:${CATS[e.cat].col}">${talk ? "" : esc(elementVoice(e))}</p></div>`;
+      clearInterval(typing); if (!talk) return;
+      const line = elementVoice(e), el = tableEl.querySelector("#ty-bub"); let i = 0; sfx.chatter(e.z, line.length);
+      typing = setInterval(() => { if (!el.isConnected) return clearInterval(typing); i += 2; el.textContent = line.slice(0, i); if (i >= line.length) clearInterval(typing); }, 28); };
+    const colOf = (e) => (lens === "danger" ? DCOL[dangerOf(e).n] : CATS[e.cat].col);
+    const cell = (e) => `<button type="button" class="ty-cell${R.seen.includes(e.z) ? " seen" : ""}" data-z="${e.z}" style="grid-row:${e.place[0] + 1 + (e.place[0] > 7 ? 1 : 0)};grid-column:${e.place[1]};--c:${colOf(e)}" aria-label="${e.z} ${esc(e.name)}"><small>${e.z}</small>${e.s}</button>`;
+    const heads = Array.from({ length: 18 }, (_, k) => `<button type="button" class="ty-gh" data-g="${k + 1}" style="grid-row:${k === 0 || k === 17 ? 1 : k === 1 || k >= 12 ? 2 : 4};grid-column:${k + 1}" title="Group ${k + 1}">${k + 1}</button>`).join("");
+    const light = (pred) => { const w = $("ui").querySelector(".ty-wall"); w.classList.toggle("tour", !!pred); w.querySelectorAll("[data-z]").forEach((b) => b.classList.toggle("hi", !!pred && pred(ELEMENTS[+b.dataset.z - 1]))); };
     function tap(z) {
-      const e = ELEMENTS[z - 1]; if (!R.seen.includes(z)) { R.seen.push(z); R.plays++; saveProgress(); }
-      sfx.tile(e.z, e.cat); draw(e); cap(`🧱 Wall of curiosities · ${R.seen.length} / 118 tapped`);
-      say(`${e.name}, number ${e.z}. ${e.fact}${R.seen.length === 118 ? " And that's every element on the wall! You've read the whole universe's ingredient list." : ""}`);
+      const e = ELEMENTS[z - 1], d = dangerOf(e); if (!R.seen.includes(z)) { R.seen.push(z); R.plays++; saveProgress(); }
+      R.last = e.s; sfx.tile(e.z, e.cat); draw(e, true); caption(); light(null); step = -1; tourBtn();
+      say(`${e.name}, number ${e.z}. ${e.fact} ${placeLine(e)} Danger ${d.n} of 4, ${d.name.toLowerCase()}: ${d.why}${R.seen.length === 118 ? " And that's every element on the wall! The universe's whole ingredient list." : ""}`);
       const b = $("ui").querySelector(`[data-z="${z}"]`); if (b) { b.classList.add("seen", "ping"); setTimeout(() => b.classList.remove("ping"), 700); }
     }
-    clearReading(); draw(bySym(R.last || "Au"));
-    cap(`🧱 Wall of curiosities · ${R.seen.length} / 118 tapped`);
-    say(R.seen.length ? pick(["Back at the wall! Tap anything. Even the radioactive ones are safe at this distance.", Math.random() < 0.3 ? pick(SLIPS) : "Every tile is a real element with a real oddity."]) : `This is my wall of curiosities, ${state.name}: every element there is, 118 of them, each with one strange and true fact. Tap away. The colours are the families.`);
-    ui(`<div class="ty-wall" role="group" aria-label="The periodic table">${ELEMENTS.map(cell).join("")}</div>
-      <div class="ty-legend">${Object.entries(CATS).map(([, c]) => `<span><i style="background:${c.col}"></i>${esc(c.name.replace(/ \(.*/, ""))}</span>`).join("")}</div>
-      <div class="choices"><button class="c main" type="button" id="ty-rand">🎲 Surprise me</button><button class="c" type="button" id="back">✦ Back</button></div>`);
-    $("ui").querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => { R.last = ELEMENTS[+b.dataset.z - 1].s; tap(+b.dataset.z); }));
-    $("ty-rand").onclick = () => { const left = ELEMENTS.filter((e) => !R.seen.includes(e.z)), e = pick(left.length ? left : ELEMENTS); R.last = e.s; tap(e.z); $("ui").querySelector(`[data-z="${e.z}"]`)?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); };
-    $("back").onclick = greet;
+    const tourBtn = () => { const b = $("ty-tour"); if (b) b.textContent = step < 0 ? "📐 How to read the table" : step < TOUR.length - 1 ? `▶ Next (${step + 1}/${TOUR.length})` : "✓ End the tour"; };
+    function tour() {
+      step = step + 1 >= TOUR.length ? -1 : step + 1; tourBtn();
+      if (step < 0) { light(null); say("That's the table, colleague. Every square is a family member with a temper. Tap any of them."); return; }
+      const s = TOUR[step]; light(s.hi); sfx.reveal(); cap(`📐 ${s.t} · ${step + 1} / ${TOUR.length}`); say(s.say);
+    }
+    clearReading(); draw(bySym(R.last || "Au")); caption();
+    say(R.seen.length ? pick(["Back at the wall! Tap anything. It'll talk to you. Even the radioactive ones are safe at this distance.", Math.random() < 0.3 ? pick(SLIPS) : "Every tile is a real element with a real temper. Tap one."])
+      : `This is my wall of curiosities, ${state.name}: every element there is, all 118. Tap one and it will introduce itself, danger level and all. Or let me walk you through how the table works. The numbers on top are the groups; tap those too.`);
+    const render = () => {
+      ui(`<div class="ty-wall" role="group" aria-label="The periodic table">${heads}${ELEMENTS.map(cell).join("")}</div>
+      <div class="ty-legend">${lens === "danger" ? LEVELS.map((l) => `<span><i style="background:${DCOL[l.n]}"></i>${l.n} ${esc(l.name)}</span>`).join("") : Object.entries(CATS).map(([, c]) => `<span><i style="background:${c.col}"></i>${esc(c.name.replace(/ \(.*/, ""))}</span>`).join("")}</div>
+      <div class="choices"><button class="c main" type="button" id="ty-tour">📐 How to read the table</button><button class="c" type="button" id="ty-lens">${lens === "danger" ? "🎨 Family colours" : "☠️ Danger colours"}</button><button class="c" type="button" id="ty-rand">🎲 Surprise me</button><button class="c" type="button" id="back">✦ Back</button></div>`);
+      $("ui").querySelectorAll("[data-z]").forEach((b) => (b.onclick = () => tap(+b.dataset.z)));
+      $("ui").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => { const g = +b.dataset.g, gi = groupInsight(g); step = -1; tourBtn(); light((e) => groupOf(e) === g); sfx.tile(g * 3, "noble"); cap(`📐 ${gi[0]}`); say(gi[1]); }));
+      $("ty-tour").onclick = tour;
+      $("ty-lens").onclick = () => { lens = lens === "danger" ? "family" : "danger"; R.lens = lens; saveProgress(); sfx.glass(); render(); say(lens === "danger" ? "Danger colours: green is safe to handle, purple is deadly. Mostly the rule is: the bottom of the table is radioactive, the top right corner bites." : "Back to families. Same colour, same temper, more or less."); };
+      $("ty-rand").onclick = () => { const left = ELEMENTS.filter((e) => !R.seen.includes(e.z)), e = pick(left.length ? left : ELEMENTS); tap(e.z); $("ui").querySelector(`[data-z="${e.z}"]`)?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); };
+      $("back").onclick = () => { clearInterval(typing); greet(); };
+    };
+    render();
   },
 };
 
