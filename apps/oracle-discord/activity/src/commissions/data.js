@@ -25,7 +25,7 @@ export const JOBS = [
   J("g-horn", 2, "The instrument maker", "🎺", "brass", "Brass for a set of hunting horns, if you please.", "Brass (copper and zinc) is easy to hammer and bend, so it became the metal of horns and trumpets."),
   J("g-cast", 2, "The sculptor", "🗿", "cast", "I need a plaster cast of my clay model before it dries.", "Sculptors cast clay models in plaster of Paris to keep an exact copy; museums still hold plaster casts of famous statues."),
   J("g-glass", 2, "The glassmaker", "🍶", "glass", "Our forest furnace needs a batch of potash glass.", "Forest glass (Waldglas) was made in medieval Europe from sand and wood-ash potash, which gave it a greenish tint."),
-  J("g-window", 2, "The window glazier", "🪟", "cobaltglass", "Deep blue glass for a church window.", "Cobalt oxide colours glass a deep blue; medieval stained glass used it, as did Egyptian glassmakers long before."),
+  J("g-window", 2, "The window glazier", "🪟", "cobaltglass", "Deep blue glass for a church window.", "Copper oxide tints glass blue to turquoise. The deepest blues of medieval windows came from cobalt, which Egyptian glassmakers used long before."),
   J("g-jeweller", 2, "The jeweller", "💍", "rouge", "Something fine to polish a silver chalice.", "Jeweller's rouge is very fine iron oxide; it polishes gold and silver to a mirror finish."),
   J("g-illum", 2, "The illuminator", "🎨", "vermilion", "Bright red for the capitals in a Book of Hours.", "Vermilion (mercury sulfide) was the prized red of medieval manuscripts. It is also toxic."),
   J("g-blue", 2, "The panel painter", "🖼️", "ablue", "Blue for the Virgin's robe, and not too dear.", "Azurite was the main blue of European painting in the Middle Ages, far cheaper than lapis-based ultramarine."),

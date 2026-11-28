@@ -71,7 +71,7 @@ const T = [
   ["Cs", "Caesium", "The second is defined by caesium-133 atoms: 9,192,631,770 ticks of their light."],
   ["Ba", "Barium", "Patients swallow a barium sulfate 'meal' so their gut shows up on X-rays."],
   ["La", "Lanthanum", "Added to glass for camera lenses, because it makes the glass bend light more."],
-  ["Ce", "Cerium", "The sparks from a lighter's flint come from an alloy that is mostly cerium."],
+  ["Ce", "Cerium", "The sparks from a lighter's flint come from an alloy rich in cerium (ferrocerium)."],
   ["Pr", "Praseodymium", "Its name means 'green twin': it was split from its twin, neodymium, in 1885."],
   ["Nd", "Neodymium", "Neodymium magnets are the strongest permanent magnets you can buy."],
   ["Pm", "Promethium", "Every form of it is radioactive. It is named after Prometheus, who stole fire from the gods."],

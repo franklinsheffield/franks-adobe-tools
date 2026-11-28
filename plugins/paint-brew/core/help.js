@@ -176,6 +176,7 @@ function createHelp(o) {
     get on() { return on; }, get delay() { return delay; },
     missing: () => nodes.filter((n) => !textFor(n.__help)).map((n) => ({ key: n.__help.key, name: n.__help.name })),
     nodes: () => nodes.slice(),
+    text: (info) => textFor(info || {}),   // the help text for a control (Pixel Scape web: Teach mode)
     _show: (node) => { if (node.__help) showPop(node, node.__help); return pop; },
     KEYS
   };

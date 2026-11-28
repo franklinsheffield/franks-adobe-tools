@@ -100,7 +100,7 @@ export const CASES = [
     "Two cousins come home from the stream with photographs of fairies dancing in front of them.",
     { look: "The fairies wear fashionable bobbed hair, and stay sharp while the waterfall behind them is blurred.",
       magician: "The fairy figures match drawings in Princess Mary's Gift Book, published in 1914.",
-      record: "In 1983 Elsie and Frances admitted the fairies were paper cut-outs held up with hatpins." },
+      record: "In 1983 Elsie and Frances admitted the fairies were paper cut-outs held up with hatpins. Frances held to the end that the fifth photo was real." },
     "Arthur Conan Doyle, creator of Sherlock Holmes, published the photos in The Strand in 1920 as proof."),
   C("hope", 1, "Hope and the Marked Plates", 1922, "Crewe and London", "William Hope of the Crewe Circle", "plateswap", "Harry Price", "🖼️",
     "Sitters bring their own plates, sing a hymn, and spirit faces appear as 'extras' in the picture.",
