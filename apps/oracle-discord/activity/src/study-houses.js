@@ -117,6 +117,12 @@ export const HOUSE_BOOKS = {
         "<b>1. 🔎 Inscription Tray</b>: identify unlabelled scripts from direction, sign count, tool and telltale marks, and file them by type.",
         "<b>2. 🗝️ Cipher Desk</b>: break 100 real ciphers, inscriptions and forgeries. Inscriptions open once you've filed their script at the Tray.",
       ] },
+      { h: "The four workshop games", p: [
+        "<b>🕵️ Black Chamber</b>: break substitution ciphers against real codebreakers' clocks, as the post-office spies did.",
+        "<b>🎨 Illuminator</b>: make a manuscript page in the real order of work, with real pigments. A finished page earns my mantle.",
+        "<b>⚙️ Bombe Room</b>: place a crib and run the bombe on a real Enigma message.",
+        "<b>🔏 Forgery Desk</b>: test ink, paper and words, and catch the clue too new for the date.",
+      ] },
       { h: "The rest of the Scriptorium", p: [
         "<b>🗝️ Rune & Glyph Decoder</b> (the card game Scribe's Hand, today's daily), <b>🃏 Grimoire Memory</b>, <b>⏳ History of Magic</b>, <b>🌿 Herbalist's Grimoire</b>, and the party game <b>👻 Possession</b>. New games join the shelf as they're written: the 📚 Games page always has the full list.",
         "<b>🎭 Fact or Fib</b> runs in History of Magic and the Herbalist's Grimoire.",
