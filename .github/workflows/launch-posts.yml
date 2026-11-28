@@ -1,0 +1,27 @@
+# House gate launch posts (apps/oracle-discord/scripts/launch-posts.js). Run by hand only, once.
+#   plan: read only; checks lengths and that dev.n is found
+#   send: posts the announcement to #announcements and DMs dev.n both letters
+name: Launch posts
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan | send"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, send]
+permissions:
+  contents: read
+jobs:
+  posts:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Launch posts (${{ inputs.mode }})
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        run: node scripts/launch-posts.js "${{ inputs.mode }}"
