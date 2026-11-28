@@ -1,5 +1,6 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { gateOf } from "./hosts/gates.js";
 import { bookPoke } from "./library.js";
 import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
@@ -1303,7 +1304,7 @@ showSpeech();
   joinLobby();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
-  gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
+  gate.dataset.house = HOST().id; gate.innerHTML = rename(gateHtml({ gate: gateOf(HOST().id), name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
   const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
