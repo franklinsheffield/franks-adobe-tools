@@ -17,7 +17,7 @@ if (!TOKEN) { console.log("::warning::No bot token; nothing to do."); process.ex
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(method, url, body, reason) {
   for (let tries = 0; tries < 6; tries++) {
-    const r = await fetch(API + url, { method, headers: { Authorization: `Bot ${TOKEN}`, "Content-Type": "application/json", ...(reason ? { "X-Audit-Log-Reason": encodeURIComponent(reason) } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(API + url, { method, headers: { Authorization: `Bot ${TOKEN}`, ...(body ? { "Content-Type": "application/json" } : {}), ...(reason ? { "X-Audit-Log-Reason": encodeURIComponent(reason) } : {}) }, body: body ? JSON.stringify(body) : undefined });
     if (r.status === 429) { const j = await r.json().catch(() => ({})); await sleep(((j.retry_after || 2) + 0.5) * 1000); continue; }
     if (!r.ok) throw new Error(`${method} ${url} -> ${r.status} ${await r.text()}`);
     return r.status === 204 ? null : r.json();
