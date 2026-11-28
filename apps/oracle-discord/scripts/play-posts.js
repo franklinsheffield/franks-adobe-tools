@@ -17,7 +17,8 @@ const api = async (path, o = {}) => {
 };
 const me = await api("/users/@me"), chans = await api(`/guilds/${GUILD}/channels`);
 // The Wing text channels, so a later change can route /play there too (printed only).
-for (const c of chans.filter((x) => x.type === 0 && /-common$/.test(x.name))) console.log(`wing channel #${c.name} = ${c.id}`);
+for (const w of chans.filter((x) => x.type === 4 && / Wing$/.test(x.name)))
+  for (const c of chans.filter((x) => x.parent_id === w.id)) console.log(`wing ${w.name}: #${c.name} (type ${c.type}) = ${c.id}`);
 const link = (c, m) => `https://discord.com/channels/${GUILD}/${c}/${m}`;
 for (const { channelId, label, body } of playPosts(HOSTS)) {
   const ch = chans.find((c) => c.id === channelId);
