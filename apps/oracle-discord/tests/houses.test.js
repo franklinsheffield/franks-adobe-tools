@@ -8,7 +8,7 @@ import { DEPTS } from "../activity/src/store.js";
 import { TROPHIES } from "../activity/src/trophies.js";
 import { playCommand } from "../src/houses.js";
 
-const ROOM_IDS = ["seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier", "phantasmagoria", "starparty", "roguesgallery", "possession", "blackchamber"];
+const ROOM_IDS = ["illuminator", "seance", "decoder", "timeline", "alchemy", "calendar", "grimoire", "stars", "duel", "memory", "rummy", "flametest", "minerals", "watch", "inscriptions", "bench", "casefiles", "comet", "commissions", "fireworks", "leadgold", "cipherdesk", "workshop", "bookings", "darkseance", "eclipse", "navigator", "mentalist", "messier", "phantasmagoria", "starparty", "roguesgallery", "possession", "blackchamber"];
 
 test("the channel picks the House; ?house= wins; anything else is the Oracle", () => {
   assert.equal(hostFor({ channelId: "1575683489712439467" }).id, "oracle");
@@ -163,22 +163,22 @@ test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the
   assert.equal(P.accent, "#C3A6FF"); assert.equal(P.voice.type, "sawtooth"); assert.equal(P.voice.base, 200); assert.deepEqual(P.rooms, ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "roguesgallery", "seance", "timeline", "possession"]);
   setHost(W); assert.equal(rename("THE ORACLE · The Oracle's hand · Oracle Chamber"), "ARCHIVIST WREN · Archivist Wren's hand · Scriptorium");
   assert.equal(rename("Open the Record Player"), "Open the Hurdy-Gurdy"); assert.match(hostBanter("decoder", "win", "Ada"), /\S/);
-  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "blackchamber", "decoder", "memory", "timeline", "grimoire", "possession"]);
+  assert.equal(W.accent, "#E8483B"); assert.equal(W.voice.type, "triangle"); assert.equal(W.voice.base, 380); assert.deepEqual(W.rooms, ["inscriptions", "cipherdesk", "blackchamber", "illuminator", "decoder", "memory", "timeline", "grimoire", "possession"]);
   const voices = HOSTS.map((h) => `${h.voice?.type}${h.voice?.base}`).filter((v) => v !== "undefinedundefined"); assert.equal(new Set(voices).size, voices.length, "each House sounds different");
   assert.equal(new Set(HOSTS.map((h) => h.accent)).size, HOSTS.length, "each House has its own accent");
   setHost(null);
 });
 test("the Parlour and the Scriptorium are routed from their channels", () => { assert.equal(hostFor({ channelId: "1575977181622829158" }).id, "parlour"); assert.equal(hostFor({ channelId: "1575977195048927232" }).id, "scriptorium"); });
 
-test("hidden features per House: the Alchemist's 13 finds pay once, count in her own drawer, and the menu background has hotspots", async () => {
+test("hidden features per House: the Alchemist's 20 finds pay once, count in her own drawer, and the menu background has hotspots", async () => {
   const { findSecret, secretCount, secretsPanelHtml, ALL_BONUS, tapCount } = await import("../activity/src/hosts/secrets.js");
   const { alchemist } = await import("../activity/src/hosts/alchemist.js");
-  const S = alchemist.secrets.items; assert.equal(S.length, 13); assert.equal(new Set(S.map((x) => x.id)).size, 13);
+  const S = alchemist.secrets.items; assert.equal(S.length, 20); assert.equal(new Set(S.map((x) => x.id)).size, 20);
   const p = {}; const r = findSecret(p, alchemist, "aurum"); assert.ok(r && p.essence === 20); assert.equal(findSecret(p, alchemist, "aurum"), null, "pays once");
   assert.deepEqual(p.houses.alchemist.sec, ["aurum"]); assert.equal(secretCount(p, alchemist), 1);
   findSecret(p, alchemist, "midnight"); assert.equal(p.houses.alchemist.got, 1, "rare finds pay the House token");
-  for (const s of S) findSecret(p, alchemist, s.id); assert.ok(p.houses.alchemist.secAll); assert.equal(p.houses.alchemist.got, 1 + 2 + 2 + ALL_BONUS.token);
-  assert.match(secretsPanelHtml({}, alchemist, (x) => x), /0 of 13 found/);
+  for (const s of S) findSecret(p, alchemist, s.id); assert.ok(p.houses.alchemist.secAll); assert.equal(p.houses.alchemist.got, 1 + 2 + 2 + 2 + 2 + 2 + ALL_BONUS.token);
+  assert.match(secretsPanelHtml({}, alchemist, (x) => x), /0 of 20 found/);
   const found = []; const api = (at) => ({ prog: {}, at, find: (id) => found.push(id) });
   alchemist.secrets.event("home", { at: 0 }, api(new Date(2026, 9, 23, 0, 30).getTime())); assert.deepEqual(found.sort(), ["midnight", "moleday"]);
   found.length = 0; alchemist.secrets.event("tap", { tap: "gear", count: 3 }, api(0)); alchemist.secrets.event("poke", { zone: "orb", count: 5 }, api(0)); assert.deepEqual(found, ["gears", "overflow"]);
@@ -296,4 +296,36 @@ test("Parlour finale: gold cameo and the Curtain Call label on the gramophone", 
   const { gramophoneSvg } = await import("../activity/src/hosts/parlour.js");
   assert.ok(!gramophoneSvg(null, false, {}).includes("Curtain Call"));
   assert.ok(gramophoneSvg(null, false, { houses: { parlour: { finale: { done: true } } } }).includes("Curtain Call"));
+});
+
+test("item parity: every House has 4+ shelves, 14+ relics and 20+ secrets", async () => {
+  const { HOSTS } = await import("../activity/src/hosts/index.js");
+  const kinds = new Set(), relicIds = new Set();
+  for (const h of HOSTS) {
+    if (h.id === "oracle") continue;
+    assert.ok(h.shelves.length >= 4, h.id + " shelves"); assert.ok(h.relics.length >= 14, h.id + " relics"); assert.ok(h.secrets.items.length >= 20, h.id + " secrets");
+    assert.equal(new Set(h.secrets.items.map((x) => x.id)).size, h.secrets.items.length, h.id + " secret ids");
+    for (const r of h.relics) { assert.ok(!relicIds.has(r.id), r.id); relicIds.add(r.id); assert.ok(r.art().includes("<") && r.note && r.price > 0 && r.w > 0, r.id); }
+    for (const sh of h.shelves) {
+      assert.ok(!kinds.has(sh.kind), sh.kind); kinds.add(sh.kind);
+      assert.ok(sh.items.filter((x) => x.price === 0).length === 1, sh.kind + " one free item");
+      for (const it of sh.items) assert.ok(it.note && it.note.length < 200 && it.name, it.id);
+      for (const k of ["open", "tryon", "buy"]) assert.ok(sh.talk[k].length >= 3, sh.kind + " " + k);
+    }
+    if (h.vars) for (const [k, v] of Object.entries(h.vars({}))) assert.ok(k.startsWith("--") && /^(#[0-9a-fA-F]{6}|[0-9.]+)$/.test(v), k + "=" + v);
+  }
+});
+test("item parity: shelf looks reach the CSS, and the new Lab finds fire", async () => {
+  const { alchemist } = await import("../activity/src/hosts/alchemist.js"), { parlour } = await import("../activity/src/hosts/parlour.js"), { scriptorium } = await import("../activity/src/hosts/scriptorium.js");
+  assert.equal(alchemist.vars({ vellburn: "bf-safety" })["--vell-burn"], "#ffb43a"); assert.equal(alchemist.vars({ vellrack: "rk-iron" })["--vell-t2"], "#a8101e");
+  assert.equal(parlour.vars({ rookcabinet: "cab-egyptian" })["--rook-trim"], "#FADE8C"); assert.equal(scriptorium.vars({ wrenseal: "sl-gold" })["--wren-wax"], "#E2B04A");
+  assert.match(alchemist.css, /--vell-burn/); assert.match(parlour.css, /--rook-wax/); assert.match(scriptorium.css, /--wren-quill/);
+  const L = await import("../activity/src/hosts/alchemist-lab.js"); const sc = L.labSceneHtml(0, { motes: 0, prog: {} });
+  assert.match(sc, /data-tap="rack"/); assert.match(sc, /data-tap="burner"/); assert.match(sc, /class="lab-t3"/);
+  const found = []; const api = (at, prog = {}) => ({ at, prog, find: (id) => found.push(id) });
+  alchemist.secrets.event("tap", { tap: "burner", count: 3 }, api(0)); alchemist.secrets.event("tap", { tap: "rack", count: 4 }, api(0));
+  alchemist.secrets.event("home", {}, api(new Date(2026, 2, 30, 12).getTime()));
+  const { BURNERS } = await import("../activity/src/hosts/alchemist-shelves.js");
+  alchemist.secrets.event("wear", { kind: "vellburn" }, api(0, { owned: BURNERS.map((b) => b.id) }));
+  assert.deepEqual(found.sort(), ["allflames", "bunsenday", "burner", "tubes"]);
 });
