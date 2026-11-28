@@ -91,3 +91,23 @@ test("Five Doors and visitor mode render", () => {
   assert.match(doorsHtml({ houses, p: {}, esc }), /The Five Doors/);
   assert.match(visitorHtml({ h: houses[2], p: { xp: 10, path: ["parlour"] }, esc, taster: { emoji: "⭐", label: "Stars" } }), /level 2/);
 });
+
+test("starter packs: Founding Members get Essence + tokens per picked House, once", async () => {
+  const { starterPacks, STARTER } = await import("../activity/src/levels.js");
+  assert.equal(starterPacks({ founding: false }, ["oracle"]), null, "newcomers get no pack");
+  const p = { founding: true, grant: 4 };
+  const a = starterPacks(p, ["alchemist"]);
+  assert.deepEqual(a, { essence: STARTER.essence, tokens: [{ id: "alchemist", n: STARTER.tokens }] });
+  assert.equal(starterPacks(p, ["alchemist"]), null, "paid once per House");
+  const b = starterPacks(p, ["parlour", "scriptorium"]);
+  assert.equal(b.essence, STARTER.essence * 2); assert.equal(b.tokens.length, 2);
+});
+
+test("starter packs: the dev grant (6+) gets every House and the big purse on the first pick", async () => {
+  const { starterPacks, STARTER, HOUSE_IDS } = await import("../activity/src/levels.js");
+  const p = { founding: true, grant: 6 };
+  const a = starterPacks(p, ["observatory"]);
+  assert.equal(a.essence, STARTER.dev.essence);
+  assert.deepEqual(a.tokens.map((t) => t.id), HOUSE_IDS); assert.ok(a.tokens.every((t) => t.n === STARTER.dev.tokens));
+  assert.equal(starterPacks(p, ["oracle"]), null, "nothing more on later picks");
+});
