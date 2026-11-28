@@ -8,8 +8,9 @@ const { chromium, devices } = require("playwright");
 const BASE = process.argv[2] || "http://localhost:8787", SHOTS = process.argv[3] || null;
 (async () => {
   const b = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] }), errs = [];
+  // nomusic: decoding the records slows the swiftshader frames that the flight checks time
   const open = async (ctxOpts, name, qs) => { const c = await b.newContext(ctxOpts), p = await c.newPage(); p.on("pageerror", (e) => errs.push(name + ": " + e.message));
-    await p.goto(BASE + "/" + (qs || "")); await p.waitForFunction(() => window.__wb && window.__wb.vp && window.__psExtras, null, { timeout: 90000 }); await p.waitForTimeout(1500); return { c, p }; };
+    await p.goto(BASE + "/" + (qs ? qs + "&nomusic=1" : "?nomusic=1")); await p.waitForFunction(() => window.__wb && window.__wb.vp && window.__psExtras, null, { timeout: 90000 }); await p.waitForTimeout(1500); return { c, p }; };
   const shot = async (p, n) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, n + ".png") }); } };
   try {
     // ---- phone: start screen -> blank world, tips, big handles, Explore, ping
@@ -46,6 +47,7 @@ const BASE = process.argv[2] || "http://localhost:8787", SHOTS = process.argv[3]
     await D.p.keyboard.press("Escape"); assert.ok(!(await D.p.$(".ps-start")), "Escape closes the start screen");
     assert.strictEqual(await D.p.evaluate(() => window.__wb.vp.tc.size), 0.9, "normal handles with a mouse");
     await D.p.evaluate(() => document.querySelector(".ps-tip .ghost").click());
+    await D.p.waitForFunction(() => !window.__psSeer || window.__psSeer.bubble.hidden, null, { timeout: 12000 }).catch(() => {}); // let Flint finish his hello (swiftshader frames slow while he talks)
     await D.p.click(".ps-mode"); const k0 = await D.p.evaluate(() => Object.assign({}, window.__wb.st.scene.cam));
     await D.p.keyboard.down("w"); await D.p.waitForTimeout(500); await D.p.keyboard.up("w");
     const k1 = await D.p.evaluate(() => Object.assign({}, window.__wb.st.scene.cam)); assert.ok(Math.hypot(k1.tx - k0.tx, k1.tz - k0.tz) > 0.2, "W flies forward");
