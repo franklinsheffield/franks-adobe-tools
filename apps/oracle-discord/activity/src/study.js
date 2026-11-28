@@ -62,7 +62,7 @@ const NEW = [
   ["flametest", "🔥", "Flame Test Lab"], ["minerals", "🪨", "Mineral Cabinet"], ["bench", "🧫", "Discovery Bench"], ["commissions", "📋", "Commissions"],
   ["fireworks", "🎆", "Fireworks Workshop"], ["leadgold", "⚛️", "Lead into Gold"], ["casefiles", "🗂️", "Case Files"], ["workshop", "🎩", "The Workshop"],
   ["bookings", "🎟️", "Bookings"], ["darkseance", "🕯️", "The Dark Séance"], ["mentalist", "🎩", "The Mentalist"], ["phantasmagoria", "🏮", "Phantasmagoria"],
-  ["roguesgallery", "🖼️", "The Rogues' Gallery"], ["inscriptions", "🔎", "Inscription Tray"], ["cipherdesk", "🗝️", "Cipher Desk"], ["possession", "👻", "Possession"],
+  ["roguesgallery", "🖼️", "The Rogues' Gallery"], ["inscriptions", "🔎", "Inscription Tray"], ["cipherdesk", "🗝️", "Cipher Desk"], ["blackchamber", "🕵️", "Black Chamber"], ["possession", "👻", "Possession"],
 ];
 for (const [room, emoji, name] of NEW) STUDY.push({ room, emoji, name, guides: FACTS[room] });
 // Every game opens with its "How to play & tips" page (study-play.js), in front of its fact guides.

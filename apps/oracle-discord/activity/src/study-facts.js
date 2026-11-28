@@ -13,6 +13,7 @@ import { BILLINGS, VENUES, CLIENTS } from "./bookings/bill.js";
 import { EFFECTS as DS_EFFECTS, CONTROLS as DS_CONTROLS, METHODS as DS_METHODS } from "./darkseance/data.js";
 import { FORCES, BARNUM, FORER, CODE, CODE_FACTS, BILLET_FACTS } from "./mentalist/data.js";
 import { LANTERN_FACTS, PEPPER_FACTS, SHOW_FACTS } from "./phantasmagoria/data.js";
+import { RIVALS as BC_RIVALS, LEVELS as BC_LEVELS } from "./blackchamber/data.js";
 import { METHODS as CIPHERS, FORGERIES, INSCRIPTIONS as CD_INSCRIPTIONS } from "./cipherdesk/data.js";
 import { PAIRS } from "./parlour/gallery.js";
 import { MILESTONES } from "./parlour/finale.js";
@@ -132,6 +133,11 @@ export const FACTS = {
       sec("Famous forgeries, and how they were caught", FORGERIES.map((f) => `<b>${e(f.name)}</b>: ${e(f.claim)} <i>Caught: ${e(f.clue)}</i> ${e(f.fact)}`)),
     ] },
   ],
+
+  blackchamber: [{ id: "rivals", emoji: "🕵️", title: "The codebreakers you race", sections: [
+    sec("The rivals", BC_RIVALS.map((r) => `${r.e} <b>${e(r.name)}</b> (${e(r.when)}): ${e(r.fact)}`)),
+    sec("The three rooms", BC_LEVELS.map((l) => `<b>Level ${l.n}, ${e(l.name)}</b>: ${e(l.what)}.`)),
+  ] }],
 
   possession: [{ id: "tales", emoji: "👻", title: "The true tales", sections: Object.values(TRUE_TALES).flat().map((t) =>
     sec(`${t.name} (${t.kind.replace(/^True tale · /, "")})`, [...t.beats.map((b) => `${e(b.narr)} <i>${e(b.truth)}</i>`), ...[].concat(t.real || []).map((r, i) => `${i ? "" : "<b>What really happened:</b> "}${e(r)}`)])) }],

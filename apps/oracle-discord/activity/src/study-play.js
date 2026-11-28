@@ -378,6 +378,19 @@ export const PLAY = {
     ],
   },
 
+  blackchamber: {
+    how: [
+      "Each round is one real line hidden in a simple substitution cipher: every letter swapped for another, the same way throughout.",
+      "Fill in letters until the line reads, before your rival codebreaker does. Hints cost time.",
+      "<b>Level 1</b> starts with 4 letters given, <b>Level 2</b> with 2, <b>Level 3</b> with none.",
+    ],
+    tips: [
+      "Count the letters first: in English E, T, A and O are the most common.",
+      "A one-letter word is almost always A or I, and a common three-letter word is usually THE.",
+      "Double letters are usually LL, EE, SS or OO.",
+    ],
+  },
+
   // ---- Party (every House) ----
   possession: {
     how: [
