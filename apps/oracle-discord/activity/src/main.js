@@ -94,7 +94,7 @@ import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemIn
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
 import { BOOST_THANKS, BOOSTER_HELLO } from "./boost.js";
-import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
+import { CREDITS_SONG, creditSections, creditsTitle, SPECIAL_THANKS, END_LINE, checkMastery, hasCrown, masteryCount, GAMES } from "./credits.js";
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import { HOUSE_BOOKS, houseStudy, studyLine } from "./study-houses.js";
@@ -427,6 +427,7 @@ function greet() {
     ...(C.length ? [{ id: "crate", emoji: "🎵", label: "Record crate", hint: "This House's own records", badge: `${C.filter((t) => hasTrack(state.prog, t)).length}/${C.length}` }] : []),
     ...(H.secrets ? [{ id: "secrets", emoji: "🔍", label: H.secrets.label.replace(/^\S+\s/, ""), hint: "Hidden things to find in this House", badge: `${secretCount(state.prog, H)}/${secretsOf(H).length}` }] : []),
     ...(clueCount(state.prog) ? [{ id: "dossier", emoji: "🎭", label: "Dossier", hint: "Clues about who the hosts really are", badge: `${clueCount(state.prog)}/${CLUES.length}` }] : []),
+    { id: "credits", emoji: "🎬", label: "Credits", hint: "Roll the end credits for this House" },
     { id: "card", emoji: "🪪", label: "My card", hint: "Your rank, streak and Houses" },
     { id: "invite", emoji: "💌", label: "Invite a friend", hint: "Bring someone to the server", badge: state.prog.invited ? "" : `+💎${INVITE_REWARD}` },
   ];
@@ -434,7 +435,7 @@ function greet() {
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
   const ACT = { store: () => $("store-btn").click(), trophies: () => $("trophy-btn").click(), grimoire: () => $("grimoire-btn").click(), library: () => openLibrary(),
-    relics: () => openHouseRelics(), crate: () => openRecordCrate(), secrets: () => openHouseSecrets(), dossier: () => openDossier(), card: () => showProfile(), invite: () => inviteFriend(), doors: () => showDoors() };
+    relics: () => openHouseRelics(), crate: () => openRecordCrate(), secrets: () => openHouseSecrets(), dossier: () => openDossier(), credits: () => rollCredits(false), card: () => showProfile(), invite: () => inviteFriend(), doors: () => showDoors() };
   $("ui").querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => ACT[b.dataset.act]?.()));
   hallMode();
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
@@ -1614,17 +1615,18 @@ function rollCredits(auto, kind = "crown") {
   creditsDue = false; if (document.getElementById("credits")) return;
   const tc = $("tcase"); tc.hidden = true; tc.innerHTML = ""; $("music-pop").hidden = true;
   const p = state.prog, c = (p.credits ||= { rolls: 0 }); c.rolls = (c.rolls || 0) + 1; saveProgress();
-  const rows = creditSections().map((s) => `<section class="cr-sec"><h3>${esc(s.h)}</h3>${s.rows.map(([r, n]) => `<div class="cr-row${r ? "" : " solo"}">${r ? `<span>${esc(r)}</span>` : ""}<b>${esc(n)}</b></div>`).join("")}</section>`).join("");
+  const H = HOST(), T = creditsTitle(H.id);
+  const rows = creditSections(H.id).map((s) => `<section class="cr-sec"><h3>${esc(s.h)}</h3>${s.rows.map(([r, n]) => `<div class="cr-row${r ? "" : " solo"}">${r ? `<span>${esc(r)}</span>` : ""}<b>${esc(n)}</b></div>`).join("")}</section>`).join("");
   const stars = Array.from({ length: 70 }, (_, i) => `<i style="left:${(i * 53) % 100}%;top:${(i * 37) % 100}%;--d:${((i % 9) * 0.4).toFixed(1)}s;--s:${1 + (i % 3)}px"></i>`).join("");
   const el = document.createElement("div"); el.id = "credits"; el.className = "credits"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "End credits");
   el.innerHTML = `<div class="cr-stars" aria-hidden="true">${stars}</div><button class="c small cr-x" type="button" id="cr-x" aria-label="Close the credits">✕ Close</button>
     <div class="cr-roll" id="cr-roll">
-      <div class="cr-title"><small>${opus ? "The Great Work is finished" : auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>${opus ? "The Magnum Opus" : "The Oracle Chamber"}</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
+      <div class="cr-title"><small>${opus ? "The Great Work is finished" : auto ? "Every game. Every level. You did it." : esc(T.kicker)}</small><h2>${opus ? "The Magnum Opus" : esc(T.title)}</h2>${H.id !== "oracle" ? `<div class="cr-host">${H.emoji} Hosted by ${esc(H.name)}</div>` : ""}<div class="cr-song">♫ Don't Judge a Space Kid</div></div>
       ${rows}
       <section class="cr-sec cr-thanks"><h3>Special thanks</h3><div class="cr-big">${esc(SPECIAL_THANKS.name)}</div><p>${esc(SPECIAL_THANKS.line)}</p></section>
-      <section class="cr-end"><div class="cr-sig">⚛</div><h2>The End</h2><p>${esc(END_LINE)}</p>
+      <section class="cr-end"><div class="cr-sig">${H.id === "oracle" ? "⚛" : H.emoji}</div><h2>The End</h2><p>${esc(END_LINE)}</p>
         ${opus ? `<div class="cr-crown">🔴 <b>The red stone</b><span>Is set in Vell's goggle for good. The Magnum Opus record and the Magister coat are yours.</span></div>` : hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
-        <button class="c main" type="button" id="cr-done">✦ Back to the Chamber</button></section>
+        <button class="c main" type="button" id="cr-done">${esc(T.back)}</button></section>
     </div>`;
   document.body.append(el);
   const roll = $("cr-roll"), song = new Audio(`music/${CREDITS_SONG}.mp3`), m = musicOf(p), t0 = performance.now();
