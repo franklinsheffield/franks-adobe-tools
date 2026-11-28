@@ -2,13 +2,14 @@
 // device. Frank supplies the audio (music/<id>.mp3); a record joins the shared pool (music.js) once its file is in.
 // Data only. unlock: when the record is earned (the same task style as music.js TRACKS).
 import { HOUSE_RECORDS } from "./alchemist-lab.js";
+import { RECORDS } from "./house-records.gen.js";
 
 const visit = (h) => (p) => !!(((p && p.houses) || {})[h] || {}).day;
 const lvl3 = (h) => (p) => ((((p && p.houses) || {})[h] || {}).lv || []).some((k) => /-3$/.test(k));
 const rounds = (h, n) => (p) => ((((p && p.houses) || {})[h] || {}).rounds || 0) >= n;
 const relics = (h, n) => (p) => ((((p && p.houses) || {})[h] || {}).relics || []).length >= n;
-/** Records whose audio is in activity/music/<id>.mp3. They join the record player (music.js HOUSE_TRACKS). */
-export const HAVE = new Set(["bubble-and-brass", "knock-once-for-yes"]);
+/** Records whose audio is in activity/music/<id>.mp3 (the brand map, house-records.gen.js). house-music.js builds them into the game. */
+export const HAVE = new Set(RECORDS.filter((r) => !r.live).map((r) => r.id));
 /** Sleeve colours and icon for House records that don't set their own. */
 const SLEEVE = { alchemist: ["#C88A3A", "#fff1c4", "⚗️"], observatory: ["#8FB8FF", "#0B1530", "🔭"], parlour: ["#C3A6FF", "#2A0F24", "🕯️"],
   scriptorium: ["#E8483B", "#F1E4C6", "🪶"], pixelscape: ["#5CF2FF", "#05040C", "🌍"] };

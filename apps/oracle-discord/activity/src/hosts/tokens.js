@@ -4,6 +4,11 @@
 // The host says whose it is and sends it home: it's added to that House's purse, ready when you visit.
 import { moonLeft } from "../moonrelics.js";
 
+/** Spend n of this House's tokens (the caller checks tokensLeft first). */
+export function spendTokens(p, host, n) { if (host.token.id === "moon") p.moonSpent = (p.moonSpent || 0) + n; else purse(p, host.id).spent += n; return n; }
+/** A wallet over every House's tokens, by House id (the record crates take any House's tokens). */
+export const walletOf = (p, hosts) => { const h = (id) => hosts.find((x) => x.id === id); return { left: (id) => (h(id) ? tokensLeft(p, h(id)) : 0), spend: (id, n) => h(id) && spendTokens(p, h(id), n) }; };
+
 /** First win at each game level pays tokens (same table as moon tokens), plus a bonus for finishing a game's three levels. */
 export const LEVEL_PAY = [0, 2, 4, 6], SERIES_PAY = 3;
 /** Chance that a room award turns up a stray token from another House (one stray a day at most). */

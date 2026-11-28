@@ -1,11 +1,12 @@
 // The Chamber's music player: one <audio> element that loops your playlist endlessly (or the hero tracks in a battle),
 // the always-there 🎵 button with on/off and volume, and the record player drawn in the Trophy Case.
+import { HOUSE_NAMES, TOKEN_EMOJI, crateOf } from "./hosts/house-music.js";
 import { TRACKS, ALL_TRACKS, trackOf, fileOf, musicOf, hasTrack, playlist, battleList, nextIndex, shopId, togglePlaylist, moveInPlaylist } from "./music.js";
 
 /** Create the player. getProg() returns the member's progress; save() stores it; onChange() redraws any open UI. */
 export function createPlayer({ getProg, save, onChange = () => {} }) {
   const audio = new Audio(); audio.preload = "auto";
-  let held = false, queue = [], idx = 0, cur = null, started = false, battle = null, fadeT = null, previewT = null;
+  let held = false, queue = [], idx = 0, cur = null, started = false, battle = null, fadeT = null, previewT = null, opening = null; // opening: the House's opening song, playing first
   const m = () => musicOf(getProg());
   const setVol = (v) => { audio.volume = Math.max(0, Math.min(1, v)); };
   function fade(to, ms, done) {
@@ -23,11 +24,17 @@ export function createPlayer({ getProg, save, onChange = () => {} }) {
     const was = cur; queue = list.slice(); idx = keep && was ? Math.max(0, queue.indexOf(was)) : 0;
     return queue.length ? queue[idx] : null;
   }
-  audio.addEventListener("ended", () => { if (queue.length) { idx = nextIndex(idx, queue.length); load(queue[idx], false); } });
+  audio.addEventListener("ended", () => {
+    if (opening && cur === opening) { const o = opening; opening = null; if (!queue.length) return load(o, false); if (!queue.includes(o)) { idx = 0; return load(queue[0], false); } }
+    if (queue.length) { idx = nextIndex(idx, queue.length); load(queue[idx], false); } });
 
   const api = {
     /** Start after the first tap (browsers need one before sound). */
-    start() { if (started) return; started = true; const id = rebuild(false); if (id && m().on) load(id); else onChange(); },
+    start(first = null) { if (started) return; started = true; const id = rebuild(false), o = first && trackOf(first);
+      if (o && m().on) { opening = o.id; idx = Math.max(0, queue.indexOf(o.id)); return load(o.id); }
+      if (id && m().on) load(id); else onChange(); },
+    /** The opening song now playing (or null). */
+    get opening() { return opening; },
     get playing() { return !audio.paused && !!cur; }, get current() { return cur ? trackOf(cur) : null; }, get inBattle() { return !!battle; },
     get position() { return { t: audio.currentTime || 0, d: audio.duration || 0 }; },
     /** The music switch: off stops it, on picks up your playlist. */
@@ -39,12 +46,12 @@ export function createPlayer({ getProg, save, onChange = () => {} }) {
     play(id) { const t = trackOf(id); if (!t || !hasTrack(getProg(), t)) return; clearTimeout(previewT); started = true;
       if (!m().on) { m().on = true; save(); }
       if (!queue.includes(t.id)) { queue = [...(battle || playlist(getProg()))]; if (!queue.includes(t.id)) queue.unshift(t.id); }
-      idx = queue.indexOf(t.id); load(t.id); },
+      idx = queue.indexOf(t.id); opening = null; load(t.id); },
     toggle() { if (!cur || audio.paused) { if (!m().on) return api.setOn(true); if (cur) { audio.play().catch(() => {}); onChange(); } else api.start(); } else { audio.pause(); onChange(); } },
-    next(d = 1) { if (!queue.length) rebuild(false); if (!queue.length) return; idx = nextIndex(idx, queue.length, d); load(queue[idx]); },
+    next(d = 1) { if (!queue.length) rebuild(false); if (!queue.length) return; if (opening && cur === opening && !queue.includes(cur)) idx = d > 0 ? -1 : 0; opening = null; idx = nextIndex(idx, queue.length, d); load(queue[idx]); },
     /** The playlist changed: keep playing the current record if it is still in it. */
     refresh() { if (battle) return onChange(); const p = getProg(), list = playlist(p); queue = list.slice();
-      if (cur && !queue.includes(cur) && !audio.paused) { if (queue.length) { idx = 0; load(queue[0]); } else { audio.pause(); cur = null; } }
+      if (cur && cur !== opening && !queue.includes(cur) && !audio.paused) { if (queue.length) { idx = 0; load(queue[0]); } else { audio.pause(); cur = null; } }
       else idx = Math.max(0, queue.indexOf(cur)); onChange(); },
     /** Entering or leaving a room: battle rooms switch to the hero tracks you own. */
     room(roomId) { const b = roomId ? battleList(getProg(), roomId) : null, nb = b && b.length ? b : null;
@@ -89,13 +96,18 @@ export function turntableSvg(t, playing) {
 
 /** The record player view inside the Trophy Case. */
 /** deck(track, playing, prog) draws the House's own player (the Oracle's turntable by default); the records and playlist are shared. */
-export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg } = {}) {
-  const s = musicOf(p), cur = pl.current, list = s.list.filter((id) => hasTrack(p, trackOf(id))), owned = ALL_TRACKS.filter((t) => hasTrack(p, t)).length;
+let rpHouse = null; // the record player's House filter (null: the House you're in)
+const houseOf = (t) => t.house || "oracle";
+export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg, house = "oracle" } = {}) {
+  const s = musicOf(p), cur = pl.current, list = s.list.filter((id) => hasTrack(p, trackOf(id)));
+  const shown = ALL_TRACKS.filter((t) => !t.hidden || hasTrack(p, t)), owned = shown.filter((t) => hasTrack(p, t)).length; // hidden records appear once found
+  const hs = [...new Set(ALL_TRACKS.map(houseOf))], fh = rpHouse && hs.includes(rpHouse) ? rpHouse : hs.includes(house) ? house : "oracle";
+  const inH = shown.filter((t) => houseOf(t) === fh), hid = ALL_TRACKS.filter((t) => houseOf(t) === fh && t.hidden && !hasTrack(p, t)).length;
   const sleeve = (t, i) => { const own = hasTrack(p, t), inList = list.includes(t.id), on = cur && cur.id === t.id;
-    const state = own ? "" : t.how === "shop" ? `<span class="rp-lock">💎 ${t.price} in the Store</span>` : `<span class="rp-lock">🔒 ${esc(t.task)}</span>`;
+    const state = own ? (t.credit ? `<small class="rp-credit">${esc(t.credit)}</small>` : "") : t.how === "shop" ? `<span class="rp-lock">💎 ${t.price} in the Store</span>` : t.how === "crate" ? `<span class="rp-lock">${TOKEN_EMOJI[t.house]} ${t.price} in the record crate</span>` : `<span class="rp-lock">🔒 ${esc(t.task)}</span>`;
     return `<div class="rp-rec${own ? "" : " locked"}${on ? " now" : ""}" style="--lab:${t.label};--ink:${t.ink};--i:${i}">
       <div class="rp-sleeve">${vinylSvg(own ? t : null, 76, "rp-v")}<span class="rp-cover">${t.icon}</span>${t.hero ? `<i class="rp-hero">⚔ Battle</i>` : ""}</div>
-      <b>${esc(t.title)}</b>${state}
+      <b>${esc(t.title)}</b>${t.opener ? `<i class="rp-open">🚪 Opening song</i>` : ""}${t.hidden && own ? `<i class="rp-open">❔ Hidden, from ${esc(HOUSE_NAMES[t.from] || "another House")}</i>` : ""}${state}
       ${own ? `<div class="rp-acts"><button class="c small" type="button" data-rp-play="${t.id}">${on && pl.playing ? "♪ Playing" : "▶ Play"}</button><button class="c small${inList ? " on" : ""}" type="button" data-rp-list="${t.id}" aria-pressed="${inList}">${inList ? "✓ In playlist" : "＋ Playlist"}</button></div>`
         : t.how === "shop" ? `<div class="rp-acts"><button class="c small" type="button" data-rp-shop="${shopId(t)}">💎 Visit the Store</button></div>` : ""}</div>`; };
   const pos = pl.position;
@@ -109,9 +121,12 @@ export function recordPlayerHtml(p, pl, esc, { deck = turntableSvg } = {}) {
       <div class="rp-list"><small>Your playlist · loops forever${list.length ? "" : " · add a record below"}</small>${list.map((id, i) => { const t = trackOf(id); return `<span class="rp-chip${cur && cur.id === id ? " now" : ""}" style="--lab:${t.label}">${t.icon} ${esc(t.title)}<button type="button" data-rp-up="${id}" aria-label="Move ${esc(t.title)} up" ${i ? "" : "disabled"}>▲</button><button type="button" data-rp-list="${id}" aria-label="Take ${esc(t.title)} off the playlist">✕</button></span>`; }).join("")}</div>
     </div>
   </div>
-  <h3 class="rp-h">Your records · ${owned} / ${ALL_TRACKS.length}</h3>
-  <div class="rp-crate">${ALL_TRACKS.map(sleeve).join("")}</div>
-  <div class="note">Finish tasks to unlock records, or buy them in the Store under The Chamber. ⚔ Battle records play when you face the Oracle in Element Duel or Constellation Rummy.</div>
+  <h3 class="rp-h">Your records · ${owned} / ${shown.length}</h3>
+  <div class="rp-houses" role="tablist">${hs.map((h) => { const n = ALL_TRACKS.filter((t) => houseOf(t) === h && hasTrack(p, t)).length; return `<button class="c small${h === fh ? " on" : ""}" type="button" role="tab" aria-selected="${h === fh}" data-rp-house="${h}">${esc(HOUSE_NAMES[h].replace(/^the /, "The "))} <small>${n}</small></button>`; }).join("")}</div>
+  <div class="rp-crate">${inH.map(sleeve).join("")}</div>
+  ${hid ? `<div class="note">❔ ${hid} hidden record${hid > 1 ? "s" : ""} from other Houses ${hid > 1 ? "are" : "is"} tucked away in ${esc(HOUSE_NAMES[fh])}. Its record crate has the riddles.</div>` : ""}
+  <div class="note">Finish tasks to unlock records, buy them in each House's record crate with its own tokens, or in the Store. Every House opens with its own song. ⚔ Battle records play when you face the Oracle in Element Duel or Constellation Rummy.</div>
+  <details class="rp-credits"><summary>🎼 Music credits</summary><p>The Chamber's 16 records and the House songs marked Original were made for Science is Magic. The rest are free game music, used under their licences:</p><ul>${shown.filter((t) => t.credit || (t.licence && t.licence !== "Original")).map((t) => `<li><b>${esc(t.title)}</b>${t.licence ? ` <small>(${esc(t.licence)})</small>` : ""}${t.credit ? ` · ${esc(t.credit)}` : ""}</li>`).join("")}</ul></details>
 </div>`;
 }
 /** On/off switch and volume slider (used in the header pop-up and the record player). */
@@ -127,5 +142,22 @@ export function wireMusic(root, pl, { onOpenStore = null, redraw = null, getProg
   root.querySelectorAll("[data-rp-play]").forEach((b) => (b.onclick = () => { pl.play(b.dataset.rpPlay); redraw && redraw(); }));
   root.querySelectorAll("[data-rp-list]").forEach((b) => (b.onclick = () => { togglePlaylist(getProg(), b.dataset.rpList); save(); pl.refresh(); redraw && redraw(); }));
   root.querySelectorAll("[data-rp-up]").forEach((b) => (b.onclick = () => { moveInPlaylist(getProg(), b.dataset.rpUp, -1); save(); pl.refresh(); redraw && redraw(); }));
+  root.querySelectorAll("[data-rp-house]").forEach((b) => (b.onclick = () => { rpHouse = b.dataset.rpHouse; redraw && redraw(); }));
   root.querySelectorAll("[data-rp-shop]").forEach((b) => (b.onclick = () => onOpenStore && onOpenStore()));
+}
+
+/** A House's record crate: its records for sale (pay with any House's tokens: a pay chip picks which) and the riddles
+ *  for its hidden records. wallet.left(houseId) = tokens you hold. */
+export function crateHtml(p, house, pay, wallet, esc) {
+  const C = crateOf(house), sale = C.filter((t) => t.how === "crate"), hidden = C.filter((t) => t.hidden), cur = TOKEN_EMOJI[pay] ? pay : house;
+  const chips = Object.keys(TOKEN_EMOJI).map((h) => `<button class="c small${h === cur ? " on" : ""}" type="button" data-crate-pay="${h}" aria-pressed="${h === cur}">${TOKEN_EMOJI[h]} ${wallet.left(h)}</button>`).join("");
+  const rec = (t, i) => { const own = hasTrack(p, t), can = wallet.left(cur) >= t.price;
+    return `<div class="rp-rec${own ? "" : " locked"}" style="--lab:${t.label};--ink:${t.ink};--i:${i}"><div class="rp-sleeve">${vinylSvg(own ? t : null, 76, "rp-v")}<span class="rp-cover">${t.icon}</span></div><b>${esc(t.title)}</b>
+      ${own ? `<span class="rp-lock">✓ Yours</span>` : `<div class="rp-acts"><button class="c small" type="button" data-crate-listen="${t.id}">🎧 Listen</button><button class="c small main" type="button" data-crate-buy="${t.id}" ${can ? "" : "disabled"}>${TOKEN_EMOJI[cur]} ${t.price}</button></div>`}</div>`; };
+  return `<div class="note box-note">The record crate of ${esc(HOUSE_NAMES[house])}. Prices are in ${TOKEN_EMOJI[house]}, but any House's tokens spend here, one for one. Pay with:</div>
+  <div class="rp-houses">${chips}</div>
+  <div class="rp-crate">${sale.length ? sale.map(rec).join("") : `<div class="note">Nothing for sale here. Records in this House are earned by playing.</div>`}</div>
+  ${hidden.length ? `<h3 class="rp-h">❔ Hidden records · ${hidden.filter((t) => hasTrack(p, t)).length} / ${hidden.length}</h3><div class="sec-grid">${hidden.map((t) => { const own = hasTrack(p, t);
+    return `<div class="sec-card${own ? " got" : ""}"><span class="sec-e" aria-hidden="true">${own ? t.icon : "❔"}</span><b>${own ? esc(t.title) : "A hidden record"}</b><small>${esc(t.hint)}</small><i>${own ? `From ${esc(HOUSE_NAMES[t.from] || "another House")}` : t.hidden === "find" ? "🔍 Find it" : t.hidden === "task" ? "🎯 Earn it" : "🪙 Pay for it, oddly"}</i></div>`; }).join("")}</div>` : ""}
+  <div class="choices"><button class="c" type="button" id="crate-back">✦ Back</button></div>`;
 }

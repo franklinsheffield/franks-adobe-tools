@@ -40,6 +40,15 @@ async function build() {
   fs.copyFileSync(path.join(APP, "build/icon.png"), path.join(OUT, "icon.png"));
   // Frank's 3D library list (the Activity Worker serves it at /api/lib/index.json; built by pixel-scape-discord)
   const kit = path.join(APP, "../pixel-scape-discord/data/models-index.json"); if (fs.existsSync(kit)) fs.copyFileSync(kit, path.join(OUT, "kit-models.json"));
+  // Pixel Scape's records (the brand map, shared with the Oracle Chamber's House music): opener first
+  const recs = path.join(APP, "../oracle-discord/activity/src/hosts/house-records.gen.js"), mus = path.join(APP, "../oracle-discord/activity/music");
+  if (fs.existsSync(recs)) {
+    const all = JSON.parse(fs.readFileSync(recs, "utf8").replace(/^[\s\S]*?export const RECORDS = /, "").replace(/;\s*$/, ""));
+    const tracks = all.filter((r) => r.house === "pixelscape" && fs.existsSync(path.join(mus, r.id + ".mp3"))), opener = (tracks.find((r) => r.opener) || {}).id || null;
+    fs.mkdirSync(path.join(OUT, "music"), { recursive: true });
+    for (const t of tracks) fs.copyFileSync(path.join(mus, t.id + ".mp3"), path.join(OUT, "music", t.id + ".mp3"));
+    fs.writeFileSync(path.join(OUT, "music", "list.json"), JSON.stringify({ opener, tracks: tracks.map(({ id, title, credit, licence }) => ({ id, title, credit, licence })) }));
+  }
   const size = fs.statSync(path.join(OUT, "app.js")).size;
   console.log(`web build: ${n} modules mapped, app.js ${(size / 1e6).toFixed(2)} MB -> ${path.relative(process.cwd(), OUT)}`);
   return r;
