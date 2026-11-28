@@ -92,7 +92,7 @@ import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
-import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
+import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon, hostStreak, personaHouseLine } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
@@ -196,7 +196,9 @@ function reactCtx() { return { teller: $("teller"), scene: $("scene"), gesture: 
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
 function roomBanter(event = "mid") {
-  const l = state.inRoom && (hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
+  const pb = () => banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused); // a bought personality takes every other turn from the House host (Frank 2026-11-27)
+  const mix = state.prog.persona && state.prog.persona !== "mystic" && Math.random() < 0.5;
+  const l = state.inRoom && ((mix && pb()) || hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
   chat.n = 0; chat.next = 5 + Math.floor(Math.random() * 4); chat.at = Date.now();
   mood.emote(["wink", "curious", "think", "smug"][Math.floor(Math.random() * 4)], { quiet: true, say: l });
   if (state.prog.persona === "standup") setTimeout(rimshot, 900);
@@ -284,7 +286,7 @@ function say(text, done, { keep = false } = {}) {
   step();
 }
 const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
-const joke = (key) => hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
+const joke = (key) => (Math.random() < 0.5 && personaHouseLine(pid(), "joke", state.name, heard())) || hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
 const ui = (html) => { $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
@@ -373,7 +375,7 @@ function greet() {
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = HOST().readings ? available(MODULES) : [], btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
-  say((hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  say((personaHouseLine(pid(), "greet", state.name) || hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${hostStreak(st) || `${st} days in a row now… the stars notice.`}` : "") : ""));
   showStats();
   const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });

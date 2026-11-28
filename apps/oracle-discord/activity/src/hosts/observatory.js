@@ -195,6 +195,7 @@ export const observatory = {
   relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
   strayIntro: "Something just rolled out of the telescope tube:",
   lines: {
+    streak: ["{n} nights in a row. Patience is the best telescope.", "{n} clear nights running. The sky rewards regulars."],
     greet: ["Give your eyes 20 minutes in the dark, {name}. The sky gets bigger.", "Welcome to the Observatory, {name}. Look up. Then look closer.",
       "Good evening, {name}. The dome is open and the stars are where we left them. Roughly."],
     idle: ["Sunlight takes about eight minutes to reach us, so we always see the Sun as it was a few minutes ago.",
