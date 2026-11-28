@@ -1,6 +1,5 @@
 // Idle comments: what each Oracle personality says when the member does nothing for 30 seconds.
-// Lines 1-3 are a chained bit and always lead, in order, every time the member goes quiet.
-// After those, the other 12 play in a shuffled order with no repeats. {name} = member. All lines original.
+// All 15 play in a random order with no repeats until the pool runs out (Frank 2026-11-28: no fixed opening three). {name} = member. All lines original.
 
 export const IDLE_AFTER = 30000;
 
@@ -177,11 +176,10 @@ export const IDLE = {
   ],
 };
 
-/** Next idle line for a personality: the first 3 in order every time the member goes quiet, then the rest shuffled. */
+/** Next idle line for a personality: a random line not yet heard; the pool refills once all 15 are used. */
 export function idleLine(id, step, used, name, rand = Math.random) {
   const pool = IDLE[id] || IDLE.mystic, fill = (t) => t.replace(/\{name\}/g, name || "traveller");
-  if (step < 3) return fill(pool[step]);
-  let left = pool.slice(3).map((_, i) => i + 3).filter((i) => !used.includes(i));
-  if (!left.length) { used.length = 0; left = pool.slice(3).map((_, i) => i + 3); }
+  let left = pool.map((_, i) => i).filter((i) => !used.includes(i));
+  if (!left.length) { used.length = 0; left = pool.map((_, i) => i); }
   const i = left[Math.floor(rand() * left.length)]; used.push(i); return fill(pool[i]);
 }
