@@ -154,7 +154,7 @@ test("the soundtrack library: every House has a named player and 4 branded recor
   assert.equal(new Set(LIBRARY.map((L) => L.player)).size, LIBRARY.length, "each House has its own player");
   for (const L of LIBRARY.filter((x) => x.house !== "oracle")) { assert.equal(L.tracks.length, 4, L.house); for (const t of L.tracks) assert.ok(t.title && t.mood && t.task, t.id); }
   for (const h of HOSTS.filter((x) => x.id !== "oracle")) assert.equal(LIBRARY.find((L) => L.house === h.id).player, h.player.name, h.id + " player name matches");
-  assert.equal(toSend().reduce((a, x) => a + x.n, 0), 20);
+  for (const x of toSend()) assert.ok(x.n >= 0 && x.n <= 4, x.house);
 });
 test("Madame Rook and Archivist Wren rename the Oracle in their Houses, with the brand brief's values", () => {
   const P = HOSTS.find((x) => x.id === "parlour"), W = HOSTS.find((x) => x.id === "scriptorium");
@@ -261,6 +261,21 @@ test("Observatory Phase 4: six new relics and The Grand Orrery set", async () =>
   for (const id of ["sk-nebra", "sk-ulughbeg", "sk-h4", "sk-herschel", "sk-leavitt", "sk-blink"]) assert.ok(observatory.relics.some((r) => r.id === id), id);
   assert.equal(new Set(observatory.relics.map((r) => r.id)).size, observatory.relics.length);
   assert.deepEqual(SETS.find((s) => s.id === "orrery").ids, OBS_GAMES);
+});
+
+test("House records with audio join the record player and unlock by their House task", async () => {
+  const { HAVE } = await import("../activity/src/hosts/soundtracks.js");
+  const { HOUSE_TRACKS, ALL_TRACKS, TRACKS, trackOf, checkUnlocks, hasTrack } = await import("../activity/src/music.js");
+  const { existsSync } = await import("node:fs");
+  const { fresh } = await import("../activity/src/game.js");
+  assert.deepEqual(HOUSE_TRACKS.map((t) => t.id).sort(), [...HAVE].sort());
+  assert.equal(ALL_TRACKS.length, TRACKS.length + HAVE.size);
+  for (const t of HOUSE_TRACKS) { assert.ok(existsSync(new URL(`../activity/music/${t.id}.mp3`, import.meta.url)), t.id); assert.ok(t.label && t.ink && t.icon, t.id); assert.equal(trackOf(t.id), t); }
+  const p = fresh(); assert.ok(!hasTrack(p, trackOf("bubble-and-brass")));
+  p.houses = { alchemist: { day: "2026-11-27" } };
+  assert.ok(checkUnlocks(p).some((t) => t.id === "bubble-and-brass")); assert.ok(hasTrack(p, trackOf("bubble-and-brass")));
+  p.houses.parlour = { day: "2026-11-27" };
+  assert.ok(checkUnlocks(p).some((t) => t.id === "knock-once-for-yes"));
 });
 
 test("Observatory Phase 4 shelves: eyepieces and night skies, each with a free default", async () => {

@@ -34,8 +34,10 @@ test("the playlist: only owned records, add, remove, reorder, loops forever", ()
   assert.equal(nextIndex(2, 3), 0); assert.equal(nextIndex(0, 3, -1), 2); assert.equal(nextIndex(0, 1), 0);
 });
 
-test("three records are sold on the Records shelf in The Chamber department", () => {
-  assert.equal(recordShop.items.length, 3); for (const it of recordShop.items) assert.ok(!STORE.some((s) => s.id === it.id), it.id);
+test("three records are sold on the Records shelf in The Chamber department", async () => {
+  const { HOUSE_TRACKS } = await import("../activity/src/music.js");
+  assert.equal(recordShop.items.filter((it) => TRACKS.some((t) => "rec-" + t.id === it.id)).length, 3);
+  assert.equal(recordShop.items.length, 3 + HOUSE_TRACKS.filter((t) => t.how === "shop").length, "the rest are Pixel Scape's Satellite Jukebox records"); for (const it of recordShop.items) assert.ok(!STORE.some((s) => s.id === it.id), it.id);
   registerShelf(recordShop); assert.equal(deptOf("record").id, "chamber");
   const css = readFileSync(new URL("../activity/src/chamber.css", import.meta.url), "utf8"); assert.ok(css.includes(".tt.playing .tt-disc"));
 });

@@ -1,8 +1,9 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
 import { bookPoke } from "./library.js";
-import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
-import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
+import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, ALL_TRACKS, hasTrack } from "./music.js";
+import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg, crateHtml } from "./player.js";
+import { OPENER, crateOf, musicEvent, buyRecord } from "./hosts/house-music.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
@@ -93,7 +94,7 @@ import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
 import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon, hostStreak, personaHouseLine } from "./hosts/index.js";
-import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
+import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft, walletOf } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -161,7 +162,7 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** What a House host needs to react on the figure: the teller, the backdrop (for the fume hood) and her gestures. */
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
-  disguiseEvent(kind, data);
+  disguiseEvent(kind, data); hiddenRecordEvent(kind, data);
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
   const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
     find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
@@ -169,6 +170,13 @@ function secretEvent(kind, data = {}) {
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
       CU.event?.("house-secret", id); return true; } };
   try { H.secrets.event(kind, data, api); } catch (e) { console.warn("secret", e); }
+}
+/** Hidden cross-brand records you find in the scene (hosts/house-music.js): a find chimes and goes on the playlist. */
+function hiddenRecordEvent(kind, data) {
+  if (!state.prog) return; const fresh = musicEvent(state.prog, HOST().id, kind, data); if (!fresh.length) return;
+  const { t, line } = fresh[0]; logEvent("secret", "🎵", `${HOST().house}: found the hidden record ${t.title}`, null, [["House", HOST().house], ["Record", t.title]]);
+  saveProgress(); player.refresh(); chime(2); mood.emote("wow", { quiet: true });
+  setTimeout(() => mood.bubble(`🎵 A hidden record: ${t.title}! ${line || ""} It's on your playlist now.`.trim(), 6000, "🎵"), reduced ? 0 : 700);
 }
 // ---- the one-person gimmick (hosts/disguise.js): every host is secretly the same person, and slips ----
 function disguiseEvent(kind, data) {
@@ -315,7 +323,7 @@ function showGift() {
     setTimeout(m.close, reduced ? 600 : 1500); };
 }
 function showProfile() {
-  const recs = TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
+  const recs = ALL_TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
   const x = profileOf(state.prog, { name: state.name, records: recs, systems: names });
   const art = ($("teller").querySelector("svg")?.outerHTML || "").replace(/id="t-/g, 'id="pf-').replace(/#t-/g, "#pf-").replace(/\sid="(?!pf-)[^"]*"/g, "");
   const m = modal("profile", `<div class="pf-in" role="dialog" aria-label="Your profile card">${profileHtml(x, esc, art)}<div class="choices"><button class="c main" type="button" id="pf-share">📤 Share in the channel</button><button class="c" type="button" id="pf-x">Close</button></div><p class="pf-msg" id="pf-msg" aria-live="polite"></p></div>`);
@@ -384,6 +392,7 @@ function greet() {
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
+  if (crateOf(HOST().id).length) { const C = crateOf(HOST().id), n = C.filter((t) => hasTrack(state.prog, t)).length; $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-crate">🎵 Record crate <small>${n}/${C.length}</small></button>`); $("hm-crate").onclick = () => openRecordCrate(); }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
   if (clueCount(state.prog)) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-dossier">🎭 Dossier <small>${clueCount(state.prog)}/${CLUES.length}</small></button>`); $("hm-dossier").onclick = openDossier; }
   if (HOST().menuBg) { $("ui").classList.add("has-mbg"); $("ui").insertAdjacentHTML("afterbegin", HOST().menuBg.html(Date.now(), { prog: state.prog })); }
@@ -408,6 +417,25 @@ function openHouseRelics(note) {
   $("ui").querySelectorAll("[data-hrelic]").forEach((b) => (b.onclick = () => { const r = buyHouseRelic(state.prog, H, b.dataset.hrelic); if (!r) return; logEvent("buy", r.e, `${H.house}: placed ${r.name}`, null, [["House", H.house], ["Relic", r.name], ["Price", `${H.token.emoji} ${r.price}`]]);
     saveProgress(); showStats(); applyLook(); chime(2); mood.emote("cheer"); openHouseRelics(`${r.name}. It stays in my House now, for good. Look behind me.`); }));
   $("hr-back").onclick = greet;
+}
+
+// ---- the House record crate (hosts/house-music.js): records paid in any House's tokens; hidden ones as riddles ----
+let cratePay = null;
+function openRecordCrate(note) {
+  const H = HOST(), w = walletOf(state.prog, HOSTS); if (!cratePay || !w.left(cratePay)) cratePay = H.id;
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🎵 Record crate");
+  say(typeof note === "string" ? note : `Records for ${H.player.name}. Pay in ${H.token.plural}, or in another House's tokens if you must.`);
+  ui(crateHtml(state.prog, H.id, cratePay, w, esc));
+  $("ui").querySelectorAll("[data-crate-pay]").forEach((b) => (b.onclick = () => { cratePay = b.dataset.cratePay; openRecordCrate(note); }));
+  $("ui").querySelectorAll("[data-crate-listen]").forEach((b) => (b.onclick = () => player.preview(b.dataset.crateListen)));
+  $("ui").querySelectorAll("[data-crate-buy]").forEach((b) => (b.onclick = () => { const r = buyRecord(state.prog, b.dataset.crateBuy, cratePay, w); if (!r) return;
+    const paid = HOSTS.find((h) => h.id === cratePay);
+    logEvent("buy", "🎵", `${H.house}: bought the record ${r.t.title}`, null, [["House", H.house], ["Record", r.t.title], ["Price", `${paid.token.emoji} ${r.t.price}`]]);
+    saveProgress(); showStats(); chime(2); mood.emote("cheer"); player.refresh(); player.play(r.t.id);
+    let msg = `${r.t.title} is yours, and on your playlist.`;
+    if (r.bonus.length) { msg += ` And you paid in ${paid.token.plural} when you had ${H.token.plural} to spare? Then you've earned this: ${r.bonus.map((t) => t.title).join(", ")}, a hidden record.`; chime(3); }
+    openRecordCrate(msg); }));
+  $("crate-back").onclick = greet;
 }
 
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
@@ -1305,7 +1333,7 @@ showSpeech();
   const gate = $("gate"), p = state.prog;
   gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
+  const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(OPENER[HOST().id]); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
   if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
@@ -1394,8 +1422,8 @@ function openCase(focus = null, view = null) {
     <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
       <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
       ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
-    ${(() => { const t = player.current, own = TRACKS.filter((x) => hasTrack(p, x)).length;
-      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
+    ${(() => { const t = player.current, own = ALL_TRACKS.filter((x) => hasTrack(p, x)).length;
+      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || ALL_TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
     <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);
@@ -1420,7 +1448,7 @@ function openRecords() {
   const el = $("tcase"), p = state.prog;
   el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The record player">
     <header><div class="tc-brand"><span class="tc-sig">♫</span><div><h2>The Record Player</h2><small>Science is Magic · Oracle Chamber</small></div></div>${caseTabs()}
-      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc, { deck: HOST().player.deck })}</div>`;
+      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc, { deck: HOST().player.deck, house: HOST().id })}</div>`;
   if (HOST().rename) el.innerHTML = rename(el.innerHTML);
   const wasHidden = el.hidden; el.hidden = false; if (wasHidden) el.scrollTop = 0; wireCaseTabs(); wireMusic(el, player, musicDeps());
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
