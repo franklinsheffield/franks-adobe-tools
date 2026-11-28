@@ -7,6 +7,7 @@ import { dmy } from "../src/birthplace.js";
 import { menuMessage, askModal, systemByKey } from "../src/oracle/chat.js";
 import { optionsFor } from "../src/oracle/systems.js";
 import { PORTRAIT_PNG_B64 } from "../src/oracle/portrait.js";
+import { PLAY_ID } from "../src/play-posts.js";
 
 const PORTRAIT = Uint8Array.from(atob(PORTRAIT_PNG_B64), (c) => c.charCodeAt(0));
 
@@ -73,6 +74,7 @@ export default {
     if (it.type === 3) { // buttons and the Oracle's system menu
       const id = it.data.custom_id;
       if (id === "oracle:menu") return json(menuMessage(env, who));
+      if (id === PLAY_ID) return env.ACTIVITY_READY === "true" ? json({ type: 12 }) : say("The Houses open soon. Try /oracle for now."); // the pinned Play cards
       if (id === "oracle:chamber") {
         if (env.ACTIVITY_READY === "true") return json({ type: 12 }); // launch the Oracle Chamber Activity
         return say("✨ The Oracle Chamber is still being built. For now, the Oracle reads for you right here: press **Another reading**.");

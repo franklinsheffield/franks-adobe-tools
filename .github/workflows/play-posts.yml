@@ -1,0 +1,28 @@
+# One-tap Play cards (apps/oracle-discord/scripts/play-posts.js). Run by hand only.
+#   plan: read only; prints each card, its channel, and whether one is already posted
+#   send: posts (or edits) and pins the Five Doors card in #🚪-choose-your-house and an Enter card in each House channel
+name: Play cards
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan | send"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, send]
+permissions:
+  contents: read
+jobs:
+  posts:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - name: Play cards (${{ inputs.mode }})
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        run: node scripts/play-posts.js "${{ inputs.mode }}"
