@@ -150,7 +150,8 @@ export const alchemist = {
   relics: LAB_RELICS, relicLabel: "🪨 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
   strayIntro: "Something just fell out of the flask:",
   lines: {
-    greet: ["{name}! Goggles on, gloves on, curiosity on. Welcome to the Alchemist's House.", "Ah, {name}. Mind the bench, it's still warm. What shall we mix today?",
+    streak: ["{n} days running. Repeatable results: that's the whole scientific method.", "{n} days in a row! Write it in the lab book."],
+    greet: ["{name}! Goggles on, gloves on, curiosity on. Welcome to the Alchemist's House.", "{name}! Mind the bench, it's still warm. Note it down: warm bench, good sign. What shall we mix today?",
       "Welcome back to the lab, {name}. Nothing has exploded since you left. Nothing important, anyway."],
     idle: ["Gold is so soft it can be beaten thinner than a leaf of paper. Alchemists spent centuries trying to make it. Jewellers spent them hammering it.",
       "Robert Boyle published The Sceptical Chymist in 1661, and still did alchemy on the side. Science is a slow reaction.",

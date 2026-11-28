@@ -76,6 +76,7 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
+import { textFxPlan, textFxHtml, TEXTFX_CSS } from "./textfx.js";
 import { notebookPages, studyToday, claimTable, litTable, NOTEBOOK_CSS } from "./notebook.js";
 import { claimOpus, OPUS_CSS, OPUS_GAMES } from "./opus.js";
 import { addTokens } from "./hosts/tokens.js";
@@ -92,7 +93,7 @@ import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
 import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
-import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
+import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon, hostStreak, personaHouseLine } from "./hosts/index.js";
 import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft, walletOf } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
@@ -203,7 +204,9 @@ function reactCtx() { return { teller: $("teller"), scene: $("scene"), gesture: 
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
 function roomBanter(event = "mid") {
-  const l = state.inRoom && (hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
+  const pb = () => banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused); // a bought personality takes every other turn from the House host (Frank 2026-11-27)
+  const mix = state.prog.persona && state.prog.persona !== "mystic" && Math.random() < 0.5;
+  const l = state.inRoom && ((mix && pb()) || hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
   chat.n = 0; chat.next = 5 + Math.floor(Math.random() * 4); chat.at = Date.now();
   mood.emote(["wink", "curious", "think", "smug"][Math.floor(Math.random() * 4)], { quiet: true, say: l });
   if (state.prog.persona === "standup") setTimeout(rimshot, 900);
@@ -237,6 +240,7 @@ $("table").addEventListener("click", (e) => {
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
 // ---- the text feed: follows the speech, folds to two lines (a secret hides behind it), quick-saves the conversation ----
 const FEED = { pinned: true, autoAt: 0 };
+{ const st = document.createElement("style"); st.id = "textfx-style"; st.textContent = TEXTFX_CSS; document.head.append(st); }
 function feedToEnd() { const f = $("feed"); FEED.autoAt = performance.now(); f.scrollTop = f.scrollHeight; }
 $("feed").addEventListener("scroll", () => { const f = $("feed"), end = f.scrollHeight - f.scrollTop - f.clientHeight < 24; if (end) FEED.pinned = true; else if (performance.now() - FEED.autoAt > 120) FEED.pinned = false; }, { passive: true });
 function setFeedMini(on, save = true) {
@@ -270,10 +274,12 @@ function say(text, done, { keep = false } = {}) {
   FEED.pinned = true; const follow = () => { if (FEED.pinned) feedToEnd(); };
   const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
-  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
+  /** Now and then a few words move with the feeling: shake, wave, bounce or pop (textfx.js). */
+  const plan = reduced ? null : textFxPlan(text, mood.mood() || "");
+  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); if (plan) el.innerHTML = textFxHtml(plain, plan, esc); };
   const pros = prosody(plain);
   say.finish = null;
-  const sm = speechMode(), pace = sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1;
+  const sm = speechMode(), pace = (sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1) * (plan && plan.slow ? 1.3 : 1); // dreamy lines are said a little slower
   if (reduced || sm === "off") { el.textContent = plain; stop(); follow(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
   say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); follow(); done && done(); };
@@ -288,7 +294,7 @@ function say(text, done, { keep = false } = {}) {
   step();
 }
 const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
-const joke = (key) => hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
+const joke = (key) => (Math.random() < 0.5 && personaHouseLine(pid(), "joke", state.name, heard())) || hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
 const ui = (html) => { $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
@@ -377,7 +383,7 @@ function greet() {
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = HOST().readings ? available(MODULES) : [], btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
-  say((hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  say((personaHouseLine(pid(), "greet", state.name) || hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${hostStreak(st) || `${st} days in a row now… the stars notice.`}` : "") : ""));
   showStats();
   const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });

@@ -161,7 +161,8 @@ export const scriptorium = {
   relics: SCRIPT_RELICS, relicLabel: "📜 Scriptorium relics", relicBlurb: "Scriptorium relics stay on my shelves for good. Earn scrolls with your first visit each day and by beating game levels here.",
   strayIntro: "This slipped out from between two pages:",
   lines: {
-    greet: ["Welcome to the Scriptorium, {name}. Every mark means something. Shall we read a few?", "Ah, {name}. Mind the ink, it's still wet. It's always still wet.",
+    streak: ["{n} days in a row. I've noted it in the margin.", "{n} days running. Footnote: that is a habit."],
+    greet: ["Welcome to the Scriptorium, {name}. Every mark means something. Shall we read a few?", "Strictly speaking, {name}, mind the ink. It's still wet. It's always still wet.",
       "Hello, {name}. I'm not a morning person. I'm a manuscript person."],
     idle: ["This is the Gallehus horn, about AD 400. Its maker signed it in runes: 'I, Hlewagastiz, made the horn.'",
       "The futhark is an alphabet, named after its first six letters. 'Rune magic' sets are a modern invention.",
