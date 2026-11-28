@@ -7,12 +7,14 @@
 //   POST /api/share  Bearer <access_token> { channelId, title, lines, color } -> { ok }  (a Grimoire page posted by the bot)
 //   POST /api/boost  Bearer <access_token> { guildId } -> { boosting, fresh, reward }  (server boosts pay Essence once each)
 //   GET/POST /api/party/<star|meteor>  Bearer <access_token> { add } -> the shared Star Party / meteor count (src/starparty/shared.js)
+//   POST /api/level  Bearer <access_token> { guildId } -> { gate, grant, founding, roles }  (House gate + bot role sync, src/levels.js)
 //   GET  /api/tables?game=&instance=  (WebSocket) -> the call's shared table for a game room (tables.mjs, multiplayer)
 import { loadProfile, deleteProfile } from "../src/profiles.js";
 import { Tables, tableRoute } from "./tables.mjs";
 export { Tables };
 import { settleBoost } from "./src/boost.js";
 import { partyKey, addToParty, partyView } from "./src/starparty/shared.js";
+import { grantFor, rolesWanted, rolesDiff } from "./src/levels.js";
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
@@ -104,6 +106,35 @@ export async function boostCheck(env, userId, guildId, fetchImpl = fetch) {
   return { boosting: out.boosting, fresh: out.fresh, reward: out.reward, since: out.since };
 }
 
+/** The House gate and the bot's role sync (server pitch, approved 2026-11-28). Env: HOUSE_GATE "on" switches the gate on;
+ *  SWITCH_AT (ISO time) marks Founding Members (joined before it); LEVEL_GRANTS {"userId": level} (dev.n 6, Frank 12);
+ *  ROLE_IDS {"roleKey": "roleId"} from scripts/house-roles.js. KV "scholar:<id>" = Scholar's Path points (migration).
+ *  The game is the source of truth: each launch adds the roles the member has earned and removes managed roles they
+ *  haven't; roles not in ROLE_IDS (staff and the rest) are never touched. Off or unconfigured, nothing changes. */
+const parse = (s, d) => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
+export async function levelSync(env, userId, guildId, fetchImpl = fetch) {
+  const gate = env.HOUSE_GATE === "on", out = { gate, grant: 0, founding: false, roles: null };
+  if (!env.DISCORD_BOT_TOKEN || !/^\d{5,25}$/.test(String(guildId || "")) || (env.GUILD_ID && String(guildId) !== String(env.GUILD_ID))) return out;
+  const base = `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, auth = { authorization: "Bot " + env.DISCORD_BOT_TOKEN };
+  const r = await fetchImpl(base, { headers: auth }).catch(() => null);
+  const member = r && r.ok ? await r.json().catch(() => null) : null;
+  if (!member) return out;
+  const scholar = env.PROFILES ? await env.PROFILES.get("scholar:" + userId, "json").catch(() => null) : null;
+  Object.assign(out, grantFor({ userId, joinedAt: member.joined_at, switchAt: env.SWITCH_AT, scholarPoints: Number(scholar) || 0, grants: parse(env.LEVEL_GRANTS, {}) }));
+  const ids = parse(env.ROLE_IDS, null);
+  if (!gate || !ids || !env.PROFILES) return out;
+  const p = (await env.PROFILES.get("progress:" + userId, "json")) || {};
+  const diff = rolesDiff(member.roles, rolesWanted({ ...p, grant: out.grant, founding: out.founding }), ids);
+  const ops = [...diff.add.map((id) => ["PUT", id]), ...diff.remove.map((id) => ["DELETE", id])].slice(0, 16);
+  let failed = 0;
+  for (const [method, id] of ops) {
+    const x = await fetchImpl(`${base}/roles/${id}`, { method, headers: { ...auth, "x-audit-log-reason": "Science is Magic Server level sync" } }).catch(() => null);
+    if (!x || !x.ok) failed++;
+  }
+  out.roles = { added: diff.add.length, removed: diff.remove.length, failed };
+  return out;
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname.replace(/^\/\.proxy/, "");
@@ -151,6 +182,15 @@ export default {
       if (!me || !me.id) return json({ error: "sign in first" }, 401);
       const { guildId } = await req.json().catch(() => ({}));
       return json(await boostCheck(env, me.id, guildId));
+    }
+    if (path === "/api/level") {
+      if (req.method !== "POST") return json({ error: "POST only" }, 405);
+      const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!token || token.length > 200) return json({ error: "sign in first" }, 401);
+      const me = await whoIs(token);
+      if (!me || !me.id) return json({ error: "sign in first" }, 401);
+      const { guildId } = await req.json().catch(() => ({}));
+      return json(await levelSync(env, me.id, guildId));
     }
     if (path === "/api/share") {
       if (req.method !== "POST") return json({ error: "POST only" }, 405);

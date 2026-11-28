@@ -6,6 +6,8 @@ import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOM
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg, crateHtml } from "./player.js";
 import { OPENER, crateOf, musicEvent, buyRecord } from "./hosts/house-music.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
+import { levelOf, levelInfo, levelName, pathLabel, pathOf, homeOf, picksOwed, pickHouse, canEnter, needsDoors } from "./levels.js";
+import { doorsHtml, wireDoors, visitorHtml, channelUrl, DOORS_CSS } from "./doors.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
 import { makeTable, fitSvg, setTableDecor } from "./table.js";
@@ -110,7 +112,7 @@ const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const PREVIEW = window.ORACLE_PREVIEW || null; // set only by the standalone preview page (build-preview.mjs)
-const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null, prog: fresh() };
+const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null, prog: fresh(), gate: !!(PREVIEW && /[?&]gate=1/.test(location.search)) }; // gate: the House gate (levels.js), off until Frank switches it on
 
 // ---- the Oracle and her sky ----
 $("teller").innerHTML = `<svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${sigilRingSvg({ cx: 200, cy: 200, r: 196, id: "t" })}${figureSvg({ id: "t" })}</svg>`;
@@ -404,6 +406,8 @@ function idleTick() {
 ["pointerdown", "keydown", "wheel", "input"].forEach((ev) => addEventListener(ev, idleReset, { capture: true, passive: true }));
 
 function greet() {
+  if (needsDoors(state.prog, state.gate)) return showDoors();
+  if (!houseOpen()) return visitor();
   if (!cine.mid && (state.inRoom || $("ui").querySelector(".depts"))) return cine(CINE.home, greet);
   state.inRoom = null; delete document.body.dataset.room; player.room(null); idle.on = true; idleReset();
   clearReading(); table.idle(); cap("");
@@ -414,6 +418,7 @@ function greet() {
   showStats();
   // The hall of doors holds the menu too (Frank 2026-11-28): Store, Trophies, Grimoire, sound and the House's collections sit behind "Your things"; the ☰ bar only shows off this screen.
   const H = HOST(), C = crateOf(H.id), things = [
+    ...(state.gate && picksOwed(state.prog) ? [{ id: "doors", emoji: "🚪", label: "The Five Doors", hint: "A House pick is waiting for you", badge: "Pick" }] : []),
     { id: "store", emoji: "💎", label: "Store", hint: "Looks, House shelves, records and more", badge: `💎 ${state.prog.essence || 0}` },
     { id: "trophies", emoji: "🏆", label: "Trophies", hint: "Every game's trophies and your best levels" },
     { id: "grimoire", emoji: "📖", label: "Grimoire", hint: "The Codex and your Journal" },
@@ -429,7 +434,7 @@ function greet() {
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
   const ACT = { store: () => $("store-btn").click(), trophies: () => $("trophy-btn").click(), grimoire: () => $("grimoire-btn").click(), library: () => openLibrary(),
-    relics: () => openHouseRelics(), crate: () => openRecordCrate(), secrets: () => openHouseSecrets(), dossier: () => openDossier(), card: () => showProfile(), invite: () => inviteFriend() };
+    relics: () => openHouseRelics(), crate: () => openRecordCrate(), secrets: () => openHouseSecrets(), dossier: () => openDossier(), card: () => showProfile(), invite: () => inviteFriend(), doors: () => showDoors() };
   $("ui").querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => ACT[b.dataset.act]?.()));
   hallMode();
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
@@ -527,10 +532,13 @@ function award(xp = 0, essence = 0) {
   p.xp += xp; p.essence = (p.essence || 0) + essence;
   const after = rankOf(p.xp).name, rankUp = after !== before ? after : null;
   if (rankUp) p.essence += 25;
-  return { rankUp };
+  const lv = levelOf(p), levelUp = state.gate && lv > (state.level || lv) ? lv : null; state.level = lv;
+  if (levelUp) levelNews(levelUp);
+  return { rankUp, levelUp };
 }
 function openRoom(id, arg = null) {
   const r = ROOMS.find((x) => x.id === id); if (!r) return greet();
+  if (!houseOpen() && id !== tasterOf(HOST()).id) return visitor(); // visitor mode: only the House's taster game
   if (state.inRoom !== id && !cine.mid) return cine(CINE.room, () => openRoom(id, arg));
   state.inRoom = id; document.body.dataset.room = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); if (xp || es) strayCheck(); return r; };
@@ -714,6 +722,7 @@ function showStats() {
   const p = state.prog, rk = rankOf(p.xp), nx = nextRank(p.xp);
   const pct = nx ? Math.round(((p.xp - rk.at) / (nx.at - rk.at)) * 100) : 100;
   $("stats").innerHTML = `<span class="rank" title="${nx ? `${nx.at - p.xp} ✦ to ${esc(nx.name)}` : "The highest rank"}">🏅 ${esc(rk.name)} <i style="--p:${pct}%"></i></span><span title="Day streak">🔥 ${liveStreak(p)}</span><span title="Moon tokens to spend on Moon relics. Earn them with your first reading each day and by beating game levels.">🌙 ${moonLeft(p)}</span><span title="Essence">💎 ${p.essence || 0}</span><span title="Chamber readings left today">🔮 ${(() => { const l = readsLeft(p, rk.name); return l === Infinity ? "∞" : l + " left"; })()}</span>${state.booster ? `<span class="booster" title="Boosting the Science is Magic server. Thank you!">💜 Booster</span>` : ""}${showcaseHtml(p)}`; $("stats").insertAdjacentHTML("beforeend", houseChip(p));
+  if (state.gate) { const L = levelInfo(p); $("stats").insertAdjacentHTML("afterbegin", `<span class="lv-chip" title="${esc(pathLabel(p))}${L.next ? ` · ${L.toNext} ✦ to level ${L.next.n}, ${esc(L.next.name)}` : ""}">🧭 Lv ${L.n}${L.half ? ".5" : ""}</span>`); }
   setTimeout(() => { try { musicNews(); } catch {} }, 0); // Essence-based records (Coin Drop Groove) unlock as the total changes
 }
 
@@ -1389,6 +1398,7 @@ showSpeech();
   setHost(hostFor({ channelId: state.channelId, search: location.search })); dressHouse();
   await loadProgress();
   await checkBoost();
+  await checkLevel();
   joinLobby();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
@@ -1408,6 +1418,61 @@ async function checkBoost() {
   else if (b.boosting) state.boostNews = Math.random() < 0.35 ? "hello" : null;
   showStats();
 }
+// ---- the House gate (levels.js, doors.js): Server level, the Five Doors, visitor mode, bot role sync ----
+// Off unless the Worker's HOUSE_GATE is "on": then picks lock Houses and the bot keeps the member's roles in step.
+{ const st = document.createElement("style"); st.id = "doors-css"; st.textContent = DOORS_CSS; document.head.appendChild(st); }
+const houseOpen = () => canEnter(state.prog, HOST().id, state.gate);
+/** The one game a visitor may play here: the House's daily game, or the Oracle's card of the day. */
+function tasterOf(h) { const r = h.daily && ROOMS.find((x) => x.id === h.daily); return r ? { id: r.id, emoji: r.emoji, label: r.label } : { id: "", emoji: "🃏", label: "today's card", sys: "tarot" }; }
+function gamesOf(h) {
+  if (h.rooms === "all") return [{ emoji: "🃏", label: "Card readings" }, { emoji: "🌌", label: "Birth charts" }, { emoji: "🪙", label: "Coins, runes and bones" }];
+  return ROOMS.filter((r) => r.row !== "toy" && (r.house ? r.house === h.id : hasRoom(h, r.id))).sort((x, y) => (y.id === h.daily) - (x.id === h.daily)).slice(0, 3).map((r) => ({ emoji: r.emoji, label: r.label }));
+}
+async function checkLevel() {
+  if (!state.token || !state.guildId) { state.level = levelOf(state.prog); return; }
+  const j = await fetch(api("/api/level"), { method: "POST", headers: { authorization: "Bearer " + state.token, "content-type": "application/json" }, body: JSON.stringify({ guildId: state.guildId }) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  if (j) { state.gate = state.gate || !!j.gate; const p = state.prog;
+    if ((j.grant || 0) !== (p.grant || 0) || !!j.founding !== !!p.founding) { p.grant = j.grant || 0; p.founding = !!j.founding; saveProgress(); } }
+  state.level = levelOf(state.prog); showStats();
+}
+/** Save now (not debounced), then ask the bot to re-sync roles from the saved copy. */
+async function syncLevel() {
+  saveLocal(state.userId, state.prog); if (!state.token) return; clearTimeout(pushT);
+  await fetch(api("/api/progress"), { method: "PUT", headers: { authorization: "Bearer " + state.token, "content-type": "application/json" }, body: JSON.stringify(state.prog) }).catch(() => {});
+  await checkLevel();
+}
+function levelNews(n) {
+  logEvent("level", "🧭", `Reached Server level ${n}: ${levelName(n)}`, null, [["Level", n], ["Title", levelName(n)]]);
+  syncLevel(); const owed = picksOwed(state.prog);
+  setTimeout(() => { chime(3); mood.emote("cheer", { say: `Server level ${n}: ${levelName(n)}.${owed ? " A new door is waiting for you. Find it under Your things." : n === 4 ? " The fourth door won't open... but something else has. The Common Grounds." : ""}` }); }, reduced ? 0 : 3000);
+}
+function showDoors() {
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🚪 The Five Doors");
+  say(pathOf(state.prog).length ? "A door is open for you. Choose well: there's no going back through it." : "Five doors, five Houses. Knock on one and its keeper will answer.");
+  ui(doorsHtml({ houses: HOSTS, p: state.prog, esc, games: gamesOf }));
+  wireDoors($("ui"), {
+    onPreview: (id, free) => { const h = HOSTS.find((x) => x.id === id); if (!h) return; if (free) sting(h.voice && h.voice.sting);
+      say(free ? `${h.name} of ${h.house} is listening.` : pathOf(state.prog).includes(id) ? `${h.house} is already on your path.` : `${h.house} stays shut for now. It opens with a later level.`); },
+    onPick: (id) => { const added = pickHouse(state.prog, id); if (!added.length) return showDoors();
+      const h = HOSTS.find((x) => x.id === id), home = pathOf(state.prog).length === 1;
+      logEvent("house", h.emoji, home ? `Chose a home House: ${h.house}` : `Opened ${added.map((a) => HOSTS.find((x) => x.id === a).house).join(" and ")}`, null, [["House", h.house], ["Path", pathLabel(state.prog)]]);
+      chime(3); syncLevel(); showStats();
+      if (picksOwed(state.prog)) return showDoors();
+      if (HOST().id === id && home && HOST().daily) return openRoom(HOST().daily); // a new member lands in their House's first game
+      greet(); },
+  });
+}
+function visitor() {
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("");
+  const H = HOST(), home = HOSTS.find((x) => x.id === homeOf(state.prog)) || null, t = tasterOf(H);
+  say(`Welcome, ${state.name}. You're a guest in ${H.house} today.`);
+  ui(visitorHtml({ h: H, p: state.prog, esc, home, homeUrl: home ? channelUrl(state.guildId, home.channelIds[0]) : "", taster: t }));
+  const tb = $("vs-taster"); if (tb) tb.onclick = () => (t.sys ? choose(systemByKey(t.sys)) : openRoom(t.id));
+  const db = $("vs-doors"); if (db) db.onclick = showDoors;
+  showStats();
+}
+if (PREVIEW) window.__doorsTest = (p = {}) => { state.gate = true; Object.assign(state.prog, p); state.level = levelOf(state.prog); greet(); };
+
 /** After the door opens: thank a new booster (big), or now and then greet a returning one. */
 function boostThanks() {
   const kind = state.boostNews; state.boostNews = null; if (!kind) return;
