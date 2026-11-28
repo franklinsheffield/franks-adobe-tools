@@ -174,7 +174,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 
 export const parlour = {
   id: "parlour", name: "Madame Rook", house: "The Séance Parlour", emoji: "🕯️", accent: "#C3A6FF",
-  channelIds: ["1575977181622829158"], // #🕯️-parlour
+  channelIds: ["1575977181622829158", "1576066717208281141", "1576066719775072396"], // #🕯️-parlour; then its Wing (Frank 2026-11-28): #🕯️-parlour-common, Parlour Wing Voice. The game channel stays first (Play cards post there)
   readings: false, rooms: ["casefiles", "workshop", "bookings", "darkseance", "mentalist", "phantasmagoria", "roguesgallery", "seance", "timeline", "possession"], daily: "timeline",
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",

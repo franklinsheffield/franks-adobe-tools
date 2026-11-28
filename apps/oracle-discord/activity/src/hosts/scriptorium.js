@@ -149,7 +149,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
-  channelIds: ["1575977195048927232"], // #🪶-scriptorium
+  channelIds: ["1575977195048927232", "1576066730986574006", "1576066733381386383"], // #🪶-scriptorium; then its Wing (Frank 2026-11-28): #🪶-scriptorium-common, Scriptorium Wing Voice. The game channel stays first (Play cards post there)
   readings: false, rooms: ["inscriptions", "cipherdesk", "blackchamber", "illuminator", "bombe", "forgery", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",

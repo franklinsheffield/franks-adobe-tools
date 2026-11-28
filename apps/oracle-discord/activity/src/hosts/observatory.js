@@ -183,7 +183,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
-  channelIds: ["1575975395692642596"], // #🔭-observatory
+  channelIds: ["1575975395692642596", "1576066711738908812", "1576066714838499468"], // #🔭-observatory; then its Wing (Frank 2026-11-28): #🔭-observatory-common, Observatory Wing Voice. The game channel stays first (Play cards post there)
   readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "messier", "starparty", "stars", "calendar", "rummy", "possession"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
