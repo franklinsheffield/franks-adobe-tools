@@ -129,3 +129,76 @@ body.ps-phone .ps-make { bottom: calc(66px + env(safe-area-inset-bottom)); }
 .ps-room-toast button { padding: 3px 8px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 3px; font: inherit; cursor: pointer; }
 .ps-kind { font-style: normal; font-size: 9px; padding: 0 4px; margin-right: 2px; border: 1px solid #5effc8; color: #5effc8; border-radius: 2px; vertical-align: 1px; }
 .ps-kind.scene { border-color: rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.8); }
+/* Surveyor Flint (web/seer.js): guide, critic and help menu; his look exists only in Pixel Scape */
+.ps-flint { position: absolute; right: 8px; bottom: 8px; z-index: 7; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; font: 12px/1.4 system-ui, sans-serif; color: #fff; }
+.ps-flint > * { pointer-events: auto; }
+body.ps-explore .ps-flint { bottom: 190px; }
+.ps-flint-av { width: 66px; height: 77px; padding: 0; background: none; border: 0; cursor: pointer; filter: drop-shadow(0 0 6px rgba(94, 255, 200, 0.35)); transition: transform 0.2s; }
+.ps-flint-av:hover, .ps-flint-av[aria-pressed="true"] { transform: translateY(-3px) scale(1.04); filter: drop-shadow(0 0 10px rgba(94, 255, 200, 0.8)); }
+.ps-flint-in .ps-flint-av { animation: flint-pop 0.45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes flint-pop { 0% { transform: translateY(40px) scale(0.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.flint-svg { width: 100%; height: 100%; overflow: visible; }
+.flint-svg .f-body { animation: flint-bob 3.2s ease-in-out infinite; transform-origin: 60px 132px; }
+@keyframes flint-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+.flint-svg .f-shadow { fill: rgba(0, 0, 0, 0.45); }
+.flint-svg .f-staff { fill: #f4efe2; } .flint-svg .f-staff-ticks rect { fill: #ff5a5a; }
+.flint-svg .f-coat { fill: #20263a; stroke: #000; stroke-width: 1.5; }
+.flint-svg .f-vest { fill: #ff8a1f; stroke: #000; stroke-width: 1.2; }
+.flint-svg .f-stripe { fill: #5effc8; opacity: 0.9; }
+.flint-svg .f-pocket { fill: #c8641a; } .flint-svg .f-chart { fill: #12183a; stroke: #8fb8ff; stroke-width: 1; }
+.flint-svg .f-sleeve { fill: none; stroke: #20263a; stroke-width: 9; stroke-linecap: round; }
+.flint-svg .f-hand { fill: #e9b98f; stroke: #000; stroke-width: 1; }
+.flint-svg .f-ring { fill: #e7c24a; } .flint-svg .f-gem { fill: #9b4dff; stroke: #e7c24a; stroke-width: 0.6; }
+.flint-svg .f-armR { transform-origin: 84px 88px; animation: flint-wave 5s ease-in-out infinite; }
+@keyframes flint-wave { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg); } 90% { transform: rotate(6deg); } 95% { transform: rotate(-8deg); } }
+.flint-svg .f-face { fill: #e9b98f; stroke: #000; stroke-width: 1.5; }
+.flint-svg .f-quill { fill: #f3e9c6; stroke: #000; stroke-width: 0.8; } .flint-svg .f-quill-line { stroke: #8a7a55; stroke-width: 0.8; }
+.flint-svg .f-visor { fill: #062b22; stroke: #5effc8; stroke-width: 1.5; }
+.flint-svg .f-reticle circle, .flint-svg .f-reticle path { fill: none; stroke: #5effc8; stroke-width: 1.1; }
+.flint-svg .f-scan { fill: #5effc8; opacity: 0.55; animation: flint-scan 2.4s linear infinite; }
+@keyframes flint-scan { 0% { transform: translateX(0); } 100% { transform: translateX(42px); } }
+.flint-svg .f-hat { fill: #ffd166; stroke: #000; stroke-width: 1.5; } .flint-svg .f-brim { fill: #f0b838; stroke: #000; stroke-width: 1.2; }
+.flint-svg .f-hat-ridge { fill: #f0b838; } .flint-svg .f-lamp { fill: #5effc8; animation: flint-lamp 1.6s steps(2) infinite; }
+@keyframes flint-lamp { 50% { fill: #1c6b55; } }
+.flint-svg .f-mouth { fill: none; stroke: #3a1b12; stroke-width: 2; stroke-linecap: round; display: none; }
+.flint-svg .f-m-talk, .flint-svg .f-m-wow { fill: #3a1b12; }
+[data-mood="smug"] .f-m-smug, [data-mood="talk"] .f-m-talk, [data-mood="wow"] .f-m-wow, [data-mood="bored"] .f-m-bored { display: block; }
+[data-mood="talk"] .f-m-talk { animation: flint-talk 0.18s steps(2) infinite; }
+@keyframes flint-talk { 50% { transform: scaleY(0.4); transform-origin: 60px 69px; } }
+[data-mood="wow"] .f-visor { stroke: #fff; } [data-mood="bored"] .f-reticle { opacity: 0.4; }
+.ps-flint-bubble { position: relative; max-width: min(300px, calc(100vw - 110px)); margin-bottom: 40px; padding: 9px 11px; background: #05040c; border: 1px solid #5effc8; border-radius: 10px 10px 2px 10px; box-shadow: 0 0 14px rgba(94, 255, 200, 0.35); animation: flint-pop 0.35s ease-out; }
+.ps-flint-bubble[hidden] { display: none; }
+.ps-flint-bubble b { display: block; color: #ffd166; font-size: 11px; letter-spacing: 0.04em; }
+.ps-flint-text { min-height: 1.4em; }
+.ps-flint-brow { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+.ps-flint button:not(.ps-flint-av), .ps-flint-panel button { padding: 4px 10px; background: #000; color: #fff; border: 1px solid #5effc8; border-radius: 3px; font: inherit; cursor: pointer; }
+.ps-flint button.ghost, .ps-flint-panel button.ghost { border-color: rgba(255, 255, 255, 0.35); }
+.ps-flint-panel { position: fixed; right: 16px; bottom: 24px; z-index: 55; width: min(400px, calc(100% - 24px)); max-height: 78vh; max-height: 78dvh; overflow-y: auto; padding: 12px; background: #05040c; border: 1px solid #ffd166; box-shadow: 0 0 24px rgba(255, 209, 102, 0.25); font: 13px/1.45 system-ui, sans-serif; color: #fff; }
+.ps-flint-panel[hidden] { display: none; }
+body.ps-phone .ps-flint-panel { left: 12px; right: 12px; width: auto; bottom: calc(66px + env(safe-area-inset-bottom)); }
+.ps-flint-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ps-flint-mini { width: 38px; height: 44px; flex: none; } .ps-flint-mini svg { width: 100%; height: 100%; }
+.ps-flint-head b { color: #ffd166; font-size: 15px; } .ps-flint-role { flex: 1; opacity: 0.6; font-size: 11px; }
+.ps-flint-panel .ps-flint-x { border: 0; font-size: 20px; padding: 0 6px; }
+.ps-flint-askrow { display: flex; gap: 6px; }
+.ps-flint-q { flex: 1; min-width: 0; padding: 8px; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 3px; font: inherit; }
+.ps-flint-q:focus { outline: none; border-color: #5effc8; box-shadow: 0 0 8px rgba(94, 255, 200, 0.5); }
+.ps-flint-topics { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.ps-flint-topics button { padding: 3px 8px !important; font-size: 11px !important; border-color: rgba(255, 255, 255, 0.35) !important; }
+.ps-flint-ans { min-height: 3em; padding: 8px 10px; background: rgba(94, 255, 200, 0.06); border-left: 2px solid #5effc8; }
+.ps-flint-acts { display: flex; gap: 6px; margin: 8px 0; } .ps-flint-acts:empty { display: none; }
+.ps-flint-show { color: #000 !important; background: #5effc8 !important; font-weight: 600; }
+.ps-flint-modes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 11px; opacity: 0.9; }
+.ps-flint-modes button { padding: 3px 8px !important; font-size: 11px !important; border-color: rgba(255, 255, 255, 0.3) !important; }
+.ps-flint-modes button[aria-pressed="true"] { border-color: #5effc8 !important; color: #5effc8 !important; }
+.ps-flint-snd { margin-left: auto; }
+.ps-flint-hi { outline: 2px solid #ffd166 !important; outline-offset: 2px; box-shadow: 0 0 14px #ffd166 !important; animation: flint-hi 0.6s ease-in-out 4; }
+@keyframes flint-hi { 50% { outline-color: #5effc8; } }
+@media (pointer: coarse) { .ps-flint-panel button, .ps-flint button:not(.ps-flint-av) { min-height: 36px; } }
+.ps-flint-teachbtn { display: block; width: 100%; margin-top: 8px; text-align: left; border-color: #ffd166 !important; }
+.ps-flint-teachbtn[aria-pressed="true"] { background: #ffd166 !important; color: #000 !important; font-weight: 600; }
+.ps-flint-badge { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 56; padding: 6px 14px; background: #ffd166; color: #000; border: 0; border-radius: 3px; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; box-shadow: 0 0 14px rgba(255, 209, 102, 0.6); }
+.ps-flint-badge[hidden] { display: none; }
+body.ps-teach #app [data-help], body.ps-teach .ps-mode, body.ps-teach .ps-make-btn, body.ps-teach [data-tab] { cursor: help !important; }
+body.ps-teach #app [data-help]:hover { outline: 1px dashed rgba(255, 209, 102, 0.8); outline-offset: 1px; }
+.ps-flint-try { display: flex; justify-content: flex-start; margin-top: 6px; } .ps-flint-try[hidden] { display: none; }
