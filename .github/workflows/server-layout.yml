@@ -2,16 +2,18 @@
 #   snapshot: read only; logs every category, channel, permission overwrite and role, and keeps snapshot.json (90 days)
 #   plan: read only; lists what stage1 would create
 #   stage1: creates the new categories and channels hidden from @everyone (no moves, no permission changes)
+#   plan2: read only; lists every stage 2 move, rename, permission set and role grant (scripts/server-switch.js)
+#   stage2: the switch-on: does them. Then run the House gate workflow in mode "on".
 name: Server layout
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "snapshot | plan | stage1"
+        description: "snapshot | plan | stage1 | plan2 | stage2"
         required: true
         default: snapshot
         type: choice
-        options: [snapshot, plan, stage1]
+        options: [snapshot, plan, stage1, plan2, stage2]
 permissions:
   contents: read
 jobs:
@@ -26,6 +28,8 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
           SNAPSHOT_OUT: ${{ runner.temp }}/snapshot.json
-        run: node scripts/server-layout.js "${{ inputs.mode }}"
+        run: |
+          case "${{ inputs.mode }}" in plan2|stage2) node scripts/server-switch.js "${{ inputs.mode }}" ;; *) node scripts/server-layout.js "${{ inputs.mode }}" ;; esac
       - uses: actions/upload-artifact@v4
+        if: inputs.mode == 'snapshot'
         with: { name: server-snapshot, path: "${{ runner.temp }}/snapshot.json", retention-days: 90 }
