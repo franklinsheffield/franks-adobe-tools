@@ -221,6 +221,18 @@ export const BANTER = {
     pirate: G("Enemy dispatches, matey! Let's see their plans!", "Count 'em like doubloons: the most common be E!", "Their secrets be ours! Reseal it and send it on!", "Outsailed by a landlubber with a magnifying glass!"),
     influencer: G("Opening someone's DMs, but make it 1586!", "This cipher is literally giving THE energy.", "Cracked it! Main-codebreaker energy!", "Lost to a guy from 1628. Humbling, honestly."),
   },
+  forgery: {
+    mystic: G("Every object remembers when it was born.", "The ink glows, and the ink cannot lie.", "The false page falls silent. The true ones breathe.", "The forger's shadow slipped past you this time."),
+    deadpan: G("Somebody wrote 'teenager' in 1863. Bold.", "Ballpoint ink in a Victorian letter. Sure.", "Forgers caught. Coffee earned.", "Off the case. The forgers send their regards."),
+    drama: G("A FORGERY! Lurking in plain INK!", "The UV lamp REVEALS ALL!", "UNMASKED! Every lie laid BARE!", "Fooled! The forger WALKS FREE!"),
+    standup: G("Forger tip: don't sign your 1700s letter in ballpoint.", "'Dinosaur' in 1810? Owen hadn't coined it, mate.", "Caught them! Ink ages, people. Ink ages.", "Called a real one fake. The archivist will remember."),
+    grumpy: G("Test what looks new. Not everything.", "Purple ink before 1856? No. Next.", "Fine. File closed. Don't let it go to your head.", "Too many wrong calls. Read the dates."),
+    sports: G("Into the archive! The lamp is on!", "Big test! The dictionary comes through!", "File closed! A clean sweep at the desk!", "Third strike! The examiner is benched!"),
+    conspiracy: G("Every archive has a fake in it. Every one.", "Who sold them that paper? Think about it.", "Caught. But who forged the forger's papers?", "Off the case. Or did someone want you off it?"),
+    bard: G("What false hand wrote this, and in what age?", "The lamp's pale fire shows what the ink concealed!", "The forgery is laid bare to every eye!", "Deceived! The forger's art outran thy glass."),
+    pirate: G("A treasure map dated 1700? Let's test the ink!", "Sticky tape on a pirate chart? Fake, matey!", "Every forger keelhauled! The archive be safe!", "The forger slipped away like an eel in the night!"),
+    influencer: G("Spot the fake, archive edition. Let's go!", "Ballpoint in 1890? The forger is NOT serving.", "Every fake exposed. Forensic queen behaviour.", "Called the real one fake. Embarrassing, honestly."),
+  },
   bombe: {
     mystic: G("A letter can never become itself. Even machines have rules.", "The drums turn and turn, listening for agreement.", "The machine stops. The silence after is the answer.", "Midnight came, and with it a new key. Begin again."),
     deadpan: G("Slide the crib. Look for red. Avoid red.", "Seventeen thousand positions. The bombe doesn't get bored.", "Broken. Somebody bring the Wrens a cup of tea.", "Key went stale. The Germans change it daily. Rude."),
