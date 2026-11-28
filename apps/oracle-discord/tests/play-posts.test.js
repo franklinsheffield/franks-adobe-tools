@@ -30,3 +30,9 @@ test("the worker launches the Activity from the button", () => {
   const w = readFileSync(new URL("../worker/index.js", import.meta.url), "utf8");
   assert.match(w, /id === PLAY_ID\) return env\.ACTIVITY_READY === "true" \? json\(\{ type: 12 \}\)/);
 });
+test("/play in a Wing's chat or voice channel opens that Wing's House", async () => {
+  const { hostFor } = await import("../activity/src/hosts/index.js");
+  const wing = { oracle: ["1576066679820124261", "1576066681636388954"], alchemist: ["1576066685138641072", "1576066688997261372"],
+    observatory: ["1576066711738908812", "1576066714838499468"], parlour: ["1576066717208281141", "1576066719775072396"], scriptorium: ["1576066730986574006", "1576066733381386383"] };
+  for (const [id, chans] of Object.entries(wing)) for (const c of chans) assert.equal(hostFor({ channelId: c }).id, id, c);
+});
