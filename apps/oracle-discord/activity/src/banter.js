@@ -221,6 +221,18 @@ export const BANTER = {
     pirate: G("Enemy dispatches, matey! Let's see their plans!", "Count 'em like doubloons: the most common be E!", "Their secrets be ours! Reseal it and send it on!", "Outsailed by a landlubber with a magnifying glass!"),
     influencer: G("Opening someone's DMs, but make it 1586!", "This cipher is literally giving THE energy.", "Cracked it! Main-codebreaker energy!", "Lost to a guy from 1628. Humbling, honestly."),
   },
+  bombe: {
+    mystic: G("A letter can never become itself. Even machines have rules.", "The drums turn and turn, listening for agreement.", "The machine stops. The silence after is the answer.", "Midnight came, and with it a new key. Begin again."),
+    deadpan: G("Slide the crib. Look for red. Avoid red.", "Seventeen thousand positions. The bombe doesn't get bored.", "Broken. Somebody bring the Wrens a cup of tea.", "Key went stale. The Germans change it daily. Rude."),
+    drama: G("A CRIB! The enemy's own words against them!", "The drums SPIN! Will it STOP?!", "STOP! The key is OURS! Every message laid BARE!", "Midnight! The key is GONE! All that work, LOST!"),
+    standup: G("Weather forecast. Every day. Same spot. Thanks, lads.", "The bombe: 17,576 guesses and still no small talk.", "Broken! Their weatherman really let them down.", "Wrong wheel order. Like using your house key on a car."),
+    grumpy: G("Red letter means wrong place. It's not complicated.", "One wheel order at a time. Patience.", "Fine. Broken. Hut 3 will want it yesterday.", "Too many wrong runs. The bombes are booked, you know."),
+    sports: G("Crib on the board! The bombe is warming up!", "Drums spinning! Every position on the line!", "STOP! STOP! The key's broken! What a run!", "The clock hits midnight! Key's gone stale!"),
+    conspiracy: G("Why send the weather in the same words every day?", "Nobody admitted to these machines for thirty years.", "Broken. And they kept it secret till the 1970s.", "Stale key. Or did someone tip them off?"),
+    bard: G("Their weather words shall be their own undoing!", "Turn, wheels, through every hour of the night!", "The drums fall still, and lo, the key is ours!", "The midnight bell; the key is lost to us."),
+    pirate: G("Their weather report, matey! Same words every day!", "Spin them drums like a ship's wheel in a squall!", "The key be ours! Every U-boat's chatter laid bare!", "Midnight struck and the key slipped anchor!"),
+    influencer: G("POV: the enemy posts the weather in the same words.", "The bombe is grinding 17,576 keys. Iconic.", "Key cracked! Main-codebreaker energy, Bletchley edition!", "Wrong wheels, key gone. It's giving midnight reset."),
+  },
   illuminator: {
     mystic: G("Gold first. The light must arrive before the colour.", "Lapis came from one valley in Afghanistan. Feel its journey.", "The page glows. Six centuries will not dim it.", "The colour fought the order. Begin again, gently."),
     deadpan: G("Rule, write, gild, paint, outline. It's a recipe.", "Verdigris eats vellum. Hold the page lightly.", "Page done. Only took a few weeks in real life.", "Ruined. A monk would have scraped it and started again."),

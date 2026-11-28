@@ -14,6 +14,7 @@ import { EFFECTS as DS_EFFECTS, CONTROLS as DS_CONTROLS, METHODS as DS_METHODS }
 import { FORCES, BARNUM, FORER, CODE, CODE_FACTS, BILLET_FACTS } from "./mentalist/data.js";
 import { LANTERN_FACTS, PEPPER_FACTS, SHOW_FACTS } from "./phantasmagoria/data.js";
 import { RIVALS as BC_RIVALS, LEVELS as BC_LEVELS } from "./blackchamber/data.js";
+import { MESSAGES as BO_MESSAGES, FACTS as BO_FACTS, ROTORS as BO_ROTORS } from "./bombe/data.js";
 import { STEPS as IL_STEPS, PIGMENTS as IL_PIGMENTS, PAGES as IL_PAGES } from "./illuminator/data.js";
 import { METHODS as CIPHERS, FORGERIES, INSCRIPTIONS as CD_INSCRIPTIONS } from "./cipherdesk/data.js";
 import { PAIRS } from "./parlour/gallery.js";
@@ -139,6 +140,11 @@ export const FACTS = {
     sec("The rivals", BC_RIVALS.map((r) => `${r.e} <b>${e(r.name)}</b> (${e(r.when)}): ${e(r.fact)}`)),
     sec("The three rooms", BC_LEVELS.map((l) => `<b>Level ${l.n}, ${e(l.name)}</b>: ${e(l.what)}.`)),
   ] }],
+
+  bombe: [
+    { id: "machine", emoji: "⚙️", title: "Enigma and the bombe", sections: [sec("How it was broken", Object.values(BO_FACTS).map((f) => e(f))), sec("The rotors in this game", Object.entries(BO_ROTORS).map(([k, r]) => `<b>Rotor ${k}</b>: wired ${r.wiring}, turns the next rotor at ${r.notch}.`))] },
+    { id: "cribs", emoji: "📨", title: "The messages and their cribs", sections: [sec("Intercepts", BO_MESSAGES.map((m) => `<b>${e(m.text.replace(/X/g, " "))}</b>: ${e(m.en)} ${e(m.fact)}`))] },
+  ],
 
   illuminator: [
     { id: "order", emoji: "📏", title: "The order of work", sections: [sec("Stages, in order", IL_STEPS.map((s, i) => `${i + 1}. ${s.e} <b>${e(s.name)}</b>: ${e(s.fact)}`))] },
