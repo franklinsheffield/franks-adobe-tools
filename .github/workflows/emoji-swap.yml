@@ -1,0 +1,32 @@
+# Swap Science is Magic server emoji (House kits). plan = read-only report; apply = back up + remove RETIRE, upload kits.
+name: Emoji swap
+run-name: "emoji swap: ${{ inputs.mode }}"
+on:
+  workflow_dispatch:
+    inputs:
+      mode: { description: "plan or apply", default: "plan" }
+      confirm: { description: "Type swap to apply", default: "" }
+      retire: { description: "Comma-separated emoji names to retire", default: "" }
+permissions:
+  contents: read
+jobs:
+  swap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: apps/oracle-discord }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Swap
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+          MODE: ${{ inputs.mode }}
+          CONFIRM: ${{ inputs.confirm }}
+          RETIRE: ${{ inputs.retire }}
+        run: node scripts/emoji-swap.mjs
+      - name: Keep the retired images
+        if: always() && inputs.mode == 'apply'
+        uses: actions/upload-artifact@v4
+        with: { name: emoji-backup, path: apps/oracle-discord/emoji-backup, if-no-files-found: ignore, retention-days: 90 }
