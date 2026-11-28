@@ -92,6 +92,7 @@ import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, h
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import { HOUSE_BOOKS, houseStudy, studyLine } from "./study-houses.js";
+import { libraryHtml, libraryOf, LIBRARY_CSS, LIB_LINES } from "./house-library.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
@@ -403,6 +404,7 @@ function greet() {
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
+  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-library">📚 Library</button>`); $("hm-library").onclick = () => openLibrary();
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   if (crateOf(HOST().id).length) { const C = crateOf(HOST().id), n = C.filter((t) => hasTrack(state.prog, t)).length; $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-crate">🎵 Record crate <small>${n}/${C.length}</small></button>`); $("hm-crate").onclick = () => openRecordCrate(); }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
@@ -448,6 +450,23 @@ function openRecordCrate(note) {
     if (r.bonus.length) { msg += ` And you paid in ${paid.token.plural} when you had ${H.token.plural} to spare? Then you've earned this: ${r.bonus.map((t) => t.title).join(", ")}, a hidden record.`; chime(3); }
     openRecordCrate(msg); }));
   $("crate-back").onclick = greet;
+}
+
+// ---- The House library (house-library.js): a branded bookshelf with the handbook, a book per game, and the reading list ----
+function openLibrary() {
+  const H = HOST(), p = state.prog;
+  if (!document.getElementById("library-style")) { const st = document.createElement("style"); st.id = "library-style"; st.textContent = LIBRARY_CSS; document.head.appendChild(st); }
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(`📚 ${H.house} library`);
+  const L = libraryOf(H, p, STUDY), n = L.games.filter((g) => g.on).length, pool = LIB_LINES[H.id] || LIB_LINES.oracle;
+  say(pool[Math.floor(Math.random() * pool.length)].replace(/\{name\}/g, state.name).replace("{n}", n).replace("{total}", L.games.length));
+  bookSfx("cover"); setTimeout(() => bookSfx("page", { gain: 0.6 }), reduced ? 0 : 500); mood.emote("nod", { quiet: true });
+  ui(libraryHtml(H, p, STUDY, (HOUSE_BOOKS[H.id] || HOUSE_BOOKS.oracle).title, esc));
+  $("ui").querySelectorAll("[data-lib]").forEach((b) => (b.onclick = () => {
+    const id = b.dataset.lib, g = L.games.find((x) => x.room === id);
+    if (g && !g.on) { mood.bubble(`Play ${g.name} once and its book goes on the shelf.`, 3200, "🔒"); bookSfx("close", { gain: 0.5 }); return; }
+    b.classList.add("pull"); bookSfx("page"); setTimeout(() => openStudy(id, openLibrary), reduced ? 0 : 380);
+  }));
+  $("lib-back").onclick = greet;
 }
 
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
