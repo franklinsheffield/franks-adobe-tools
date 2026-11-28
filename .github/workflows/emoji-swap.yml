@@ -4,7 +4,7 @@ run-name: "emoji swap: ${{ inputs.mode }}"
 on:
   workflow_dispatch:
     inputs:
-      mode: { description: "plan or apply", default: "plan" }
+      mode: { description: "plan, apply, lock-plan, lock or unlock", default: "plan" }
       confirm: { description: "Type swap to apply", default: "" }
       retire: { description: "Comma-separated emoji names to retire", default: "" }
       kit_dir: { description: "Folder of new emoji (under apps/oracle-discord)", default: "brand/houses/emoji" }
@@ -27,7 +27,7 @@ jobs:
           CONFIRM: ${{ inputs.confirm }}
           RETIRE: ${{ inputs.retire }}
           KIT_DIR: ${{ inputs.kit_dir }}
-        run: node scripts/emoji-swap.mjs
+        run: node scripts/${{ startsWith(inputs.mode, 'lock') || inputs.mode == 'unlock' ? 'emoji-locks.mjs' : 'emoji-swap.mjs' }}
       - name: Keep the retired images
         if: always() && inputs.mode == 'apply'
         uses: actions/upload-artifact@v4
