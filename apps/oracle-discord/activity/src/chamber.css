@@ -1069,6 +1069,8 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .rp-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 .th-rec{display:grid;place-items:center}.th-rec svg{width:46px;height:46px;animation:rp-spin 6s linear infinite}
 @media (max-width:640px){.rp-deck{grid-template-columns:1fr}.rp-crate{grid-template-columns:1fr 1fr}.tc-views{order:3;width:100%;margin:6px 0 0}}
+.rp-houses{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}.rp-credit{font-size:.7rem;opacity:.7;line-height:1.3}.rp-open{font-style:normal;font-size:.72rem;color:var(--gold2);opacity:.85}
+.rp-credits{margin:10px 0;font-size:.8rem;opacity:.85}.rp-credits summary{cursor:pointer;color:var(--gold2)}.rp-credits ul{margin:6px 0;padding-left:18px;max-height:260px;overflow-y:auto}.rp-credits li{margin:2px 0}
 @media (prefers-reduced-motion: reduce){.vinyl.spin,.tt.playing .tt-disc,.rp-rec.now .rp-v,.th-rec svg{animation:none}}
 .music-pop[hidden],.gate[hidden]{display:none}
 /* Daily challenge boards (daily.js boardHtml) */

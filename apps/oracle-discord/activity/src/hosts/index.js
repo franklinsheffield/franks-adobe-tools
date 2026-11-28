@@ -6,6 +6,7 @@
 //           scene?(at, { prog, motes }) -> html (replaces the Chamber's backdrop), react?(kind, { teller, scene, gesture, reduced }) -> line?,
 //           emotes?: { [startEmoteId]: { e, name, mood, say, fx } } (re-dresses the 8 starting emotes; ids stay), token.icon? (html),
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
+import { GATES_CSS } from "./gates.js";
 import { housePersonaLine } from "./house-personas.js";
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
@@ -61,7 +62,7 @@ export function dressHouse(doc = document) {
   doc.title = h === oracle ? "Oracle Chamber" : h.house;
   const sp = doc.querySelector(".speaker"); if (sp) sp.textContent = h.name.toUpperCase();
   const t = doc.getElementById("teller"); if (t && h !== oracle) t.setAttribute("aria-label", `${h.name}, ${h.house}'s host`);
-  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + SECRETS_CSS + DISGUISE_CSS + (h.css || "") + ((h.menuBg && h.menuBg.css) || "") + `body{--house-accent:${h.accent}}`; doc.head.appendChild(st); }
+  if (!doc.getElementById("house-css")) { const st = doc.createElement("style"); st.id = "house-css"; st.textContent = TOKEN_CSS + SECRETS_CSS + DISGUISE_CSS + GATES_CSS + (h.css || "") + ((h.menuBg && h.menuBg.css) || "") + `body{--house-accent:${h.accent}}`; doc.head.appendChild(st); }
 }
 /** Paint the host onto a copy of the shared figure (the teller, or the door's portrait). */
 export function paintHost(svg, prog, id = "t") {

@@ -1,0 +1,151 @@
+brand	code	id	title	pack	duration_s	licence	credit_needed	credit	role	from	opener	unlock_method	source
+oracle	LIVE01	ember-menu	Ember Menu						record				live
+oracle	LIVE02	pixel-and-pennywhistle	Pixel and Pennywhistle						record				live
+oracle	LIVE03	arcade-groove	Arcade Groove						record		Y		live
+oracle	LIVE04	the-occurrence	The Occurrence						record				live
+oracle	LIVE05	the-cults-secret	The Cult's Secret						record				live
+oracle	LIVE06	dreamy-game-over	Dreamy Game Over						record				live
+oracle	LIVE07	high-score-hero	High Score Hero						record				live
+oracle	LIVE08	arcade-heros-theme	Arcade Hero's Theme						record				live
+oracle	LIVE09	the-curiosity-shop	The Curiosity Shop						record				live
+oracle	LIVE10	nile-arcade-dreams	Nile Arcade Dreams						record				live
+oracle	LIVE11	dont-judge-a-space-kid-credits-song	Don't Judge a Space Kid (credits song)						record				live
+oracle	LIVE12	the-nordic-trading-post	The Nordic Trading Post						record				live
+oracle	LIVE13	coin-drop-groove	Coin Drop Groove						record				live
+oracle	LIVE14	arcade-alley	Arcade Alley						record				live
+oracle	LIVE15	jade-cartridge-shop	Jade Cartridge Shop						record				live
+oracle	LIVE16	pixel-shaman	Pixel Shaman						record				live
+oracle	R177	my-street	My Street	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	213	CC0	N	Not required (CC0)	record				download
+oracle	R181	mystery-go-brrrr	Mystery Go Brrrr	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	150	CC0	N	Not required (CC0)	record				download
+oracle	R194	night-of-the-streets-horror-suspense	Night of the Streets [Horror/Suspense]	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	164	CC0	N	Not required (CC0)	record				download
+oracle	R370	jing3-1-8580	Jing3 [1] (8580)	Retro Music - josepharaoh99	180	CC0	N	Not required (CC0)	record				download
+oracle	R408	gypslectric	Gypslectric	Retro Music - josepharaoh99	105	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+oracle	R424	karmanes	KarmaNES	Retro Music - josepharaoh99	144	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+oracle	R430	leap-8bit	Leap [8bit]	Retro Music - josepharaoh99	160	CC0	N	Not required (CC0)	record				download
+oracle	R157	void-estate-haunted-arcade	Void Estate Haunted Arcade	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	86	CC0	N	Not required (CC0)	record				download
+oracle	L008	the-end-8bit	The End 8Bit	Calm - Relaxing Music - josepharaoh99	230	CC0	N	Not required (CC0)	record				download
+alchemist	LIVE17	bubble-and-brass-full-song	Bubble and Brass (full song)						record		Y		live
+alchemist	CS01	transmutation-waltz	Transmutation Waltz						record				claude-sample
+alchemist	CS02	magnum-opus	Magnum Opus						record				claude-sample
+alchemist	L035	cute-bass	Cute Bass	Calm - Relaxing Music - josepharaoh99	144	CC0	N	just include my name, Alex McCulloch. Please help keep my music free by posting my blog on your video game website. https://musiccompositionhacks.blogspot.com/2020/07/how-to-improvise-music-in-real-time.html	record				download
+alchemist	L054	happy	Happy	Calm - Relaxing Music - josepharaoh99	104	CC0	N	just include my name, Alex McCulloch	record				download
+alchemist	L168	apple-cider	Apple Cider	Free music - CC0 - Cawfeecrow	200	CC0	N	Not required (CC0)	record				download
+alchemist	L184	goober-dynamics-1	Goober Dynamics 1	Free music - CC0 - Cawfeecrow	357	CC0	N	Not required (CC0)	record				download
+alchemist	L189	rhythm-factory	Rhythm Factory	Free music - CC0 - Cawfeecrow	224	CC0	N	Not required (CC0)	record				download
+alchemist	L192	toy-soldiers	Toy Soldiers	Free music - CC0 - Cawfeecrow	154	CC0	N	Not required (CC0)	record				download
+alchemist	R073	purple-sax	Purple Sax	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	168	CC0	N	Not required (CC0)	record				download
+alchemist	R148	nes-07-jazz	Nes 07-Jazz	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	140	CC0	N	Not required (CC0)	record				download
+alchemist	R439	march-of-the-preobrazhensky-regiment-nes-remix	March of The Preobrazhensky Regiment (NES Remix)	Retro Music - josepharaoh99	180	CC0	N	Not required (CC0)	record				download
+alchemist	R446	pomp-and-circumstance-nes	Pomp And Circumstance Nes	Retro Music - josepharaoh99	96	CC0	N	Pomp and Circumstance March No.1 by Sir Edward Elgar arranged for NES sound chip by Haley Halcyon	record				download
+alchemist	R485	talking-cute-chiptune	Talking Cute (Chiptune)	Retro Music - josepharaoh99	152	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+alchemist	R232	broken-carousel-waltz	Broken Carousel Waltz	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	211	CC-BY 4.0	Y	"Music: ""Broken Carousel Waltz"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+alchemist	R233	clockwork-jester	Clockwork Jester	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	196	CC-BY 4.0	Y	"Music: ""Clockwork Jester"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+alchemist	R235	desert-waltz-5-4-synth	Desert Waltz (5/4 Synth)	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	152	CC-BY 4.0	Y	"Music: ""Desert Waltz"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+alchemist	R239	royal-mischief-waltz	Royal Mischief Waltz	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	199	CC-BY 4.0	Y	"Music: ""Royal Mischief Waltz"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+alchemist	R241	forward-march	Forward March	Bitwise - An Eight Bit Video Game Soundtrack - tcarisland	120	CC-BY 4.0	Y	Bitwise - An Eight Bit Video Game Soundtrack by tcarisland, licensed under CC-BY 4.0 (https://opengameart.org/content/bitwise-an-eight-bit-video-game-soundtrack)	record				download
+alchemist	R182	n163-swing-rhythm	N163 Swing Rhythm	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	77	CC0	N	Not required (CC0)	record				download
+alchemist	R472	short-chiptune-improvisation-loosely-based-on-vatanam-persian-royal-anthem	"Short Chiptune Improvisation Loosely Based on ""Vatanam"" (Persian Royal Anthem)"	Retro Music - josepharaoh99	76	CC0	N	Not required (CC0)	record				download
+alchemist	R260	happy-house	Happy House	Bitwise - An Eight Bit Video Game Soundtrack - tcarisland	60	CC-BY 4.0	Y	Bitwise - An Eight Bit Video Game Soundtrack by tcarisland, licensed under CC-BY 4.0 (https://opengameart.org/content/bitwise-an-eight-bit-video-game-soundtrack)	record				download
+alchemist	L129	taking-you-to-the-circus-guitar	Taking You To The Circus Guitar	Calm - Relaxing Music - josepharaoh99	114	CC0	N	just include my name, Alex McCulloch	record				download
+alchemist	L055	happy-trip-to-mars	Happy Trip To Mars	Calm - Relaxing Music - josepharaoh99	38	CC0	N	just include my name, Alex McCulloch. Please help keep my music free by posting my blog on your video game website. https://musiccompositionhacks.blogspot.com/2020/07/how-to-improvise-music-in-real-time.html	record				download
+alchemist	R101	cc0-scraps-saxo	CC0 Scraps: Saxo	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	59	CC0	N	Not required (CC0)	record				download
+observatory	CS03	first-light	First Light						record				claude-sample
+observatory	CS04	star-hop-nocturne	Star-Hop Nocturne						record				claude-sample
+observatory	CS05	music-of-the-spheres	Music of the Spheres						record		Y		claude-sample
+observatory	L014	alison-night	Alison Night	Calm - Relaxing Music - josepharaoh99	200	CC0	N	Not required (CC0)	record				download
+observatory	L022	bleu	Bleu	Calm - Relaxing Music - josepharaoh99	211	CC0	N	Not required (CC0)	record				download
+observatory	L026	calm-ambient-1-synthwave-4k	Calm Ambient 1 (Synthwave 4k)	Calm - Relaxing Music - josepharaoh99	158	CC0	N	ATTRIBUTION: The Cynic Project / cynicmusic.com / pixelsphere.org	record				download
+observatory	L034	contemplation	Contemplation	Calm - Relaxing Music - josepharaoh99	120	CC0	N	Not required (CC0)	record				download
+observatory	L037	dust	Dust	Calm - Relaxing Music - josepharaoh99	170	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+observatory	L064	unknown-space-bassed	Unknown Space Bassed	Calm - Relaxing Music - josepharaoh99	96	CC0	N	no need, but appreciated	record				download
+observatory	L068	interweave	Interweave	Calm - Relaxing Music - josepharaoh99	197	CC0	N	Not required (CC0)	record				download
+observatory	L077	calm2-childhood-friends	Calm2 - Childhood Friends	Calm - Relaxing Music - josepharaoh99	103	CC0	N	Not required (CC0)	record				download
+observatory	L101	night-escape	Night Escape	Calm - Relaxing Music - josepharaoh99	118	CC0	N	Not required (CC0)	record				download
+observatory	L102	november-snow	November Snow	Calm - Relaxing Music - josepharaoh99	350	CC0	N	Copyright/Attribution Notice:	record				download
+observatory	L150	dream-pop	Dream Pop	Chill Beats (Collection) - Holizna	242	CC0	N	Not required (CC0)	record				download
+observatory	L212	first-snow	First Snow.	Lo-Fi and Chill (Collection) - Holizna	174	CC0	N	Not required (CC0)	record				download
+observatory	L214	everything-you-ever-dreamed	Everything You Ever Dreamed	Lo-Fi and Chill (Collection) - Holizna	220	CC0	N	Not required (CC0)	record				download
+observatory	L216	snow-drift	Snow Drift	Lo-Fi and Chill (Collection) - Holizna	174	CC0	N	Not required (CC0)	record				download
+observatory	L202	midnight	Midnight	Lo-Fi Soundtrack Pack - Swarajthegreat	90	itch.io custom terms	N	Not required	record				download
+observatory	L203	night	Night	Lo-Fi Soundtrack Pack - Swarajthegreat	165	itch.io custom terms	N	Not required	record				download
+observatory	R237	floating-clouds-atmospheric-c418-style	Floating Clouds (Atmospheric C418 Style)	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	348	CC-BY 4.0	Y	Music by Arold Valda	record				download
+observatory	L019	aurora	Aurora	Calm - Relaxing Music - josepharaoh99	80	CC0	N	Credit would be appreciated (Cal McEachern) as well as a link to what you've created with my work.	record				download
+observatory	R151	nes-11-soft-then-loud	Nes 11-Soft Then Loud	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	94	CC0	N	Not required (CC0)	record				download
+observatory	L196	chill	Chill	Lo-Fi Soundtrack Pack - Swarajthegreat	205	itch.io custom terms	N	Not required	record				download
+observatory	L205	rainy	Rainy	Lo-Fi Soundtrack Pack - Swarajthegreat	124	itch.io custom terms	N	Not required	record				download
+observatory	L239	morning-rain	Morning rain	lofi Compilation - TAD	64	CC0	N	Not required (CC0)	record				download
+parlour	LIVE18	knock-once-for-yes-full-song	Knock Once for Yes (full song)						record		Y		live
+parlour	CS06	lights-down-hands-on-the-table	Lights Down Hands on the Table						record				claude-sample
+parlour	CS07	exposed	Exposed!						record				claude-sample
+parlour	L009	the-end-piano	The End Piano	Calm - Relaxing Music - josepharaoh99	230	CC0	N	Not required (CC0)	record				download
+parlour	L010	basically-not-fusion-jazz	(Basically not) Fusion Jazz	Calm - Relaxing Music - josepharaoh99	246	CC0	N	Produced by Julie Damsgaard/Spring Spring/Spring Enterprises @ https://spring-enterprises.neocities.org	record				download
+parlour	L023	blues	Blues	Calm - Relaxing Music - josepharaoh99	100	CC0	N	Produced by Julie Damsgaard/Spring Spring/Spring Enterprises @ https://spring-enterprises.neocities.org	record				download
+parlour	L029	calm-piano-1-vaporware	Calm Piano 1 (Vaporware)	Calm - Relaxing Music - josepharaoh99	165	CC0	N	ATTRIBUTION: The Cynic Project / cynicmusic.com / pixelsphere.org	record				download
+parlour	L139	jazz-improvisation-looped	jazz improvisation looped	Calm - Relaxing Music - josepharaoh99	132	CC0	N	please include my name in your projects credits, Alex McCulloch.	record				download
+parlour	L140	jazz-mastered-june-3-2021	jazz mastered june 3, 2021	Calm - Relaxing Music - josepharaoh99	136	CC0	N	include my name in your project, Alex McCulloch	record				download
+parlour	L141	lydian-synth-jazz	lydian synth jazz	Calm - Relaxing Music - josepharaoh99	130	CC0	N	just include my name, Alex McCulloch	record				download
+parlour	L223	ghosts	Ghosts	Lo-Fi and Chill (Collection) - Holizna	90	CC0	N	Not required (CC0)	record				download
+parlour	L001	cafe-time	Cafe Time	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L005	midnight-reverie	Midnight Reverie	Analog Café Lofi Background Music - Philly (Kentaro)	171	itch.io custom terms	Y		record				download
+parlour	L006	tea	Tea	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L165	solar-winds-horror-atmosphere	Solar Winds Horror Atmosphere	FREE Music Pack (Lo-fi, Indie, Metal, Horror, Orchestral) - Aila Scott	75	CC-BY 4.0	Y	13- Solar Winds Horror Atmosphere © 2024 by Aila Scott is licensed under CC BY 4.0	record				download
+parlour	L002	home	Home	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L003	i-love-you	I love you	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L004	love	Love	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L007	visit	Visit	Analog Café Lofi Background Music - Philly (Kentaro)	120	itch.io custom terms	Y		record				download
+parlour	L113	swinging-sweet	Swinging Sweet	Calm - Relaxing Music - josepharaoh99	25	CC0	N	This pack is compossed entirely by hernandack (https://hernandack.itch.io) and can be used freely on any projects, which means this pack and it contents are totally free files. Credit is appreciated.	record				download
+parlour	L161	a-horrid-discovery	A Horrid Discovery	FREE Music Pack (Lo-fi, Indie, Metal, Horror, Orchestral) - Aila Scott	39	CC-BY 4.0	Y	09- A Horrid Discovery © 2024 by Aila Scott is licensed under CC BY 4.0	record				download
+parlour	L185	midnight-cruiser	Midnight Cruiser	Free music - CC0 - Cawfeecrow	144	CC0	N	Not required (CC0)	hidden	observatory		find	download
+parlour	L233	a-cup-of-tea	A cup of tea	lofi Compilation - TAD	169	CC0	N	Not required (CC0)	hidden	oracle		task	download
+parlour	L032	chilly-bells	Chilly Bells	Calm - Relaxing Music - josepharaoh99	132	CC0	N	please include my name in your projects credits, Alex McCulloch.	hidden	observatory		wrong-resource	download
+parlour	L193	wednesday-night-funk-fusion	Wednesday Night [Funk Fusion]	Free music - CC0 - Cawfeecrow	177	CC0	N	https://ko-fi.com/zanelittle	hidden	alchemist		task	download
+scriptorium	CS08	vespers-at-the-desk	Vespers at the Desk						record		Y		claude-sample
+scriptorium	CS09	the-cipher-dance	The Cipher Dance						record				claude-sample
+scriptorium	CS10	illuminated	Illuminated						record				claude-sample
+scriptorium	L015	announcemynameguitar	AnnounceMyNameGuitar	Calm - Relaxing Music - josepharaoh99	165	CC0	N	just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+scriptorium	L056	harpsichord-flurry	Harpsichord Flurry	Calm - Relaxing Music - josepharaoh99	230	CC0	N	Produced by Julie Damsgaard/Spring Spring/Spring Enterprises @ https://spring-enterprises.neocities.org	record				download
+scriptorium	L082	just-you-and-me-guitar	Just you and me Guitar	Calm - Relaxing Music - josepharaoh99	99	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+scriptorium	L086	medieval-harvest-season	Medieval: Harvest Season	Calm - Relaxing Music - josepharaoh99	214	CC0	N	Not required (CC0)	record				download
+scriptorium	L087	kings-feast	Kings Feast	Calm - Relaxing Music - josepharaoh99	130	CC0	N	Not required (CC0)	record				download
+scriptorium	L090	minstrel-dance	Minstrel Dance	Calm - Relaxing Music - josepharaoh99	139	CC0	N	Not required (CC0)	record				download
+scriptorium	L094	the-bards-tale	The Bards Tale	Calm - Relaxing Music - josepharaoh99	159	CC0	N	Not required (CC0)	record				download
+scriptorium	L096	the-old-tower-inn	The Old Tower Inn	Calm - Relaxing Music - josepharaoh99	105	CC0	N	Not required (CC0)	record				download
+scriptorium	L110	serenade-guitar	Serenade Guitar	Calm - Relaxing Music - josepharaoh99	129	CC0	N	Just include my name Alex McCulloch. Attribution appreciated but not required.	record				download
+scriptorium	L132	the-love-cycle-guitar	The love cycle (Guitar)	Calm - Relaxing Music - josepharaoh99	103	CC0	N	just include my name, Alex Mcculloch. Attribution appreciated but not required.	record				download
+scriptorium	L241	rainy-forest	Rainy Forest	lofi Compilation - TAD	100	CC0	N	Not required (CC0)	record				download
+scriptorium	R034	quasi-medieval-suite	Quasi Medieval Suite	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	235	CC0	N	Not required (CC0)	record				download
+scriptorium	R508	chiptune-minstrel-dance	CHIPTUNE Minstrel Dance	Retro Music - josepharaoh99	135	CC0	N	Not required (CC0)	record				download
+scriptorium	L080	calm5-summer-memories	Calm5 - Summer Memories	Calm - Relaxing Music - josepharaoh99	65	CC0	N	Not required (CC0)	record				download
+scriptorium	L201	garden	Garden	Lo-Fi Soundtrack Pack - Swarajthegreat	73	itch.io custom terms	N	Not required	record				download
+scriptorium	L081	calm6-innocence	Calm6 - Innocence	Calm - Relaxing Music - josepharaoh99	71	CC0	N	Not required (CC0)	hidden	observatory		find	download
+scriptorium	L017	another-august	Another August	Calm - Relaxing Music - josepharaoh99	207	CC0	N	ATTRIBUTION: The Cynic Project / cynicmusic.com / pixelsphere.org	hidden	observatory		task	download
+scriptorium	L028	calm-ambient-3-lifewave-2k	Calm Ambient 3 (Lifewave 2k)	Calm - Relaxing Music - josepharaoh99	187	CC0	N	The Cynic Project / cynicmusic.com / pixelsphere.org	hidden	observatory		wrong-resource	download
+scriptorium	L031	champ-de-tournesol	Champ de tournesol	Calm - Relaxing Music - josepharaoh99	118	CC0	N	Not required (CC0)	hidden	observatory		find	download
+scriptorium	L041	annas-song-part-1	Anna's Song part 1	Calm - Relaxing Music - josepharaoh99	213	CC0	N	just include my name, Alex McCulloch. This is not mandatory.	hidden	observatory		task	download
+scriptorium	L042	fouler-lhorizon	Fouler l'horizon	Calm - Relaxing Music - josepharaoh99	108	CC0	N	Not required (CC0)	hidden	observatory		wrong-resource	download
+scriptorium	L043	frets	Frets	Calm - Relaxing Music - josepharaoh99	226	CC0	N	Just Include my name Alex McCulloch. Attribution appreciated but not required.	hidden	observatory		find	download
+pixelscape	CS11	orbit-mode	Orbit Mode						record				claude-sample
+pixelscape	CS12	render-farm	Render Farm						record				claude-sample
+pixelscape	CS13	new-world	New World						record		Y		claude-sample
+pixelscape	R006	post-adventure-tea-party	Post-Adventure Tea Party	10 Free Chiptune Tracks (A Bag of Chips) - Zane Little Music	225	CC0	N	Not required (CC0)	record				download
+pixelscape	R134	final-castle	Final Castle	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	104	CC0	N	Not required (CC0)	record				download
+pixelscape	R161	hey-boss	Hey Boss!	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	102	CC0	N	you dont have to but if you like, just leave my link www.megupets.com	record				download
+pixelscape	R165	mubossfight	muBossFight	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	104	CC0	N	Credit would be appreciated (Cal McEachern) as well as a link to what you've created with my work.	record				download
+pixelscape	R178	mysterious-sewer-full	Mysterious Sewer Full	Audio - CC0 - 8Bit -Chiptune - ImogiaGames	213	CC0	N	Not required (CC0)	record				download
+pixelscape	R295	battle-vs-gyokaijuu-new	battle vs gyokaijuu NEW	Retro Music - josepharaoh99	180	CC0	N	Produced by Julie Damsgaard/Spring Spring/Spring Enterprises @ https://spring-enterprises.neocities.org	record				download
+pixelscape	R319	boss-battle-1-v1	Boss Battle #1 V1	Retro Music - josepharaoh99	203	CC0	N	Not required (CC0)	record				download
+pixelscape	R346	battle-music-01-loop	Battle Music 01-Loop	Retro Music - josepharaoh99	152	CC0	N	Not required (CC0)	record				download
+pixelscape	R407	great-boss	Great Boss	Retro Music - josepharaoh99	111	CC0	N	Produced by Julie Damsgaard/Spring Spring/Spring Enterprises @ https://spring-enterprises.neocities.org	record				download
+pixelscape	R234	cyberpunk-boss	Cyberpunk Boss	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	173	CC-BY 4.0	Y	"Music: ""Cyberpunk Boss"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+pixelscape	R236	digital-showdown	Digital Showdown	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	171	CC-BY 4.0	Y	"Music: ""Digital Showdown"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+pixelscape	R238	neon-pulse	Neon Pulse	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	194	CC-BY 4.0	Y	"Music: ""Neon Pulse"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+pixelscape	R240	tropical-quest	Tropical Quest	Bitrate Royalty- Pixel & Chiptune Soundtrack Pack - aroldv	211	CC-BY 4.0	Y	"Music: ""Tropical Quest"" by Arold Valda. Licensed under CC BY 4.0."	record				download
+pixelscape	R249	old-castle	Old Castle	Bitwise - An Eight Bit Video Game Soundtrack - tcarisland	90	CC-BY 4.0	Y	Bitwise - An Eight Bit Video Game Soundtrack by tcarisland, licensed under CC-BY 4.0 (https://opengameart.org/content/bitwise-an-eight-bit-video-game-soundtrack)	record				download
+pixelscape	R264	railroad-runaround	Railroad Runaround	Bitwise - An Eight Bit Video Game Soundtrack - tcarisland	100	CC-BY 4.0	Y	Bitwise - An Eight Bit Video Game Soundtrack by tcarisland, licensed under CC-BY 4.0 (https://opengameart.org/content/bitwise-an-eight-bit-video-game-soundtrack)	record				download
+pixelscape	R270	open-world	Open World	Bitwise - An Eight Bit Video Game Soundtrack - tcarisland	70	CC-BY 4.0	Y	Bitwise - An Eight Bit Video Game Soundtrack by tcarisland, licensed under CC-BY 4.0 (https://opengameart.org/content/bitwise-an-eight-bit-video-game-soundtrack)	record				download
+pixelscape	R011	celebrate	Celebrate	8 Bit Music Pack 2 - MrJoshuaMcLean	107	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
+pixelscape	R012	deities-get-takeout-too	Deities-Get-Takeout-Too	8 Bit Music Pack 2 - MrJoshuaMcLean	96	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
+pixelscape	R019	50s-bit	50S-Bit	8-Bit Music Pack 1 - MrJoshuaMcLean	96	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
+pixelscape	R020	deepwater-ruins	Deepwater-Ruins	8-Bit Music Pack 1 - MrJoshuaMcLean	97	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
+pixelscape	R021	down-the-river-we-go	Down-The-River-We-Go	8-Bit Music Pack 1 - MrJoshuaMcLean	96	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
+pixelscape	R022	lights-out	Lights-Out	8-Bit Music Pack 1 - MrJoshuaMcLean	96	CC-BY-SA 4.0	Y	Contains music ©2025 Retro Indie Josh (https://retroindiejosh.itch.io/) Licensed under Creative Commons Attribution-ShareAlike 4.0 International	record				download
