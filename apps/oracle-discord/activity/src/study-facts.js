@@ -14,6 +14,7 @@ import { EFFECTS as DS_EFFECTS, CONTROLS as DS_CONTROLS, METHODS as DS_METHODS }
 import { FORCES, BARNUM, FORER, CODE, CODE_FACTS, BILLET_FACTS } from "./mentalist/data.js";
 import { LANTERN_FACTS, PEPPER_FACTS, SHOW_FACTS } from "./phantasmagoria/data.js";
 import { RIVALS as BC_RIVALS, LEVELS as BC_LEVELS } from "./blackchamber/data.js";
+import { STEPS as IL_STEPS, PIGMENTS as IL_PIGMENTS, PAGES as IL_PAGES } from "./illuminator/data.js";
 import { METHODS as CIPHERS, FORGERIES, INSCRIPTIONS as CD_INSCRIPTIONS } from "./cipherdesk/data.js";
 import { PAIRS } from "./parlour/gallery.js";
 import { MILESTONES } from "./parlour/finale.js";
@@ -138,6 +139,12 @@ export const FACTS = {
     sec("The rivals", BC_RIVALS.map((r) => `${r.e} <b>${e(r.name)}</b> (${e(r.when)}): ${e(r.fact)}`)),
     sec("The three rooms", BC_LEVELS.map((l) => `<b>Level ${l.n}, ${e(l.name)}</b>: ${e(l.what)}.`)),
   ] }],
+
+  illuminator: [
+    { id: "order", emoji: "📏", title: "The order of work", sections: [sec("Stages, in order", IL_STEPS.map((s, i) => `${i + 1}. ${s.e} <b>${e(s.name)}</b>: ${e(s.fact)}`))] },
+    { id: "pigments", emoji: "🎨", title: "The pigments", sections: [...new Set(IL_PIGMENTS.map((x) => x.fam))].map((f) => sec(f[0].toUpperCase() + f.slice(1), IL_PIGMENTS.filter((x) => x.fam === f).map((x) => `<b>${e(x.name)}</b>: ${e(x.clue)} ${e(x.fact)}`))) },
+    { id: "pages", emoji: "📖", title: "The manuscripts", sections: [sec("Pages to work", IL_PAGES.map((p) => `<b>${e(p.name)}</b> (${e(p.when)}): ${e(p.fact)}`))] },
+  ],
 
   possession: [{ id: "tales", emoji: "👻", title: "The true tales", sections: Object.values(TRUE_TALES).flat().map((t) =>
     sec(`${t.name} (${t.kind.replace(/^True tale · /, "")})`, [...t.beats.map((b) => `${e(b.narr)} <i>${e(b.truth)}</i>`), ...[].concat(t.real || []).map((r, i) => `${i ? "" : "<b>What really happened:</b> "}${e(r)}`)])) }],

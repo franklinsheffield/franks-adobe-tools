@@ -391,6 +391,19 @@ export const PLAY = {
     ],
   },
 
+  illuminator: {
+    how: [
+      "Make a page the way medieval workshops did. First tap the stages in their real order: rule the page, write the text, lay the gold, paint, then outline.",
+      "Then pick the real pigment for each part of the page from what it was made of. Every wrong tap costs a drop of ink.",
+      "<b>Level 1</b> has 5 stages and 3 colours, <b>Level 2</b> adds the red headings and 4 colours, <b>Level 3</b> adds the sketch and 5 colours.",
+    ],
+    tips: [
+      "Gold always went on before paint: burnishing it would smudge any colour already there.",
+      "The scribe wrote before anyone painted, leaving gaps for pictures and initials.",
+      "Read the riddle for what the pigment was made of: a mineral, a plant, an insect or a metal.",
+    ],
+  },
+
   // ---- Party (every House) ----
   possession: {
     how: [
