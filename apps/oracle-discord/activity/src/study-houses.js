@@ -118,7 +118,8 @@ export const HOUSE_BOOKS = {
         "<b>2. 🗝️ Cipher Desk</b>: break 100 real ciphers, inscriptions and forgeries. Inscriptions open once you've filed their script at the Tray.",
       ] },
       { h: "The rest of the Scriptorium", p: [
-        "<b>🗝️ Rune & Glyph Decoder</b> (the card game Scribe's Hand, today's daily), <b>🃏 Grimoire Memory</b>, and the party game <b>👻 Possession</b>.",
+        "<b>🗝️ Rune & Glyph Decoder</b> (the card game Scribe's Hand, today's daily), <b>🃏 Grimoire Memory</b>, <b>⏳ History of Magic</b>, <b>🌿 Herbalist's Grimoire</b>, and the party game <b>👻 Possession</b>. New games join the shelf as they're written: the 📚 Games page always has the full list.",
+        "<b>🎭 Fact or Fib</b> runs in History of Magic and the Herbalist's Grimoire.",
         "Look in the margins of the menu. Scribes left notes there, and so did I.",
       ] },
       { h: "Your desk", p: COMMON },
