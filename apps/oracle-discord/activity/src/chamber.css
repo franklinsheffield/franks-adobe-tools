@@ -2018,3 +2018,6 @@ body.box-full .dock{position:fixed;left:18px;bottom:18px;margin:0;z-index:41}
 @keyframes g-point{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}22%,78%{transform:translate(-30px,-96px) rotate(-38deg) scale(1.08)}84%{animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
 @keyframes g-swat{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}38%{transform:translate(var(--sx,0),var(--sy,-40px)) rotate(-26deg) scale(1.1);animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
 @media (prefers-reduced-motion:reduce){.teller .o-f,.teller .o-thumb,.teller .o-hand,.teller .o-hands{transition:none}}
+
+/* Menu backgrounds (each host pack menuBg) sit absolutely behind the menu: keep the quick-row buttons above them, clickable. */
+#ui.has-mbg .hm-quick>.c{position:relative;z-index:1}
