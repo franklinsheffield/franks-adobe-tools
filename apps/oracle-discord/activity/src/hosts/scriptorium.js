@@ -151,7 +151,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
   channelIds: ["1575977195048927232"], // #🪶-scriptorium
-  readings: false, rooms: ["inscriptions", "cipherdesk", "blackchamber", "illuminator", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
+  readings: false, rooms: ["inscriptions", "cipherdesk", "blackchamber", "illuminator", "bombe", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
@@ -176,6 +176,7 @@ export const scriptorium = {
   },
   banter: {
     illuminator: G("Gold before paint: burnishing would smudge any colour already down.", "Ultramarine was ground lapis from Afghanistan, dearer than gold.", "A finished page. The Limbourg brothers would nod at that gold.", "Spoiled. Monks scraped vellum clean with a knife and began again."),
+    bombe: G("Enigma never turns a letter into itself. That one flaw is our way in.", "Weather reports came in the same words daily: the best cribs we had.", "Stop! Turing's bombe, Welchman's board, and a crib from the weather.", "Key's stale. Enigma settings changed every midnight; start again."),
     blackchamber: G("Count the letters first. Phelippes broke Mary's cipher that way in 1586.", "Three letters, again and again? Almost always THE, {name}.", "Broken before the rival! Reseal it neatly, {name}, the embassy will never know.", "The rival got there first. Rossignol broke a siege letter in 1628 the same way."),
     timeline: G("Dates first, {name}. Chronicles were often written long after the events.", "Medieval annals listed one or two events per year. Short, but dated.", "In order! A chronicle fit for the archive, {name}.", "Out of order. Even monks miscopied a date now and then."),
     grimoire: G("Read the leaf like a page: margins, veins, then the whole shape.", "The Vienna Dioscorides, about AD 512, painted plants for doctors.", "Named it! Pressed and catalogued, {name}.", "Not that one. Old herbals copied each other's mistakes too."),
