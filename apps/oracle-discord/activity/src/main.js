@@ -326,6 +326,8 @@ function hallMode() {
   for (const id of ["speech-ctl", "mic-btn", "music-bar"]) { const el = $(id), to = slot || bar; if (el && to && el.parentElement !== to) to.appendChild(el); }
 }
 new MutationObserver(() => hallMode()).observe($("ui"), { childList: true });
+// 🚪 Doors (header): back to the Hall of Doors from anywhere; greet() plays the room exit and tidies up. Hidden on the hall itself.
+$("doors-btn").onclick = () => { $("book") && closeBook(); greet(); };
 /** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
 const ctl = (html) => { $("dock").innerHTML = ""; $("ctl").innerHTML = rename(html); };
 /** The floating corner dock (bottom left of the box): Continue and Skip live here, so the box stays clear. */

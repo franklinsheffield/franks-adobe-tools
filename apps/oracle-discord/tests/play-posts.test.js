@@ -36,3 +36,11 @@ test("/play in a Wing's chat or voice channel opens that Wing's House", async ()
     observatory: ["1576066711738908812", "1576066714838499468"], parlour: ["1576066717208281141", "1576066719775072396"], scriptorium: ["1576066730986574006", "1576066733381386383"] };
   for (const [id, chans] of Object.entries(wing)) for (const c of chans) assert.equal(hostFor({ channelId: c }).id, id, c);
 });
+test("a 🚪 Doors button in the header goes back to the Hall of Doors, hidden on the hall", () => {
+  const html = readFileSync(new URL("../activity/src/index.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../activity/src/chamber.css", import.meta.url), "utf8");
+  const js = readFileSync(new URL("../activity/src/main.js", import.meta.url), "utf8");
+  assert.match(html, /id="doors-btn"[^>]*>🚪 Doors</);
+  assert.match(css, /body\.at-hall #doors-btn/);
+  assert.match(js, /\$\("doors-btn"\)\.onclick = \(\) => \{[^}]*greet\(\)/);
+});
