@@ -1,0 +1,50 @@
+// Archivist Wren's reading nook and bookplate mottoes. Every quote is real and sits in the manuscript named; the
+// English is a plain translation of the original. "where" is where the manuscript is kept today.
+
+export const QUOTES = [
+  { id: "pangur", orig: "Messe ocus Pangur Bán, cechtar nathar fria saindán", en: "I and Pangur Bán, my cat, each of us has his own craft.",
+    src: "Pangur Bán, an Old Irish poem by a monk about his white cat", when: "9th century", where: "The Reichenau Primer, St Paul's Abbey, Lavanttal, Austria",
+    note: "The cat hunts mice; the monk hunts meanings. Both are pleased when they catch one." },
+  { id: "vikings", orig: "Is acher in gaíth in-nocht, fu-fúasna fairggae findfholt", en: "Bitter is the wind tonight. It tosses the ocean's white hair. I need not fear the fierce Vikings crossing the Irish Sea.",
+    src: "A verse an Irish scribe wrote in the margin", when: "about AD 850", where: "The St Gall Priscian (Codex 904), Abbey Library of St Gall, Switzerland",
+    note: "A storm meant no Viking raid that night, so the scribe could work in peace." },
+  { id: "woods", orig: "Dom-farcai fidbaide fál, fom-chain loíd luin", en: "A hedge of trees surrounds me; a blackbird sings to me. Above my lined little book the birds are trilling.",
+    src: "The scribe in the woods, another margin verse", when: "about AD 850", where: "The St Gall Priscian (Codex 904), Abbey Library of St Gall, Switzerland",
+    note: "Copying a Latin grammar, the scribe wrote a nature poem in Irish in the margin instead." },
+  { id: "fingers", orig: "Tres digiti scribunt, totum corpusque laborat", en: "Three fingers write, but the whole body labours.",
+    src: "A colophon (the scribe's closing note) found in many manuscripts", when: "medieval, widely copied", where: "Many libraries",
+    note: "Scribes wrote it at the end of a long job. Back, eyes and patience were all spent." },
+  { id: "drink", orig: "Explicit hoc totum; pro Christo da mihi potum", en: "This is all finished. For Christ's sake, give me a drink.",
+    src: "Another colophon, a common one", when: "medieval, widely copied", where: "Many libraries",
+    note: "'Explicit' meant the book was unrolled to its end. Then the scribe wanted a drink." },
+  { id: "moth", orig: "Moððe word fræt", en: "A moth ate words. That seemed a strange event to me: a worm swallowed the songs of men, a thief in the dark.",
+    src: "Riddle 47, an Old English riddle (answer: a bookworm)", when: "about AD 970", where: "The Exeter Book, Exeter Cathedral Library, England",
+    note: "The moth ate the words and was none the wiser for it." },
+  { id: "hwaet", orig: "Hwæt! We Gardena in geardagum þeodcyninga þrym gefrunon", en: "Listen! We have heard of the glory of the Spear-Danes' kings in days gone by.",
+    src: "The opening of Beowulf", when: "copied about AD 1000", where: "The Nowell Codex (Cotton Vitellius A XV), British Library, London",
+    note: "The only copy was scorched in a library fire in 1731. Its edges still crumble." },
+  { id: "caedmon", orig: "Nu scylun hergan hefaenricaes uard", en: "Now we must praise the Guardian of the heavenly kingdom.",
+    src: "Cædmon's Hymn, one of the oldest recorded poems in English", when: "copied in the 730s", where: "The Moore Bede, Cambridge University Library",
+    note: "Bede says Cædmon was a cowherd who could not sing until a dream taught him this." },
+  { id: "eadwine", orig: "Scriptorum princeps ego", en: "I am the prince of scribes.",
+    src: "Around a portrait of the scribe Eadwine at his desk", when: "about 1150", where: "The Eadwine Psalter, Trinity College, Cambridge",
+    note: "Most scribes stayed nameless. Eadwine painted himself in, with a boast." },
+  { id: "angel", orig: "", en: "Look closely and you would say all this was the work of an angel, not of a man.",
+    src: "Gerald of Wales, describing a gospel book he saw at Kildare", when: "1180s", where: "His Topographia Hibernica (the book he saw is lost)",
+    note: "He said the closer you look, the more intricate knots you find." },
+  { id: "hoax", orig: "For him that stealeth, or borroweth and returneth not, this book from its owner, let it change into a serpent in his hand",
+    en: "The famous 'Barcelona book curse'.", src: "Not medieval at all: a hoax", when: "1909", where: "Edmund Pearson's joke book, The Old Librarian's Almanack",
+    note: "A librarian made it up and it fooled people for decades. Real book curses exist; this one doesn't.", hoax: true },
+];
+
+/** Mottoes for the bookplate: [Latin, English, where it comes from]. */
+export const MOTTOES = [
+  ["Ex libris", "From the books of", "The usual bookplate words; bookplates go back to 1400s Germany"],
+  ["Tolle lege", "Take up and read", "Augustine's Confessions, book 8"],
+  ["Festina lente", "Make haste slowly", "Augustus's favourite saying (in Greek, says Suetonius); the printer Aldus Manutius's motto"],
+  ["Sapere aude", "Dare to know", "The poet Horace, Epistles 1.2"],
+  ["Littera scripta manet", "The written word remains", "A medieval Latin proverb"],
+  ["Nulla dies sine linea", "No day without a line", "After Pliny the Elder's story of the painter Apelles"],
+  ["Habent sua fata libelli", "Books have their own fates", "The grammarian Terentianus Maurus"],
+  ["Dum spiro spero", "While I breathe, I hope", "A Latin proverb"],
+];
