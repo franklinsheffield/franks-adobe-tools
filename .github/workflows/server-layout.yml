@@ -1,0 +1,29 @@
+# Server layout for the House gate rework (apps/oracle-discord/scripts/server-layout.js). Run by hand only.
+#   snapshot: read only; logs every category, channel, permission overwrite and role, and keeps snapshot.json (90 days)
+name: Server layout
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "snapshot"
+        required: true
+        default: snapshot
+        type: choice
+        options: [snapshot]
+permissions:
+  contents: read
+jobs:
+  layout:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Server layout (${{ inputs.mode }})
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+          SNAPSHOT_OUT: ${{ runner.temp }}/snapshot.json
+        run: node scripts/server-layout.js "${{ inputs.mode }}"
+      - uses: actions/upload-artifact@v4
+        with: { name: server-snapshot, path: "${{ runner.temp }}/snapshot.json", retention-days: 90 }
