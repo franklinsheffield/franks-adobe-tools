@@ -20,6 +20,8 @@ import { GUIDE as ECLIPSE } from "./eclipse/guide.js";
 import { GUIDE as NAVIGATOR } from "./navigator/guide.js";
 import { GUIDE as MESSIER } from "./messier/guide.js";
 import { GUIDE as STARPARTY } from "./starparty/guide.js";
+import { PLAY } from "./study-play.js";
+import { FACTS } from "./study-facts.js";
 
 const escT = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const book = (title, sections) => ({ title, sections });
@@ -55,15 +57,38 @@ export const STUDY = [
   ] },
 ];
 
+// Rooms whose only guides are built from their own data (study-facts.js).
+const NEW = [
+  ["flametest", "🔥", "Flame Test Lab"], ["minerals", "🪨", "Mineral Cabinet"], ["bench", "🧫", "Discovery Bench"], ["commissions", "📋", "Commissions"],
+  ["fireworks", "🎆", "Fireworks Workshop"], ["leadgold", "⚛️", "Lead into Gold"], ["casefiles", "🗂️", "Case Files"], ["workshop", "🎩", "The Workshop"],
+  ["bookings", "🎟️", "Bookings"], ["darkseance", "🕯️", "The Dark Séance"], ["mentalist", "🎩", "The Mentalist"], ["phantasmagoria", "🏮", "Phantasmagoria"],
+  ["roguesgallery", "🖼️", "The Rogues' Gallery"], ["inscriptions", "🔎", "Inscription Tray"], ["cipherdesk", "🗝️", "Cipher Desk"], ["possession", "👻", "Possession"],
+];
+for (const [room, emoji, name] of NEW) STUDY.push({ room, emoji, name, guides: FACTS[room] });
+// Every game opens with its "How to play & tips" page (study-play.js), in front of its fact guides.
+for (const x of STUDY) {
+  const P = PLAY[x.room]; if (!P) continue;
+  x.guides.unshift({ id: "play", emoji: "🎮", title: P.how ? "How to play & tips" : "Tips",
+    sections: [...(P.how ? [{ h: "How to play", p: P.how }] : []), { h: "Tips", p: P.tips }] });
+}
+
 export const studyFor = (room) => STUDY.find((s) => s.room === room) || null;
 
 /** One guide as foldable sections (the first one open). Guide text may hold <b>, <i> and lists: it is our own content. */
-export function studyHtml(g) {
-  return `<div class="sh-guide"><h3>${g.emoji} ${escT(g.title)}</h3>${g.sections.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${escT(s.h)}</summary>${s.p.map((t) => `<p>${t}</p>`).join("")}</details>`).join("")}</div>`;
+export function studyHtml(g, { accent = "" } = {}) {
+  return `<div class="sh-guide${accent ? " sh-house" : ""}"${accent ? ` style="--sh-accent:${escT(accent)}"` : ""}><h3>${g.emoji} ${escT(g.title)}</h3>${g.sections.map((s, i) => `<details${i === 0 ? " open" : ""}><summary>${escT(s.h)}</summary>${s.p.map((t) => `<p>${t}</p>`).join("")}</details>`).join("")}</div>`;
 }
 
 export const STUDY_CSS = `.sh-guide h3{font-family:var(--display);color:var(--gold);letter-spacing:.08em;font-size:1rem;margin:0 0 8px}
 .sh-guide details{border:1px solid var(--line);border-radius:10px;margin:6px 0;background:rgba(22,16,48,.55)}
 .sh-guide summary{cursor:pointer;padding:8px 12px;font-weight:700;color:var(--gold2);list-style-position:inside}
 .sh-guide details[open] summary{border-bottom:1px solid var(--line)}
-.sh-guide p{margin:8px 12px;font-size:.9rem;line-height:1.55}.sh-guide b{color:var(--teal)}`;
+.sh-guide p{margin:8px 12px;font-size:.9rem;line-height:1.55}.sh-guide b{color:var(--teal)}
+.sh-guide{transform-origin:0 50%;animation:sh-turn .55s cubic-bezier(.2,.7,.3,1) both}
+.sh-guide details{animation:sh-rise .45s ease-out both}.sh-guide details:nth-of-type(2){animation-delay:.06s}.sh-guide details:nth-of-type(3){animation-delay:.12s}.sh-guide details:nth-of-type(n+4){animation-delay:.18s}
+.sh-guide details[open]>p{animation:sh-ink .4s ease-out both}
+.sh-house h3{color:var(--sh-accent)}.sh-house details{border-color:color-mix(in srgb,var(--sh-accent) 45%,transparent)}.sh-house b{color:var(--sh-accent)}
+@keyframes sh-turn{from{opacity:0;transform:perspective(900px) rotateY(-28deg) translateX(-8px)}to{opacity:1;transform:none}}
+@keyframes sh-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sh-ink{from{opacity:0;filter:blur(2px)}to{opacity:1;filter:none}}
+@media (prefers-reduced-motion:reduce){.sh-guide,.sh-guide details,.sh-guide details[open]>p{animation:none}}`;
