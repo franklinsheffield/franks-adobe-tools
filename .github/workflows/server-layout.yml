@@ -1,15 +1,17 @@
 # Server layout for the House gate rework (apps/oracle-discord/scripts/server-layout.js). Run by hand only.
 #   snapshot: read only; logs every category, channel, permission overwrite and role, and keeps snapshot.json (90 days)
+#   plan: read only; lists what stage1 would create
+#   stage1: creates the new categories and channels hidden from @everyone (no moves, no permission changes)
 name: Server layout
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "snapshot"
+        description: "snapshot | plan | stage1"
         required: true
         default: snapshot
         type: choice
-        options: [snapshot]
+        options: [snapshot, plan, stage1]
 permissions:
   contents: read
 jobs:
