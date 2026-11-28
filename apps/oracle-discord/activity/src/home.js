@@ -10,13 +10,14 @@ export const HOME_TABS = [
   { id: "birth", emoji: "🌌", label: "Your birth", blurb: "Readings from the day you were born" },
   { id: "play", emoji: "🎲", label: "Play & learn", blurb: "Games about real magic and real science" },
   { id: "study", emoji: "📖", label: "Study", blurb: "Your House handbook and a guide for every game: how to play, tips and the real facts" },
+  { id: "things", emoji: "🧳", label: "Your things", blurb: "The store, your trophies and Grimoire, this House's collections, and the sound" },
 ];
 const TAB_KEY = "oracle-home-tab";
 export function savedTab() { try { const t = localStorage.getItem(TAB_KEY); return HOME_TABS.some((x) => x.id === t) ? t : "cards"; } catch { return "cards"; } }
 export function saveTab(t) { try { localStorage.setItem(TAB_KEY, t); } catch {} }
 
 /** Sort systems, rooms and study guides into the tabs. Returns { tabId: [{ kind: "sys"|"room"|"study", id, emoji, label, hint }] }. */
-export function homeItems(systems, rooms, study, house = null) {
+export function homeItems(systems, rooms, study, house = null, things = []) {
   const sys = (s) => ({ kind: "sys", id: s.key, emoji: s.emoji, label: s.label, hint: s.hint || "" });
   const room = (r) => ({ kind: "room", id: r.id, emoji: r.emoji, label: r.label, hint: r.blurb || "" });
   return {
@@ -26,21 +27,22 @@ export function homeItems(systems, rooms, study, house = null) {
     play: rooms.filter((r) => !r.row).map(room),
     study: [...(house ? [{ kind: "study", id: "house", emoji: "📖", label: house.title, hint: `${house.name}: how this House works` }] : []),
       ...study.filter((x) => rooms.some((r) => r.id === x.room)).map((x) => ({ kind: "study", id: x.room, emoji: x.emoji, label: x.name, hint: "How to play, tips and the real facts" }))],
+    things: things.map((t) => ({ kind: "act", id: t.id, emoji: t.emoji, label: t.label, hint: t.hint || "", badge: t.badge || "" })),
   };
 }
 
 /** The menu's HTML. Every option is in the DOM (inactive tabs are hidden) so click wiring stays simple. */
 export function homeHtml(items, tab, esc) {
   const card = (it, i) => {
-    const data = it.kind === "sys" ? `data-k="${it.id}"` : it.kind === "room" ? `data-room="${it.id}"` : `data-study="${it.id}"`;
-    return `<button class="hm-card${it.kind === "room" ? " game" : ""}" type="button" ${data} style="--i:${i}"><span class="hm-e" aria-hidden="true">${it.emoji}</span><span class="hm-t"><b>${esc(it.label)}</b><small>${esc(it.hint)}</small></span>${it.kind === "room" ? `<i class="hm-tag">Game</i>` : ""}</button>`;
+    const data = it.kind === "sys" ? `data-k="${it.id}"` : it.kind === "room" ? `data-room="${it.id}"` : it.kind === "act" ? `data-act="${it.id}"` : `data-study="${it.id}"`;
+    return `<button class="hm-card${it.kind === "room" ? " game" : ""}" type="button" ${data} style="--i:${i}"><span class="hm-e" aria-hidden="true">${it.emoji}</span><span class="hm-t"><b>${esc(it.label)}</b><small>${esc(it.hint)}</small></span>${it.kind === "room" ? `<i class="hm-tag">Game</i>` : it.badge ? `<i class="hm-tag">${esc(it.badge)}</i>` : ""}</button>`;
   };
   const tabs = HOME_TABS.filter((t) => items[t.id]?.length);
   const on = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
   return `<div class="home">
   <div class="hm-quick"><button class="c main hm-magnet" type="button" id="hm-daily">✦ Draw today's card</button><button class="c" type="button" id="hm-surprise">🎲 Surprise me</button></div>
   <div class="hm-tabs" role="tablist" aria-label="What would you like to do?">${tabs.map((t) => `<button class="hm-tab${t.id === on ? " on" : ""}" type="button" role="tab" aria-selected="${t.id === on}" aria-controls="hm-p-${t.id}" data-hm="${t.id}"><i class="hm-knob" aria-hidden="true"></i><span class="hm-de" aria-hidden="true">${t.emoji}</span> ${esc(t.label)}<em>${items[t.id].length}</em></button>`).join("")}</div>
-  ${tabs.map((t) => `<div class="hm-panel" id="hm-p-${t.id}" role="tabpanel" data-panel="${t.id}"${t.id === on ? "" : " hidden"}><p class="hm-blurb">${esc(t.blurb)}</p><div class="hm-grid">${items[t.id].map(card).join("")}</div></div>`).join("")}
+  ${tabs.map((t) => `<div class="hm-panel" id="hm-p-${t.id}" role="tabpanel" data-panel="${t.id}"${t.id === on ? "" : " hidden"}><p class="hm-blurb">${esc(t.blurb)}</p><div class="hm-grid">${items[t.id].map(card).join("")}</div>${t.id === "things" ? `<div class="hm-sound" id="hm-sound" role="group" aria-label="Sound"><span class="hm-sound-l">🔊 Sound</span></div>` : ""}</div>`).join("")}
 </div>`;
 }
 

@@ -312,7 +312,16 @@ const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "
 const joke = (key) => (Math.random() < 0.5 && personaHouseLine(pid(), "joke", state.name, heard())) || hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
-const ui = (html) => { $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
+const ui = (html) => { soundHome(); $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
+/** The hall of doors (the home tabs) holds the menu; anywhere else the ☰ bar does. The sound controls move into the "Your things" door and back. */
+/** Put the sound controls back in the ☰ bar (before the hall's panel is replaced, so they are never thrown away). */
+function soundHome() { const bar = $("head-btns"); for (const id of ["speech-ctl", "mic-btn", "music-bar"]) { const el = $(id); if (el && bar && el.parentElement !== bar) bar.appendChild(el); } }
+function hallMode() {
+  const on = !!$("ui").querySelector(".home"), slot = on && $("hm-sound"), bar = $("head-btns");
+  document.body.classList.toggle("at-hall", on); if (on) document.querySelector(".box-head")?.classList.remove("menu-open");
+  for (const id of ["speech-ctl", "mic-btn", "music-bar"]) { const el = $(id), to = slot || bar; if (el && to && el.parentElement !== to) to.appendChild(el); }
+}
+new MutationObserver(() => hallMode()).observe($("ui"), { childList: true });
 /** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
 const ctl = (html) => { $("dock").innerHTML = ""; $("ctl").innerHTML = rename(html); };
 /** The floating corner dock (bottom left of the box): Continue and Skip live here, so the box stays clear. */
@@ -400,17 +409,27 @@ function greet() {
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
   say((personaHouseLine(pid(), "greet", state.name) || hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${hostStreak(st) || `${st} days in a row now… the stars notice.`}` : "") : ""));
   showStats();
-  const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY, { title: (HOUSE_BOOKS[HOST().id] || HOUSE_BOOKS.oracle).title, name: HOST().house });
+  // The hall of doors holds the menu too (Frank 2026-11-28): Store, Trophies, Grimoire, sound and the House's collections sit behind "Your things"; the ☰ bar only shows off this screen.
+  const H = HOST(), C = crateOf(H.id), things = [
+    { id: "store", emoji: "💎", label: "Store", hint: "Looks, House shelves, records and more", badge: `💎 ${state.prog.essence || 0}` },
+    { id: "trophies", emoji: "🏆", label: "Trophies", hint: "Every game's trophies and your best levels" },
+    { id: "grimoire", emoji: "📖", label: "Grimoire", hint: "The Codex and your Journal" },
+    { id: "library", emoji: "📚", label: "Library", hint: "Real books on this server's shelves" },
+    ...(H.relics ? [{ id: "relics", emoji: H.token.emoji, label: H.relicLabel.replace(/^\S+\s/, ""), hint: H.relicBlurb, badge: `${H.token.emoji} ${tokensLeft(state.prog, H)}` }] : []),
+    ...(C.length ? [{ id: "crate", emoji: "🎵", label: "Record crate", hint: "This House's own records", badge: `${C.filter((t) => hasTrack(state.prog, t)).length}/${C.length}` }] : []),
+    ...(H.secrets ? [{ id: "secrets", emoji: "🔍", label: H.secrets.label.replace(/^\S+\s/, ""), hint: "Hidden things to find in this House", badge: `${secretCount(state.prog, H)}/${secretsOf(H).length}` }] : []),
+    ...(clueCount(state.prog) ? [{ id: "dossier", emoji: "🎭", label: "Dossier", hint: "Clues about who the hosts really are", badge: `${clueCount(state.prog)}/${CLUES.length}` }] : []),
+    { id: "card", emoji: "🪪", label: "My card", hint: "Your rank, streak and Houses" },
+    { id: "invite", emoji: "💌", label: "Invite a friend", hint: "Bring someone to the server", badge: state.prog.invited ? "" : `+💎${INVITE_REWARD}` },
+  ];
+  const items = homeItems(sys, ROOMS.filter((r) => hasRoom(H, r.id)), STUDY, { title: (HOUSE_BOOKS[H.id] || HOUSE_BOOKS.oracle).title, name: H.house }, things);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforebegin", eventBanner(esc));
-  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
-  $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
+  const ACT = { store: () => $("store-btn").click(), trophies: () => $("trophy-btn").click(), grimoire: () => $("grimoire-btn").click(), library: () => openLibrary(),
+    relics: () => openHouseRelics(), crate: () => openRecordCrate(), secrets: () => openHouseSecrets(), dossier: () => openDossier(), card: () => showProfile(), invite: () => inviteFriend() };
+  $("ui").querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => ACT[b.dataset.act]?.()));
+  hallMode();
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
-  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-library">📚 Library</button>`); $("hm-library").onclick = () => openLibrary();
-  if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
-  if (crateOf(HOST().id).length) { const C = crateOf(HOST().id), n = C.filter((t) => hasTrack(state.prog, t)).length; $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-crate">🎵 Record crate <small>${n}/${C.length}</small></button>`); $("hm-crate").onclick = () => openRecordCrate(); }
-  if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
-  if (clueCount(state.prog)) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-dossier">🎭 Dossier <small>${clueCount(state.prog)}/${CLUES.length}</small></button>`); $("hm-dossier").onclick = openDossier; }
   if (HOST().menuBg) { $("ui").classList.add("has-mbg"); $("ui").insertAdjacentHTML("afterbegin", HOST().menuBg.html(Date.now(), { prog: state.prog })); }
   secretEvent("home", { at: Date.now() });
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
