@@ -2027,3 +2027,34 @@ body.at-hall #menu-btn,body.at-hall .box-head .head-btns{display:none!important}
 .hm-sound{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:rgba(0,0,0,.25)}
 .hm-sound-l{font-size:.8rem;opacity:.8;margin-right:4px}.hm-sound .music-bar{margin-left:auto}
 @media (max-width:520px){.hm-sound .music-bar{margin-left:0}}
+
+/* Phone layout (Frank 2026-11-28). Discord's phone app floats its title bar and Leave button over the top of the
+   Activity (html.dc-phone, set in main.js), so the stage keeps clear of it and of the home bar. Portrait: the two top
+   panes shrink and the box header packs into two short rows, so the box holds more game text. Landscape (phone turned
+   sideways): the Oracle and the table stack on the left, the box runs full height on the right. */
+html.dc-phone{--top-clear:max(var(--discord-safe-area-inset-top,0px),env(safe-area-inset-top,0px),50px)}
+html.dc-phone .stage{padding-top:var(--top-clear);padding-bottom:max(var(--discord-safe-area-inset-bottom,0px),env(safe-area-inset-bottom,0px),6px)}
+@media (max-width:560px) and (orientation:portrait){
+  .stage{grid-template-rows:31% 69%}
+  .box-head{flex-wrap:wrap;row-gap:3px}.box-head .speaker{order:0;flex:1 1 auto;font-size:.78rem;letter-spacing:.12em;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .box-head .menu-btn{order:1}.box-head .full-btn{order:2;min-width:26px;height:24px;padding:0 6px}
+  .box-head .stats{order:3;flex:1 1 100%;margin:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:10px}.box-head .stats::-webkit-scrollbar{display:none}
+  .box-head .stats>*{white-space:nowrap;flex:0 0 auto}.box-head .head-btns{order:4}
+  .oracle-pane{--fh:58%}
+}
+@media (orientation:landscape) and (max-height:500px){
+  html.dc-phone{--top-clear:max(var(--discord-safe-area-inset-top,0px),env(safe-area-inset-top,0px),44px)}
+  .stage{grid-template-columns:42% minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:6px;padding:6px max(6px,env(safe-area-inset-right,0px)) 6px max(6px,env(safe-area-inset-left,0px))}
+  .stage>.oracle-pane{grid-column:1;grid-row:1}.stage>.table-pane{grid-column:1;grid-row:2}
+  .stage>#box{grid-column:2;grid-row:1 / -1}.dock{grid-column:2;grid-row:2}
+  .box{padding:5px 8px 6px}.box-top{top:-5px;margin:-5px -8px 5px}.box-head{padding:5px 8px 3px;gap:6px;flex-wrap:nowrap}.ctl{padding:0 8px 3px}
+  .box-head .speaker{font-size:.76rem;white-space:nowrap}.box-head .stats{flex:1 1 auto;min-width:0;margin-left:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;font-size:.72rem;gap:8px}
+  .box-head .stats::-webkit-scrollbar{display:none}.box-head .stats>*{white-space:nowrap;flex:0 0 auto}
+  .box-head.menu-open{flex-wrap:wrap}
+  .oracle-pane{--fh:64%}.oracle-pane .feed{padding:10px 46px 4px 8px}.feed .say{font-size:.84rem;line-height:1.3}.feed .said p{font-size:.78rem}
+  .c{padding:3px 9px;font-size:.8rem}.c.small{padding:2px 7px;font-size:.7rem}
+}
+/* A House's menu background (the Observatory dome sits at z-index 0) stays behind the whole home menu, so it never hides the event banner or the game cards. */
+#ui.has-mbg>.home{position:relative;z-index:1}
+/* Things pinned to the top of the screen (the full-screen box, Cabinet toasts) also drop below Discord's phone title bar. */
+html.dc-phone body.box-full #box{top:calc(var(--top-clear) + 4px)}html.dc-phone .cu-toast{top:calc(var(--top-clear) + 8px)}

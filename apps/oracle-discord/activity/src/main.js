@@ -17,7 +17,7 @@ import { greeting, askLine, speech } from "../../src/oracle/voice.js";
 import { fieldsFor, missingOptional, accuracyWarning } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
 import { MODS } from "./modules.gen.js";
-import { startDiscord, inDiscord, api } from "./discord.js";
+import { startDiscord, inDiscord, api, onDiscordPhone } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, codexNotes, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
@@ -112,6 +112,7 @@ const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const PREVIEW = window.ORACLE_PREVIEW || null; // set only by the standalone preview page (build-preview.mjs)
+if (onDiscordPhone() || /[?&]phone=1/.test(location.search)) document.documentElement.classList.add("dc-phone"); // Discord phone app: keep clear of its floating title bar (chamber.css, phone layout)
 const state = { name: "traveller", userId: "guest", token: null, profile: PREVIEW ? PREVIEW.profile : null, last: null, prog: fresh(), gate: !!(PREVIEW && /[?&]gate=1/.test(location.search)) }; // gate: the House gate (levels.js), off until Frank switches it on
 
 // ---- the Oracle and her sky ----
