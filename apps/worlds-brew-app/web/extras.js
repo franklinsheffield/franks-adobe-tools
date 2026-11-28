@@ -8,6 +8,7 @@
 import { isPhone, lightRender } from "./phone.js";
 import { mark, onDraw } from "./marks.js";
 import { makeDrawer, startIntent, runIntent } from "./make.js";
+import { startSeer } from "./seer.js";
 
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } } };
 const coarse = () => window.matchMedia("(pointer: coarse)").matches;
@@ -173,7 +174,8 @@ export function coachMarks(force) {
 export async function startExtras(phone) {
   const W = window.__wb; if (!W || !W.vp) return null;
   bigHandles(W); const quality = autoQuality(W); const ex = explore(W, phone); longPressPing(W);
-  const out = { quality, explore: ex, make: makeDrawer(W, phone) };
+  const quiet = q().has("nostart");   // automated tests: Flint stays put until a test asks him
+  const out = { quality, explore: ex, make: makeDrawer(W, phone), seer: startSeer(W, phone, quiet ? { mode: "off", hello: false } : {}) };
   window.__psExtras = out;
   const intent = await startIntent();   // opened from a Discord post's link: go straight there, no start screen
   if (intent) { out.intent = intent; out.choice = "link"; await runIntent(W, intent); coachMarks(); return out; }

@@ -3,6 +3,7 @@
 // goggle over the eye and a lens you choose in the store. Lines are original; every fact in them is real.
 import { vinylSvg } from "../player.js";
 import { LAB_SECRETS, labBgHtml, LAB_BG_CSS } from "./alchemist-secrets.js";
+import { burnerShop, rackShop, labVars, LAB_SHELF_CSS, MORE_LAB_RELICS, MORE_LAB_SECRETS, moreLabEvent } from "./alchemist-shelves.js";
 import { STONE_ICON, labSceneHtml, flaskSvg, propsSvg, sootSvg, react, LAB_EMOTES, LAB_CSS, coatOf, coatOverlay, coatShop, handPieces, VELL_HANDS_CSS } from "./alchemist-lab.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -143,11 +144,11 @@ export const alchemist = {
   // her voice is branded to the lab: brassy triangle (a 2nd harmonic like her goggle rim) and every syllable pops upward like a bubble
   voice: { type: "triangle", base: 270, step: 30, vowel: 70, dur: 0.04, lp: 3200, sweep: 1.3, harm: [2, 0.22], brand: "bubbling brass",
     sting: { type: "triangle", glide: 1.5, notes: [[392, 0, 0.09], [494, 0.08, 0.09], [587, 0.16, 0.09], [784, 0.24, 0.22, 0.35]] } }, // door sting: three bubbles pop, then a bright brass note
-  css: ALCHEMIST_CSS + LAB_CSS + VELL_HANDS_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, secrets: LAB_SECRETS, menuBg: { css: LAB_BG_CSS, html: labBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: ALCHEMIST_CSS + LAB_CSS + VELL_HANDS_CSS + LAB_SHELF_CSS, paint, scene: labSceneHtml, react, emotes: LAB_EMOTES, secrets: { ...LAB_SECRETS, items: [...LAB_SECRETS.items, ...MORE_LAB_SECRETS], event(kind, d, api) { LAB_SECRETS.event(kind, d, api); moreLabEvent(kind, d, api); } }, menuBg: { css: LAB_BG_CSS, html: labBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Brass Phonograph", deck: phonographSvg },
-  shelves: [lensShop, coatShop],
+  shelves: [lensShop, coatShop, burnerShop, rackShop], vars: labVars,
   token: { id: "stone", emoji: "🪨", icon: STONE_ICON, name: "philosopher's stone", plural: "philosopher's stones", purse: "Stone pouch" },
-  relics: LAB_RELICS, relicLabel: "🪨 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
+  relics: [...LAB_RELICS, ...MORE_LAB_RELICS], relicLabel: "🪨 Lab relics", relicBlurb: "Lab relics stay in my House for good. Earn stones with your first visit each day and by beating game levels here.",
   strayIntro: "Something just fell out of the flask:",
   lines: {
     streak: ["{n} days running. Repeatable results: that's the whole scientific method.", "{n} days in a row! Write it in the lab book."],

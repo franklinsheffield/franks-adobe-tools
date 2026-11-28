@@ -75,7 +75,7 @@ ${facts.length ? `<span class="rc-facts">${facts.map((x) => `<span><em>${esc(x.k
 }
 
 // ---- notification orbs: small glowing dots where something new is waiting ----
-export const DAILY_ROOMS = ["alchemy", "bench", "blackchamber", "calendar", "casefiles", "darkseance", "mentalist", "phantasmagoria", "cipherdesk", "commissions", "fireworks", "leadgold", "decoder", "duel", "flametest", "grimoire", "illuminator", "inscriptions", "memory", "minerals", "rummy", "seance", "stars", "timeline", "watch", "comet", "bookings", "workshop", "eclipse", "navigator", "messier", "starparty"];
+export const DAILY_ROOMS = ["alchemy", "bench", "blackchamber", "bombe", "calendar", "casefiles", "darkseance", "mentalist", "phantasmagoria", "cipherdesk", "commissions", "fireworks", "leadgold", "decoder", "duel", "flametest", "forgery", "grimoire", "illuminator", "inscriptions", "memory", "minerals", "rummy", "seance", "stars", "timeline", "watch", "comet", "bookings", "workshop", "eclipse", "navigator", "messier", "starparty"];
 const today = (at) => { const d = new Date(at); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 /** What is waiting: today's card, each game's daily, a new store week. Data from the player's own progress only. */
 export function orbsFor(p, rooms = DAILY_ROOMS, at = Date.now()) {

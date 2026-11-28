@@ -404,6 +404,33 @@ export const PLAY = {
     ],
   },
 
+  bombe: {
+    how: [
+      "Break a real Enigma message the way Bletchley Park did. First slide the crib, a phrase you expect in the message, along the cipher.",
+      "Enigma never turns a letter into itself, so any spot where a crib letter sits on the same cipher letter is wrong. Place it where nothing clashes.",
+      "Then run the bombe on a wheel order. The right one stops on the rotor start. Last, say what the German message means.",
+      "<b>Level 1</b> gives you the wheel order, <b>Level 2</b> has 2 to try, <b>Level 3</b> all 6. Each wrong move costs one of your 4 hours.",
+    ],
+    tips: [
+      "Red letters mean a clash: slide on.",
+      "WETTER means weather; KEINE BESONDEREN EREIGNISSE means nothing special to report. X stands for a space.",
+      "A wheel order with no stop is ruled out; try the next.",
+    ],
+  },
+
+  forgery: {
+    how: [
+      "Documents arrive claiming a date. Each shows a few clues: an ink, a paper, a word, a stamp.",
+      "Test a clue with the UV lamp, loupe or dictionary to see when that thing first existed. Tests are limited each round.",
+      "Flag the clue that is too new for the date, or (from Level 2) call the document genuine. A wrong call costs one of your 3 stars.",
+    ],
+    tips: [
+      "Only test what you're unsure of: you know a typewriter can't be medieval.",
+      "Look for modern words such as teenager, robot or OK, and for synthetic dyes and paints.",
+      "Genuine documents happen. If every clue is older than the date, say so.",
+    ],
+  },
+
   // ---- Party (every House) ----
   possession: {
     how: [

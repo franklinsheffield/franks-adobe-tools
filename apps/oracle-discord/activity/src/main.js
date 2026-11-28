@@ -34,6 +34,8 @@ import { blackchamber, blackchamberCodex } from "./blackchamber/room.js";
 import { illuminator, illuminatorCodex } from "./illuminator/room.js";
 import { SCRIPTORIUM_TOYS, plateSvg } from "./toys/scriptorium.js"; // the House toys (no scores): Just for fun tab
 import { ALCHEMIST_TOYS } from "./toys/alchemist.js";
+import { bombe, bombeCodex } from "./bombe/room.js";
+import { forgery, forgeryCodex } from "./forgery/room.js";
 import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
 import { workshop, workshopCodex } from "./workshop/room.js";
@@ -94,6 +96,7 @@ import { CREDITS_SONG, creditSections, SPECIAL_THANKS, END_LINE, checkMastery, h
 import { initMood, moodForOutcome, moodForTone, flickFor, MOOD_EMOJI } from "./mood.js";
 import { STUDY, studyFor, studyHtml, STUDY_CSS } from "./study.js";
 import { HOUSE_BOOKS, houseStudy, studyLine } from "./study-houses.js";
+import { libraryHtml, libraryOf, LIBRARY_CSS, LIB_LINES } from "./house-library.js";
 import * as CU from "./curio-ui.js"; // the Cabinet of Curiosities: hidden finds all over the interface
 import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
@@ -406,6 +409,7 @@ function greet() {
   $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-card">🪪 My card</button><button class="c" type="button" id="hm-invite">💌 Invite a friend${state.prog.invited ? "" : ` <small>+💎${INVITE_REWARD}</small>`}</button>`);
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
+  $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-library">📚 Library</button>`); $("hm-library").onclick = () => openLibrary();
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
   if (crateOf(HOST().id).length) { const C = crateOf(HOST().id), n = C.filter((t) => hasTrack(state.prog, t)).length; $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-crate">🎵 Record crate <small>${n}/${C.length}</small></button>`); $("hm-crate").onclick = () => openRecordCrate(); }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
@@ -453,6 +457,23 @@ function openRecordCrate(note) {
   $("crate-back").onclick = greet;
 }
 
+// ---- The House library (house-library.js): a branded bookshelf with the handbook, a book per game, and the reading list ----
+function openLibrary() {
+  const H = HOST(), p = state.prog;
+  if (!document.getElementById("library-style")) { const st = document.createElement("style"); st.id = "library-style"; st.textContent = LIBRARY_CSS; document.head.appendChild(st); }
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap(`📚 ${H.house} library`);
+  const L = libraryOf(H, p, STUDY), n = L.games.filter((g) => g.on).length, pool = LIB_LINES[H.id] || LIB_LINES.oracle;
+  say(pool[Math.floor(Math.random() * pool.length)].replace(/\{name\}/g, state.name).replace("{n}", n).replace("{total}", L.games.length));
+  bookSfx("cover"); setTimeout(() => bookSfx("page", { gain: 0.6 }), reduced ? 0 : 500); mood.emote("nod", { quiet: true });
+  ui(libraryHtml(H, p, STUDY, (HOUSE_BOOKS[H.id] || HOUSE_BOOKS.oracle).title, esc));
+  $("ui").querySelectorAll("[data-lib]").forEach((b) => (b.onclick = () => {
+    const id = b.dataset.lib, g = L.games.find((x) => x.room === id);
+    if (g && !g.on) { mood.bubble(`Play ${g.name} once and its book goes on the shelf.`, 3200, "🔒"); bookSfx("close", { gain: 0.5 }); return; }
+    b.classList.add("pull"); bookSfx("page"); setTimeout(() => openStudy(id, openLibrary), reduced ? 0 : 380);
+  }));
+  $("lib-back").onclick = greet;
+}
+
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
 function openStudy(roomId, back) {
   const H = HOST(), house = roomId === "house";
@@ -477,7 +498,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }, { ...blackchamber, codexHtml: blackchamberCodex }, { ...illuminator, codexHtml: illuminatorCodex }, ...SCRIPTORIUM_TOYS, ...ALCHEMIST_TOYS];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }, { ...blackchamber, codexHtml: blackchamberCodex }, { ...illuminator, codexHtml: illuminatorCodex }, { ...bombe, codexHtml: bombeCodex }, { ...forgery, codexHtml: forgeryCodex }, ...SCRIPTORIUM_TOYS, ...ALCHEMIST_TOYS];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -684,7 +705,7 @@ const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
   if (u.kind === "record") { const t = trackOf(id), L = musicOf(state.prog).list; if (t && !L.includes(t.id)) togglePlaylist(state.prog, t.id); saveProgress(); player.refresh(); player.play(t.id); return; }
-  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) flourish(u.kind);
+  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) { flourish(u.kind); secretEvent("wear", { kind: u.kind, id }); }
 }
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
