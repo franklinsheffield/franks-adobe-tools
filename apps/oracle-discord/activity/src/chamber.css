@@ -2021,3 +2021,8 @@ body.box-full .dock{position:fixed;left:18px;bottom:18px;margin:0;z-index:41}
 
 /* Menu backgrounds (each host pack menuBg) sit absolutely behind the menu: keep the quick-row buttons above them, clickable. */
 #ui.has-mbg .hm-quick>.c{position:relative;z-index:1}
+/* The hall of doors holds the menu (Frank 2026-11-28): on the home screen the ☰ bar steps aside and "Your things" holds Store, Trophies, Grimoire and the sound. */
+body.at-hall #menu-btn,body.at-hall .box-head .head-btns{display:none!important}
+.hm-sound{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:rgba(0,0,0,.25)}
+.hm-sound-l{font-size:.8rem;opacity:.8;margin-right:4px}.hm-sound .music-bar{margin-left:auto}
+@media (max-width:520px){.hm-sound .music-bar{margin-left:0}}

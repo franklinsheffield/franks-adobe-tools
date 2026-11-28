@@ -112,14 +112,13 @@ function paint(svg, prog, id = "t") {
   if (hands) { hands.querySelector(".wc-props")?.remove(); hands.insertAdjacentHTML("beforeend", propsSvg()); }
   for (const side of ["L", "R"]) { const h = svg.querySelector(".o-hand" + side); if (h) { h.querySelectorAll(".hg").forEach((e) => e.remove()); h.insertAdjacentHTML("beforeend", wrenHand(side)); } }
 }
-/** Archivist Wren's hands: bare, ink on the fingertips. At rest they hold a goose quill (right) and a penknife for
- *  trimming it (left), as medieval scribes did; gestures: snap = an ink drop splashes, point = the quill draws a line,
+/** Archivist Wren's hands: bare, ink on the fingertips. At rest they hold a goose quill (right) and a small inkpot (left; it was a penknife, which read as a cigarette, Frank 2026-11-28); gestures: snap = an ink drop splashes, point = the quill draws a line,
  *  swat = a loose page flutters. */
 const wrenHand = (side) => (side === "R"
   ? `<g class="hg hg-quill"><path class="wr-qs" d="M164 262 L196 168" stroke="#f4eee0" stroke-width="3"/><path class="wr-qf" d="M196 168 C214 182 210 216 186 238 C186 214 190 190 196 168Z" fill="#f4eee0" stroke="#b8a582"/><path d="M164 262 l-3 8" stroke="#1d2340" stroke-width="2.4" stroke-linecap="round"/></g>
     <g class="hg hg-line" fill="none" stroke="#1d2340" stroke-width="3" stroke-linecap="round"><path d="M160 272 q20 -8 40 0 t40 0"/></g>
     <g class="hg hg-ink">${[[160, 272, 5], [172, 266, 3], [150, 266, 2.6], [166, 282, 2.2]].map(([x, y, r], i) => `<circle style="--d:${i * 0.04}s" cx="${x}" cy="${y}" r="${r}" fill="#1d2340"/>`).join("")}</g>`
-  : `<g class="hg hg-knife"><path d="M150 258 L176 226" stroke="#c4ccd6" stroke-width="5" stroke-linecap="round"/><path d="M146 264 L156 252" stroke="#6a4022" stroke-width="7" stroke-linecap="round"/></g>`)
+  : `<g class="hg hg-knife hg-inkpot"><ellipse cx="160" cy="262" rx="15" ry="5" fill="#2a1d14" opacity=".35"/><path d="M146 258 Q144 238 152 232 H168 Q176 238 174 258 Q160 264 146 258Z" fill="#3a2e4a" stroke="#1d2340" stroke-width="1.6"/><rect x="151" y="226" width="18" height="7" rx="2" fill="#B8893A" stroke="#6a4a1a"/><ellipse cx="160" cy="226" rx="8" ry="2.6" fill="#1d2340"/><path d="M151 244 Q160 248 169 244" stroke="#8f86b0" stroke-width="1.2" fill="none" opacity=".7"/><circle cx="153" cy="240" r="1.6" fill="#fff" opacity=".5"/></g>`)
   + `<g class="hg hg-page"><path d="M140 250 L172 238 L178 262 L146 274Z" fill="#f3e6c6" stroke="#b8a582"/><path d="M148 256 L170 248 M150 262 L172 254" stroke="#b8a582"/></g>`;
 export const WREN_HANDS_CSS = `
 body[data-house="scriptorium"] .o-hands [data-skin="fill"]{fill:#d8b48c}body[data-house="scriptorium"] .o-hands [data-skin="stroke"]{stroke:#d8b48c}
