@@ -21,7 +21,7 @@ const BASE = process.argv[2] || "http://localhost:8787", SHOTS = process.argv[3]
     await p.click(".ps-flint-av"); assert.ok(await p.isVisible(".ps-flint-panel"), "tap opens the help menu");
     await p.fill(".ps-flint-q", "how do I change the sky"); await p.press(".ps-flint-q", "Enter"); await p.waitForTimeout(2600);
     assert.match(await p.textContent(".ps-flint-ans"), /Sky/); await shot(p, "flint-panel");
-    await p.click(".ps-flint-panel .ps-flint-show"); await p.waitForTimeout(150);
+    await p.click(".ps-flint-panel .ps-flint-show"); await p.waitForSelector(".ps-flint-hi", { timeout: 2500 }).catch(() => {});
     const hi = await p.evaluate(() => { const x = document.querySelector(".ps-flint-hi"); return x ? x.outerHTML.slice(0, 100) : "none"; }); assert.match(hi, /Sky/, "Show me opens the Sky tab and glows it: " + hi);
     assert.ok(!(await p.isVisible(".ps-flint-panel")), "the menu steps aside to show it");
     await p.keyboard.press("?"); assert.ok(await p.isVisible(".ps-flint-panel"), "? opens the help menu"); await p.keyboard.press("Escape");

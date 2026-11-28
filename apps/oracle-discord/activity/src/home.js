@@ -85,13 +85,14 @@ export function gateBgHtml(rnd = Math.random) {
 }
 
 /** The door: shown once at start. Its tap unlocks the Oracle's voice, then she greets you out loud. */
-export function gateHtml({ name = "", rank = "", streak = 0, back = false, esc, art = "" }) {
-  return `${gateBgHtml()}<div class="gate-in">
+export function gateHtml({ name = "", rank = "", streak = 0, back = false, esc, art = "", gate = null }) {
+  const G = gate || {};
+  return `${G.bg ? G.bg(Math.random) : gateBgHtml()}<div class="gate-in">
   <div class="gate-sigil" aria-hidden="true"><i></i><i></i><i></i>${art}</div>
-  <p class="gate-eye">Science is Magic</p>
-  <h1 class="gate-title">The Oracle Chamber</h1>
-  <p class="gate-sub">${back ? `Welcome back${name ? ", " + esc(name) : ""}. ${esc(rank)}${streak > 1 ? ` · 🔥 ${streak} days in a row` : ""}` : `Readings, card games and real science, with a fortune teller who talks back${name ? `. Come in, ${esc(name)}` : ""}.`}</p>
-  <button class="c main gate-go" type="button" id="enter">✦ Enter the Chamber</button>
-  <p class="gate-note">🔊 Sound on: your host speaks. You can mute the voice any time.</p>
+  <p class="gate-eye">${G.eye || "Science is Magic"}</p>
+  <h1 class="gate-title">${G.title || "The Oracle Chamber"}</h1>
+  <p class="gate-sub">${back ? `Welcome back${name ? ", " + esc(name) : ""}. ${esc(rank)}${streak > 1 ? ` · 🔥 ${streak} days in a row` : ""}` : `${G.sub || "Readings, card games and real science, with a fortune teller who talks back"}${name ? `. Come in, ${esc(name)}` : ""}.`}</p>
+  <button class="c main gate-go" type="button" id="enter">${G.cta || "✦ Enter the Chamber"}</button>
+  <p class="gate-note">${G.note || "🔊 Sound on: she speaks. You can mute her any time."}</p>
 </div>`;
 }

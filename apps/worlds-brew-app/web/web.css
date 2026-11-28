@@ -202,3 +202,13 @@ body.ps-phone .ps-flint-panel { left: 12px; right: 12px; width: auto; bottom: ca
 body.ps-teach #app [data-help], body.ps-teach .ps-mode, body.ps-teach .ps-make-btn, body.ps-teach [data-tab] { cursor: help !important; }
 body.ps-teach #app [data-help]:hover { outline: 1px dashed rgba(255, 209, 102, 0.8); outline-offset: 1px; }
 .ps-flint-try { display: flex; justify-content: flex-start; margin-top: 6px; } .ps-flint-try[hidden] { display: none; }
+/* Pixel Scape's music (music.js): 🎵 on/off and skip, bottom-right, out of the way of the panels */
+.ps-music-bar { position: fixed; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 70; display: flex; gap: 4px; }
+body.ps-phone .ps-music-bar { bottom: calc(66px + env(safe-area-inset-bottom)); }
+.ps-music { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(5, 4, 12, 0.8); color: #fff; font-size: 15px; cursor: pointer; }
+.ps-music:active { box-shadow: 0 0 10px #5cf2ff; }
+.ps-music[hidden] { display: none; }
+.ps-music-credits { position: fixed; right: 10px; bottom: calc(50px + env(safe-area-inset-bottom)); z-index: 50; width: min(360px, calc(100% - 20px)); max-height: 50vh; overflow-y: auto; padding: 10px 12px; background: #05040c; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px; color: #fff; font: 11px/1.4 system-ui, sans-serif; z-index: 70; }
+.ps-music-credits[hidden] { display: none; }
+.ps-music-credits ul { margin: 6px 0 0; padding-left: 16px; }
+body.ps-phone .ps-music-credits { bottom: calc(106px + env(safe-area-inset-bottom)); }

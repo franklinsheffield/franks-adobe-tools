@@ -6,8 +6,10 @@ import { start } from "./host.js";
 import { wantsRoom, startMulti } from "./multi.js";
 import { startPhone } from "./phone.js";
 import { startExtras } from "./extras.js";
+import { startMusic } from "./music.js";
 await start();
 await import("../renderer/app.js");
 const phone = startPhone();
 if (wantsRoom()) startMulti().catch((e) => console.error("[multi]", e));
 startExtras(phone).catch((e) => console.error("[extras]", e));
+if (!/[?&](nostart|nomusic)\b/.test(location.search)) startMusic().catch((e) => console.error("[music]", e)); // opens with New World
