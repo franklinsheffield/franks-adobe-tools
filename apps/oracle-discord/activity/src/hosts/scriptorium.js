@@ -150,7 +150,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
   channelIds: ["1575977195048927232"], // #🪶-scriptorium
-  readings: false, rooms: ["inscriptions", "cipherdesk", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
+  readings: false, rooms: ["inscriptions", "cipherdesk", "blackchamber", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
@@ -174,6 +174,7 @@ export const scriptorium = {
       "Ampersand comes from '& per se and'. Schoolchildren recited it at the end of the alphabet."],
   },
   banter: {
+    blackchamber: G("Count the letters first. Phelippes broke Mary's cipher that way in 1586.", "Three letters, again and again? Almost always THE, {name}.", "Broken before the rival! Reseal it neatly, {name}, the embassy will never know.", "The rival got there first. Rossignol broke a siege letter in 1628 the same way."),
     timeline: G("Dates first, {name}. Chronicles were often written long after the events.", "Medieval annals listed one or two events per year. Short, but dated.", "In order! A chronicle fit for the archive, {name}.", "Out of order. Even monks miscopied a date now and then."),
     grimoire: G("Read the leaf like a page: margins, veins, then the whole shape.", "The Vienna Dioscorides, about AD 512, painted plants for doctors.", "Named it! Pressed and catalogued, {name}.", "Not that one. Old herbals copied each other's mistakes too."),
     possession: G("Chaucer's pilgrims told tales to win a free supper. Write well, scribe.", "In the Decameron, ten people tell a hundred tales. We'll settle for fewer.", "Copied into the chronicle, {name}. Scheherazade told hers for 1,001 nights.", "The ink dried mid-tale. Even Chaucer never finished the Canterbury Tales."),
