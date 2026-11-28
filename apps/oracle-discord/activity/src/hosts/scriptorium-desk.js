@@ -38,7 +38,7 @@ export const codexSvg = (id) => `<g class="wc-codex"><ellipse cx="200" cy="312" 
 /** Pose props inside .o-hands (they travel with the hands). One shows at a time, by data-mood (CSS). */
 export const propsSvg = () => `<g class="wc-props">
   <g class="hp hp-stone"><circle cx="262" cy="250" r="22" fill="#e8f4ff" fill-opacity=".22" stroke="#e8f4ff" stroke-width="2.4"/><path d="M248 238 A18 18 0 0 1 262 232" stroke="#fff" stroke-opacity=".7" stroke-width="3" fill="none" stroke-linecap="round"/></g>
-  <g class="hp hp-seal"><g transform="rotate(-10 150 270)"><rect x="140" y="228" width="16" height="34" rx="6" fill="#5a3a1e"/><circle cx="148" cy="270" r="11" fill="#E8483B" stroke="#8a1a10" stroke-width="1.5"/><path d="M142 270 h12 M148 264 v12" stroke="#8a1a10" stroke-width="1.4"/></g></g>
+  <g class="hp hp-seal"><g transform="rotate(-10 150 270)"><rect x="140" y="228" width="16" height="34" rx="6" fill="#5a3a1e"/><circle class="wr-wax" cx="148" cy="270" r="11" fill="#E8483B" stroke="#8a1a10" stroke-width="1.5"/><path d="M142 270 h12 M148 264 v12" stroke="#8a1a10" stroke-width="1.4"/></g></g>
   <g class="hp hp-knife"><path d="M258 250 L300 214" stroke="#c8ccd6" stroke-width="5" stroke-linecap="round"/><path d="M250 258 L262 246" stroke="#5a3a1e" stroke-width="7" stroke-linecap="round"/><g class="hp-shav">${[[226, 300], [232, 312], [220, 316]].map(([x, y], i) => `<path style="--d:${i * 0.12}s" d="M${x} ${y} q4 -3 8 0" stroke="#f1e4c6" stroke-width="1.6" fill="none"/>`).join("")}</g></g>
 </g>`;
 /** Letters swirling round their head (dizzy) and a splash of ink on the face (a lost game). */

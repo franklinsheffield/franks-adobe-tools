@@ -5,6 +5,7 @@ import { vinylSvg } from "../player.js";
 import { parlourSceneHtml, bellJarSvg, propsSvg, react, SEANCE_EMOTES, ROOM_CSS, gownOf, gownShop } from "./parlour-room.js";
 import { coatOverlay } from "./alchemist-lab.js";
 import { PARLOUR_SECRETS, parlourBgHtml, PARLOUR_BG_CSS } from "../parlour/secrets.js";
+import { candleShop, cabinetShop, parlourVars, PARLOUR_SHELF_CSS } from "./parlour-shelves.js";
 import { NEW_PARLOUR_RELICS } from "../parlour/relics.js";
 import { finaleDone } from "../parlour/finale.js";
 
@@ -91,7 +92,7 @@ export function gramophoneSvg(t, playing, prog = {}) {
   <g class="gr-notes">${[0, 1, 2].map((i) => `<text class="gr-n gr-n${i}" x="${236 - i * 10}" y="${40 + i * 12}" font-size="12" fill="#FFE3A3">♪</text>`).join("")}</g>
   ${finaleDone(prog || {}) ? `<g class="gr-curtain"><title>Curtain Call: the Final Séance is solved</title><rect x="52" y="140" width="98" height="26" rx="4" fill="#E2B04A" stroke="#FFF1B8" stroke-width="1.4"/><text x="101" y="158" font-size="13" text-anchor="middle" fill="#2A0F24" font-family="Georgia,serif" font-style="italic">Curtain Call</text></g>` : ""}
   <circle class="tt-led" cx="30" cy="168" r="4" fill="${playing ? "#C3A6FF" : "#3a3a3a"}"/>
-  <path d="M206 182V160q0 -8 6 -12l-3 -8q8 0 10 8l-1 12v22z" fill="#FFF6EE" opacity=".9"/><path class="gr-flame" d="M210 140q4 -10 0 -16q-4 6 0 16z" fill="#FFE3A3"/>
+  <path class="rk-wax" d="M206 182V160q0 -8 6 -12l-3 -8q8 0 10 8l-1 12v22z" fill="#FFF6EE" opacity=".9"/><path class="gr-flame" d="M210 140q4 -10 0 -16q-4 6 0 16z" fill="#FFE3A3"/>
 </svg>`;
 }
 
@@ -128,7 +129,7 @@ function paint(svg, prog, id = "t") {
       <path d="M156 118Q200 104 254 118L262 176Q200 160 138 176Z" fill="#F3EAFF" opacity=".08"/></g>
     <g transform="translate(200 90)"${finaleDone(prog || {}) ? ` class="rk-goldcameo"` : ""}><ellipse rx="12" ry="14" fill="${finaleDone(prog || {}) ? "#E2B04A" : "#E7A0B4"}" stroke="${finaleDone(prog || {}) ? "#FFF1B8" : "#FFE3A3"}" stroke-width="2.4"/><path d="M-2 -8q6 -2 6 4q0 4 -3 6q2 4 -1 8h-6q2 -6 0 -10q-1 -6 4 -8z" fill="#FFF6EE"/>${Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return `<circle cx="${(13 * Math.cos(a)).toFixed(1)}" cy="${(15 * Math.sin(a)).toFixed(1)}" r="1.3" fill="#FFE3A3"/>`; }).join("")}</g>
     <g transform="translate(252 104) rotate(14)">${cardFace(T, 0.7)}</g>
-    <g transform="translate(140 98)"><rect x="-3" y="0" width="6" height="16" fill="#FFF6EE"/><path class="hk-flame" d="M0 0q5 -8 0 -14q-5 6 0 14z" fill="#FFE3A3"/><circle cy="-6" r="8" fill="#FFE3A3" opacity=".18"/></g>`;
+    <g transform="translate(140 98)"><rect class="rk-wax" x="-3" y="0" width="6" height="16" fill="#FFF6EE"/><path class="hk-flame" d="M0 0q5 -8 0 -14q-5 6 0 14z" fill="#FFE3A3"/><circle cy="-6" r="8" fill="#FFE3A3" opacity=".18"/></g>`;
   eye.after(g);
   svg.querySelector(".hv-coat")?.remove(); if (C && body.children[4]) body.children[4].insertAdjacentHTML("afterend", coatOverlay(C)); // her gown, over the robe
   const ball = svg.querySelector(".o-ball"), hands = svg.querySelector(".o-hands"); // a spirit bell under a glass dome stands where the crystal ball was
@@ -178,9 +179,9 @@ export const parlour = {
   // her voice is branded to the parlour: a low, breathy, trembling whisper (vibrato like a medium's wavering voice)
   voice: { type: "sawtooth", base: 200, step: 26, vowel: 80, dur: 0.05, lp: 1800, breath: 0.45, vib: 4, vibDepth: 9, wordEnd: 0.85, brand: "candlelit whisper",
     sting: { type: "sine", glide: 0.72, notes: [[523, 0, 0.6, 0.22], [392, 0.38, 0.7, 0.2], [311, 0.8, 1.2, 0.18]] } }, // door sting: a falling, theremin-like wail
-  css: PARLOUR_CSS + ROOK_HANDS_CSS + ROOM_CSS, paint, scene: parlourSceneHtml, react, emotes: SEANCE_EMOTES, secrets: PARLOUR_SECRETS, menuBg: { css: PARLOUR_BG_CSS, html: parlourBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: PARLOUR_CSS + ROOK_HANDS_CSS + ROOM_CSS + PARLOUR_SHELF_CSS, paint, scene: parlourSceneHtml, react, emotes: SEANCE_EMOTES, secrets: PARLOUR_SECRETS, menuBg: { css: PARLOUR_BG_CSS, html: parlourBgHtml }, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Spirit Trumpet Gramophone", deck: gramophoneSvg },
-  shelves: [trickShop, gownShop],
+  shelves: [trickShop, gownShop, candleShop, cabinetShop], vars: parlourVars,
   token: { id: "key", emoji: "🗝️", name: "skeleton key", plural: "skeleton keys", purse: "Key ring" },
   relics: PARLOUR_RELICS, relicLabel: "🗝️ Parlour relics", relicBlurb: "Parlour relics stay in my House for good. Earn keys with your first visit each day and by beating game levels here.",
   strayIntro: "Three knocks, and this dropped out of the curtain:",

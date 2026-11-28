@@ -2,7 +2,7 @@
 // channel. A host pack (hosts/<id>.js) plugs in: its name, which rooms and readings it offers, its figure paint,
 // voice, lines, game banter, store shelves and its own music player. The Oracle is House 1 and the fallback.
 //   Pack: { id, name, house, emoji, accent, channelIds[], readings, rooms: "all" | [roomId], daily?, voice?, css?,
-//           paint?(svg, prog, idPrefix), rename?(text), player: { name, deck(track, playing) }, shelves?[],
+//           paint?(svg, prog, idPrefix), vars?(prog) -> { "--css-var": value } (shelf looks the CSS reads), rename?(text), player: { name, deck(track, playing) }, shelves?[],
 //           scene?(at, { prog, motes }) -> html (replaces the Chamber's backdrop), react?(kind, { teller, scene, gesture, reduced }) -> line?,
 //           emotes?: { [startEmoteId]: { e, name, mood, say, fx } } (re-dresses the 8 starting emotes; ids stay), token.icon? (html),
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
@@ -66,7 +66,8 @@ export function dressHouse(doc = document) {
 }
 /** Paint the host onto a copy of the shared figure (the teller, or the door's portrait). */
 export function paintHost(svg, prog, id = "t") {
-  if (!svg) return; if (current.paint) current.paint(svg, prog || {}, id); addRing(svg); // every host wears the same ring (disguise.js)
+  if (!svg) return; if (current.vars && svg.ownerDocument) for (const [k, v] of Object.entries(current.vars(prog || {}))) svg.ownerDocument.documentElement.style.setProperty(k, v); // shelf looks as CSS variables
+  if (current.paint) current.paint(svg, prog || {}, id); addRing(svg); // every host wears the same ring (disguise.js)
   const pane = id === "t" && current.relics && svg.closest(".pane"); if (!pane) return; // House relics sit in the host's pane, behind the host
   let layer = pane.querySelector("#house-relics"); if (!layer) { layer = svg.ownerDocument.createElement("div"); layer.id = "house-relics"; layer.setAttribute("aria-hidden", "true"); pane.prepend(layer); }
   const key = JSON.stringify(((prog || {}).houses || {})[current.id]?.relics || []); if (layer.dataset.k !== key) { layer.dataset.k = key; layer.innerHTML = houseRelicsHtml(prog || {}, current); }
