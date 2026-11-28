@@ -6,7 +6,7 @@ import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOM
 import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg, crateHtml } from "./player.js";
 import { OPENER, crateOf, musicEvent, buyRecord } from "./hosts/house-music.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
-import { levelOf, levelInfo, levelName, pathLabel, pathOf, homeOf, picksOwed, pickHouse, canEnter, needsDoors } from "./levels.js";
+import { levelOf, levelInfo, levelName, pathLabel, pathOf, homeOf, picksOwed, pickHouse, canEnter, needsDoors, starterPacks } from "./levels.js";
 import { doorsHtml, wireDoors, visitorHtml, channelUrl, DOORS_CSS } from "./doors.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
@@ -1456,7 +1456,12 @@ function showDoors() {
     onPick: (id) => { const added = pickHouse(state.prog, id); if (!added.length) return showDoors();
       const h = HOSTS.find((x) => x.id === id), home = pathOf(state.prog).length === 1;
       logEvent("house", h.emoji, home ? `Chose a home House: ${h.house}` : `Opened ${added.map((a) => HOSTS.find((x) => x.id === a).house).join(" and ")}`, null, [["House", h.house], ["Path", pathLabel(state.prog)]]);
-      chime(3); syncLevel(); showStats();
+      const pack = starterPacks(state.prog, pathOf(state.prog)); // Founding Members (and the dev grant) get a starter purse; any House missed earlier pays now
+      if (pack) { pack.tokens.forEach((t) => { const x = HOSTS.find((y) => y.id === t.id); if (x && x.token) addTokens(state.prog, x, t.n); }); award(0, pack.essence);
+        const tk = pack.tokens.map((t) => { const x = HOSTS.find((y) => y.id === t.id); return x && x.token ? `${t.n} ${x.token.emoji || ""}` : ""; }).filter(Boolean).join(" · ");
+        logEvent("gift", "🎁", "Founding starter pack", null, [["Essence", pack.essence], ["Tokens", tk]]);
+        setTimeout(() => mood.emote("cheer", { say: `A Founding gift: ${pack.essence ? pack.essence + " 💎 Essence and " : ""}${tk} to spend in your Houses.` }), reduced ? 0 : 1200); }
+      chime(3); syncLevel(); showStats(); saveProgress();
       if (picksOwed(state.prog)) return showDoors();
       if (HOST().id === id && home && HOST().daily) return openRoom(HOST().daily); // a new member lands in their House's first game
       greet(); },

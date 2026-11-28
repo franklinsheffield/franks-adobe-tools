@@ -174,3 +174,19 @@ export function rolesDiff(memberRoles = [], wantKeys = [], ids = {}) {
   const want = new Set(wantKeys.map((k) => ids[k]).filter(Boolean).map(String));
   return { add: [...want].filter((r) => !have.has(r)), remove: [...have].filter((r) => managed.has(r) && !want.has(r)) };
 }
+
+/** Starter packs (Frank 2026-11-28): Founding Members get Essence plus that House's tokens for each House they pick
+ * (one relic's worth, so the House's shelf is worth a look). A dev/team grant (level 6+) gets a bigger purse in
+ * EVERY House on their first pick, enough for a few store items and a few relics in each. Paid once per House. */
+export const STARTER = { essence: 150, tokens: 15, dev: { essence: 2000, tokens: 40 } };
+/** Returns { essence, tokens: [{ id, n }] } to pay out (already marked paid in p.starter), or null when nothing is due. */
+export function starterPacks(p = {}, added = []) {
+  if (!p.founding) return null;
+  p.starter = p.starter && typeof p.starter === "object" ? p.starter : {};
+  const dev = (Number(p.grant) || 0) >= 6, pack = dev ? STARTER.dev : STARTER;
+  const tokens = (dev ? HOUSE_IDS : added).filter((id) => HOUSE_IDS.includes(id) && !p.starter[id]).map((id) => ({ id, n: pack.tokens }));
+  tokens.forEach((t) => { p.starter[t.id] = 1; });
+  let essence = dev ? 0 : STARTER.essence * tokens.length;
+  if (dev && !p.starter.dev) { p.starter.dev = 1; essence = STARTER.dev.essence; }
+  return tokens.length || essence ? { essence, tokens } : null;
+}
