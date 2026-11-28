@@ -23,6 +23,18 @@ const TYPE = { 0: "text", 2: "voice", 4: "CATEGORY", 5: "announce", 13: "stage",
 const BITS = { VIEW: 10n, SEND: 11n, CONNECT: 20n, THREADS: 35n, READ_HISTORY: 16n, REACT: 6n, ATTACH: 15n };
 const bits = (s) => Object.entries(BITS).filter(([, b]) => (BigInt(s) >> b) & 1n).map(([k]) => k).join("+") || "-";
 
+// ---- stage 1: the new structure, hidden (server pitch, approved 2026-11-28; move list posted 02:27Z) ----
+const T = { text: 0, voice: 2, category: 4, forum: 15 };
+const HOUSES = [["🔮", "oracle", "Oracle"], ["⚗️", "alchemist", "Alchemist"], ["🔭", "observatory", "Observatory"], ["🕯️", "parlour", "Parlour"], ["🪶", "scriptorium", "Scriptorium"]];
+const CLASSES = ["hermeticist", "astrologer-astronomer", "mentalist", "sibyllist", "astrochemist", "showman-chemist", "cipher-alchemist", "sky-skeptic", "almanac-maker", "document-examiner"];
+export const LAYOUT = [
+  ...HOUSES.map(([e, slug, name]) => ({ category: `${e} ${name} Wing`, channels: [[T.text, `${e}-${slug}-common`], [T.forum, `${e}-${slug}-notebook`], [T.voice, `${name} Wing Voice`]] })),
+  { category: "⛲ The Common Grounds", channels: [[T.text, "⛲-common-grounds"], [T.text, "🪙-market"], [T.text, "🎲-group-activities"], [T.text, "🧰-lab-tools"], [T.voice, "Common Grounds"]] },
+  { category: "🏛 Guild Halls", channels: CLASSES.map((c) => [T.text, `🏛-${c}`]) },
+  { category: "🕯 The Sealed Path", channels: [[T.text, "🕯-the-sealed-path"], [T.voice, "Sealed Path Lounge"]] },
+  { category: "🎭 Backstage", channels: [[T.text, "the-green-room"], [T.voice, "Dressing Room"], [T.text, "the-workshop"]] },
+  { category: null, parentName: "Welcome", channels: [[T.text, "🚪-choose-your-house"]] },
+];
 if (!["snapshot", "plan", "stage1"].includes(mode)) { console.error("usage: server-layout.js snapshot|plan|stage1"); process.exit(2); }
 if (mode !== "snapshot") { await stage1(mode === "plan"); process.exit(0); }
 const [roles, channels] = await Promise.all([api(`/guilds/${GUILD}/roles`), api(`/guilds/${GUILD}/channels`)]);
@@ -38,18 +50,6 @@ console.log("\n== Roles (top first) ==");
 [...roles].sort((a, b) => b.position - a.position).forEach((r) => console.log(`${r.position} ${roleName.get(r.id)} (${r.id})${r.managed ? " [bot]" : ""}${(BigInt(r.permissions) >> 3n) & 1n ? " [admin]" : ""}`));
 writeFileSync(process.env.SNAPSHOT_OUT || "snapshot.json", JSON.stringify({ at: new Date().toISOString(), roles, channels }, null, 1));
 
-// ---- stage 1: the new structure, hidden (server pitch, approved 2026-11-28; move list posted 02:27Z) ----
-const T = { text: 0, voice: 2, category: 4, forum: 15 };
-const HOUSES = [["🔮", "oracle", "Oracle"], ["⚗️", "alchemist", "Alchemist"], ["🔭", "observatory", "Observatory"], ["🕯️", "parlour", "Parlour"], ["🪶", "scriptorium", "Scriptorium"]];
-const CLASSES = ["hermeticist", "astrologer-astronomer", "mentalist", "sibyllist", "astrochemist", "showman-chemist", "cipher-alchemist", "sky-skeptic", "almanac-maker", "document-examiner"];
-export const LAYOUT = [
-  ...HOUSES.map(([e, slug, name]) => ({ category: `${e} ${name} Wing`, channels: [[T.text, `${e}-${slug}-common`], [T.forum, `${e}-${slug}-notebook`], [T.voice, `${name} Wing Voice`]] })),
-  { category: "⛲ The Common Grounds", channels: [[T.text, "⛲-common-grounds"], [T.text, "🪙-market"], [T.text, "🎲-group-activities"], [T.text, "🧰-lab-tools"], [T.voice, "Common Grounds"]] },
-  { category: "🏛 Guild Halls", channels: CLASSES.map((c) => [T.text, `🏛-${c}`]) },
-  { category: "🕯 The Sealed Path", channels: [[T.text, "🕯-the-sealed-path"], [T.voice, "Sealed Path Lounge"]] },
-  { category: "🎭 Backstage", channels: [[T.text, "the-green-room"], [T.voice, "Dressing Room"], [T.text, "the-workshop"]] },
-  { category: null, parentName: "Welcome", channels: [[T.text, "🚪-choose-your-house"]] },
-];
 async function stage1(dry) {
   const [chans, me] = await Promise.all([api(`/guilds/${GUILD}/channels`), api("/users/@me")]);
   // hidden from everyone; the bot keeps view + manage so stage 2 can move and open them

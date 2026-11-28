@@ -7,6 +7,7 @@ on:
       mode: { description: "plan or apply", default: "plan" }
       confirm: { description: "Type swap to apply", default: "" }
       retire: { description: "Comma-separated emoji names to retire", default: "" }
+      kit_dir: { description: "Folder of new emoji (under apps/oracle-discord)", default: "brand/houses/emoji" }
 permissions:
   contents: read
 jobs:
@@ -25,6 +26,7 @@ jobs:
           MODE: ${{ inputs.mode }}
           CONFIRM: ${{ inputs.confirm }}
           RETIRE: ${{ inputs.retire }}
+          KIT_DIR: ${{ inputs.kit_dir }}
         run: node scripts/emoji-swap.mjs
       - name: Keep the retired images
         if: always() && inputs.mode == 'apply'

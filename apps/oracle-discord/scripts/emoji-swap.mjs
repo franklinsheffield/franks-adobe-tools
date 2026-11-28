@@ -37,7 +37,7 @@ const limit = LIMITS[guild.premium_tier] ?? 50;
 const emojis = guild.emojis;
 const count = (list, anim) => list.filter((e) => !!e.animated === anim).length;
 
-const kit = fs.readdirSync(KIT_DIR).filter((f) => /^(or|al|ob|pa|sc)_[a-z_]+\.(png|gif)$/.test(f)).sort();
+const kit = fs.readdirSync(KIT_DIR).filter((f) => /^[a-z0-9_]{2,32}\.(png|gif)$/.test(f)).sort(); // emoji files only; sheets use hyphens
 const kitNames = new Set(kit.map((f) => f.replace(/\.(png|gif)$/, "")));
 const toAdd = kit.filter((f) => !emojis.some((e) => e.name === f.replace(/\.(png|gif)$/, "")));
 const addStatic = toAdd.filter((f) => f.endsWith(".png")).length, addAnim = toAdd.length - addStatic;
