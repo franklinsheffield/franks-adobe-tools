@@ -1,0 +1,26 @@
+# Pixel Scape level 6 reward post (apps/oracle-discord/scripts/pixel-scape-reply.js). Run by hand only.
+#   plan: read only; send: replies under the Houses launch announcement (once)
+name: Pixel Scape level 6 post
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan | send"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, send]
+permissions:
+  contents: read
+jobs:
+  post:
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: apps/oracle-discord } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Pixel Scape post (${{ inputs.mode }})
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.ORACLE_DISCORD_BOT_TOKEN }}
+        run: node scripts/pixel-scape-reply.js "${{ inputs.mode }}"
