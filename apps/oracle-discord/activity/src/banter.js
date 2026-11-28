@@ -221,6 +221,18 @@ export const BANTER = {
     pirate: G("Enemy dispatches, matey! Let's see their plans!", "Count 'em like doubloons: the most common be E!", "Their secrets be ours! Reseal it and send it on!", "Outsailed by a landlubber with a magnifying glass!"),
     influencer: G("Opening someone's DMs, but make it 1586!", "This cipher is literally giving THE energy.", "Cracked it! Main-codebreaker energy!", "Lost to a guy from 1628. Humbling, honestly."),
   },
+  illuminator: {
+    mystic: G("Gold first. The light must arrive before the colour.", "Lapis came from one valley in Afghanistan. Feel its journey.", "The page glows. Six centuries will not dim it.", "The colour fought the order. Begin again, gently."),
+    deadpan: G("Rule, write, gild, paint, outline. It's a recipe.", "Verdigris eats vellum. Hold the page lightly.", "Page done. Only took a few weeks in real life.", "Ruined. A monk would have scraped it and started again."),
+    drama: G("ULTRAMARINE! Dearer than GOLD!", "Orpiment! It's ARSENIC! Paint CAREFULLY!", "The page SHINES! A masterpiece of the AGES!", "The ink is SPENT! The vellum WEEPS!"),
+    standup: G("Medieval paint: ground rocks, bugs and poison. Yum.", "Lead white was made in warm dung. Glamorous job.", "Page done! Gold leaf, no glitter glue needed.", "Painted before gilding? The burnisher has notes."),
+    grumpy: G("Gold before paint. How many times.", "Scribe writes first. The painter waits. Patience.", "Fine. A page. Only 339 more for a Kells.", "Wrong blue. Azurite is not ultramarine."),
+    sports: G("The gold's down and burnished! Clean start!", "Vermilion on the border! Right pigment, right place!", "PAGE COMPLETE! Gold, colour, outline! Champion!", "Out of ink at the final stage! Heartbreaker!"),
+    conspiracy: G("Why was blue dearer than gold? Ask the merchants.", "Orpiment means gold paint. Fake gold. Think about it.", "Finished. But who added those notes in the margin?", "Ruined. Or did the rival workshop swap your shells?"),
+    bard: G("Lay down the gold ere any hue be spread!", "From lapis blue, the Virgin's robe is spun.", "The page doth glow as morning on the hill!", "Alas, the colours fell in wrong array."),
+    pirate: G("Gold leaf, matey! Thinner than a sail!", "Blue from beyond the sea! Ultramarine, they call it!", "A treasure page! Fit for a captain's chest!", "Spilt the ink! Swab the vellum, ye landlubber!"),
+    influencer: G("Gold leaf first, it's literally the base layer.", "Ultramarine cost more than gold. Luxury era.", "This page is giving 1416 Limbourg brothers!", "Wrong order. The burnisher said not today."),
+  },
   cipherdesk: {
     mystic: G("Every secret wants, in the end, to be read.", "The letters only seem to wander. They know their way home.", "The hidden words step back into the light.", "The cipher keeps its silence. For now."),
     deadpan: G("It's a letter. Someone made it hard to read. On purpose.", "Count the letters. It's boring. It works.", "Decoded. Somebody's secret is now admin.", "Still gibberish. Like most meetings."),
