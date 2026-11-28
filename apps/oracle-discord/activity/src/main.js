@@ -243,7 +243,12 @@ const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!
 // ---- the text feed: follows the speech, folds to two lines (a secret hides behind it), quick-saves the conversation ----
 const FEED = { pinned: true, autoAt: 0 };
 /** 🎤 talk instead of type, where the browser and the frame allow the microphone (micinput.js). */
-installMic({ onStart: () => { say.finish && say.finish(); mood.emote("curious", { quiet: true }); }, onUnavailable: () => mood.bubble("My ears can't reach you here. Type to me instead.", 3200, "🎤") });
+const MIC = installMic({ on: (() => { try { return localStorage.getItem("oracle-mic") !== "0"; } catch { return true; } })(), onStart: () => { say.finish && say.finish(); mood.emote("curious", { quiet: true }); }, onUnavailable: () => { mood.bubble("My ears can't reach you here. Type to me instead.", 3200, "🎤"); showMicBtn(); } });
+function showMicBtn() { const b = $("mic-btn"); if (!b) return; if (!MIC) { b.hidden = true; return; }
+  const on = MIC.on, l = MIC.dead ? "Speak to type: blocked here" : `Speak to type: ${on ? "on" : "off"}`;
+  b.hidden = false; b.disabled = MIC.dead; b.textContent = on ? "🎤 On" : "🎤 Off"; b.classList.toggle("off", !on); b.setAttribute("aria-pressed", String(on)); b.title = l; b.setAttribute("aria-label", l); }
+if ($("mic-btn")) $("mic-btn").onclick = () => { if (!MIC || MIC.dead) return; MIC.setOn(!MIC.on); try { localStorage.setItem("oracle-mic", MIC.on ? "1" : "0"); } catch { /* blocked */ } showMicBtn(); };
+showMicBtn();
 { const st = document.createElement("style"); st.id = "textfx-style"; st.textContent = TEXTFX_CSS; document.head.append(st); }
 function feedToEnd() { const f = $("feed"); FEED.autoAt = performance.now(); f.scrollTop = f.scrollHeight; }
 $("feed").addEventListener("scroll", () => { const f = $("feed"), end = f.scrollHeight - f.scrollTop - f.clientHeight < 24; if (end) FEED.pinned = true; else if (performance.now() - FEED.autoAt > 120) FEED.pinned = false; }, { passive: true });
@@ -369,7 +374,7 @@ function bindGo(id) {
   $("go").onclick = run;
   box.querySelectorAll("input").forEach((i) => (i.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); run(); } }));
 }
-// ---- idle chatter: after 30 s with no click or key, the chosen personality pipes up (first 3 lines chained, then shuffled) ----
+// ---- idle chatter: after 30 s with no click or key, the chosen personality pipes up (random order, no repeats) ----
 const idle = { t: null, step: 0, used: [], on: false };
 function idleReset() { clearTimeout(idle.t); idle.step = 0; mood.wake(); if (idle.on) idle.t = setTimeout(idleTick, IDLE_AFTER); }
 function idleTick() {
