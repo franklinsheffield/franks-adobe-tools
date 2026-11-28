@@ -24,18 +24,19 @@ export const MIC_CSS = `
 .mic-float.on{border-color:#ff4fae;background:#ff4fae;color:#fff;animation:mic-pulse 1.1s ease-in-out infinite}
 @keyframes mic-pulse{50%{box-shadow:0 0 0 8px rgba(255,79,174,0),0 0 14px #ff4fae}}
 input.mic-live,textarea.mic-live{box-shadow:0 0 0 2px #ff4fae inset}
+.mic-btn.off{opacity:.6}.mic-btn[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.mic-float.on{animation:none}}`;
-/** Wire it up. hooks: { onStart(), onEnd(heard), onUnavailable(why), lang } */
+/** Wire it up. hooks: { on, onStart(), onEnd(heard), onUnavailable(why), lang }. Returns { setOn(v), on, dead } (the Menu 🎤 toggle), or null when unsupported. */
 export function installMic(hooks = {}) {
   if (!micSupported()) return null;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const st = document.createElement("style"); st.textContent = MIC_CSS; document.head.append(st);
   const btn = document.createElement("button"); btn.type = "button"; btn.className = "mic-float"; btn.hidden = true; btn.textContent = "🎤";
   btn.setAttribute("aria-label", "Speak instead of typing"); btn.title = "Speak instead of typing"; document.body.append(btn);
-  let target = null, rec = null, dead = false, base = "";
+  let target = null, rec = null, dead = false, base = "", on = hooks.on !== false;
   const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 10 && r.bottom > 0 && r.top < innerHeight; };
   const place = () => {
-    if (dead) { btn.hidden = true; return; }
+    if (dead || !on) { btn.hidden = true; return; }
     if (!(target && target.isConnected && visible(target))) { const a = document.activeElement; target = micField(a) && visible(a) ? a : [...document.querySelectorAll("#box input, #box textarea, #book input, #book textarea")].find((x) => micField(x) && visible(x)) || null; }
     if (!target) { if (!rec) btn.hidden = true; return; }
     const r = target.getBoundingClientRect(); btn.hidden = false; btn.style.left = `${Math.round(r.right - 32)}px`; btn.style.top = `${Math.round(r.top + (Math.min(r.height, 44) - 28) / 2)}px`;
@@ -59,5 +60,5 @@ export function installMic(hooks = {}) {
   new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
   addEventListener("resize", later); addEventListener("scroll", later, true);
   place();
-  return { place, stop };
+  return { place, stop, setOn: (v) => { on = !!v; if (!on) stop(); place(); }, get on() { return on && !dead; }, get dead() { return dead; } };
 }
