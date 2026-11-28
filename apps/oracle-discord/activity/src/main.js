@@ -680,7 +680,7 @@ const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
   if (u.kind === "record") { const t = trackOf(id), L = musicOf(state.prog).list; if (t && !L.includes(t.id)) togglePlaylist(state.prog, t.id); saveProgress(); player.refresh(); player.play(t.id); return; }
-  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) flourish(u.kind);
+  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) { flourish(u.kind); secretEvent("wear", { kind: u.kind, id }); }
 }
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;

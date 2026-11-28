@@ -4,6 +4,7 @@
 // Every fact in Wren's lines is real; they label modern uses and never invent meanings for symbols.
 import { vinylSvg } from "../player.js";
 import { deskSceneHtml, codexSvg, propsSvg, headSvg, react, DESK_EMOTES, DESK_CSS, habitOf, habitShop } from "./scriptorium-desk.js";
+import { quillShop, sealShop, scriptVars, SCRIPT_SHELF_CSS, MORE_SCRIPT_RELICS } from "./scriptorium-shelves.js";
 import { coatOverlay } from "./alchemist-lab.js";
 import { menuBg as WREN_MENU_BG, secrets as MARGINALIA_SECRETS } from "../scriptorium/marginalia.js";
 
@@ -101,7 +102,7 @@ function paint(svg, prog, id = "t") {
   const feather = (x, y, r, s = 1) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><path class="hk-feather" d="M0 0Q-8 -24 0 -46Q8 -24 0 0Z" fill="#F1E4C6" stroke="#4A3A2C" stroke-width=".8"/><path d="M0 0V-44" stroke="#4A3A2C" stroke-width=".8"/>${[10, 18, 26, 34].map((d) => `<path d="M0 -${d}l-4 -3M0 -${d}l4 -3" stroke="#C9B58A" stroke-width=".6"/>`).join("")}</g>`;
   g.innerHTML = `${headSvg()}${feather(224, 66, 24)}${feather(232, 70, 40, 0.8)}${feather(176, 66, -24, 0.9)}
     <path d="M160 150q-4 10 2 16M240 150q4 10 -2 16" stroke="${K.iris[1]}" stroke-width="2" fill="none" opacity=".6"/>
-    <g transform="translate(200 92)"><path d="M-12 -4q-2 -9 6 -11q4 -5 10 -1q8 -2 9 6q6 4 2 10q2 8 -6 9q-4 6 -11 2q-8 2 -9 -6q-6 -4 -1 -9z" fill="#E8483B" stroke="#8a1a10" stroke-width="1.2"/>
+    <g transform="translate(200 92)"><path class="wr-wax" d="M-12 -4q-2 -9 6 -11q4 -5 10 -1q8 -2 9 6q6 4 2 10q2 8 -6 9q-4 6 -11 2q-8 2 -9 -6q-6 -4 -1 -9z" fill="#E8483B" stroke="#8a1a10" stroke-width="1.2"/>
       <path d="M-8 6L8 -8" stroke="#F1E4C6" stroke-width="2" stroke-linecap="round"/><path d="M8 -8q4 -2 3 3z" fill="#F1E4C6"/><circle r="9" fill="none" stroke="#8a1a10" stroke-width=".8"/></g>
     <path d="M152 186h96" stroke="#E8483B" stroke-width="1" opacity=".5"/><path d="M152 192h96" stroke="#3D6BE0" stroke-width="1" opacity=".4"/>`;
   eye.after(g);
@@ -115,7 +116,7 @@ function paint(svg, prog, id = "t") {
  *  trimming it (left), as medieval scribes did; gestures: snap = an ink drop splashes, point = the quill draws a line,
  *  swat = a loose page flutters. */
 const wrenHand = (side) => (side === "R"
-  ? `<g class="hg hg-quill"><path d="M164 262 L196 168" stroke="#f4eee0" stroke-width="3"/><path d="M196 168 C214 182 210 216 186 238 C186 214 190 190 196 168Z" fill="#f4eee0" stroke="#b8a582"/><path d="M164 262 l-3 8" stroke="#1d2340" stroke-width="2.4" stroke-linecap="round"/></g>
+  ? `<g class="hg hg-quill"><path class="wr-qs" d="M164 262 L196 168" stroke="#f4eee0" stroke-width="3"/><path class="wr-qf" d="M196 168 C214 182 210 216 186 238 C186 214 190 190 196 168Z" fill="#f4eee0" stroke="#b8a582"/><path d="M164 262 l-3 8" stroke="#1d2340" stroke-width="2.4" stroke-linecap="round"/></g>
     <g class="hg hg-line" fill="none" stroke="#1d2340" stroke-width="3" stroke-linecap="round"><path d="M160 272 q20 -8 40 0 t40 0"/></g>
     <g class="hg hg-ink">${[[160, 272, 5], [172, 266, 3], [150, 266, 2.6], [166, 282, 2.2]].map(([x, y, r], i) => `<circle style="--d:${i * 0.04}s" cx="${x}" cy="${y}" r="${r}" fill="#1d2340"/>`).join("")}</g>`
   : `<g class="hg hg-knife"><path d="M150 258 L176 226" stroke="#c4ccd6" stroke-width="5" stroke-linecap="round"/><path d="M146 264 L156 252" stroke="#6a4022" stroke-width="7" stroke-linecap="round"/></g>`)
@@ -154,11 +155,11 @@ export const scriptorium = {
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
-  css: SCRIPTORIUM_CSS + WREN_HANDS_CSS + DESK_CSS, paint, scene: deskSceneHtml, react, emotes: DESK_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
+  css: SCRIPTORIUM_CSS + WREN_HANDS_CSS + DESK_CSS + SCRIPT_SHELF_CSS, paint, scene: deskSceneHtml, react, emotes: DESK_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Hurdy-Gurdy", deck: hurdySvg },
-  shelves: [inkShop, habitShop],
+  shelves: [inkShop, habitShop, quillShop, sealShop], vars: scriptVars,
   token: { id: "scroll", emoji: "📜", name: "scroll", plural: "scrolls", purse: "Scroll case" },
-  relics: SCRIPT_RELICS, relicLabel: "📜 Scriptorium relics", relicBlurb: "Scriptorium relics stay on my shelves for good. Earn scrolls with your first visit each day and by beating game levels here.",
+  relics: [...SCRIPT_RELICS, ...MORE_SCRIPT_RELICS], relicLabel: "📜 Scriptorium relics", relicBlurb: "Scriptorium relics stay on my shelves for good. Earn scrolls with your first visit each day and by beating game levels here.",
   strayIntro: "This slipped out from between two pages:",
   lines: {
     streak: ["{n} days in a row. I've noted it in the margin.", "{n} days running. Footnote: that is a habit."],
