@@ -92,6 +92,8 @@ try { for (let after = "0"; ;) { const page = await api(`/guilds/${GUILD}/member
 catch (e) { console.warn("::warning::can't list members (turn on Server Members Intent for the bot):", e.message); members = null; }
 const lv4 = LV(4)[0], humans = (members || []).filter((m) => !m.user.bot), todo = humans.filter((m) => !m.roles.includes(FOUND));
 
+// Without the grants every current member would lose posting, so stage 2 refuses to run until it can list members.
+if (!dry && !members) { console.error("Stopped before changing anything: turn on Server Members Intent for the bot, then rerun stage2."); process.exit(1); }
 console.log(`== Stage 2 ${dry ? "PLAN (nothing changes)" : "RUN"} ==`);
 for (const s of steps) {
   const label = s.k === "move" ? `move #${s.c.name} -> ${s.parent.name} (${s.why})` : s.k === "rename" ? `rename ${s.c.name} -> ${s.name}` : `perms #${s.c.name}: ${s.why}`;
