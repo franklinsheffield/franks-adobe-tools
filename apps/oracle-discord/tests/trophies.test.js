@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 test("trophies: tiers, one-time payouts, prismatic, sets, oracle readings, showcase", async () => {
   const T = await import("../activity/src/trophies.js");
-  assert.equal(T.TROPHIES.length, 34);
+  assert.equal(T.TROPHIES.length, 35);
   const p = { essence: 0 };
   assert.equal(T.recordWin(p, "seance", 1, { won: true }), null, "needs 3 wins");
   T.recordWin(p, "seance", 1, { won: true }); const n = T.recordWin(p, "seance", 1, { won: true, perfect: true });

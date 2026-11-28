@@ -209,6 +209,18 @@ export const BANTER = {
     pirate: G("Red flame be lithium, or strontium, if ye be lucky!", "Green fire, like a ghost ship's lantern, arr.", "Ye read the flames like a true navigator!", "Arr, wrong metal. That fire be lyin' like a parrot."),
     influencer: G("Flame colour reveal! Drop your guesses below!", "This green is a whole aesthetic. No filter needed.", "Every colour right! Main character at the burner.", "Wrong guess, bestie. Even the flame needed a filter."),
   },
+  blackchamber: {
+    mystic: G("A sealed letter is a held breath. Let it out gently.", "The commonest sign is often the humblest letter: E.", "The seal lifts, the secret speaks, and nobody knows.", "The rival's eyes were quicker. The letters will wait."),
+    deadpan: G("Someone swapped every letter. You swap them back.", "Three letters, over and over. It's THE. It's always THE.", "Broken. Reseal it. Act natural.", "The rival won. They had a head start of four centuries."),
+    drama: G("An INTERCEPT! Every letter a LIE!", "The clock! The CLOCK! The sand is FALLING!", "BROKEN! The embassy will never know!", "Too slow! The rival smirks across the centuries!"),
+    standup: G("Opening other people's post: illegal now, a job then.", "If the cipher says XLI, it's THE. You're welcome.", "Cracked it! Spies hate this one weird trick.", "Lost to a man in a ruff. Happens to everybody."),
+    grumpy: G("Count the letters. Always count the letters first.", "Single letter word? It's A or I. Every time.", "Fine. You read a letter. Gold star.", "Too many hints. Phelippes didn't get hints."),
+    sports: G("The rival's clock is running and the challenger is in!", "A huge THE! That opens the whole board!", "BROKEN with time to spare! What a finish!", "The rival takes it at the line! Heartbreaker!"),
+    conspiracy: G("Every embassy letter was opened. Every single one.", "Who resealed this? The wax is a shade too red.", "You read it. Now you're on a list too.", "The rival won. Or did they always know the key?"),
+    bard: G("What secret sleeps beneath this borrowed wax?", "Count thou the letters, as al-Kindi bade!", "The seal is lifted and the truth laid bare!", "The rival's quill outran thy patient eye."),
+    pirate: G("Enemy dispatches, matey! Let's see their plans!", "Count 'em like doubloons: the most common be E!", "Their secrets be ours! Reseal it and send it on!", "Outsailed by a landlubber with a magnifying glass!"),
+    influencer: G("Opening someone's DMs, but make it 1586!", "This cipher is literally giving THE energy.", "Cracked it! Main-codebreaker energy!", "Lost to a guy from 1628. Humbling, honestly."),
+  },
   cipherdesk: {
     mystic: G("Every secret wants, in the end, to be read.", "The letters only seem to wander. They know their way home.", "The hidden words step back into the light.", "The cipher keeps its silence. For now."),
     deadpan: G("It's a letter. Someone made it hard to read. On purpose.", "Count the letters. It's boring. It works.", "Decoded. Somebody's secret is now admin.", "Still gibberish. Like most meetings."),
