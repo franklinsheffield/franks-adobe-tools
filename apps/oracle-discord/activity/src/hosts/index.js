@@ -6,6 +6,7 @@
 //           scene?(at, { prog, motes }) -> html (replaces the Chamber's backdrop), react?(kind, { teller, scene, gesture, reduced }) -> line?,
 //           emotes?: { [startEmoteId]: { e, name, mood, say, fx } } (re-dresses the 8 starting emotes; ids stay), token.icon? (html),
 //           lines?: { greet[], idle[], joke[] }, banter?: { [roomId]: { mid[], win[], lose[] } }, poke?[], perfect?[] }
+import { housePersonaLine } from "./house-personas.js";
 import { oracle } from "./oracle.js";
 import { alchemist } from "./alchemist.js";
 import { observatory } from "./observatory.js";
@@ -42,6 +43,10 @@ const pick = (pool, used = [], rand = Math.random) => {
 export function hostLine(kind, name = "traveller", used = [], rand = Math.random) {
   const l = pick((current.lines || {})[kind], used, rand); return l ? l.replace(/\{name\}/g, name) : null;
 }
+/** The host's own streak remark ("{n} days in a row…"), or null for the Oracle's line. */
+export function hostStreak(n) { const pool = (current.lines || {}).streak; return pool && pool.length ? pool[Math.floor(Math.random() * pool.length)].replace(/\{n\}/g, n) : null; }
+/** The chosen personality talking about this House (see house-personas.js), or null in the Oracle's Chamber. */
+export const personaHouseLine = (personaId, kind, name = "traveller", used = []) => (current === oracle ? null : housePersonaLine(personaId, current.id, kind, name, used));
 /** The host's own game banter ("mid" | "win" | "lose" | "perfect" | "poke"), or null to use the Oracle's personalities. */
 export function hostBanter(game, event, name = "traveller", used = [], rand = Math.random) {
   if (current === oracle) return null;

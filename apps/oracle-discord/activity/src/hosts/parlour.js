@@ -185,6 +185,7 @@ export const parlour = {
   relics: PARLOUR_RELICS, relicLabel: "🗝️ Parlour relics", relicBlurb: "Parlour relics stay in my House for good. Earn keys with your first visit each day and by beating game levels here.",
   strayIntro: "Three knocks, and this dropped out of the curtain:",
   lines: {
+    streak: ["{n} days in a row, darling. Even the ghosts are taking notes.", "{n} days running. Watch the hands, and keep coming back."],
     greet: ["Hush, {name}. Three knocks... That's the radiator. Now, the real clue.", "Welcome to the Parlour, {name}. Every ghost has a method. Let's find it.",
       "Ah, {name}. The candle flickered as you came in. Draughts are wonderful for business."],
     idle: ["Houdini and his wife Bess agreed a secret code before he died in 1926. Bess held her last Halloween séance for him in 1936.",
