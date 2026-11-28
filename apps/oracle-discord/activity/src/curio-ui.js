@@ -179,7 +179,8 @@ function clock() {
   const fw = freshWeek(d); if (fw && (p.curWk || 0) < fw.n) { p.curWk = fw.n; C.save(); setTimeout(() => C.mood.bubble(`I hid ${fw.items.length} new curiosities this week. The Cabinet has new drawers in Your Grimoire.`, 5200, "🏺"), 6000); }
   visitor();
 }
-export function enter() { if (!C) return; while (queued.length) hit(queued.shift()); clock(); if (!enter.t) enter.t = setInterval(clock, 60e3); }
+// The first sky check (eclipses, planet meetings) runs a moment after the door opens, not inside the tap (perf).
+export function enter() { if (!C) return; while (queued.length) hit(queued.shift()); setTimeout(clock, 1500); if (!enter.t) enter.t = setInterval(clock, 60e3); }
 /** Wire everything once. ctx: { state, mood, save, stats, chime, logEvent, modal, esc, reduced }. */
 export function init(ctx) {
   C = ctx; wireOracle(); extras(); paint();
