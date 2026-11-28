@@ -418,6 +418,19 @@ export const PLAY = {
     ],
   },
 
+  forgery: {
+    how: [
+      "Documents arrive claiming a date. Each shows a few clues: an ink, a paper, a word, a stamp.",
+      "Test a clue with the UV lamp, loupe or dictionary to see when that thing first existed. Tests are limited each round.",
+      "Flag the clue that is too new for the date, or (from Level 2) call the document genuine. A wrong call costs one of your 3 stars.",
+    ],
+    tips: [
+      "Only test what you're unsure of: you know a typewriter can't be medieval.",
+      "Look for modern words such as teenager, robot or OK, and for synthetic dyes and paints.",
+      "Genuine documents happen. If every clue is older than the date, say so.",
+    ],
+  },
+
   // ---- Party (every House) ----
   possession: {
     how: [
