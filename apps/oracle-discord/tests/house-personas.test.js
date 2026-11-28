@@ -33,3 +33,15 @@ test("no two Houses open a greeting the same way", () => {
     assert.ok(!openers.has(o) || openers.get(o) === h.id, `"${o}" used by ${openers.get(o)} and ${h.id}`); openers.set(o, h.id);
   }
 });
+
+import { GATES, GATES_CSS } from "../activity/src/hosts/gates.js";
+test("every House has its own branded door", () => {
+  for (const h of HOSTS.filter((x) => x.id !== "oracle")) {
+    const G = GATES[h.id]; assert.ok(G, h.id);
+    for (const k of ["eye", "title", "sub", "cta", "note"]) assert.ok(G[k], `${h.id}.${k}`);
+    assert.ok(!/\.$/.test(G.sub), "sub gets its full stop from the template");
+    const html = G.bg(() => 0.5); assert.match(html, /class="gate-bg gh-/);
+    assert.match(GATES_CSS, new RegExp(`data-house=${h.id}`));
+  }
+  assert.equal(new Set(Object.values(GATES).map((g) => g.cta)).size, Object.keys(GATES).length, "each door has its own button");
+});
