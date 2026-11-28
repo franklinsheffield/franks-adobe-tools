@@ -79,7 +79,7 @@ export const TRICKS = [
     "Blindfold the sitters and turn the board round: the answers become nonsense", "The Ouija board was patented in the United States in 1891. William Carpenter had named the ideomotor effect in 1852."),
   T("w-reading", 1, "📜", "The personal reading", ["barnum"],
     ["Open with a warm, vague compliment", "Add both sides: outgoing, yet shy at times", "Mention untapped potential", "Let the listener fill in the details"],
-    "Swap two people's readings and both still say it fits", "In 1949 Bertram Forer gave 39 students the same 'personal' sketch. They rated its accuracy 4.26 out of 5 on average."),
+    "Swap two people's readings and both still say it fits", "In 1948 Bertram Forer gave 39 students the same 'personal' sketch. They rated its accuracy 4.26 out of 5 on average."),
   T("w-horse", 1, "🐴", "The counting horse", ["cues"],
     ["Ask the horse a sum", "Let it start tapping its hoof", "Relax without meaning to as it reaches the answer", "The horse stops on that tiny cue"],
     "The horse fails when the questioner doesn't know the answer", "In 1907 the psychologist Oskar Pfungst showed Clever Hans was reading his questioners' unconscious cues."),

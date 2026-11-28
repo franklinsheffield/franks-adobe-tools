@@ -26,7 +26,7 @@ export const PAIRS = [
   P("serios", ["serios"], { name: "Ted Serios", year: 1967, line: "'Thought photographs' pressed onto Polaroid film." }, { name: "Reynolds and Eisendrath", year: 1967, line: "Two photographers showed how a small tube, his 'gizmo', could do it." }),
   P("hydrick", ["hydrick"], { name: "James Hydrick", year: 1980, line: "Turned phone-book pages 'with his mind'." }, { name: "James Randi, again", year: 1981, line: "Surrounded the book with packing beads a breath would scatter." }),
   P("geller", ["geller"], { name: "Uri Geller", year: 1973, line: "Spoons that bent by 'psychic power'." }, { name: "Johnny Carson's show", year: 1973, line: "Props were kept away from him before airtime, on a magician's advice, and nothing happened." }),
-  P("cocklane", ["cocklane"], { name: "The Cock Lane ghost", year: 1762, line: "Scratching 'Scratching Fanny' in a London house." }, { name: "Samuel Johnson's committee", year: 1762, line: "Investigated, heard nothing when the girl was watched, and called it a fraud." }),
+  P("cocklane", ["cocklane"], { name: "The Cock Lane ghost", year: 1762, line: "Knocks and scratches from 'Scratching Fanny' in a London house." }, { name: "Samuel Johnson's committee", year: 1762, line: "Investigated, heard nothing when the girl was watched, and called it a fraud." }),
   P("toft", ["toft"], { name: "Mary Toft", year: 1726, line: "Claimed to give birth to rabbits." }, { name: "Sir Richard Manningham", year: 1726, line: "Threatened surgery; she confessed." }),
 ];
 const box = (p) => { p.houses = p.houses && typeof p.houses === "object" ? p.houses : {}; const h = (p.houses.parlour ||= {}); h.gallery ||= { paid: [], all: false }; h.gallery.paid ||= []; return h.gallery; };
