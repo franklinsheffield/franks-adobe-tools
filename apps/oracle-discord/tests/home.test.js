@@ -28,3 +28,11 @@ test("the door has one enter button and greets returning members", () => {
   assert.equal((g.match(/id="enter"/g) || []).length, 1); assert.match(g, /Welcome back, Ada &lt;3/); assert.match(g, /4 days in a row/);
   assert.match(gateHtml({ esc }), /talks back/);
 });
+
+test("the hall of doors holds the menu: a Your things door with action cards and the sound slot", () => {
+  const esc = (s) => String(s);
+  const it = homeItems([], [], [], null, [{ id: "store", emoji: "💎", label: "Store", hint: "Looks", badge: "💎 5" }, { id: "trophies", emoji: "🏆", label: "Trophies" }]);
+  assert.equal(it.things.length, 2); assert.equal(HOME_TABS.at(-1).id, "things");
+  const html = homeHtml(it, "things", esc);
+  assert.match(html, /data-act="store"/); assert.match(html, /data-act="trophies"/); assert.match(html, /id="hm-sound"/); assert.match(html, /💎 5/);
+});
