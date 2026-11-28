@@ -1,8 +1,10 @@
 // The Oracle Chamber (Discord Activity): pick a system, give the Oracle your details, and she reveals the reading.
 // Readings run here in the browser with the same modules the /oracle bot uses (src/modules), so results match.
+import { gateOf } from "./hosts/gates.js";
 import { bookPoke } from "./library.js";
-import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, hasTrack } from "./music.js";
-import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg } from "./player.js";
+import { recordShop, checkUnlocks, trackOf, musicOf, togglePlaylist, BATTLE_ROOMS, TRACKS, ALL_TRACKS, hasTrack } from "./music.js";
+import { createPlayer, recordPlayerHtml, musicSwitchHtml, wireMusic, vinylSvg, crateHtml } from "./player.js";
+import { OPENER, crateOf, musicEvent, buyRecord } from "./hosts/house-music.js";
 import { homeItems, homeHtml, wireHome, savedTab, gateHtml } from "./home.js";
 import { ghostBody } from "./seance/ghostlooks.js";
 import { figureSvg, sigilRingSvg } from "../../src/oracle/figure.js";
@@ -10,13 +12,14 @@ import { makeTable, fitSvg, setTableDecor } from "./table.js";
 import { unlockVoice, blip, isMuted, setMuted } from "./voice-sfx.js";
 import { available, systemByKey, optionsFor } from "../../src/oracle/systems.js";
 import { greeting, askLine, speech } from "../../src/oracle/voice.js";
-import { fieldsFor } from "../../src/profiles.js";
+import { fieldsFor, missingOptional, accuracyWarning } from "../../src/profiles.js";
 import { MODULES } from "../../src/registry.js";
 import { MODS } from "./modules.gen.js";
 import { startDiscord, inDiscord, api } from "./discord.js";
 import { CODEX, UNLOCKS, RANKS, rankOf, nextRank, fresh, record, codexNotes, liveStreak, merge, loadLocal, saveLocal } from "./game.js";
 import { chime, trance, deepen } from "./voice-sfx.js";
 import { answer, quip, deeperPages } from "./answer.js";
+import { themeOf } from "./codexthemes.js";
 import { CARD_BACK, cardBackSvg } from "./cardbacks.js";
 import { STORE, KINDS, SHOP_TALK, registerShelf, shelf, departments, deptOf, kindLabel, goodsOf, ensureFree, item, buy, readsLeft, useRead, buyDayPass, DAY_PASS, DAILY, dailyLimit } from "./store.js";
 import { setVoiceStyle, sampleVoice, checkout, rimshot, cardDeal, sting } from "./voice-sfx.js";
@@ -31,8 +34,15 @@ import { minerals, mineralsCodex } from "./minerals/room.js";
 import { casefiles, casefilesCodex } from "./casefiles/room.js";
 import { workshop, workshopCodex } from "./workshop/room.js";
 import { bookings, bookingsCodex } from "./bookings/room.js";
+import { darkseance, darkseanceCodex } from "./darkseance/room.js";
+import { mentalist, mentalistCodex } from "./mentalist/room.js";
+import { phantasmagoria, phantasmagoriaCodex } from "./phantasmagoria/room.js";
+import { roguesgallery, galleryCodex } from "./parlour/room.js";
+import { possession, possessionCodex } from "./possession/room.js";
 import { bench, benchCodex } from "./bench/room.js";
 import { commissions, commissionsCodex } from "./commissions/room.js";
+import { fireworks, fireworksCodex } from "./fireworks/room.js";
+import { leadgold, leadgoldCodex } from "./leadgold/room.js";
 import { timeline, codexHtml as timelineCodex } from "./timeline/room.js";
 import { room as calendar, codexHtml as calendarCodex } from "./calendar/room.js";
 import { room as grimoire, grimoireCodex } from "./grimoire/room.js";
@@ -41,12 +51,16 @@ import { room as duel, duelCodex } from "./duel/room.js";
 import { rummy, rummyCodex } from "./rummy/room.js";
 import { watch, watchCodex } from "./watch/room.js";
 import { comet, cometCodex } from "./comet/room.js";
+import { eclipse, eclipseCodex } from "./eclipse/room.js";
+import { messier, messierCodex } from "./messier/room.js";
+import { starParty, starPartyCodex } from "./starparty/room.js";
+import { celestialNavigator, navigatorCodex } from "./navigator/room.js";
 import { robeFx, AVATAR_LOOK, STAR_PUPIL, CLOTH_DESIGN } from "./looks.js";
 import { vibeFx, CLOTH_FX, clothTrim, orbFx } from "./fx.js";
 import { persona, line, personaQuip, deliver } from "./personas.js";
 import { IDLE_AFTER, idleLine } from "./idle.js";
 import { headline } from "../../src/oracle/voice.js";
-import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
+import { TROPHIES, TIERS, SETS, LINES, CASE_LEVELS, recordWin, recordReading, recordClues, tierOf, points, caseLevel, earned, togglePin, trophyArt } from "./trophies.js";
 import { trophyWin } from "./voice-sfx.js";
 import { prosody, whoosh, puff, ignite, emoteSfx } from "./voice-sfx.js";
 import { banter } from "./banter.js";
@@ -63,6 +77,10 @@ import { giftState, claimGift, giftHtml, eventNow, eventBanner, boost as eventBo
 import { sceneHtml, CINE, cineHtml, readingCardHtml, orbsFor, orbHtml, markCard, markStore } from "./scene.js";
 import { CREATOR, lookOf, withCreator, familiarShop, familiarSvg, FAMILIARS, EMOTES, emoteOf, SEASONS, seasonNow, seasonOpens, SEASONAL, onSale } from "./character.js";
 import { featured, rareOf, weekEnds, FEATURED_OFF, priceNow, buyNow, SETS as LOOK_SETS, setProgress, wornSet, BOXES, TIERS as BOX_TIERS, boxPool, openBox, REFUND } from "./featured.js";
+import { textFxPlan, textFxHtml, TEXTFX_CSS } from "./textfx.js";
+import { notebookPages, studyToday, claimTable, litTable, NOTEBOOK_CSS } from "./notebook.js";
+import { claimOpus, OPUS_CSS, OPUS_GAMES } from "./opus.js";
+import { addTokens } from "./hosts/tokens.js";
 import { BOOKS, bookOf, coverSvg, emblemSvg, bookShop, bookPreviewHtml, emblemInner, addLog, byDay, dayKey, dayLabel, timeOf, LOG_KINDS, fullWhen, topDrawn, hoursOf, bookSfx } from "./book.js";
 import { EXPLAIN } from "../../src/modules/magicdeck/explain.js";
 import { DECK as MAGIC_DECK, SUITS as MAGIC_SUITS } from "../../src/modules/magicdeck/data.js";
@@ -75,8 +93,9 @@ import { cabinetHtml } from "./curios.js";
 import { dmy } from "../../src/birthplace.js";
 import { chartData, chartsHtml, storedRows } from "./mycharts.js"; // "My charts": the member's personal data, storage and delete
 import { findSecret as findHouseSecret, secretsPanelHtml, secretCount, secretsOf, tapCount, payLabel } from "./hosts/secrets.js";
-import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon } from "./hosts/index.js";
-import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
+import { clueEvent, clueCount, dossierHtml, leftBehindHtml, CLUES, PAYOFF } from "./hosts/disguise.js";
+import { HOSTS, host as HOST, hostFor, setHost, hasRoom, rename, hostLine, hostBanter, hostShelves, dressHouse, paintHost, houseChip, hostScene, hostReact, hostEmote, tokenIcon, hostStreak, personaHouseLine } from "./hosts/index.js";
+import { houseLevelTokens, dailyVisit, strayFind, strayLine, relicPanelHtml, buyHouseRelic, tokensLeft, walletOf } from "./hosts/tokens.js"; // each House's luxury token + strays sent home // the Houses engine: one host per channel
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -144,6 +163,7 @@ const mood = initMood($("teller"), { reduced, name: () => state.name, onChange: 
 /** What a House host needs to react on the figure: the teller, the backdrop (for the fume hood) and her gestures. */
 /** A House's hidden finds (hosts/secrets.js): pass an event to the House; a find pays once, chimes and says why. */
 function secretEvent(kind, data = {}) {
+  disguiseEvent(kind, data); hiddenRecordEvent(kind, data);
   const H = HOST(); if (!H.secrets || !H.secrets.event || !state.prog) return;
   const api = { prog: state.prog, at: Date.now(), say: (line) => line && mood.bubble(String(line), 5200), found: (id) => (((state.prog.houses || {})[H.id] || {}).sec || []).includes(id),
     find: (id, line = "") => { const r = findHouseSecret(state.prog, H, id); if (!r) return false; logEvent("secret", r.s.e, `${H.house}: found ${r.s.name}`, null, [["House", H.house], ["Find", r.s.name], ["Reward", payLabel(H, r.pay)]]); saveProgress(); showStats(); chime(2); mood.emote("wow", { quiet: true });
@@ -151,6 +171,29 @@ function secretEvent(kind, data = {}) {
       if (r.all) setTimeout(() => mood.bubble(`Every secret in ${H.house} found! ${payLabel(H, { gem: 200, token: 5 })}`, 5200, "🏆"), reduced ? 0 : 6200);
       CU.event?.("house-secret", id); return true; } };
   try { H.secrets.event(kind, data, api); } catch (e) { console.warn("secret", e); }
+}
+/** Hidden cross-brand records you find in the scene (hosts/house-music.js): a find chimes and goes on the playlist. */
+function hiddenRecordEvent(kind, data) {
+  if (!state.prog) return; const fresh = musicEvent(state.prog, HOST().id, kind, data); if (!fresh.length) return;
+  const { t, line } = fresh[0]; logEvent("secret", "🎵", `${HOST().house}: found the hidden record ${t.title}`, null, [["House", HOST().house], ["Record", t.title]]);
+  saveProgress(); player.refresh(); chime(2); mood.emote("wow", { quiet: true });
+  setTimeout(() => mood.bubble(`🎵 A hidden record: ${t.title}! ${line || ""} It's on your playlist now.`.trim(), 6000, "🎵"), reduced ? 0 : 700);
+}
+// ---- the one-person gimmick (hosts/disguise.js): every host is secretly the same person, and slips ----
+function disguiseEvent(kind, data) {
+  if (!state.prog) return; const r = clueEvent(kind, data, { p: state.prog, host: HOST() }); if (!r) return;
+  logEvent("secret", r.clue.e, `Dossier: ${r.clue.name}`, null, [["Clue", r.clue.name], ["Found", `${r.n} of ${CLUES.length}`], ["Reward", "💎 15"]]); saveProgress(); showStats();
+  if (r.clue.id === "quickchange" && !reduced) { document.body.classList.add("dg-quick"); setTimeout(() => document.body.classList.remove("dg-quick"), 950); }
+  const wait = kind === "home" ? (reduced ? 0 : 4200) : (reduced ? 0 : 300);
+  setTimeout(() => { mood.emote("flinch", { quiet: true }); mood.bubble(`${r.line} 🎭 Dossier clue ${r.n}/${CLUES.length}. 💎 15`, 6400, "🎭"); chime(2); }, wait);
+  if (r.all) setTimeout(() => mood.bubble(PAYOFF, 8000, "🎭"), wait + 6800);
+  trophyNews(recordClues(state.prog, r.n));
+  const b = $("hm-dossier"); if (b) b.querySelector("small").textContent = `${r.n}/${CLUES.length}`;
+}
+function openDossier() {
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🎭 The Dossier");
+  say(clueCount(state.prog) === CLUES.length ? "All right. You've got the whole file. Five Houses, one face. Please stop telling people." : "A Dossier? On me? There's nothing to find. We are five completely different people.");
+  ui(dossierHtml(state.prog, esc)); $("dg-back").onclick = greet;
 }
 document.addEventListener("click", (e) => { const t = e.target && e.target.closest && e.target.closest("[data-tap]"); if (t) secretEvent("tap", { tap: t.dataset.tap, count: tapCount(t.dataset.tap) }); });
 function openHouseSecrets() {
@@ -162,7 +205,9 @@ function reactCtx() { return { teller: $("teller"), scene: $("scene"), gesture: 
 // Commentary while a game is being played: every few moves, in the chosen personality's voice, about that game.
 const chat = { n: 0, next: 3, at: 0 };
 function roomBanter(event = "mid") {
-  const l = state.inRoom && (hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
+  const pb = () => banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused); // a bought personality takes every other turn from the House host (Frank 2026-11-27)
+  const mix = state.prog.persona && state.prog.persona !== "mystic" && Math.random() < 0.5;
+  const l = state.inRoom && ((mix && pb()) || hostBanter(state.inRoom, event, state.name, bused) || banter(state.inRoom, state.prog.persona || "mystic", event, state.name, bused)); if (!l) return;
   chat.n = 0; chat.next = 5 + Math.floor(Math.random() * 4); chat.at = Date.now();
   mood.emote(["wink", "curious", "think", "smug"][Math.floor(Math.random() * 4)], { quiet: true, say: l });
   if (state.prog.persona === "standup") setTimeout(rimshot, 900);
@@ -194,21 +239,48 @@ $("table").addEventListener("click", (e) => {
   setTimeout(() => { if (c.isConnected) { c.classList.remove("out"); c.classList.add("relit"); ignite(); setTimeout(() => c.classList.remove("relit"), 700); } }, 3200);
 });
 const PAUSE = { ",": 160, ";": 200, ":": 200, ".": 320, "…": 380, "?": 340, "!": 320, "—": 220 };
+// ---- the text feed: follows the speech, folds to two lines (a secret hides behind it), quick-saves the conversation ----
+const FEED = { pinned: true, autoAt: 0 };
+{ const st = document.createElement("style"); st.id = "textfx-style"; st.textContent = TEXTFX_CSS; document.head.append(st); }
+function feedToEnd() { const f = $("feed"); FEED.autoAt = performance.now(); f.scrollTop = f.scrollHeight; }
+$("feed").addEventListener("scroll", () => { const f = $("feed"), end = f.scrollHeight - f.scrollTop - f.clientHeight < 24; if (end) FEED.pinned = true; else if (performance.now() - FEED.autoAt > 120) FEED.pinned = false; }, { passive: true });
+function setFeedMini(on, save = true) {
+  const pane = $("feed").parentElement, b = $("feed-min"); pane.classList.toggle("feed-mini", on);
+  b.textContent = on ? "▴" : "▾"; b.setAttribute("aria-expanded", String(!on)); b.setAttribute("aria-label", on ? "Show the full text" : "Shrink the text to two lines"); b.title = on ? "Show the full text" : "Shrink the text";
+  if (save) try { localStorage.setItem("oracle-feed-mini", on ? "1" : "0"); } catch { /* blocked */ }
+  FEED.pinned = true; feedToEnd(); setTimeout(feedToEnd, 320);
+}
+$("feed-min").onclick = () => { chime(1); $("feed").parentElement.classList.add("feed-folded"); /* the secret shows only after the member folds it themselves */ setFeedMini(!$("feed").parentElement.classList.contains("feed-mini")); };
+{ let mini = true; try { mini = localStorage.getItem("oracle-feed-mini") !== "0"; } catch { /* blocked */ } if (mini) setFeedMini(true, false); } // small by default (Frank 23:22Z)
+$("feed-secret").onclick = () => { const first = revealSecret("behind"); mood.bubble(first ? "You looked behind my words. Hardly anyone does." : "Still there. Some things only show when the talking stops.", 3600, "🔺"); };
+/** Quick save: everything in the feed goes into the Journal as a saved conversation. */
+$("feed-save").onclick = () => {
+  const lines = [...$("said").children].map((x) => x.textContent.trim()).concat((say.full || $("say").textContent).trim()).filter((t) => t && t !== "…");
+  const b = $("feed-save"); b.classList.remove("saved"); void b.offsetWidth;
+  if (!lines.length) { mood.bubble("Nothing said yet to save.", 2400); return; }
+  const title = ($("table-cap").textContent || "").trim() || "A conversation", words = lines.join("\n\n"), at = Date.now();
+  const entry = { at, key: "talk", label: "Conversation", emoji: "💬", title: "💬 " + title, words, embeds: [{ title: "💬 " + title, description: words.slice(0, 4000) }], files: [] };
+  try { localStorage.setItem(jKey(), JSON.stringify([entry, ...loadJournal()].slice(0, 60))); } catch { mood.bubble("This device would not let me save that.", 2600); return; }
+  logEvent("save", "💬", `Saved a conversation: ${title}`, at, [["Lines", String(lines.length)], ["First line", lines[0].slice(0, 160)]]);
+  b.classList.add("saved"); chime(1); mood.bubble(`Saved to your Journal (${lines.length} line${lines.length === 1 ? "" : "s"}).`, 2400, "💬");
+};
 /** Keep the line that was just spoken on screen, above the next one, so a reading can be read back. */
-function keepLine() { const t = $("say").textContent.trim(); if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
+function keepLine() { const t = (say.full || $("say").textContent).trim(); say.full = ""; if (!t || t === "…") return; const p = document.createElement("p"); p.textContent = t; $("said").append(p); }
 /** Speak a line. With keep, earlier lines of the same reading stay above it; without, the box starts clean. */
 function say(text, done, { keep = false } = {}) {
   text = rename(text);
-  clearTimeout(typing); const el = $("say"), box = $("box"), teller = $("teller");
-  if (!keep) $("said").innerHTML = "";
-  /** Long text scrolls: keep the line being spoken in view. */
-  const follow = () => { const over = el.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 14; if (over > 0) box.scrollBy({ top: over, behavior: "instant" }); };
-  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain;
+  clearTimeout(typing); const el = $("say"), box = $("feed"), teller = $("teller");
+  keepLine(); const said = $("said"); while (said.children.length > 40) said.firstElementChild.remove(); // the conversation stays readable: earlier lines scroll up
+  /** The feed keeps up with what is being said; scroll up to read back (that pauses the follow until the next line). */
+  FEED.pinned = true; const follow = () => { if (FEED.pinned) feedToEnd(); };
+  const plain = text.replace(/\*\*/g, ""); $("sr").textContent = plain; say.full = plain;
   if (mood.mood() === "sleepy") mood.clear();
-  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); };
+  /** Now and then a few words move with the feeling: shake, wave, bounce or pop (textfx.js). */
+  const plan = reduced ? null : textFxPlan(text, mood.mood() || "");
+  const stop = () => { box.classList.remove("typing"); document.body.classList.remove("talking", "syl"); teller.classList.remove("syl"); refreshEnergy(); if (plan) el.innerHTML = textFxHtml(plain, plan, esc); };
   const pros = prosody(plain);
   say.finish = null;
-  const sm = speechMode(), pace = sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1;
+  const sm = speechMode(), pace = (sm === "slow" ? 1.7 : sm === "fast" ? 0.45 : 1) * (plan && plan.slow ? 1.3 : 1); // dreamy lines are said a little slower
   if (reduced || sm === "off") { el.textContent = plain; stop(); follow(); done && done(); return; }
   /** Skip: show the whole line now (no more typing or blips), then carry on as if it finished. */
   say.finish = () => { say.finish = null; clearTimeout(typing); el.textContent = plain; stop(); follow(); done && done(); };
@@ -223,12 +295,14 @@ function say(text, done, { keep = false } = {}) {
   step();
 }
 const P = () => persona(state.prog.persona), pid = () => state.prog.persona || "mystic";
-const joke = (key) => hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
+const joke = (key) => (Math.random() < 0.5 && personaHouseLine(pid(), "joke", state.name, heard())) || hostLine("joke", state.name, heard()) || personaQuip(pid(), state.name, heard()) || quip(key, state.name, heard());
 const heard = () => (state.prog.heard ||= []);
 /** The scrolling area under the Oracle's words. Setting it clears the fixed control bar. */
-const ui = (html) => { $("ctl").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
+const ui = (html) => { $("ctl").innerHTML = ""; $("dock").innerHTML = ""; $("ui").classList.remove("has-mbg"); $("ui").innerHTML = rename(html); };
 /** The fixed control bar above the Oracle's words: it stays put while the text runs on below. */
-const ctl = (html) => { $("ctl").innerHTML = rename(html); };
+const ctl = (html) => { $("dock").innerHTML = ""; $("ctl").innerHTML = rename(html); };
+/** The floating corner dock (bottom left of the box): Continue and Skip live here, so the box stays clear. */
+const dock = (html) => { $("dock").innerHTML = html; };
 const wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
 function poof() { const p = $("poof"); p.innerHTML = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * 6.28; return `<i style="--x:${Math.cos(a) * 110}px;--y:${Math.sin(a) * 70}px"></i>`; }).join("");
   p.classList.remove("go"); void p.offsetWidth; p.classList.add("go"); }
@@ -250,7 +324,7 @@ function showGift() {
     setTimeout(m.close, reduced ? 600 : 1500); };
 }
 function showProfile() {
-  const recs = TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
+  const recs = ALL_TRACKS.filter((t) => hasTrack(state.prog, t)).length, names = Object.fromEntries(available(MODULES).map((s) => [s.key, s.label]));
   const x = profileOf(state.prog, { name: state.name, records: recs, systems: names });
   const art = ($("teller").querySelector("svg")?.outerHTML || "").replace(/id="t-/g, 'id="pf-').replace(/#t-/g, "#pf-").replace(/\sid="(?!pf-)[^"]*"/g, "");
   const m = modal("profile", `<div class="pf-in" role="dialog" aria-label="Your profile card">${profileHtml(x, esc, art)}<div class="choices"><button class="c main" type="button" id="pf-share">📤 Share in the channel</button><button class="c" type="button" id="pf-x">Close</button></div><p class="pf-msg" id="pf-msg" aria-live="polite"></p></div>`);
@@ -267,7 +341,7 @@ function inviteFriend() {
 }
 // ---- the living Chamber: a window on the real sky now (local hour, the Moon's true phase), shelves, herbs and dust ----
 function paintScene() { let el = $("scene"); if (!el) { el = document.createElement("div"); el.id = "scene"; el.className = "scene"; el.setAttribute("aria-hidden", "true"); $("teller").before(el); }
-  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>`; CU.paint(); }
+  el.innerHTML = (hostScene(Date.now(), { prog: state.prog || {}, motes: reduced ? 0 : 14 }) || sceneHtml(Date.now(), { motes: reduced ? 0 : 14 })) + `<div class="mr-layer">${state.prog ? relicsHtml(state.prog) : ""}</div>` + leftBehindHtml(HOST().id); CU.paint(); }
 paintScene(); setInterval(paintScene, 10 * 60e3);
 /** A short cinematic wipe over the stage while the content changes underneath (door, smoke, shimmer, page). */
 /** Two beats: the cover closes over the stage, fn swaps the view while it is shut, then the cover opens on the new view. */
@@ -310,7 +384,7 @@ function greet() {
   const roomBtn = (r) => `<button class="c room" type="button" data-room="${r.id}" title="${esc(r.blurb || "")}">${r.emoji} ${esc(r.label)}</button>`; // a room with row: "cards" sits in the By the cards row
   const sys = HOST().readings ? available(MODULES) : [], btn = (s) => `<button class="c" type="button" data-k="${s.key}">${s.emoji} ${esc(s.label)}</button>`;
   const st = liveStreak(state.prog), rk = rankOf(state.prog.xp).name;
-  say((hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${st} days in a row now… the stars notice.` : "") : ""));
+  say((personaHouseLine(pid(), "greet", state.name) || hostLine("greet", state.name) || line(P(), "greet", { name: state.name }) || greeting(state.name)) + (state.prog.readings ? ` Welcome back, ${rk}.` + (st > 1 ? ` ${hostStreak(st) || `${st} days in a row now… the stars notice.`}` : "") : ""));
   showStats();
   const items = homeItems(sys, ROOMS.filter((r) => hasRoom(HOST(), r.id)), STUDY);
   ui(homeHtml(items, savedTab(), esc)); wireHome($("ui"), { reduced });
@@ -319,7 +393,9 @@ function greet() {
   $("hm-card").onclick = showProfile; $("hm-invite").onclick = inviteFriend;
   { const dv = dailyVisit(state.prog, HOST(), new Date().toISOString().slice(0, 10)); if (dv) { saveProgress(); showStats(); setTimeout(() => mood.bubble(`First visit today: +${HOST().token.emoji} 1 ${HOST().token.name}.`, 3600, HOST().token.emoji), reduced ? 0 : 2600); } }
   if (HOST().relics) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-relics">${HOST().relicLabel} <small>${tokenIcon(HOST().token)} ${tokensLeft(state.prog, HOST())}</small></button>`); $("hm-relics").onclick = openHouseRelics; }
+  if (crateOf(HOST().id).length) { const C = crateOf(HOST().id), n = C.filter((t) => hasTrack(state.prog, t)).length; $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-crate">🎵 Record crate <small>${n}/${C.length}</small></button>`); $("hm-crate").onclick = () => openRecordCrate(); }
   if (HOST().secrets) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-secrets">${HOST().secrets.label} <small>${secretCount(state.prog, HOST())}/${secretsOf(HOST()).length}</small></button>`); $("hm-secrets").onclick = openHouseSecrets; }
+  if (clueCount(state.prog)) { $("ui").querySelector(".hm-quick")?.insertAdjacentHTML("beforeend", `<button class="c" type="button" id="hm-dossier">🎭 Dossier <small>${clueCount(state.prog)}/${CLUES.length}</small></button>`); $("hm-dossier").onclick = openDossier; }
   if (HOST().menuBg) { $("ui").classList.add("has-mbg"); $("ui").insertAdjacentHTML("afterbegin", HOST().menuBg.html(Date.now(), { prog: state.prog })); }
   secretEvent("home", { at: Date.now() });
   $("hm-daily").onclick = () => (HOST().daily ? openRoom(HOST().daily) : choose(systemByKey("tarot")));
@@ -344,6 +420,25 @@ function openHouseRelics(note) {
   $("hr-back").onclick = greet;
 }
 
+// ---- the House record crate (hosts/house-music.js): records paid in any House's tokens; hidden ones as riddles ----
+let cratePay = null;
+function openRecordCrate(note) {
+  const H = HOST(), w = walletOf(state.prog, HOSTS); if (!cratePay || !w.left(cratePay)) cratePay = H.id;
+  state.inRoom = null; delete document.body.dataset.room; clearReading(); table.idle(); cap("🎵 Record crate");
+  say(typeof note === "string" ? note : `Records for ${H.player.name}. Pay in ${H.token.plural}, or in another House's tokens if you must.`);
+  ui(crateHtml(state.prog, H.id, cratePay, w, esc));
+  $("ui").querySelectorAll("[data-crate-pay]").forEach((b) => (b.onclick = () => { cratePay = b.dataset.cratePay; openRecordCrate(note); }));
+  $("ui").querySelectorAll("[data-crate-listen]").forEach((b) => (b.onclick = () => player.preview(b.dataset.crateListen)));
+  $("ui").querySelectorAll("[data-crate-buy]").forEach((b) => (b.onclick = () => { const r = buyRecord(state.prog, b.dataset.crateBuy, cratePay, w); if (!r) return;
+    const paid = HOSTS.find((h) => h.id === cratePay);
+    logEvent("buy", "🎵", `${H.house}: bought the record ${r.t.title}`, null, [["House", H.house], ["Record", r.t.title], ["Price", `${paid.token.emoji} ${r.t.price}`]]);
+    saveProgress(); showStats(); chime(2); mood.emote("cheer"); player.refresh(); player.play(r.t.id);
+    let msg = `${r.t.title} is yours, and on your playlist.`;
+    if (r.bonus.length) { msg += ` And you paid in ${paid.token.plural} when you had ${H.token.plural} to spare? Then you've earned this: ${r.bonus.map((t) => t.title).join(", ")}, a hidden record.`; chime(3); }
+    openRecordCrate(msg); }));
+  $("crate-back").onclick = greet;
+}
+
 // ---- Study: every game's study guides, one tap from the main menu (study.js). Rooms can send players here with ctx.study(id). ----
 function openStudy(roomId, back) {
   const x = studyFor(roomId); if (!x) return greet();
@@ -362,7 +457,7 @@ function openStudy(roomId, back) {
 
 // ---- rooms: games inside the Chamber (src/<room>/). Each exports { id, label, emoji, blurb, open(ctx), codexHtml? }
 // and keeps its progress in state.prog.rooms[id] (with a plays counter, so merge() counts it). ----
-const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }];
+const ROOMS = [{ ...seance, codexHtml: seanceCodex }, { ...decoder, codexHtml: decoderCodex }, { ...timeline, codexHtml: timelineCodex }, { ...alchemy, codexHtml: alchemyCodex }, { ...calendar, codexHtml: calendarCodex }, { ...grimoire, codexHtml: grimoireCodex }, { ...starLore, codexHtml: starsCodex }, { ...duel, codexHtml: duelCodex }, { ...memory, codexHtml: memoryCodex }, { ...rummy, codexHtml: rummyCodex }, { ...flametest, codexHtml: flametestCodex }, { ...minerals, codexHtml: mineralsCodex }, { ...watch, codexHtml: watchCodex }, { ...inscriptions, codexHtml: inscriptionsCodex }, { ...bench, codexHtml: benchCodex }, { ...casefiles, codexHtml: casefilesCodex }, { ...comet, codexHtml: cometCodex }, { ...commissions, codexHtml: commissionsCodex }, { ...fireworks, codexHtml: fireworksCodex }, { ...leadgold, codexHtml: leadgoldCodex }, { ...cipherdesk, codexHtml: cipherdeskCodex }, { ...workshop, codexHtml: workshopCodex }, { ...bookings, codexHtml: bookingsCodex }, { ...darkseance, codexHtml: darkseanceCodex }, { ...mentalist, codexHtml: mentalistCodex }, { ...phantasmagoria, codexHtml: phantasmagoriaCodex }, { ...possession, codexHtml: possessionCodex }, { ...roguesgallery, codexHtml: galleryCodex }, { ...eclipse, codexHtml: eclipseCodex }, { ...celestialNavigator, codexHtml: navigatorCodex }, { ...messier, codexHtml: messierCodex }, { ...starParty, codexHtml: starPartyCodex }];
 for (const r of ROOMS) [r.shop, ...(r.shops || [])].forEach(registerShelf);
 bookShop.preview = (id, ctx) => { const b = BOOKS.find((x) => x.id === id); if (!b) return; ctx.tableEl.className = "table bkp-show"; ctx.tableEl.innerHTML = bookPreviewHtml(b); ctx.cap("📖 " + b.name); bookSfx("cover"); setTimeout(() => bookSfx("page"), 1300); };
 hostShelves().forEach(registerShelf); registerShelf(recordShop); registerShelf(bookShop); registerShelf(familiarShop); registerShelf(gemShop); // the 🎵 Records shelf (music.js) // each room may export shop = { kind, label, items, talk, preview } (see store.js)
@@ -379,7 +474,7 @@ function openRoom(id, arg = null) {
   if (state.inRoom !== id && !cine.mid) return cine(CINE.room, () => openRoom(id, arg));
   state.inRoom = id; document.body.dataset.room = id; chat.n = 0; chat.next = 3; chat.at = Date.now() - 12000; player.room(id);
   const roomAward = (xp, es) => { const eb = eventBoost(id, xp, es); xp = eb.xp; es = eb.es; const r = award(xp, es); if (!mood.mood() && (xp || es)) mood.emote(r.rankUp ? "cheer" : "joy", { quiet: true }); if (xp || es) strayCheck(); return r; };
-  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
+  r.open({ $, esc, say, ui, talkThrough, cap, clearReading, table, tableEl: $("table"), state, saveProgress, showStats, chime, applyLook, greet, wait, reduced, award: roomAward, trophy, logEvent, emote: mood.emote, bubble: mood.bubble, banter: roomBanter, study: (rid = id, back) => openStudy(rid, back),
     arg, go: (rid, a) => openRoom(rid, a), reading: (k) => { const sys = systemByKey(k); if (sys) choose(sys); } }); // reading: open one of the Oracle's readings (e.g. "astrology") // arg: optional entry hint from another room (e.g. { ghost } or { script }); go: jump to another room
 }
 
@@ -399,23 +494,24 @@ function choose(sys) {
     const p = state.profile || {}, o0 = optionsFor(sys), f = fieldsFor(sys.command, o0), need = f.need || ["date", "place", "time"];
     const field = (id, label, ph, val, req) => `<label for="${id}">${label}<input id="${id}" ${req ? "required" : ""} placeholder="${ph}" value="${esc(val)}" autocomplete="off"></label>`;
     const rows = [field("d", "Birth date (DD/MM/YYYY)", "09/04/1990", dmy(p.date || ""), true)];
-    if (need.includes("time")) rows.push(field("t", "Time (blank if unknown)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
-    if (need.includes("place")) rows.push(field("p", "Town or city, country", "Phoenix, USA", p.place, true));
-    if (need.includes("name")) rows.push(field("n", "Full birth name", "Mary Ann Smith", p.name, true));
-    const opt = f.opt || []; // optional extras: asked for, never required
-    if (opt.includes("time")) rows.push(field("t", "Birth time (optional, adds depth)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
-    if (opt.includes("place")) rows.push(field("p", "Birth town or city (optional)", "Phoenix, USA", p.place, false));
+    const opt = f.opt || [], has = (k) => need.includes(k) || opt.includes(k); // only the birthday is required
+    if (has("time")) rows.push(field("t", "Birth time (optional, more accurate)", "14:30", p.time && p.time !== "unknown" ? p.time : "", false));
+    if (has("place")) rows.push(field("p", "Birth town or city (optional, more accurate)", "Phoenix, USA", p.place, need.includes("place")));
+    if (has("name")) rows.push(field("n", "Full birth name (optional, more accurate)", "Mary Ann Smith", p.name, need.includes("name")));
     rows.push(field("bq", "Your question (optional)", "What should I focus on this year?", "", false));
     ui(`<div class="form" id="f">${rows.join("")}</div>
       <div class="choices"><button class="c main" type="button" id="go">✦ Reveal</button><button class="c" type="button" id="back">Choose another</button></div>
+      <div class="note" id="acc" role="alert" hidden></div>
       <div class="note">${PREVIEW ? PREVIEW.note + " " : state.profile ? "Filled in from your saved /profile. " : ""}Your details stay in this reading; nothing is posted to the channel.</div>`);
+    let warned = "";
     $("f").onsubmit = (e) => { e.preventDefault();
       const o = optionsFor(sys), v = (id) => ($(id) ? $(id).value.trim() : "");
       o[f.date] = v("d");
-      if (need.includes("place")) o[f.place] = v("p");
-      if (need.includes("name")) o[f.name] = v("n");
-      if (need.includes("time")) { if (v("t")) o[f.time] = v("t"); else o.time_unknown = true; }
-      for (const [k, id] of [["time", "t"], ["place", "p"]]) if (opt.includes(k) && v(id)) o[f[k]] = v(id);
+      for (const [k, id] of [["time", "t"], ["place", "p"], ["name", "n"]]) if (has(k) && v(id)) o[f[k]] = v(id);
+      if (has("time") && !v("t")) o.time_unknown = true;
+      // first try with optional fields empty: warn about accuracy and wait; the same blanks a second time go ahead
+      const missing = missingOptional(o, f), key = missing.join();
+      if (missing.length && warned !== key) { warned = key; const a = $("acc"); a.hidden = false; a.textContent = "⚠️ " + accuracyWarning(missing) + " Fill them in, or press Reveal again to go ahead."; $("go").textContent = "✦ Reveal anyway"; return; }
       reveal(sys, o, v("bq")); };
   }
   bindGo("f");
@@ -453,7 +549,7 @@ async function reveal(sys, options, question = "") {
     rc.onclick = () => { const d = document.querySelector("details.written"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); } else rc.classList.toggle("flip"); }; }
   const words = line(P(), "reveal", { name: state.name, system: sys.label, result: headline(r.embeds[0], r.headline) }) || speech(sys.command, state.name, r.embeds[0], Math.random, r.headline);
   const text = r.embeds.map((e) => [e.description, ...(e.fields || []).map((f) => f.name + ": " + f.value)].join(" ")).join(" ");
-  const lore = codexNotes(state.prog, sys.key, r);
+  const lore = codexNotes(state.prog, sys.key, r, themeOf);
   state.last = { sys, r, words, files, text, deeper: deeperPages(r, question, lore), di: 0, quips: 0 };
   logEvent("reading", sys.emoji, `${sys.label}${question ? ` · “${question.slice(0, 80)}”` : ""}: ${headline(r.embeds[0], r.headline)}`, null,
     [["System", sys.label], ["Your question", question || ""], ["Headline", headline(r.embeds[0], r.headline)], ["The Oracle said", words], ...r.embeds.flatMap((e) => [[e.title || "Reading", e.description || ""], ...(e.fields || []).map((f) => [f.name, f.value])])]);
@@ -492,7 +588,7 @@ function afterReading() {
 /** Go deeper: the Oracle keeps talking about the same reading, two parts at a time, with the odd aside. */
 function goDeeper() {
   const L = state.last; deepen();
-  const pages = L.deeper.slice(L.di, L.di + 2); L.di += pages.length;
+  const pages = L.deeper.slice(L.di, L.di + (L.di < (L.deeper.exams || 0) ? 1 : 2)); // personal examinations come one at a time L.di += pages.length;
   if (state.q && L.di <= 2) pages.push(`Hold your question close: “${state.q}”. This is the part that touches it.`);
   if (L.di >= L.deeper.length) pages.push(`That's everything the glass will show me, ${state.name}. Any more and I'd be making it up, and I have standards.`);
   else pages.push(joke(L.sys.key));
@@ -524,11 +620,11 @@ function talkThrough(pages, done, { keep = false } = {}) {
     const raw = pages[i++], page = raw.text ?? raw, last = i >= pages.length;
     if (raw.mood) mood.emote(raw.mood);
     if (i > 1 || keep) keepLine(); else $("said").innerHTML = "";
-    ui(""); ctl(`<div class="talkbar"><button class="c small" type="button" id="skip">Skip ⏭</button></div>`);
+    ui(""); dock(`<button class="cont skip" type="button" id="skip" title="Show the whole line now">Skip ⏭</button>`);
     $("skip").onclick = () => say.finish && say.finish(); // Skip only skips the typing effect: the full text shows at once
     say(page, () => {
       if (raw.after) mood.emote(raw.after);
-      ctl(`<div class="talkbar"><button class="c main" type="button" id="more">${last ? "✦ Done" : "▸ Continue"}</button><span class="note">or press Space</span></div>`);
+      dock(`<button class="cont" type="button" id="more" title="Or press Space">${last ? "✦ Done" : "Continue ▸"}</button>`);
       $("more").onclick = next;
     }, { keep: true });
   };
@@ -568,7 +664,7 @@ const lookItem = (id) => UNLOCKS.find((x) => x.id === id) || item(id);
 function wear(id) {
   const u = lookItem(id); if (!u || !owns(id)) return;
   if (u.kind === "record") { const t = trackOf(id), L = musicOf(state.prog).list; if (t && !L.includes(t.id)) togglePlaylist(state.prog, t.id); saveProgress(); player.refresh(); player.play(t.id); return; }
-  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (changed) flourish(u.kind);
+  const changed = state.prog[u.kind] !== id; state.prog[u.kind] = id; saveProgress(); applyLook(); if (u.kind === "obssky") paintScene(); if (changed) flourish(u.kind);
 }
 function applyLook(over = {}) {
   const p = { ...state.prog, ...over }, svg = $("teller").querySelector("svg"), root = document.documentElement;
@@ -743,7 +839,14 @@ function showStore(tab = "outfit", opener = null) {
     $("tester").onclick = () => { p.essence += 500; p.day = null; saveProgress(); showStats(); showStore(tab); }; }
 }
 function burst() { const tp = $("table-pane"); tp.classList.remove("sparkle"); void tp.offsetWidth; tp.classList.add("sparkle"); }
+$("full-btn").onclick = () => { const on = !document.body.classList.contains("box-full"), b = $("full-btn"); document.body.classList.toggle("box-full", on); chime(1);
+  b.textContent = on ? "⤡" : "⤢"; b.setAttribute("aria-pressed", String(on)); b.title = on ? "Back to half screen" : "Expand this box to full screen"; b.setAttribute("aria-label", b.title); };
 $("store-btn").onclick = () => showStore();
+/** The header menu (Frank 2026-11-27): Store, Trophies, Grimoire and the sound controls fold away behind ☰. Remembered per player. */
+{ const head = document.querySelector(".box-head"), btn = $("menu-btn"), set = (on) => { head.classList.toggle("menu-open", on); btn.setAttribute("aria-expanded", String(on)); btn.textContent = on ? "✕ Close" : "☰ Menu"; try { localStorage.setItem("oracle-menu", on ? "1" : "0"); } catch {} };
+  let start = false; try { start = localStorage.getItem("oracle-menu") === "1"; } catch {} set(start);
+  btn.onclick = () => set(!head.classList.contains("menu-open"));
+  for (const id of ["store-btn", "trophy-btn", "grimoire-btn"]) $(id).addEventListener("click", () => set(false)); }
 
 function showCodex() { return openBook("codex"); }
 /** A Science is Magic card's page from the Codex: meaning, fact, and the explainer behind it. */
@@ -762,23 +865,25 @@ const loadLog = () => { try { const L = JSON.parse(localStorage.getItem(logKey()
   // first open: bring in the readings saved before the Journal kept a log
   return loadJournal().map((e) => ({ at: e.at, k: "save", e: "📖", t: `Saved a ${e.label} reading: ${String(e.title).replace(/^\P{L}+/u, "")}`, ref: e.at })); };
 function logEvent(k, e, t, ref = null, d = null) { try { localStorage.setItem(logKey(), JSON.stringify(addLog(loadLog(), k, e, t, ref, Date.now(), d))); } catch { /* storage full or blocked */ } }
-const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false };
+const BK = { sec: "codex", sys: null, entry: null, day: null, busy: false, nb: "table" };
+const BOOK_TABS = [["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["notebook", "🧪 Lab Notebook"], ["secrets", "🗝️ Secrets"]];
 function closeBook() { const el = $("book"); if (!el) return; el.classList.add("closing"); bookSfx("close"); setTimeout(() => el.remove(), reduced ? 0 : 450); }
 function openBook(sec = "codex") {
   const old = $("book"); if (old) old.remove();
   const b = bookOf(state.prog); BK.sec = sec; BK.entry = null; BK.li = null;
   const el = document.createElement("div"); el.id = "book"; el.className = "book-ov"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Your Grimoire");
   el.innerHTML = `<div class="bk-stage" data-page="${b.page}" data-fx="${b.fx || ""}" style="--cv1:${b.cover[0]};--cv2:${b.cover[1]};--foil:${b.foil}">
-    <div class="bk-top"><nav class="bk-tabs" role="tablist">${[["codex", "📜 Codex"], ["journal", "🗓️ Journal"], ["patterns", "📊 Patterns"], ["charts", "🔭 My charts"], ["secrets", "🗝️ Secrets"]].map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
+    <div class="bk-top"><nav class="bk-tabs" role="tablist">${BOOK_TABS.map(([k, l]) => `<button type="button" class="bk-tab" role="tab" data-bsec="${k}">${l}</button>`).join("")}</nav>
       <button type="button" class="bk-sigil" id="bk-sigil" aria-label="The sigil on the spine">${emblemSvg(b)}</button><button class="c small" type="button" id="bk-share">📤 Share page</button><button class="c small" type="button" id="bk-store">💎 Bindings</button><button class="c small" type="button" id="bk-x" aria-label="Close Your Grimoire">✕ Close</button></div>
     <div class="bk-book"><div class="bk-pages"><div class="bk-endpaper" aria-hidden="true"></div><div class="bk-page bk-left" id="bk-left"></div><div class="bk-page bk-right" id="bk-right"></div>
       <div class="bk-leaves" id="bk-leaves" aria-hidden="true"></div></div><div class="bk-ribbons" id="bk-ribbons"></div>
       <div class="bk-cover" id="bk-cover" aria-hidden="true"><div class="bk-cv-front">${coverSvg(b, "Your Grimoire")}</div></div></div></div>`;
+  if (!$("nb-style")) { const st = document.createElement("style"); st.id = "nb-style"; st.textContent = NOTEBOOK_CSS + OPUS_CSS; document.head.append(st); }
   document.body.append(el); drawBook();
   $("bk-x").onclick = closeBook; $("bk-store").onclick = () => { closeBook(); showStore("book"); }; $("bk-share").onclick = sharePageNow;
   let taps = []; $("bk-sigil").onclick = () => { const now = Date.now(); taps = [...taps.filter((t) => now - t < 3000), now]; const g = $("bk-sigil"); g.classList.remove("poke"); void g.offsetWidth; g.classList.add("poke"); bookSfx("page");
     if (taps.length >= 7) { taps = []; revealSecret("diary"); turnTo(() => { BK.sec = "diary"; }, false, 6); } };
-  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = ["codex", "journal", "patterns", "charts", "secrets"], back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
+  el.querySelectorAll("[data-bsec]").forEach((t) => (t.onclick = () => { if (t.dataset.bsec === BK.sec) return; const order = BOOK_TABS.map((t) => t[0]), back = order.indexOf(t.dataset.bsec) < order.indexOf(BK.sec);
     turnTo(() => { BK.sec = t.dataset.bsec; BK.entry = null; BK.li = null; }, back, 6); }));
   el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeBook(); });
   bookSfx("cover"); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open"))); setTimeout(() => el.classList.add("ready"), reduced ? 0 : 1500); $("bk-x").focus();
@@ -796,7 +901,7 @@ function turnTo(change, back = false, n = 3) {
 function drawBook() {
   const p = state.prog, L = $("bk-left"), R = $("bk-right"); if (!L) return;
   document.querySelectorAll("#book [data-bsec]").forEach((t) => { t.classList.toggle("on", t.dataset.bsec === BK.sec); t.setAttribute("aria-selected", String(t.dataset.bsec === BK.sec)); });
-  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
+  const sys = available(MODULES), [lh, rh] = BK.sec === "journal" ? journalPages(p) : BK.sec === "patterns" ? patternPages(p, sys) : BK.sec === "secrets" ? secretPages(p) : BK.sec === "charts" ? chartsPages(p) : BK.sec === "notebook" ? notebookPages(p, esc, BK.nb) : BK.sec === "diary" ? diaryPages(p) : BK.sec === "cabinet" ? cabinetPages(p) : codexPages(p, sys);
   const mg = CIPHER.find((c) => c.sec === BK.sec);
   L.innerHTML = lh + (INK[BK.sec] ? inkHtml(BK.sec) : ""); R.innerHTML = rh + (mg ? `<div class="bk-margin" aria-label="Runes in the margin">${mg.n} · ${toRunes(mg.w)}</div>` : ""); R.scrollTop = 0;
   bookCodes(p, L, R);
@@ -818,7 +923,29 @@ function drawBook() {
   on("[data-wb]", (b) => wearBook(b.dataset.wb));
   on("[data-secret-go]", (b) => turnTo(() => { BK.sec = b.dataset.secretGo; }, false, 6));
   on("[data-seal]", () => breakSeal());
+  on("[data-nb]", (b) => turnTo(() => { BK.nb = b.dataset.nb; }, false, 1));
+  on("[data-nb-study]", () => { if (studyToday(p)) { bookSfx("page"); chime(1); logEvent("game", "🧪", "Studied the Element of the Day in the Lab Notebook"); } payNotebook(p); drawBook(); });
+  if (BK.sec === "notebook") payNotebook(p);
   if (BK.sec === "charts") bindCharts();
+}
+/** Pay finished Magnum Opus stages (🪨 5 each); the fourth grants the Opus, sets Vell's red stone and rolls the credits. */
+function payOpus(p) {
+  const out = claimOpus(p, Object.keys(litTable(p)).length); if (!out.stones && !out.finished) return false;
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const n of out.stages) logEvent("trophy", "🔴", `Magnum Opus: ${n} stage complete (+🪨 5)`);
+  saveProgress(); showStats(); chime(2);
+  if (out.finished) { logEvent("trophy", "🪨", "Finished the Magnum Opus: the Great Work"); if (HOST().id === "alchemist") applyLook(); closeBook(); setTimeout(() => rollCredits(true, "opus"), reduced ? 0 : 700); }
+  else mood.bubble(`${out.stages.join(" and ")} complete! +🪨 ${out.stones}`);
+  return true;
+}
+/** Pay the Lab Notebook's table rewards: 💎 per full period, 🪨 and Mendeleev's seal for all 118. */
+function payNotebook(p) {
+  const out = claimTable(p); payOpus(p); if (!out.essence && !out.stones) { saveProgress(); return; }
+  if (out.essence) award(0, out.essence);
+  const vell = HOSTS.find((h) => h.id === "alchemist"); if (out.stones && vell) addTokens(p, vell, out.stones);
+  for (const per of out.rows) logEvent("trophy", "🧮", `Lab Notebook: period ${per} of the table is full (+${50} 💎)`);
+  if (out.seal) logEvent("trophy", "🏵️", "Lab Notebook: all 118 elements lit. Mendeleev's seal");
+  chime(2); saveProgress(); showStats();
 }
 // ---- My charts (mycharts.js): every chart's data from the saved birth details, what is stored where, and the delete controls ----
 const profKey = (pr) => JSON.stringify(pr || null);
@@ -1205,9 +1332,9 @@ showSpeech();
   joinLobby();
   // the door: its tap is the gesture browsers need before sound, so the Oracle's first line is spoken aloud
   const gate = $("gate"), p = state.prog;
-  gate.innerHTML = rename(gateHtml({ name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
+  gate.dataset.house = HOST().id; gate.innerHTML = rename(gateHtml({ gate: gateOf(HOST().id), name: state.name === "traveller" ? "" : state.name, rank: rankOf(p.xp).name, streak: liveStreak(p), back: !!p.readings, esc, art: `<svg viewBox="0 0 400 400">${figureSvg({ id: "g" })}</svg>` })); paintHost(gate.querySelector(".gate-sigil svg"), p, "g");
   gate.hidden = false; say("");
-  const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
+  const enter = () => { unlockVoice(); sting(HOST().voice && HOST().voice.sting); paintScene(); CU.enter(); musicNews(true); player.start(OPENER[HOST().id]); gate.classList.add("open"); setTimeout(() => { gate.hidden = true; }, reduced ? 0 : 650); greet(); boostThanks(); setTimeout(showGift, reduced ? 300 : 1400); };
   $("enter").onclick = enter; $("enter").focus();
   if (!reduced) gate.onpointermove = (e) => { gate.style.setProperty("--px", ((e.clientX / innerWidth) - 0.5).toFixed(3)); gate.style.setProperty("--py", ((e.clientY / innerHeight) - 0.5).toFixed(3)); };
 })();
@@ -1242,6 +1369,7 @@ function trophy(id, level, o) { const ev = o && o.won ? (o.perfect ? "perfect" :
   { const T = HOST().token, moon = T.id === "moon", mt = moon ? levelTokens(state.prog, id, level, o && o.won) : houseLevelTokens(state.prog, HOST(), id, level, o && o.won); if (mt.n) { saveProgress(); showStats(); setTimeout(() => mood.bubble(mt.series ? `Every level beaten! +${T.emoji} ${mt.n}, series bonus included.${moon ? " That's a Moon relic." : ""}` : `First win at Level ${level}! +${T.emoji} ${mt.n} for ${moon ? "Moon relics" : HOST().relicLabel.replace(/^\S+\s/, "")}.`, 3400, T.emoji), reduced ? 0 : 3400); } } if (pid() === "standup") setTimeout(rimshot, 900);
   try { trophyNews(recordWin(state.prog, id, level, o)); } catch (e) { console.warn("trophy", e); }
   if (!(o && o.won) && BATTLE_ROOMS.includes(id)) musicOf(state.prog).lost = true;
+  if (o && o.won && OPUS_GAMES.includes(id)) payOpus(state.prog);
   if (o && o.won && checkMastery(state.prog)) { saveProgress(); creditsDue = true; if (!tShowing && !tq.length) setTimeout(() => rollCredits(true), reduced ? 0 : 2600); }
   setTimeout(musicNews, reduced ? 0 : 2600); }
 function trophyNews(n) {
@@ -1295,8 +1423,8 @@ function openCase(focus = null, view = null) {
     <header><div class="tc-brand"><span class="tc-sig">⚛</span><div><h2>The Trophy Case</h2><small>Science is Magic · Oracle Chamber</small></div></div>
       <div class="tc-stats"><span><b>${got}/${TROPHIES.length}</b> trophies</span><span><b>${esc(lv.name)}</b> case level${nextLv ? ` · ${nextLv.at - pts} pts to ${esc(nextLv.name)}` : ""}</span><span><b>💎 ${earned(p)}</b> earned</span></div>
       ${caseTabs()}<button class="c small" type="button" id="tcase-x" aria-label="Close the Trophy Case">✕ Close</button></header>
-    ${(() => { const t = player.current, own = TRACKS.filter((x) => hasTrack(p, x)).length;
-      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
+    ${(() => { const t = player.current, own = ALL_TRACKS.filter((x) => hasTrack(p, x)).length;
+      return `<button type="button" class="rp-banner" data-cv="music" aria-label="Open the record player">${vinylSvg(t || ALL_TRACKS[0], 64, player.playing ? "spin" : "")}<span class="rp-b-txt"><b>🎵 The Record Player</b><small>${player.playing && t ? `Now playing: ${esc(t.title)}` : "Your records, your playlist, music on/off and volume"} · ${own} / ${TRACKS.length} records</small></span><span class="c small main rp-b-go">Open ▸</span></button>`; })()}
     <div class="shelf">${TROPHIES.map(bay).join("")}</div>
     ${detail}
     <div class="tsets">${sets}${(() => { const m = masteryCount(p), c = hasCrown(p);
@@ -1321,7 +1449,7 @@ function openRecords() {
   const el = $("tcase"), p = state.prog;
   el.innerHTML = `<div class="tcase-in" role="dialog" aria-label="The record player">
     <header><div class="tc-brand"><span class="tc-sig">♫</span><div><h2>The Record Player</h2><small>Science is Magic · Oracle Chamber</small></div></div>${caseTabs()}
-      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc, { deck: HOST().player.deck })}</div>`;
+      <button class="c small" type="button" id="tcase-x" aria-label="Close the record player">✕ Close</button></header>${recordPlayerHtml(p, player, esc, { deck: HOST().player.deck, house: HOST().id })}</div>`;
   if (HOST().rename) el.innerHTML = rename(el.innerHTML);
   const wasHidden = el.hidden; el.hidden = false; if (wasHidden) el.scrollTop = 0; wireCaseTabs(); wireMusic(el, player, musicDeps());
   $("tcase-x").onclick = () => { el.hidden = true; el.innerHTML = ""; $("trophy-btn").focus(); };
@@ -1351,7 +1479,8 @@ if (PREVIEW) window.__masterAll = () => { const p = state.prog; p.trophies = p.t
 
 // ---- the end credits (credits.js): a starfield scroll timed to the credits song ----
 let creditsDue = false;
-function rollCredits(auto) {
+function rollCredits(auto, kind = "crown") {
+  const opus = kind === "opus";
   creditsDue = false; if (document.getElementById("credits")) return;
   const tc = $("tcase"); tc.hidden = true; tc.innerHTML = ""; $("music-pop").hidden = true;
   const p = state.prog, c = (p.credits ||= { rolls: 0 }); c.rolls = (c.rolls || 0) + 1; saveProgress();
@@ -1360,11 +1489,11 @@ function rollCredits(auto) {
   const el = document.createElement("div"); el.id = "credits"; el.className = "credits"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "End credits");
   el.innerHTML = `<div class="cr-stars" aria-hidden="true">${stars}</div><button class="c small cr-x" type="button" id="cr-x" aria-label="Close the credits">✕ Close</button>
     <div class="cr-roll" id="cr-roll">
-      <div class="cr-title"><small>${auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>The Oracle Chamber</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
+      <div class="cr-title"><small>${opus ? "The Great Work is finished" : auto ? "Every game. Every level. You did it." : "Science is Magic presents"}</small><h2>${opus ? "The Magnum Opus" : "The Oracle Chamber"}</h2><div class="cr-song">♫ Don't Judge a Space Kid</div></div>
       ${rows}
       <section class="cr-sec cr-thanks"><h3>Special thanks</h3><div class="cr-big">${esc(SPECIAL_THANKS.name)}</div><p>${esc(SPECIAL_THANKS.line)}</p></section>
       <section class="cr-end"><div class="cr-sig">⚛</div><h2>The End</h2><p>${esc(END_LINE)}</p>
-        ${hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
+        ${opus ? `<div class="cr-crown">🔴 <b>The red stone</b><span>Is set in Vell's goggle for good. The Magnum Opus record and the Magister coat are yours.</span></div>` : hasCrown(p) ? `<div class="cr-crown">👑 <b>The Star Crown</b><span>${auto ? "Is the Oracle's now, forever. And your new record, Don't Judge a Space Kid, is in the record player." : "The Oracle wears it, for good."}</span></div>` : ""}
         <button class="c main" type="button" id="cr-done">✦ Back to the Chamber</button></section>
     </div>`;
   document.body.append(el);
@@ -1376,7 +1505,8 @@ function rollCredits(auto) {
     roll.style.transform = `translateY(${y.toFixed(1)}px)`; if (k >= 1 && !over) { over = true; el.classList.add("over"); } raf = requestAnimationFrame(frame); };
   if (reduced) { roll.style.position = "relative"; el.classList.add("still"); } else raf = requestAnimationFrame(frame);
   const close = () => { cancelAnimationFrame(raf); song.pause(); el.classList.add("out"); setTimeout(() => el.remove(), reduced ? 0 : 400); player.hold(false); document.removeEventListener("keydown", esc_);
-    if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
+    if (opus) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}! Nigredo, albedo, citrinitas, rubedo. The Great Work, finished. Look at my goggle: a red stone, and it stays there.` }); }, reduced ? 0 : 500);
+    else if (auto) setTimeout(() => { mood.gesture("snap"); mood.emote("cheer", { say: `${state.name}, you finished every game on every level. The whole Chamber! Look: a crown of stars, and it's mine forever. Thank you.` }); }, reduced ? 0 : 500); };
   const esc_ = (e) => { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", esc_); $("cr-x").onclick = close; $("cr-done").onclick = close; $("cr-x").focus();
   song.addEventListener("ended", () => { el.classList.add("over"); });

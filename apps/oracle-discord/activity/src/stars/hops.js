@@ -59,6 +59,8 @@ export const HOPS = [
   ], fact: "The Cross's long bar points toward the south celestial pole: about four and a half bar-lengths from Acrux. With no bright south pole star, navigators used this instead of Polaris." },
 ];
 
+/** Messier objects each route passes: a finished hop logs them in Messier's Catalogue (Pleiades M45; Andromeda Galaxy M31). */
+export const HOP_MESSIER = { belt: [45], andromeda: [31] };
 export const hopById = (id) => HOPS.find((h) => h.id === id) || null;
 const key = (a, b) => (a < b ? a + "-" + b : b + "-" + a);
 /** A new hop run. */

@@ -1069,6 +1069,8 @@ body.slam .table{animation:g-tshake .4s ease-out}
 .rp-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 .th-rec{display:grid;place-items:center}.th-rec svg{width:46px;height:46px;animation:rp-spin 6s linear infinite}
 @media (max-width:640px){.rp-deck{grid-template-columns:1fr}.rp-crate{grid-template-columns:1fr 1fr}.tc-views{order:3;width:100%;margin:6px 0 0}}
+.rp-houses{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}.rp-credit{font-size:.7rem;opacity:.7;line-height:1.3}.rp-open{font-style:normal;font-size:.72rem;color:var(--gold2);opacity:.85}
+.rp-credits{margin:10px 0;font-size:.8rem;opacity:.85}.rp-credits summary{cursor:pointer;color:var(--gold2)}.rp-credits ul{margin:6px 0;padding-left:18px;max-height:260px;overflow-y:auto}.rp-credits li{margin:2px 0}
 @media (prefers-reduced-motion: reduce){.vinyl.spin,.tt.playing .tt-disc,.rp-rec.now .rp-v,.th-rec svg{animation:none}}
 .music-pop[hidden],.gate[hidden]{display:none}
 /* Daily challenge boards (daily.js boardHtml) */
@@ -1931,9 +1933,88 @@ body.cu-8bit #stage{animation:cu-8bit 3s steps(6)}
 .mc-store{display:flex;flex-direction:column;gap:6px;margin:8px 0}.mc-row{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-left:3px solid var(--foil,#e2b04a);background:rgba(0,0,0,.06);border-radius:4px}.mc-row small{opacity:.7;font-size:12px}
 .mc-sys{margin:0 0 14px;padding-bottom:10px;border-bottom:1px dashed rgba(0,0,0,.2)}.mc-sys h4{margin:0 0 4px}
 #mc-del[data-sure="1"],#mc-clear[data-sure="1"]{border-color:#e0574a;color:#e0574a}
-/* Game rooms (Frank 2026-11-27): the host's words sit in a text box BELOW the game's choices, so they are easy to read. */
-body[data-room] #box{display:flex;flex-direction:column}
-body[data-room] #box>*{flex-shrink:0}
-body[data-room] #box>.box-top{order:0}body[data-room] #said{order:1}body[data-room] #ui{order:2}body[data-room] #say{order:3}body[data-room] #reading-body{order:4}
-body[data-room] #say{margin:12px 0 6px;padding:10px 14px;border:1px solid var(--gold);border-radius:10px;background:rgba(255,255,255,.05);line-height:1.45;min-height:2.6em}
-body[data-room] #say:empty{display:none}
+/* Compact layout (Frank 2026-11-27): the Oracle's words run in the bottom half of her own pane, over a see-through shade,
+   so the box below holds only controls. Smaller boxes and buttons; short rows of controls share one line when they fit. */
+.feed{position:absolute;left:0;right:0;bottom:0;height:50%;z-index:6;overflow:hidden;pointer-events:none;padding:28px 14px 10px;display:flex;flex-direction:column;justify-content:flex-end;
+  background:linear-gradient(to bottom,rgba(10,6,26,0) 0,rgba(10,6,26,.55) 26%,rgba(10,6,26,.72) 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22%);mask-image:linear-gradient(to bottom,transparent 0,#000 22%)}
+.feed .say,.feed .said p{text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.8);color:#fff}
+.feed .say{font-size:1rem;line-height:1.4;margin:2px 0 0;min-height:0}.feed .said p{font-size:.92rem;margin:0 0 4px;opacity:.68;line-height:1.35}
+.feed .say:empty{display:none}
+.box{padding:6px 12px 8px}.box-top{top:-6px;margin:-6px -12px 6px}.box-head{padding:6px 12px 4px}.ctl{padding:0 12px 4px}
+.c{padding:4px 11px;font-size:.84rem}.c.small{padding:3px 9px;font-size:.74rem}
+.choices{gap:6px;margin:3px 0}.group{font-size:.66rem;margin:0}.reading-body{margin-top:6px;padding-top:6px}.cx-top{margin:2px 0;font-size:.84rem}
+#ui{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px}#ui>*{flex:1 1 100%;min-width:0}
+#ui>.choices,#ui>.ch-ctl,#ui>.talkbar{flex:1 1 auto;width:auto}#ui>.group{flex:0 0 auto;width:auto}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:4px 0}.c.level{padding:5px 10px}.c.level span{font-size:.74rem;line-height:1.25}
+@media (max-width:560px){.box{padding:5px 8px 6px}.box-top{top:-5px;margin:-5px -8px 5px}.box-head{padding:5px 8px 3px}.ctl{padding:0 8px 3px}.feed{height:56%;padding:20px 10px 6px}.feed .say{font-size:.92rem}.feed .said p{font-size:.84rem}}
+.feed{padding-right:58px;overflow-y:auto;pointer-events:auto;justify-content:flex-start;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(226,176,74,.7) transparent;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14%);mask-image:linear-gradient(to bottom,transparent 0,#000 14%)}
+.feed>#said{margin-top:auto}
+.menu-btn{flex:0 0 auto;position:relative}.box-head:not(.menu-open) .head-btns{display:none}
+.box-head.menu-open .head-btns{flex:1 1 auto;flex-wrap:wrap;justify-content:flex-end;animation:menu-in .2s ease-out}@keyframes menu-in{from{opacity:0;transform:translateY(-4px)}}
+.box-head:not(.menu-open):has(.head-btns .orb) .menu-btn::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#ff4fae;box-shadow:0 0 6px #ff4fae}.feed::-webkit-scrollbar{width:6px}.feed::-webkit-scrollbar-thumb{background:rgba(226,176,74,.7);border-radius:3px}
+.feed .said p{opacity:.8}
+.ev-banner{padding:5px 10px!important;margin:4px 0!important;font-size:.8rem}.ev-banner .ev-e{font-size:1rem}
+.hm-quick .c{padding:5px 12px;font-size:.84rem}
+@media (max-width:560px){
+  .feed{height:62%;padding:16px 46px 5px 8px}.feed .say{font-size:.84rem;line-height:1.3}.feed .said p{font-size:.8rem}
+  .box-head{gap:4px}.stats{font-size:.7rem;gap:6px;margin-left:6px}.head-btns{gap:4px;flex-wrap:wrap}
+  .head-btns .c.small{padding:2px 7px;font-size:.68rem}.seg button{height:24px;min-width:26px;font-size:12px;padding:0 5px}.music-bar input[type=range]{width:56px;margin:0 6px 0 2px}
+  .c{padding:3px 9px;font-size:.8rem}.hm-quick .c{padding:4px 8px;font-size:.78rem;flex:1 1 auto}
+}
+.stage{grid-template-rows:56% 44%}
+@media (max-width:560px){.stage{grid-template-rows:44% 56%}.music-bar input[type=range]{display:none}}
+
+/* text feed: follows the speech, folds to 2 lines (▾/▴), quick save (+), and a secret behind it */
+.oracle-pane{--fh:50%}@media (max-width:560px){.oracle-pane{--fh:62%}}
+.oracle-pane .feed{height:var(--fh);transition:height .3s ease}
+.oracle-pane.feed-mini{--fh:calc(2.8rem + 16px)}.oracle-pane.feed-mini .feed{padding-top:6px;-webkit-mask-image:none;mask-image:none;overflow:hidden}
+@media (max-width:560px){.oracle-pane.feed-mini{--fh:calc(2.6rem + 12px)}}
+.feed-bar{position:absolute;left:8px;right:8px;bottom:var(--fh);z-index:8;display:flex;justify-content:space-between;pointer-events:none;transition:bottom .3s ease;margin-bottom:-6px}
+.feed-btn{pointer-events:auto;width:26px;height:26px;padding:0;border-radius:50%;font:700 15px/1 system-ui,sans-serif;color:#E2B04A;background:rgba(10,6,26,.72);border:1px solid rgba(226,176,74,.7);cursor:pointer;display:grid;place-items:center;transition:transform .2s,box-shadow .2s}
+.feed-btn:hover,.feed-btn:focus-visible{box-shadow:0 0 8px rgba(102,224,255,.7);outline:none}.feed-btn:active{transform:scale(.9)}
+#feed-save.saved{animation:fs-pop .6s ease-out}@keyframes fs-pop{40%{transform:scale(1.3) rotate(90deg);box-shadow:0 0 12px #7fe0a0;color:#7fe0a0}}
+.feed-secret{position:absolute;right:16%;bottom:17%;z-index:7;padding:6px;border:0;background:none;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .6s .2s}
+.feed-mini .feed-secret{opacity:.55;pointer-events:auto;animation:fsec 3.6s ease-in-out infinite}.feed-secret:hover{opacity:1}
+@keyframes fsec{50%{filter:drop-shadow(0 0 6px #ff4fae);opacity:.85}}
+@media (prefers-reduced-motion:reduce){.oracle-pane .feed,.feed-bar{transition:none}.feed-mini .feed-secret,#feed-save.saved{animation:none}}
+
+/* the Continue dock: floats in the box's bottom-left corner, its own look on every theme; ⤢ expands the box to full screen */
+.dock{grid-column:1 / -1;grid-row:2;align-self:end;justify-self:start;z-index:9;margin:0 0 10px 10px;display:flex;gap:6px;pointer-events:none}.dock:empty{display:none}
+.dock .cont{pointer-events:auto;all:unset;pointer-events:auto;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:999px;
+  font:700 14px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#0b0718;
+  background:linear-gradient(120deg,#66E0FF,#b98cff 55%,#ff4fae);box-shadow:0 0 0 2px rgba(255,255,255,.85),0 4px 16px rgba(255,79,174,.45),0 0 18px rgba(102,224,255,.45);
+  animation:cont-in .3s ease-out both,cont-glow 2.2s ease-in-out .4s infinite}
+.dock .cont:hover,.dock .cont:focus-visible{filter:brightness(1.12);transform:translateY(-1px)}.dock .cont:active{transform:scale(.95)}
+.dock .cont.skip{padding:6px 12px;font-size:11px;color:#e8f4ff;background:rgba(10,6,26,.8);box-shadow:0 0 0 1px rgba(102,224,255,.6);animation:cont-in .3s ease-out both}
+@keyframes cont-in{from{opacity:0;transform:translateX(-10px)}}@keyframes cont-glow{50%{box-shadow:0 0 0 2px #fff,0 4px 22px rgba(255,79,174,.7),0 0 28px rgba(102,224,255,.7)}}
+.stage:has(.dock:not(:empty)) .box{padding-bottom:50px}
+.full-btn{flex:0 0 auto;min-width:28px}
+body.box-full #box{position:fixed;inset:8px;z-index:40;max-height:none}
+body.box-full .dock{position:fixed;left:18px;bottom:18px;margin:0;z-index:41}
+@media (prefers-reduced-motion:reduce){.dock .cont{animation:none}}
+.stage>#box{grid-row:2}
+
+/* Frank 23:18Z: text feed shade 20% darker; the + quick save sits at the very top of the Oracle pane */
+.oracle-pane .feed{background:linear-gradient(to bottom,rgba(10,6,26,0) 0,rgba(10,6,26,.66) 26%,rgba(10,6,26,.86) 100%)}
+.feed-save{position:absolute;top:8px;right:8px;z-index:9}
+
+/* small text box by default; the secret behind it shows only once the member has folded it themselves */
+.oracle-pane.feed-mini:not(.feed-folded) .feed-secret{opacity:0;pointer-events:none;animation:none}
+/* Frank 23:23Z: smoother hands and fingers. Fingers and thumbs ease into every pose (they used to snap), hand
+   transitions lose their bounce, gestures ease in and out over a little longer, and each keyframe segment eases. */
+.teller .o-hand,.teller .o-f,.teller .o-thumb,.teller .o-hands{will-change:transform;backface-visibility:hidden}
+.teller .o-f,.teller .o-thumb{transition:transform .45s cubic-bezier(.45,.05,.25,1)}
+.teller[data-mood] .o-hands .o-hand{transition:transform .5s cubic-bezier(.34,1.12,.64,1)}
+.teller[data-mood] .o-hands,.teller[data-mood] .o-sleeves{transition:transform .5s cubic-bezier(.34,1.12,.64,1)}
+.teller .o-hands,.teller .o-sleeves{transition:transform .65s cubic-bezier(.34,1.12,.64,1)}
+.teller[data-gesture="snap"] .o-hands .o-handR{animation:g-snap .72s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="snap"] .o-hands .o-handR .o-thumb{animation:g-snapt .72s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="point"] .o-hands .o-handR{animation:g-point 1.6s cubic-bezier(.45,.05,.25,1)}
+.teller[data-gesture="swatL"] .o-hands .o-handL,.teller[data-gesture="swatR"] .o-hands .o-handR{animation:g-swat .58s cubic-bezier(.45,.05,.25,1)}
+.teller[data-mood="joy"] .o-hand,.teller[data-mood="cheer"] .o-hand{animation:m-clap .36s cubic-bezier(.45,.05,.55,.95) infinite}
+@keyframes finger{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}40%{transform:rotate(-9deg)}60%{transform:rotate(2deg)}75%{transform:rotate(4deg)}}
+@keyframes g-snap{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}38%{transform:translate(-6px,-70px) rotate(-14deg)}48%{transform:translate(-6px,-74px) rotate(-22deg) scale(1.08);animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@keyframes g-point{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}22%,78%{transform:translate(-30px,-96px) rotate(-38deg) scale(1.08)}84%{animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@keyframes g-swat{0%{transform:none;animation-timing-function:cubic-bezier(.3,0,.2,1)}38%{transform:translate(var(--sx,0),var(--sy,-40px)) rotate(-26deg) scale(1.1);animation-timing-function:cubic-bezier(.4,0,.2,1)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.teller .o-f,.teller .o-thumb,.teller .o-hand,.teller .o-hands{transition:none}}

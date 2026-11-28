@@ -12,6 +12,10 @@
   <section class="pane oracle-pane" aria-label="The Oracle">
     <div id="vfx-o" class="vfx" aria-hidden="true"></div>
     <div id="teller" class="teller" role="img" aria-label="The Oracle: a tall black hood with a golden pyramid face and one pink eye, hands around a crystal ball"></div>
+    <button id="feed-secret" class="feed-secret" type="button" tabindex="-1" aria-label="Something hidden behind the words"><svg viewBox="0 0 40 40" width="30" height="30" aria-hidden="true"><path d="M20 4 L35 32 H5 Z" fill="none" stroke="#ff4fae" stroke-width="2"/><circle cx="20" cy="22" r="5" fill="none" stroke="#ff4fae" stroke-width="2"/><circle cx="20" cy="22" r="2" fill="#ff4fae"/></svg></button>
+    <div id="feed" class="feed"><div id="said" class="said" aria-hidden="true"></div><div id="say" class="say" aria-hidden="true"></div></div>
+    <div class="feed-bar"><button id="feed-min" class="feed-btn" type="button" aria-expanded="true" aria-label="Shrink the text to two lines" title="Shrink the text">▾</button></div>
+    <button id="feed-save" class="feed-btn feed-save" type="button" aria-label="Quick save this conversation to your Journal" title="Quick save this conversation">+</button>
   </section>
   <section id="table-pane" class="pane table-pane" aria-label="The reading table">
     <div id="vfx-t" class="vfx" aria-hidden="true"></div>
@@ -21,12 +25,11 @@
   </section>
   <section id="box" class="box" aria-label="The Oracle speaks">
     <div id="sr" class="sr" aria-live="polite"></div>
-    <div class="box-top"><div class="box-head"><span class="speaker">THE ORACLE</span><span id="stats" class="stats"></span><span class="head-btns"><button id="store-btn" class="c small" type="button">💎 Store</button><button id="trophy-btn" class="c small" type="button">🏆 Trophies</button><button id="grimoire-btn" class="c small" type="button" title="Your Grimoire: the Codex and your Journal">📖 Grimoire</button><span id="speech-ctl" class="seg" role="group" aria-label="The Oracle's speech"></span><span id="music-bar" class="seg music-bar" role="group" aria-label="Music"></span></span></div><div id="ctl" class="ctl"></div></div>
-    <div id="said" class="said" aria-hidden="true"></div>
-    <div id="say" class="say" aria-hidden="true"></div>
+    <div class="box-top"><div class="box-head"><span class="speaker">THE ORACLE</span><span id="stats" class="stats"></span><button id="menu-btn" class="c small menu-btn" type="button" aria-expanded="false" aria-controls="head-btns" title="Store, trophies, Grimoire and sound">☰ Menu</button><button id="full-btn" class="c small full-btn" type="button" aria-pressed="false" title="Expand this box to full screen" aria-label="Expand this box to full screen">⤢</button><span id="head-btns" class="head-btns"><button id="store-btn" class="c small" type="button">💎 Store</button><button id="trophy-btn" class="c small" type="button">🏆 Trophies</button><button id="grimoire-btn" class="c small" type="button" title="Your Grimoire: the Codex and your Journal">📖 Grimoire</button><span id="speech-ctl" class="seg" role="group" aria-label="The Oracle's speech"></span><span id="music-bar" class="seg music-bar" role="group" aria-label="Music"></span></span></div><div id="ctl" class="ctl"></div></div>
     <div id="ui"></div>
     <div id="reading-body" class="reading-body"></div>
   </section>
+  <div id="dock" class="dock"></div>
 </main>
 <div id="gate" class="gate" hidden></div>
 <div id="music-pop" class="music-pop" hidden role="dialog" aria-label="Music"></div>

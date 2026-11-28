@@ -6,6 +6,8 @@ import { SAMPLES, SPECTRA, LEVELS, ROUND, TRIES, SPEED_SECS, sample, spectrum } 
 import { room as ftOf, start, current, hint, guess, next, rightCount, won, perfect, settle, itemOf, maxScore, speedDeck, logSpeed, raceRank, dailyOf, WIN_AT, RACE_WIN, SPEED_PAY } from "./logic.js";
 import { SHOP, SLOTS, SHELF_TALK, DEFAULT_LOOK, shopItem, owns, lookOf, buyOrUse } from "./shop.js";
 import { benchSvg, spectrumSvg } from "./scene.js";
+import { showSvg } from "./show-scene.js";
+import { openShow } from "./show-room.js";
 import { CSS } from "./style.js";
 import * as sfx from "./sfx.js";
 import { joinTable } from "../net.js";
@@ -22,7 +24,8 @@ export const flametest = {
   blurb: "Name elements from the colour of their flame",
   shop: { kind: "flametest", label: "🔥 Flame Test Lab", items: SHOP.map(({ id, name, note, price }) => ({ id, name, note, price })), talk: SHELF_TALK,
     preview(id, { tableEl, cap }) { const it = shopItem(id); if (!it) return; styleOnce(); tableEl.className = "table flametest";
-      tableEl.innerHTML = benchSvg({ look: { ...DEFAULT_LOOK, [it.slot]: id }, flame: sample("cu").flame, spectrum: it.slot === "scope" ? sample("na") : null }); cap && cap("👁 " + it.name); } },
+      tableEl.innerHTML = it.slot === "podium" ? showSvg({ look: DEFAULT_LOOK, flame: "cu", podium: id, label: "Probably Not Soup", shelf: ["Do Not Shake", "Totally Fine", "Mostly Harmless"] })
+        : benchSvg({ look: { ...DEFAULT_LOOK, [it.slot]: id }, flame: sample("cu").flame, spectrum: it.slot === "scope" ? sample("na") : null }); cap && cap("👁 " + it.name); } },
   open(ctx) {
     const { $, esc, say, ui, talkThrough, cap, clearReading, state, saveProgress, showStats, chime, greet, award, tableEl } = ctx;
     styleOnce();
@@ -50,11 +53,13 @@ export const flametest = {
         <div class="note">${ROUND} samples a round, ${TRIES} tries each. Get ${WIN_AT} right to win the round.</div>
         <button class="c level${ds.played ? " done" : ""}" type="button" id="ft-daily"><b>📅 Daily Flame Test${ds.played ? " · done ✓" : ""}</b><span>Today: Level ${dd.L.n}, the same ${ROUND} samples for everyone${ds.streak ? ` · 🔥 ${ds.streak}-day streak` : ""}${ds.played ? " · come back tomorrow" : ""}</span></button>
         <div class="choices"><button class="c main" type="button" id="ft-speed">⏱ Speed round (${SPEED_SECS}s)</button><button class="c" type="button" id="ft-race">⚔️ Race friends</button></div>
+        <div class="choices"><button class="c main" type="button" id="ft-show">🎙️ Vell's Hazardous Guess Show</button></div>
         <div class="choices"><button class="c" type="button" id="ft-book">📓 Flame chart</button><button class="c" type="button" id="ft-shop">🧰 Bench kit</button><button class="c" type="button" id="back">✦ Back</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { sfx.hiss(); begin(start(LEVELS[+b.dataset.l - 1])); }));
       $("ft-daily").onclick = () => { sfx.hiss(); const d = dailyOf(); begin(start(d.L, { seed: d.seed, daily: d.day })); };
       $("ft-speed").onclick = () => speed();
       $("ft-race").onclick = () => raceRoom();
+      $("ft-show").onclick = () => { stopTimer(); if (table) { table.leave(); table = null; race = null; } openShow(ctx, () => lobby(false)); };
       $("ft-book").onclick = () => chart($("ft-book"));
       $("ft-shop").onclick = shop;
       $("back").onclick = () => { if (table) { table.leave(); table = null; race = null; } stopTimer(); greet(); };

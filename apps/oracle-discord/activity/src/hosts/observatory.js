@@ -7,6 +7,8 @@ import { menuBg as OBS_MENU_BG } from "../watch/menubg.js";
 import { secrets as DARK_SKY } from "../watch/darksky.js";
 import { domeSceneHtml, astrolabeSvg, propsSvg, headSvg, react, SKY_EMOTES, DOME_CSS, obsCoatOf, obsCoatShop } from "./observatory-dome.js";
 import { coatOverlay } from "./alchemist-lab.js";
+import { harmonyDone } from "../obsprog.js";
+import { scopeOf, scopeShop, skyShop } from "./observatory-shelves.js";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -67,6 +69,19 @@ export const SKY_RELICS = [
     art: () => `<rect x="4" y="4" width="112" height="92" rx="6" fill="#4a3a22" stroke="#2a1f10" stroke-width="2"/><rect x="10" y="10" width="100" height="80" rx="4" fill="#5b7a5e" opacity=".55"/>${[[44, 50, 28, 24, "hr-spin"], [86, 36, 16, 14, "hr-spin-r"], [84, 72, 12, 10, "hr-spin"]].map(([cx, cy, r, n, cl]) => `<g class="${cl}" style="transform-origin:${cx}px ${cy}px"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#8a7a4a" stroke="#3a2f14"/>${Array.from({ length: n }, (_, i) => `<rect x="${cx - 1.6}" y="${cy - r - 3}" width="3.2" height="4" fill="#8a7a4a" transform="rotate(${(i * 360) / n} ${cx} ${cy})"/>`).join("")}<circle cx="${cx}" cy="${cy}" r="${r * 0.35}" fill="#3a2f14"/></g>`).join("")}<path d="M44 50L44 28" stroke="#FADE8C" stroke-width="1.6"/>` },
   { id: "sk-aurora", e: "🌌", name: "Aurora window", price: 30, note: "Charged particles from the Sun hit the upper air near the poles. Oxygen glows green and, higher up, red; nitrogen adds blues and purples.", x: 2, y: 85, w: 14, vb: "0 0 140 70",
     art: () => `<defs><linearGradient id="hrn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4f7a" stop-opacity=".7"/><stop offset=".45" stop-color="#4dffb0" stop-opacity=".85"/><stop offset="1" stop-color="#4dffb0" stop-opacity="0"/></linearGradient></defs><rect x="2" y="2" width="136" height="66" rx="8" fill="#050816" stroke="#9AA6C9" stroke-width="2"/>${Array.from({ length: 14 }, (_, i) => `<circle cx="${8 + ((i * 37) % 126)}" cy="${6 + ((i * 23) % 30)}" r=".9" fill="#fff" opacity=".8"/>`).join("")}<g class="hr-wave"><path d="M6 46q20 -40 40 -10t40 -14t48 -6v44h-128z" fill="url(#hrn)"/></g><g class="hr-wave" style="--d:1.2s"><path d="M6 54q24 -30 44 -6t44 -10t40 0v28h-128z" fill="url(#hrn)" opacity=".6"/></g><path d="M2 60h136v8h-136z" fill="#0b1033"/>` },
+  // Phase 4 relics (2026-11-27): six instruments that changed what we could see.
+  { id: "sk-nebra", e: "🌕", name: "Nebra sky disc", price: 12, note: "A bronze disc from about 1600 BC, found in Germany in 1999: the oldest known picture of the sky, with Sun, Moon and Pleiades in gold.", x: 17, y: 64, w: 8, vb: "0 0 100 100",
+    art: () => `<defs>${AU}</defs><circle cx="50" cy="50" r="46" fill="#2f6b5a" stroke="#1d4438" stroke-width="2"/><circle cx="34" cy="38" r="12" fill="url(#hrg)"/><path d="M62 30a14 14 0 1 0 8 26a11 11 0 1 1 -8 -26z" fill="url(#hrg)"/>${[[58, 70], [62, 66], [66, 72], [60, 76], [55, 74], [64, 78], [57, 64]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#FADE8C"/>`).join("")}<path d="M10 64a46 46 0 0 0 16 26" stroke="url(#hrg)" stroke-width="4" fill="none"/><path d="M28 92q22 6 44 0" stroke="url(#hrg)" stroke-width="3" fill="none"/>` },
+  { id: "sk-ulughbeg", e: "📐", name: "Ulugh Beg's sextant", price: 16, note: "Ulugh Beg's observatory in Samarkand (1420s) had a meridian arc about 40 m in radius. His catalogue listed 1,018 stars.", x: 93, y: 72, w: 7, vb: "0 0 70 110",
+    art: () => `<defs>${AU}</defs><path d="M8 104 L8 10 A94 94 0 0 1 62 104 Z" fill="#c9a47a" stroke="#6b4a2a" stroke-width="2"/><path d="M14 104 A88 88 0 0 0 14 16" fill="none" stroke="url(#hrg)" stroke-width="4"/>${Array.from({ length: 9 }, (_, i) => { const a = Math.PI / 2 - (i / 8) * (Math.PI / 2.4); return `<path d="M${(8 + 90 * Math.cos(a)).toFixed(1)} ${(104 - 90 * Math.sin(a)).toFixed(1)}l-4 2" stroke="#3a2a1a" stroke-width="1.4"/>`; }).join("")}<rect x="8" y="104" width="56" height="4" fill="#6b4a2a"/>` },
+  { id: "sk-h4", e: "⌚", name: "Harrison's H4", price: 18, note: "John Harrison's sea watch H4 lost only about 5 seconds on a 1761-62 voyage to Jamaica, solving longitude at sea.", x: 85, y: 84, w: 5, vb: "0 0 70 80",
+    art: () => `<defs>${AU}</defs><circle cx="35" cy="10" r="6" fill="none" stroke="url(#hrg)" stroke-width="3"/><circle cx="35" cy="46" r="31" fill="url(#hrg)"/><circle cx="35" cy="46" r="25" fill="#f6efe0"/>${Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<circle cx="${(35 + 21 * Math.sin(a)).toFixed(1)}" cy="${(46 - 21 * Math.cos(a)).toFixed(1)}" r="1.3" fill="#2a1a0a"/>`; }).join("")}<g class="hr-spin" style="transform-origin:35px 46px"><path d="M35 46V28" stroke="#2a1a0a" stroke-width="1.6"/></g><path d="M35 46l9 6" stroke="#2a1a0a" stroke-width="2.2"/>` },
+  { id: "sk-herschel", e: "🔭", name: "Herschel's 40-foot", price: 22, note: "William Herschel's 40-foot telescope, finished in 1789, was the world's largest for over 50 years. He found Saturn's moon Enceladus with it that year.", x: 0, y: 26, w: 13, vb: "0 0 120 120",
+    art: () => `<defs>${AU}</defs><path d="M10 116L40 20M110 116L80 20M40 20H80M22 76H98" stroke="#6b4a2a" stroke-width="3" fill="none"/><g transform="rotate(-50 60 80)"><rect x="18" y="70" width="96" height="20" rx="4" fill="#3a3f4a" stroke="#1a1d24" stroke-width="1.5"/><rect x="108" y="66" width="8" height="28" rx="2" fill="url(#hrg)"/>${[40, 62, 84].map((x) => `<path d="M${x} 70v20" stroke="#6b7180" stroke-width="1.5"/>`).join("")}</g><path d="M4 116H116" stroke="#6b4a2a" stroke-width="4"/>` },
+  { id: "sk-leavitt", e: "🎞️", name: "Leavitt's plate", price: 24, note: "Henrietta Swan Leavitt found in 1912 that a Cepheid star's brightness follows its pulse period: a yardstick for distances across the universe.", x: 88, y: 2, w: 10, vb: "0 0 100 80",
+    art: () => `<rect x="4" y="4" width="92" height="72" rx="3" fill="#cfd6dc" stroke="#7a838c" stroke-width="2"/><rect x="10" y="10" width="80" height="60" fill="#f4f6f2"/>${Array.from({ length: 40 }, (_, i) => `<circle cx="${(14 + ((i * 37) % 72)).toFixed(0)}" cy="${(14 + ((i * 53) % 52)).toFixed(0)}" r="${(0.6 + (i % 3) * 0.5).toFixed(1)}" fill="#1a1a1a"/>`).join("")}<g class="hr-twinkle"><circle cx="62" cy="34" r="3" fill="#1a1a1a"/></g><circle cx="62" cy="34" r="7" fill="none" stroke="#c0392b" stroke-width="1.2"/><path d="M12 66h30" stroke="#5b4b9a" stroke-width="1.4"/>` },
+  { id: "sk-blink", e: "🪞", name: "Tombaugh's blink comparator", price: 26, note: "Clyde Tombaugh flicked between two photo plates of the same sky in a blink comparator and found Pluto in February 1930.", x: 36, y: 2, w: 9, vb: "0 0 110 80",
+    art: () => `<rect x="10" y="40" width="90" height="34" rx="4" fill="#3a3f4a" stroke="#1a1d24" stroke-width="2"/><rect x="18" y="46" width="32" height="22" fill="#0b1033"/><rect x="60" y="46" width="32" height="22" fill="#0b1033"/>${[[26, 52], [34, 60], [42, 54], [68, 52], [76, 60], [84, 54]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1" fill="#DCE6FF"/>`).join("")}<g class="hr-twinkle"><circle cx="40" cy="62" r="1.6" fill="#FADE8C"/></g><circle cx="85" cy="63" r="1.6" fill="#FADE8C"/><path d="M50 40V20h10v20" fill="#6b7180" stroke="#1a1d24"/><circle cx="55" cy="16" r="8" fill="#2a2d36" stroke="#9AA6C9" stroke-width="1.5"/>` },
 ];
 
 /** The orrery music box: Altair's own player for the shared music pool. Same classes as the turntable (tt, tt-disc). */
@@ -115,11 +130,11 @@ function paint(svg, prog, id = "t") {
   svg.querySelector(".h-altair")?.remove();
   const M = starMapOf(prog && prog.starmap), g = document.createElementNS(NS, "g"); g.setAttribute("class", "h-altair");
   const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(200 + 44 * Math.cos(a)).toFixed(1)} ${(152 + 33 * Math.sin(a)).toFixed(1)}L${(200 + 49 * Math.cos(a)).toFixed(1)} ${(152 + 37 * Math.sin(a)).toFixed(1)}" stroke="#6b3f12" stroke-width="1.4"/>`; }).join("");
-  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="#E2B04A" stroke-width="7"/>${ticks}
+  g.innerHTML = `${headSvg()}<g class="ha-piece"><ellipse cx="200" cy="152" rx="47" ry="35" fill="none" stroke="${scopeOf(prog && prog.obsscope).ring}" stroke-width="7"/>${scopeOf(prog && prog.obsscope).deco}${ticks}
     <ellipse cx="200" cy="152" rx="52" ry="40" fill="none" stroke="#2A3F6E" stroke-width="1.6"/>
     <path d="M200 120V132M200 172V184M156 152H168M232 152H244" stroke="#E2B04A" stroke-width="1.6" opacity=".85"/>
     <ellipse class="hk-glint" cx="200" cy="152" rx="40" ry="29" fill="#8FB8FF" opacity=".1"/>
-    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+    <path d="M170 136 A36 26 0 0 1 196 124" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>${harmonyDone(prog || {}) ? `<path class="ha-star" d="M226 126 L228.2 131.8 L234 134 L228.2 136.2 L226 142 L223.8 136.2 L218 134 L223.8 131.8Z" fill="#FADE8C"><title>The Harmony of the Spheres: complete</title></path>` : ""}</g>
     <g transform="translate(200 92)"><circle r="12" fill="#C88A3A" stroke="#6b3f12"/><circle r="8.5" fill="#0B1530"/><g class="hk-rete"><path d="M0 -8V8M-8 0H8" stroke="#E2B04A" stroke-width="1"/><circle cx="0" cy="-2" r="4.5" fill="none" stroke="#E2B04A" stroke-width="1"/></g><circle cx="0" cy="-14" r="2.6" fill="none" stroke="#C88A3A" stroke-width="1.4"/></g>
     <g class="hk-chart" transform="translate(140 204)">${chartG(M)}</g>`;
   eye.after(g);
@@ -169,17 +184,18 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const observatory = {
   id: "observatory", name: "Keeper Altair", house: "The Observatory", emoji: "🔭", accent: "#8FB8FF",
   channelIds: ["1575975395692642596"], // #🔭-observatory
-  readings: false, rooms: ["watch", "comet", "stars", "calendar", "rummy"], daily: "stars",
+  readings: false, rooms: ["watch", "comet", "eclipse", "navigator", "messier", "starparty", "stars", "calendar", "rummy", "possession"], daily: "stars",
   // his voice is branded to the dome: a low bell-like sine with a fifth above it and a slow starlight shimmer (vibrato)
   voice: { type: "sine", base: 220, step: 22, vowel: 90, dur: 0.06, lp: 2600, harm: [1.5, 0.25], vib: 5, vibDepth: 6, brand: "starlight bell",
     sting: { type: "sine", notes: [[440, 0, 1.2, 0.25], [660, 0.18, 1.2, 0.2], [880, 0.36, 1.4, 0.16], [1320, 0.54, 1.6, 0.1]] } }, // door sting: a bell rising in fifths and octaves, like stars coming out
   css: OBSERVATORY_CSS + ALTAIR_HANDS_CSS + DOME_CSS, paint, scene: domeSceneHtml, react, emotes: SKY_EMOTES, rename: (s) => RENAME.reduce((t, [re, to]) => t.replace(re, to), s),
   player: { name: "The Orrery Music Box", deck: orrerySvg },
-  shelves: [starMapShop, obsCoatShop],
+  shelves: [starMapShop, obsCoatShop, scopeShop, skyShop],
   token: { id: "shard", emoji: "☄️", name: "comet shard", plural: "comet shards", purse: "Shard case" },
   relics: SKY_RELICS, relicLabel: "☄️ Observatory relics", relicBlurb: "Observatory relics stay up here for good. Earn shards with your first visit each day and by beating game levels here.",
   strayIntro: "Something just rolled out of the telescope tube:",
   lines: {
+    streak: ["{n} nights in a row. Patience is the best telescope.", "{n} clear nights running. The sky rewards regulars."],
     greet: ["Give your eyes 20 minutes in the dark, {name}. The sky gets bigger.", "Welcome to the Observatory, {name}. Look up. Then look closer.",
       "Good evening, {name}. The dome is open and the stars are where we left them. Roughly."],
     idle: ["Sunlight takes about eight minutes to reach us, so we always see the Sun as it was a few minutes ago.",
@@ -192,7 +208,12 @@ export const observatory = {
       "A day on Venus is longer than its year. Imagine the paperwork."],
   },
   banter: {
+    possession: G("Ptolemy's Almagest listed 48 constellations. Tonight we add one more.", "Aratus wrote a whole poem on the constellations in the 3rd century BCE.", "Logged, {name}! The sky has had 88 official constellations since 1922. Plus yours.", "Clouds over the story tonight. Even Ptolemy had cloudy nights."),
     watch: G("Let your eyes settle. Faint things need a slow look.", "Hipparchus ranked star brightness by eye: 1st to 6th magnitude.", "Logged! Every plate needs a night someone stayed up for.", "Clouded out. Even Herschel lost nights. Try again, {name}."),
+    eclipse: G("A Saros cycle is about 18 years 11 days. Eclipses repeat on it.", "Next big one: 2 August 2027, with totality over Luxor for over 6 minutes.", "Right in the shadow, {name}! Totality can last up to about 7.5 minutes.", "Clouded out. And never watch the partial phase without eclipse glasses."),
+    navigator: G("Polaris sits about as high above the horizon as your latitude.", "Harrison's H4 watch solved longitude on a 1761 voyage to Jamaica.", "Landfall, {name}! A sextant and a good clock still get you home.", "Off course. The Southern Cross points toward the south celestial pole."),
+    messier: G("M1 is the Crab Nebula, the wreck of a star seen exploding in 1054.", "M31, Andromeda, is about 2.5 million light-years away, and naked-eye too.", "Logged, {name}! Messier hunted comets; his list of nuisances became a classic.", "Missed it. Many Messier objects need dark skies, far from city lights."),
+    starparty: G("Stellafane in Vermont has held telescope makers' star parties since 1926.", "Red torches only: white light ruins everyone's night vision for half an hour.", "Clear skies, {name}! Galileo first saw Saturn's rings in 1610, as 'ears'.", "Clouded out. Dark-sky parks keep light pollution low for nights like this."),
     comet: G("Sweep slowly. A new comet looks like a faint fuzzy star.", "Charles Messier listed 110 fuzzy things so comet hunters could skip them.", "A comet! Report it fast. Discoverers get their name on it.", "Just a smudge, {name}. Messier made that mistake too."),
     stars: G("No rush. Find a bright one first, then hop from there.", "Every culture saw something different here. Take your time.", "Found and drawn! The sky looks back, {name}.", "Lost among the stars. Happens to every navigator. Look again."),
     calendar: G("The Maya kept a 260-day count beside a 365-day one. Count with me.", "Every calendar chases the Sun, the Moon, or both.", "Gears aligned! You'd make a fine keeper of days.", "The cycle slipped by a day. Calendars are fussy about that."),

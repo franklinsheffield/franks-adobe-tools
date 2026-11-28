@@ -150,7 +150,7 @@ const G = (mid1, mid2, win, lose) => ({ mid: [mid1, mid2], win: [win], lose: [lo
 export const scriptorium = {
   id: "scriptorium", name: "Archivist Wren", house: "The Scriptorium", emoji: "🪶", accent: "#E8483B",
   channelIds: ["1575977195048927232"], // #🪶-scriptorium
-  readings: false, rooms: ["inscriptions", "cipherdesk", "decoder", "memory"], daily: "decoder",
+  readings: false, rooms: ["inscriptions", "cipherdesk", "decoder", "memory", "timeline", "grimoire", "possession"], daily: "decoder",
   // their voice is branded to the scriptorium: quick, nasal and reedy like a hurdy-gurdy's chanter string
   voice: { type: "triangle", base: 380, step: 34, vowel: 60, dur: 0.035, lp: 3600, band: 1500, mouth: 0.3, harm: [1.5, 0.12], brand: "reedy chanter",
     sting: { type: "triangle", notes: [[196, 0, 1.1, 0.12], [294, 0, 1.1, 0.1], [392, 0.22, 0.14], [440, 0.36, 0.14], [494, 0.5, 0.32, 0.22]] } }, // door sting: a hurdy-gurdy drone and a little tune
@@ -161,7 +161,8 @@ export const scriptorium = {
   relics: SCRIPT_RELICS, relicLabel: "📜 Scriptorium relics", relicBlurb: "Scriptorium relics stay on my shelves for good. Earn scrolls with your first visit each day and by beating game levels here.",
   strayIntro: "This slipped out from between two pages:",
   lines: {
-    greet: ["Welcome to the Scriptorium, {name}. Every mark means something. Shall we read a few?", "Ah, {name}. Mind the ink, it's still wet. It's always still wet.",
+    streak: ["{n} days in a row. I've noted it in the margin.", "{n} days running. Footnote: that is a habit."],
+    greet: ["Welcome to the Scriptorium, {name}. Every mark means something. Shall we read a few?", "Strictly speaking, {name}, mind the ink. It's still wet. It's always still wet.",
       "Hello, {name}. I'm not a morning person. I'm a manuscript person."],
     idle: ["This is the Gallehus horn, about AD 400. Its maker signed it in runes: 'I, Hlewagastiz, made the horn.'",
       "The futhark is an alphabet, named after its first six letters. 'Rune magic' sets are a modern invention.",
@@ -173,6 +174,9 @@ export const scriptorium = {
       "Ampersand comes from '& per se and'. Schoolchildren recited it at the end of the alphabet."],
   },
   banter: {
+    timeline: G("Dates first, {name}. Chronicles were often written long after the events.", "Medieval annals listed one or two events per year. Short, but dated.", "In order! A chronicle fit for the archive, {name}.", "Out of order. Even monks miscopied a date now and then."),
+    grimoire: G("Read the leaf like a page: margins, veins, then the whole shape.", "The Vienna Dioscorides, about AD 512, painted plants for doctors.", "Named it! Pressed and catalogued, {name}.", "Not that one. Old herbals copied each other's mistakes too."),
+    possession: G("Chaucer's pilgrims told tales to win a free supper. Write well, scribe.", "In the Decameron, ten people tell a hundred tales. We'll settle for fewer.", "Copied into the chronicle, {name}. Scheherazade told hers for 1,001 nights.", "The ink dried mid-tale. Even Chaucer never finished the Canterbury Tales."),
     inscriptions: G("Read the letters first. Roman carvers ran words together.", "Trajan's Column base, AD 113: the model for capital letters.", "Read and dated! The stone speaks again, {name}.", "Not quite. Weathered stone fools everyone. Look again."),
     cipherdesk: G("Count the letters first. E is the most common in English.", "Al-Kindi wrote down frequency analysis in the 800s.", "Cracked! Al-Kindi would nod, {name}. Quietly.", "Still scrambled. Even Mary, Queen of Scots' cipher was broken."),
     decoder: G("One rune read, {name}. That's how every scholar starts.", "Look at the shape first. Then the sound. Then the meaning.", "Deciphered! I'll write that in red, it deserves a rubric.", "Not quite. Scribes made mistakes too. That's why they had erasers: knives."),

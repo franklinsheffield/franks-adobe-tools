@@ -15,9 +15,13 @@ export const SHOP = [
   { id: "ft-hand", slot: "scope", name: "Pocket spectroscope", note: "A slit and a set of prisms in a brass tube, a direct-vision design students still use", price: 0 },
   { id: "ft-grating", slot: "scope", name: "Diffraction grating", note: "Thousands of fine lines per millimetre split light like a prism. Fraunhofer made early ones from 1821", price: 90 },
   { id: "ft-bk", slot: "scope", name: "Bunsen-Kirchhoff spectroscope", note: "Their 1859 instrument: a prism, a slit tube, a telescope and a lit scale on a stand", price: 150 },
+  // Podiums for Vell's Hazardous Guess Show (show-room.js)
+  { id: "ft-podium-brass", slot: "podium", name: "Brass show podium", note: "Brass is an alloy of copper and zinc; the more zinc, the more golden-yellow it looks", price: 0 },
+  { id: "ft-podium-neon", slot: "podium", name: "Neon marquee podium", note: "Neon gas glows red-orange in a sign tube. Other 'neon' colours come from other gases, like argon with mercury, or from coloured phosphor coatings", price: 80 },
+  { id: "ft-podium-lime", slot: "podium", name: "Limelight podium", note: "From the 1830s, theatres heated a block of quicklime in an oxy-hydrogen flame until it glowed brilliant white: 'in the limelight'", price: 120 },
 ];
-export const SLOTS = [["burner", "🔥 Burners"], ["wire", "🪝 Wire loops"], ["scope", "🔭 Spectroscopes"]];
-export const DEFAULT_LOOK = { burner: "ft-bunsen", wire: "ft-nichrome", scope: "ft-hand" };
+export const SLOTS = [["burner", "🔥 Burners"], ["wire", "🪝 Wire loops"], ["scope", "🔭 Spectroscopes"], ["podium", "🎙️ Show podiums"]];
+export const DEFAULT_LOOK = { burner: "ft-bunsen", wire: "ft-nichrome", scope: "ft-hand", podium: "ft-podium-brass" };
 export const shopItem = (id) => SHOP.find((s) => s.id === id);
 export const owns = (p, id) => shopItem(id)?.price === 0 || (p.owned || []).includes(id);
 export function lookOf(p) {

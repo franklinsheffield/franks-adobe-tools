@@ -49,7 +49,7 @@ test("birth modal: prefilled, short custom_id, blank time = unknown", async () =
     { components: [{ custom_id: "place", value: "Phoenix" }] }, { components: [{ custom_id: "save", value: "Yes" }] }] } };
   const r = await fromModal(env, it);
   assert.equal(r.options.houses, "placidus"); assert.equal(r.options.time_unknown, true); assert.equal(r.save, true);
-  assert.equal(r.profile.time, "unknown");
+  assert.deepEqual(r.missing, ["time"]); assert.equal(r.profile.time, undefined); // a blank optional field never wipes a saved value
   assert.equal(await fromModal(env, it), null); // one use only
   const h = {}; fillFromProfile(h, fieldsFor("humandesign", h), { date: "1990-04-09", time: "unknown", place: "Phoenix" });
   assert.equal(needsForm(h, fieldsFor("humandesign", h)), false);

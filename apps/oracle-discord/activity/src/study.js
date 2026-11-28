@@ -16,6 +16,10 @@ import { POOL, GENERAL, SPECIFIC } from "./seance/practices.js";
 import { GHOSTS } from "./seance/ghosts.js";
 import { GUIDE as WATCH } from "./watch/guide.js";
 import { GUIDE as COMET } from "./comet/guide.js";
+import { GUIDE as ECLIPSE } from "./eclipse/guide.js";
+import { GUIDE as NAVIGATOR } from "./navigator/guide.js";
+import { GUIDE as MESSIER } from "./messier/guide.js";
+import { GUIDE as STARPARTY } from "./starparty/guide.js";
 
 const escT = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const book = (title, sections) => ({ title, sections });
@@ -27,6 +31,10 @@ export const STUDY = [
   { room: "rummy", emoji: "🃏", name: "Constellation Rummy", guides: [{ id: "rummy", emoji: "🃏", ...titled(RUMMY) }] },
   { room: "watch", emoji: "🔭", name: "The Night Watch", guides: [{ id: "watch", emoji: "🔭", ...titled(WATCH) }] },
   { room: "comet", emoji: "☄️", name: "Comet Hunter", guides: [{ id: "comet", emoji: "☄️", ...titled(COMET) }] },
+  { room: "eclipse", emoji: "🌑", name: "Eclipse Chaser", guides: [{ id: "eclipse", emoji: "🌑", ...titled(ECLIPSE) }] },
+  { room: "navigator", emoji: "🧭", name: "Celestial Navigator", guides: [{ id: "navigator", emoji: "🧭", ...titled(NAVIGATOR) }] },
+  { room: "messier", emoji: "🌌", name: "Messier's Catalogue", guides: [{ id: "messier", emoji: "🌌", ...titled(MESSIER) }] },
+  { room: "starparty", emoji: "🌠", name: "Star Party", guides: [{ id: "starparty", emoji: "🌠", ...titled(STARPARTY) }] },
   { room: "decoder", emoji: "🗝️", name: "Rune & Glyph Decoder", guides: Object.entries(DECODER).map(([id, g]) => ({ id, emoji: "🗝️", ...titled(g) })) },
   { room: "timeline", emoji: "⏳", name: "History of Magic", guides: Object.entries(TIMELINE).map(([id, g]) => ({ id, emoji: "⏳", ...titled(g) })) },
   { room: "grimoire", emoji: "🌿", name: "Herbalist's Grimoire", guides: Object.entries(GRIMOIRE).map(([id, g]) => ({ id: "g" + id, emoji: "🌿",

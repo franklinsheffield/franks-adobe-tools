@@ -1,6 +1,8 @@
 // Keeper Altair's House, Phase 1: the dome scene behind him, the astrolabe he holds where the crystal ball was, his 8
 // observing poses, his reactions, his 8 sky emotes and his observing coats. Every fact in a line is real.
 import { coatOverlay } from "./alchemist-lab.js";
+import { houseRank } from "../obsprog.js";
+import { skyHtml, SHELVES_CSS } from "./observatory-shelves.js";
 
 // ---- the dome: slit open at night (real Moon phase in the slit), shutters closed by day; the telescope tracks slowly ----
 const SYNODIC = 29.530588853, NEW_MOON = Date.UTC(2000, 0, 6, 18, 14); // a known new moon (6 January 2000, 18:14 UTC)
@@ -22,7 +24,8 @@ export function domeSceneHtml(at = Date.now(), { prog = {}, motes = 14, rnd = Ma
       <g class="mb-hot" data-tap="moon"><title>Tonight's Moon (${Math.round((1 - Math.cos(ph * 2 * Math.PI)) * 50)}% lit)</title><circle cx="62" cy="22" r="7" fill="#1a2140"/><path d="${moonPath(ph, 62, 22, 7)}" fill="#f1ecd6"/></g>
       <g class="od-shut mb-hot${open ? "" : " shut"}" data-tap="dome"><rect x="44" y="2" width="16" height="68" fill="#2b3a66" stroke="#0B1530"/><rect x="60" y="2" width="16" height="68" fill="#2b3a66" stroke="#0B1530"/>${[16, 34, 52].map((y) => `<path d="M44 ${y}H76" stroke="#0B1530" stroke-width=".8"/>`).join("")}</g>
       <g class="od-cloud"><ellipse cx="52" cy="26" rx="12" ry="6" fill="#5a6480"/><ellipse cx="66" cy="20" rx="13" ry="7" fill="#6a7490"/><ellipse cx="72" cy="30" rx="10" ry="5" fill="#4a5470"/></g></g>
-    <path d="M44 2 V70 M76 2 V70" stroke="#E2B04A" stroke-width="1.2" opacity=".7"/></svg>`;
+    <path d="M44 2 V70 M76 2 V70" stroke="#E2B04A" stroke-width="1.2" opacity=".7"/>
+    <g class="od-rank"><title>Your Observatory rank${(() => { const r = houseRank(prog); return r.next ? `: ${r.xp} of ${r.next.at} to ${r.next.name}` : ""; })()}</title><rect x="26" y="55" width="68" height="13" rx="2" fill="#0B1530" stroke="#E2B04A" stroke-width=".8"/><text x="60" y="64" font-size="7" text-anchor="middle" fill="#FADE8C" font-family="Georgia,serif">★ ${houseRank(prog).name}</text></g></svg>`;
   const scope = `<svg class="od-scope" viewBox="0 0 80 90" aria-hidden="true"><path d="M40 88 L28 60 M40 88 L52 60 M40 88 V58" stroke="#5a6480" stroke-width="3" stroke-linecap="round"/><circle cx="40" cy="56" r="5" fill="#C88A3A"/>
     <g class="od-tube"><rect x="10" y="44" width="60" height="11" rx="3" fill="#dfe6f4" stroke="#2A3F6E" stroke-width="1.5" transform="rotate(-38 40 50)"/><rect x="62" y="41" width="10" height="17" rx="2" fill="#C88A3A" transform="rotate(-38 40 50)"/><rect x="6" y="47" width="6" height="5" fill="#2A3F6E" transform="rotate(-38 40 50)"/></g></svg>`;
   const board = `<svg class="od-board" viewBox="0 0 80 52" aria-hidden="true"><rect x="2" y="2" width="76" height="46" rx="2" fill="#1f2a24" stroke="#7a5a32" stroke-width="3"/>
@@ -30,7 +33,7 @@ export function domeSceneHtml(at = Date.now(), { prog = {}, motes = 14, rnd = Ma
     <ellipse cx="62" cy="40" rx="10" ry="4" fill="none" stroke="#e8eef4" stroke-opacity=".5" stroke-width=".7"/><circle cx="58" cy="40" r="1.4" fill="#FADE8C"/></svg>`;
   const desk = `<div class="od-desk"></div><svg class="od-torch" viewBox="0 0 30 40" aria-hidden="true"><rect x="10" y="12" width="10" height="24" rx="3" fill="#3a3a44"/><rect x="8" y="6" width="14" height="8" rx="2" fill="#5a1414"/><circle cx="15" cy="8" r="4" fill="#ff3a3a" class="od-red"/></svg>`;
   const dust = Array.from({ length: motes }, () => `<i style="--x:${(rnd() * 100).toFixed(0)}%;--y:${(30 + rnd() * 60).toFixed(0)}%;--d:${(rnd() * 9).toFixed(1)}s;--t:${(9 + rnd() * 9).toFixed(1)}s"></i>`).join("");
-  return `<div class="sc dome${open ? " open" : ""}${full ? " fullmoon" : ""}" data-phase="${ph}">${dome}${scope}${board}${desk}<div class="sc-dust">${dust}</div><div class="od-redglow"></div></div>`;
+  return `<div class="sc dome${open ? " open" : ""}${full ? " fullmoon" : ""}" data-phase="${ph}">${skyHtml(prog.obssky)}${dome}${scope}${board}${desk}<div class="sc-dust">${dust}</div><div class="od-redglow"></div></div>`;
 }
 
 // ---- his figure: the astrolabe where the crystal ball was, pose props, reaction pieces (400 x 400 figure space) ----
@@ -85,7 +88,8 @@ export const SKY_EMOTES = {
 
 const MOOD_GLOW = { joy: "#FADE8C", cheer: "#FFB400", love: "#FF6AB8", laugh: "#8BD630", wow: "#e9f0ff", curious: "#7AD7FF", think: "#B57BE8", nod: "#8FB8FF", shake: "#c4ccd6",
   wink: "#FF4FB3", flinch: "#ffffff", sad: "#5a8cff", sulk: "#6a6a8a", smug: "#E2B04A", angry: "#e3173e", sleepy: "#3a3a6a", nervous: "#ff5a5a", dizzy: "#ff7a1f" };
-export const DOME_CSS = `
+export const DOME_CSS = SHELVES_CSS + `.ha-star{animation:ha-tw 3.2s ease-in-out infinite;transform-origin:226px 134px}@keyframes ha-tw{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}@media (prefers-reduced-motion: reduce){.ha-star{animation:none}}
+
 body[data-house="observatory"]{--aglow:#8FB8FF}
 ${Object.entries(MOOD_GLOW).map(([m, c]) => `body[data-house="observatory"] [data-mood="${m}"]{--aglow:${c}}`).join("")}
 body[data-house="observatory"] .o-ball>:not(.ao-astro){display:none}

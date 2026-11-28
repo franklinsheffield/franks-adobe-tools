@@ -27,7 +27,7 @@ export function risingWindow(c) {
 }
 
 /** c: a chart from castChart. now: true for the current sky (no person), false for a natal chart. moment: from moment.js (natal only). */
-export function analyse(c, { who, now = false, moment = null, detail = false } = {}) {
+export function analyse(c, { who, now = false, moment = null, detail = false, noPlace = false } = {}) {
   const bodies = PLANETS.map((k) => c.get(k)), idx = (p) => SIGNS.indexOf(p.sign);
   const el = EL.map((_, i) => bodies.filter((p) => idx(p) % 4 === i)), mode = MODE.map((_, i) => bodies.filter((p) => idx(p) % 3 === i));
   const yang = bodies.filter((p) => idx(p) % 2 === 0).length;
@@ -53,6 +53,7 @@ export function analyse(c, { who, now = false, moment = null, detail = false } =
 
   const data = [
     ...(moment && !now ? momentRows(moment, { detail }) : []),
+    ...(noPlace && !now ? [["Birth moment", "no birth city or time zone, so the chart is cast for noon universal time. The true moment may be up to 26 hours either side across the world's zones, usually far less: the Moon is uncertain by up to 13°, the Sun by about 1°, and the angles and houses are left out"]] : []),
     ["Positions", bodies.map((p) => `${p.name} ${dm(p)} ${p.sign}${p.house ? ` (house ${p.house})` : ""}${p.retro ? " ℞" : ""}`).join(" · ")],
     asc ? ["Angles", `Ascendant ${dm(asc)} ${asc.sign} · Midheaven ${dm(mc)} ${mc.sign} · Descendant ${signOf(asc.lon + 180)} · IC ${signOf(mc.lon + 180)} · ${c.system === "placidus" ? "Placidus" : "Whole Sign"} houses`] : null,
     onAngle.length ? ["On the angles", onAngle.map((x) => `${x.p.name} ${x.orb.toFixed(1)}° from the ${x.name}`).join(" · ")] : asc ? ["On the angles", "no planet within 8° of an angle"] : null,

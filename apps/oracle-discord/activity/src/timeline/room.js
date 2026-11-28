@@ -8,6 +8,7 @@ import { DECKS, deckOf, MYTHS, mythById, LINKS } from "./events2.js";
 import { dailySeed, dailyState, finishDaily, postDaily, boardOf, boardHtml, dayNumber } from "../daily.js";
 import { GUIDES } from "./guide.js";
 import { themeOf, SHOP, TALK } from "./shop.js";
+import { openFactFib } from "./factfib-room.js";
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const RIGHT = ["Exactly right. The Chronicle approves.", "Yes! You know your centuries.", "Perfectly placed. History clicks into place.", "Right where it belongs. The scroll hums."];
@@ -181,6 +182,7 @@ export const timeline = {
         return `<button class="c" type="button" data-d="${D.id}"><b>${D.emoji} ${esc(D.name)}${prog().decks[D.id] ? " 🏅" : ""}</b><span>${esc(D.what)} · ${have} / ${D.ids.length}${best("deck-" + D.id)}</span></button>`; };
       ui(`${stats()}
         <div class="group">📅 Daily Chronicle #${dayNumber()}</div><div class="levels"><button class="c level" type="button" id="tl-daily"><b>${d.played ? "🔁 Replay today's Chronicle" : "📅 Play today's Chronicle"}</b><span>The same 6 cards for everyone today${d.played ? ` · your score: ${d.today.score} (replays don't count)` : " · your first run counts"}${d.streak ? ` · 🔥 ${d.streak}-day streak` : ""}</span></button></div>
+        <div class="group">🎭 Party round</div><div class="levels"><button class="c level" type="button" id="tl-fib"><b>🎭 Fact or Fib</b><span>Real events, hidden years. Write a fake year, then find the true one. Plays with everyone in your voice call, or solo against the House</span></button></div>
         <div class="group">⏳ Levels</div><div class="levels">${LEVELS.map((L) => `<button class="c level" type="button" data-l="${L.n}"><b>${"⏳".repeat(L.n)} Level ${L.n} · ${esc(L.name)}</b><span>${esc(L.what)} · ${L.cards} cards · ${pts(L)} per card${best(L.n)}</span></button>`).join("")}</div>
         <div class="group">🃏 Themed decks</div><div class="tl-eras">${DECKS.map(deckBtn).join("")}</div>
         <div class="note">The first card is laid down for you. For each next card, tap the gap where it belongs, then 🎯 pinpoint its year for bonus points. One 🧐 Myth or Fact? card turns up each game. A wrong place empties an hourglass; lose all ${SANDS} and the game ends.</div>
@@ -188,6 +190,7 @@ export const timeline = {
         <div class="choices"><button class="c small" type="button" id="tl-board">🏆 Today's board</button><button class="c" type="button" id="back">✦ Back to the Oracle</button></div>`);
       $("ui").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { const L = levelOf(+b.dataset.l); L.n === 1 ? begin(L) : chooseEra(L); }));
       $("ui").querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => begin(DECK, { deck: b.dataset.d })));
+      $("tl-fib").onclick = () => openFactFib(ctx, { draw, onBack: () => lobby(false) });
       $("tl-daily").onclick = () => begin(DAILY, { daily: true }); $("tl-board").onclick = () => showBoard();
       wireGuides(); $("back").onclick = greet;
     }

@@ -53,33 +53,48 @@ const BIRTH = { astrology: "astrology", humandesign: "Human Design", numerology:
 const andList = (a) => (a.length < 3 ? a.join(" and ") : `${a.slice(0, -1).join(", ")} and ${a[a.length - 1]}`);
 const times = (n) => (n === 1 ? "once" : n === 2 ? "twice" : `${n} times`);
 
+// How each birth system is named when the Oracle speaks of it: "Because your Chinese zodiac is Horse…".
+const YOURS = {
+  astrology: (x) => `your Sun is in ${x.replace(/^Sun in /, "")}`, humandesign: (x) => `your Human Design type is ${x}`, numerology: (x) => `your Life Path is ${x.replace(/^Life Path /, "")}`,
+  chinesezodiac: (x) => `your Chinese zodiac is ${x}`, mayan: (x) => `your Maya day sign is ${x}`, egyptian: (x) => `your Egyptian sign is ${x}`, celtic: (x) => `your Celtic tree is ${x}`,
+};
+const SUGGEST = [
+  (a, x) => `you may consider how ${x} looks from the side of you that tradition sums up as ${a}: whether it comes easily or takes effort.`,
+  (a, x) => `you may consider whether ${x} is the part of this reading that a nature summed up as ${a} would be quickest to pass over.`,
+  (a, x) => `you may consider ${x} as the less familiar ground here, and ${a} as what you bring to it.`,
+  (a, x) => `you may consider where ${a} and ${x} have already met in your life, and what came of it.`,
+];
+
 /**
- * What the member's own Codex adds to a reading: how often each entry has come up before, how that compares with
- * chance, how much of the system they have seen, and (for birth charts) what their other systems hold.
- * Call BEFORE record(). Returns plain sentences: data first, then what it may mean. Never advice.
+ * Personal examinations for "Go deeper": the member's own data (birth charts and earlier draws, both kept in the
+ * Codex) cross-compared with the active reading. One sentence each, in the form
+ * "Because your Chinese zodiac is Horse (…), and this reading turns on The Moon (…), you may consider …".
+ * The Codex is never named and no tallies are given. themeOf(systemKey, entryName) gives an entry's keywords
+ * (see codexthemes.js). Call BEFORE record(). At most six, most specific first.
  */
-export function codexNotes(p, key, r) {
+export function codexNotes(p, key, r, themeOf = () => []) {
   const def = CODEX[key]; if (!def || !p) return [];
-  const items = [...new Set(def.items(r).filter(Boolean))]; if (!items.length) return [];
+  const items = [...new Set(def.items(r).filter(Boolean))].filter((i) => (themeOf(key, i) || []).length); if (!items.length) return [];
+  const kw = (k, name) => themeOf(k, name) || [], named = (k, name) => `${name} (${kw(k, name).join(", ")})`, low = (a) => a.map((x) => String(x).toLowerCase());
+  const chart = !!BIRTH[key], turnsOn = (i) => (chart ? `this chart gives ${named(key, i)}` : `this reading turns on ${named(key, i)}`);
+  const out = []; let t = 0;
+  const cross = (because, mine, i) => {
+    const shared = low(mine).filter((w) => low(kw(key, i)).includes(w));
+    out.push(`Because ${because}, and ${turnsOn(i)}, ${shared.length
+      ? `both point to ${andList(shared)}, so you may consider ${shared[0]} the thread worth following here.`
+      : SUGGEST[t % SUGGEST.length](andList(mine.slice(0, 2)), kw(key, i)[chart ? t++ % kw(key, i).length : (t++, 0)])}`);
+  };
   const have = new Set((p.codex || {})[key] || []), seen = ((p.seen || {})[key]) || {}, n = (p.systems || {})[key] || 0;
-  const draws = Object.values(seen).reduce((a, b) => a + b, 0), out = [];
-  if (BIRTH[key]) {
-    out.push(have.has(items[0]) ? `${items[0]} is already in your Codex: this is the same result the Chamber recorded before, as it should be for the same birth details.` : n ? `${items[0]} is new to your Codex, which now holds ${have.size + 1} of ${def.total} ${def.label}. A different result means different birth details were entered.` : `${items[0]} is the first ${BIRTH[key]} entry in your Codex.`);
-    const others = Object.keys(BIRTH).filter((k) => k !== key && ((p.codex || {})[k] || []).length === 1).map((k) => `${p.codex[k][0]} (${BIRTH[k]})`);
-    if (others.length) out.push(`Your Codex also holds ${andList(others)}. Each system describes the same birthday through a different lens. Where their themes agree, that agreement may deserve more weight than any one of them; where they disagree, the systems are simply measuring different things.`);
-    return out;
+  const old = chart ? [] : items.filter((i) => have.has(i)), fresh = chart || !n ? [] : items.filter((i) => !have.has(i));
+  for (const i of old.slice(0, 2)) out.push(`Because ${i} has come to you ${times(seen[i] || 1)} before (${kw(key, i).join(", ")}), you may consider that ${kw(key, i)[0]} is still an open question for you, and what has changed since it last appeared.`);
+  const charts = Object.keys(BIRTH).filter((k) => k !== key && ((p.codex || {})[k] || []).length === 1 && kw(k, p.codex[k][0]).length);
+  charts.slice(0, 4).forEach((k, j) => { const x = p.codex[k][0]; cross(`${YOURS[k](x)} (${kw(k, x).join(", ")})`, kw(k, x), items[j % items.length]); });
+  if (!chart) {
+    const top = Object.entries(seen).filter(([name, c]) => !items.includes(name) && c >= 2 && kw(key, name).length).sort((a, b) => b[1] - a[1])[0];
+    if (top) out.push(`Because ${top[0]} is what your readings have turned to most (${kw(key, top[0]).join(", ")}), and ${turnsOn(items[0])}, you may consider whether the subject has changed, or whether this is the same story seen from another side.`);
+    if (fresh.length) out.push(`Because ${fresh[0]} has never come up for you before, you may consider its themes (${kw(key, fresh[0]).join(", ")}) as the new information in this reading, set against what is familiar.`);
   }
-  if (!n) return [`This is the first ${def.label.replace(/s$/, "")} reading in your Codex, so there is no history to compare it with yet. From here on every draw is counted.`];
-  const old = items.filter((i) => have.has(i)), fresh = items.filter((i) => !have.has(i)), known = have.size;
-  out.push(`You have ${n} earlier reading${n === 1 ? "" : "s"} in this system and have seen ${known} of ${def.total} ${def.label} (${Math.round((known / def.total) * 100)}%). At that level any single draw repeats an old entry about ${Math.round((known / def.total) * 100)}% of the time.`);
-  for (const i of old.slice(0, 3)) {
-    const c = seen[i] || 0, exp = draws / def.total;
-    out.push(c ? `${i} has come up ${times(c)} before in ${draws} recorded draws; chance alone predicts about ${exp.toFixed(1)}.${c + 1 >= 3 && c + 1 > 2 * exp + 1 ? " That is more often than chance suggests. It may mark a theme your questions keep circling, and it is also the kind of streak random draws produce now and then." : " That is within what chance produces."}` : `${i} was already in your Codex from an earlier reading.`);
-  }
-  if (old.length > 3) out.push(`${andList(old.slice(3))} ${old.length > 4 ? "have" : "has"} also appeared before.`);
-  if (fresh.length) out.push(`${andList(fresh)} ${fresh.length > 1 ? "are" : "is"} new to your Codex${old.length ? "" : `: nothing in this reading repeats an earlier one`}.`);
-  if (old.length && fresh.length) out.push("A reading that mixes returning and new entries may be read as a familiar theme meeting something not yet considered.");
-  return out;
+  return out.slice(0, 6);
 }
 
 /** Record a reading. Returns what happened, for the Oracle to announce. */
